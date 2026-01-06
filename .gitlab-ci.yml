@@ -1,0 +1,54 @@
+# Sử dụng Docker Image chính chủ của Microsoft cho .NET 8.0
+image: mcr.microsoft.com/dotnet/sdk:8.0
+
+# Định nghĩa các giai đoạn (Stages) của quy trình
+stages:
+  - build
+  - test
+
+variables:
+  # Đường dẫn đến file project chính (Web App) để build và publish
+  # Lưu ý: Cần trỏ đúng vào file .csproj của project chạy (không phải file .sln)
+  PROJECT_PATH: "AEMS_Solution/AEMS_Solution.csproj"
+  
+  # Thư mục chứa kết quả build
+  PUBLISH_DIR: "publish"
+
+# --- JOB 1: BUILD & PUBLISH ---
+build_app:
+  stage: build
+  script:
+    - echo "=== BẮT ĐẦU QUÁ TRÌNH BUILD ==="
+    
+    # 1. Restore: Tải các thư viện (Nuget package) cần thiết
+    # Nó sẽ tự động restore luôn cả DataAccess và BusinessLogic nhờ reference
+    - echo "Đang restore các package..."
+    - dotnet restore "$PROJECT_PATH"
+    
+    # 2. Build: Biên dịch code ra file dll (kiểm tra lỗi cú pháp)
+    - echo "Đang build project..."
+    - dotnet build "$PROJECT_PATH" -c Release --no-restore
+    
+    # 3. Publish: Đóng gói code thành bản có thể chạy được (để deploy sau này)
+    - echo "Đang đóng gói (Publish)..."
+    - dotnet publish "$PROJECT_PATH" -c Release -o "$PUBLISH_DIR" --no-build
+    
+  # Artifacts: Lưu lại thư mục 'publish' để có thể tải về từ GitLab nếu cần
+  artifacts:
+    paths:
+      - "$PUBLISH_DIR"
+    expire_in: 1 week
+  
+  # Chỉ chạy job này khi có code mới ở nhánh main, develop hoặc khi tạo Merge Request
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# --- JOB 2: TEST (Placeholder) ---
+# run_tests:
+#   stage: test
+#   script:
+#     - echo "Đang chạy Unit Tests..."
+#     # - dotnet test "AEMS_Solution.Tests/AEMS_Solution.Tests.csproj"
+#   needs: ["build_app"]

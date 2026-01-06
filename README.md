@@ -69,6 +69,7 @@ Sơ đồ luồng công việc cơ bản:
 
         git add .
         git commit -m "#(branchnumber) (type: description)"
+        Ví dụ: git commit -m "#90 feat: add public get"
 
 **Tạo Merge Request (MR)**: Tạo một MR để sáp nhập code của bạn vào nhánh chính (main hoặc develop).
 
