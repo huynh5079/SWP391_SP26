@@ -6,6 +6,22 @@ using System.Threading.Tasks;
 
 namespace DataAccess.Enum
 {
+    public enum Gender
+    {
+        Male,
+        Female
+    }
+
+    public enum UploadContext
+    {
+        Avatar,
+        Certificate,        // Chứng chỉ gia sư
+        IdentityDocument,   // CCCD/CMND
+        Material,           // Tài liệu học tập
+        LessonVideo,        // Video bài học
+        Chat                // File/hình ảnh trong chat
+    }
+
     public enum ApprovalActionEnum
     {
         Approve,       // Đồng ý
