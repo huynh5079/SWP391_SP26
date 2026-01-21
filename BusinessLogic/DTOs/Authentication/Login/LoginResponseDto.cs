@@ -8,7 +8,8 @@ namespace BusinessLogic.DTOs.Authentication.Login
 {
     public class LoginResponseDto
     {
-        public string Token { get; set; } = default!;
+        public string AccessToken { get; set; } = default!;
+        public string RefreshToken { get; set; } = default!;
         public LoggedInUserDto User { get; set; } = default!;
     }
 }

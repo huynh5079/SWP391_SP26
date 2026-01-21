@@ -11,8 +11,5 @@ namespace BusinessLogic.DTOs.Authentication.Password
     {
         [Required(ErrorMessage = "Yêu cầu nhập địa chỉ email và phải đúng cấu trúc"), EmailAddress]
         public string Email { get; set; } = default!;
-
-        [Required(ErrorMessage = "Yêu cầu nhập mật khẩu phải tối thiểu phải từ 8 kí tự trở lên"), MinLength(8)]
-        public string NewPassword { get; set; } = default!;
     }
 }

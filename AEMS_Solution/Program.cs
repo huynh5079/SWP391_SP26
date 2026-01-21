@@ -1,6 +1,9 @@
+using BusinessLogic.Service;
+using BusinessLogic.Service.Interface;
 using DataAccess.Entities;
 using DataAccess.Repositories;
 using DataAccess.Repositories.Abstraction;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +15,23 @@ builder.Services.AddDbContext<AEMSContext>(options =>
 // Add Generic Repo
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
+// Add Repositories
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
 // Add UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Add Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Add Authentication (Cookie)
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.AccessDeniedPath = "/Auth/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    });
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -33,6 +51,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication(); // Must be before Authorization
 app.UseAuthorization();
 
 app.MapControllerRoute(
