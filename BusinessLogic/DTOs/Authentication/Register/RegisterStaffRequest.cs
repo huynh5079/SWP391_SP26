@@ -23,6 +23,10 @@ namespace BusinessLogic.DTOs.Authentication.Register
 
         public string? Phone { get; set; }
 
-        public string? Position { get; set; }
+        [Required]
+        public string Position { get; set; } // "Lecturer", "Club President", etc.
+
+        [Required]
+        public string RoleName { get; set; } // Frontend gửi lên: "Organizer" hoặc "Approver"
     }
 }

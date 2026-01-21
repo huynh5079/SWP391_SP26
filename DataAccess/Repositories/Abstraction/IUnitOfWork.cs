@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
+using DataAccess.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,10 @@ namespace DataAccess.Repositories.Abstraction
     {
         Task<int> SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();
+        IUserRepository Users { get; }
+        IGenericRepository<StudentProfile> StudentProfiles { get; }
+        IGenericRepository<StaffProfile> StaffProfiles { get; }
+        IGenericRepository<Role> Roles { get; }
     }
 
 }
