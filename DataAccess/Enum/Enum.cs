@@ -93,6 +93,7 @@ namespace DataAccess.Enum
     {
         Active,     // Đang hoạt động
         Inactive,   // Tạm khóa
-        Banned      // Bị cấm vĩnh viễn
+        Banned,      // Bị cấm vĩnh viễn
+        Pending     // Chờ xác nhận (Email/Admin)
     }
 }

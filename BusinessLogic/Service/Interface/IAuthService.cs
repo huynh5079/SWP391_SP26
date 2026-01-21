@@ -11,11 +11,12 @@ namespace BusinessLogic.Service.Interface
 {
     public interface IAuthService
     {
-        Task<LoginResponseDto?> LoginAsync(LoginRequestDto dto);
-        //Task RegisterStudentAsync(RegisterStudentRequest dto);
+        Task<LoginResponseDto> LoginAsync(LoginRequestDto dto);
+        Task RegisterStudentAsync(RegisterStudentRequest dto);
+        Task RegisterStaffAsync(RegisterStaffRequest dto);
         Task<bool> IsEmailAvailableAsync(string email);
-        Task<(bool ok, string message)> ChangePasswordAsync(string userId, ChangePasswordRequest req);
-        // Forgot password (sau khi OTP reset đã verify)
-        Task<(bool ok, string message)> ResetPasswordAsync(ForgotPasswordRequest req);
+        Task ChangePasswordAsync(string userId, ChangePasswordRequest req);
+        // Forgot password (simplified for now)
+        Task ResetPasswordAsync(ForgotPasswordRequest req);
     }
 }
