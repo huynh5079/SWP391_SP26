@@ -17,6 +17,7 @@ namespace AEMS_Solution.Controllers
         public IActionResult Index()
         {
             return View();
+            //throw new Exception("Test hê thống Log lỗi AEMS");  //Test error log
         }
 
         public IActionResult Privacy()
