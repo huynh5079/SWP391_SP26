@@ -1,4 +1,4 @@
-namespace AEMS_Solution.Models
+namespace AEMS_Solution.Models.Shared
 {
     public class ErrorViewModel
     {
