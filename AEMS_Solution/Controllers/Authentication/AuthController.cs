@@ -13,10 +13,12 @@ namespace AEMS_Solution.Controllers.Authentication
     public class AuthController : BaseController
     {
         private readonly IAuthService _authService;
+        private readonly ISystemErrorLogService _systemErrorLogService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ISystemErrorLogService systemErrorLogService)
         {
             _authService = authService;
+            _systemErrorLogService = systemErrorLogService;
         }
 
         [HttpGet]
@@ -72,6 +74,13 @@ namespace AEMS_Solution.Controllers.Authentication
             }
             catch (Exception ex)
             {
+                // Log error to database for debugging
+                await _systemErrorLogService.LogErrorAsync(
+                    ex, 
+                    CurrentUserId, 
+                    $"{nameof(AuthController)}.{nameof(Login)}"
+                );
+                
                 SetNotification(ex.Message, "error");
                 return View(model);
             }
@@ -108,6 +117,13 @@ namespace AEMS_Solution.Controllers.Authentication
             }
             catch (Exception ex)
             {
+                // Log error to database for debugging
+                await _systemErrorLogService.LogErrorAsync(
+                    ex, 
+                    CurrentUserId, 
+                    $"{nameof(AuthController)}.{nameof(RegisterStudent)}"
+                );
+                
                 SetNotification(ex.Message, "error");
                 return View(model);
             }

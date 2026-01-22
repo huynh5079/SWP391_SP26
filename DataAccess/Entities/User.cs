@@ -30,9 +30,9 @@ public partial class User: BaseEntity
 
     //public DateTime? DeletedAt { get; set; }
 
-    public virtual StudentProfile Id1 { get; set; } = null!;
-
-    public virtual StaffProfile IdNavigation { get; set; } = null!;
+    public virtual StudentProfile? StudentProfile { get; set; }
+    
+    public virtual StaffProfile? StaffProfile { get; set; }
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 

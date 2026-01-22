@@ -380,6 +380,12 @@ public partial class AEMSContext : DbContext
             entity.HasOne(d => d.Department).WithMany(p => p.StaffProfiles)
                 .HasForeignKey(d => d.DepartmentId)
                 .HasConstraintName("FK__StaffProf__Depar__04E4BC85");
+
+            // Correct Relationship: StaffProfile depends on User
+            entity.HasOne(d => d.User)
+                .WithOne(p => p.StaffProfile)
+                .HasForeignKey<StaffProfile>(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<StudentProfile>(entity =>
@@ -398,6 +404,12 @@ public partial class AEMSContext : DbContext
             entity.HasOne(d => d.Department).WithMany(p => p.StudentProfiles)
                 .HasForeignKey(d => d.DepartmentId)
                 .HasConstraintName("FK__StudentPr__Depar__02FC7413");
+
+            // Correct Relationship: StudentProfile depends on User
+            entity.HasOne(d => d.User)
+                .WithOne(p => p.StudentProfile)
+                .HasForeignKey<StudentProfile>(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<StudentQuizScore>(entity =>
@@ -489,17 +501,8 @@ public partial class AEMSContext : DbContext
                 .HasMaxLength(50)
                 .HasConversion<string>();
 
-            entity.HasOne(d => d.IdNavigation).WithOne(p => p.User)
-                .HasPrincipalKey<StaffProfile>(p => p.UserId)
-                .HasForeignKey<User>(d => d.Id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__User__Id__03F0984C");
-
-            entity.HasOne(d => d.Id1).WithOne(p => p.User)
-                .HasPrincipalKey<StudentProfile>(p => p.UserId)
-                .HasForeignKey<User>(d => d.Id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__User__Id__02084FDA");
+            // Removed incorrect reversed relationship.
+            // Relationships are defined in StudentProfile and StaffProfile configurations.
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
