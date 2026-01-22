@@ -4,47 +4,60 @@ using DataAccess.Entities;
 using DataAccess.Repositories.Abstraction;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BusinessLogic.Service
 {
     public class SystemErrorLogService : ISystemErrorLogService
     {
-        private readonly IUnitOfWork _uow;
+        private readonly IServiceProvider _serviceProvider;
 
-        public SystemErrorLogService(IUnitOfWork uow)
+        public SystemErrorLogService(IServiceProvider serviceProvider)
         {
-            _uow = uow;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task LogErrorAsync(Exception ex, string? userId, string source)
         {
             try
             {
-                var errorLog = new SystemErrorLog
+                // Create a NEW scope to get a FRESH UnitOfWork (and DbContext)
+                // This ensures we don't reuse the "poisoned" DbContext from the failed request
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    ExceptionType = ex.GetType().Name,
-                    ExceptionMessage = ex.Message,
-                    StackTrace = ex.StackTrace,
-                    Source = source,
-                    UserId = userId,
-                    StatusCode = null // Can be set from HttpContext if available
-                };
+                    var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-                // Timestamps are automatically set by BaseEntity constructor
-                // But we ensure they use Vietnam time
-                var vietnamTime = DateTimeHelper.GetVietnamTime();
-                errorLog.CreatedAt = vietnamTime;
-                errorLog.UpdatedAt = vietnamTime;
+                    // Drill down to the innermost exception
+                    var deepestEx = ex;
+                    while (deepestEx.InnerException != null)
+                    {
+                        deepestEx = deepestEx.InnerException;
+                    }
 
-                await _uow.SystemErrorLogs.CreateAsync(errorLog);
-                await _uow.SaveChangesAsync();
+                    // Format the message
+                    var formattedMessage = $"{ex.Message} | Inner Cause: {deepestEx.Message}";
+
+                    var errorLog = new SystemErrorLog
+                    {
+                        ExceptionType = deepestEx.GetType().Name,
+                        ExceptionMessage = formattedMessage,
+                        StackTrace = deepestEx.StackTrace ?? ex.StackTrace,
+                        Source = source,
+                        UserId = userId,
+                        StatusCode = null
+                    };
+
+                    var vietnamTime = DateTimeHelper.GetVietnamTime();
+                    errorLog.CreatedAt = vietnamTime;
+                    errorLog.UpdatedAt = vietnamTime;
+
+                    await uow.SystemErrorLogs.CreateAsync(errorLog);
+                    await uow.SaveChangesAsync();
+                }
             }
             catch (Exception logException)
             {
-                // Self-correction: If logging itself fails, only console log
-                // This ensures the logging process doesn't crash the app
                 Console.WriteLine($"[SystemErrorLogService] Failed to log error: {logException.Message}");
-                Console.WriteLine($"[SystemErrorLogService] Original error: {ex.Message}");
             }
         }
     }
