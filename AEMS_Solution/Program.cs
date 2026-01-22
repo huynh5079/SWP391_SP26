@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
+using ISystemErrorLogService = BusinessLogic.Service.Interface.ISystemErrorLogService;
+using SystemErrorLogService = BusinessLogic.Service.SystemErrorLogService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Services (Business Logic)
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 // TODO: Register EmailService, RedisService when implemented
 
 // HttpClient (External Services like PayOS)
@@ -126,12 +129,13 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-// Add Global Exception Handler for all environments or just Prod? 
-// User requested it generally.
-app.UseMiddleware<AEMS_Solution.Middlewares.GlobalExceptionHandler>();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Global Exception Handler - Place after StaticFiles but before Routing
+// This ensures it catches all exceptions from controllers/endpoints
+app.UseMiddleware<AEMS_Solution.Middlewares.GlobalExceptionHandler>();
 
 // Routing must be before Auth
 app.UseRouting();
