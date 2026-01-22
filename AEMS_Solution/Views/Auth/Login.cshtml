@@ -1,0 +1,57 @@
+@model AEMS_Solution.Models.Authentication.LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">Đăng nhập</h4>
+            </div>
+            <div class="card-body">
+                @if (TempData["NotificationMessage"] != null)
+                {
+                    var type = TempData["NotificationType"]?.ToString() == "error" ? "danger" : "success";
+                    <div class="alert alert-@type alert-dismissible fade show" role="alert">
+                        @TempData["NotificationMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <form asp-action="Login" asp-controller="Auth" method="post">
+                    <input type="hidden" asp-for="ReturnUrl" />
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label">Email</label>
+                        <input asp-for="Email" class="form-control" placeholder="Nhập email của bạn" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label">Mật khẩu</label>
+                        <input asp-for="Password" class="form-control" placeholder="Nhập mật khẩu" />
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary">Đăng nhập</button>
+                    </div>
+                </form>
+
+                <div class="text-center">
+                    <p class="mb-2">
+                        <a asp-action="RegisterStudent" asp-controller="Auth" class="text-decoration-none">Đăng ký tài khoản Sinh viên</a>
+                    </p>
+                    <p class="mb-0">
+                        <a asp-action="RegisterOrganizer" asp-controller="Auth" class="text-decoration-none">Đăng ký tài khoản Tổ chức</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
