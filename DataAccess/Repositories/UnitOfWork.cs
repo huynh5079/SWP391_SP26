@@ -16,6 +16,7 @@ namespace DataAccess.Repositories
         public IGenericRepository<StudentProfile> StudentProfiles { get; }
         public IGenericRepository<StaffProfile> StaffProfiles { get; }
         public IGenericRepository<Role> Roles { get; }
+        public IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
 
         public UnitOfWork(AEMSContext ctx, IUserRepository users)
         {
@@ -24,6 +25,7 @@ namespace DataAccess.Repositories
             StudentProfiles = new GenericRepository<StudentProfile>(_ctx);
             StaffProfiles = new GenericRepository<StaffProfile>(_ctx);
             Roles = new GenericRepository<Role>(_ctx);
+            SystemErrorLogs = new GenericRepository<SystemErrorLog>(_ctx);
         }
 
         public Task<int> SaveChangesAsync() => _ctx.SaveChangesAsync();
