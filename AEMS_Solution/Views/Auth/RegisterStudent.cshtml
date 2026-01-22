@@ -1,0 +1,116 @@
+@model AEMS_Solution.Models.Authentication.RegisterStudentViewModel
+@{
+    ViewData["Title"] = "Đăng ký Sinh viên";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-9">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">Đăng ký tài khoản Sinh viên</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="RegisterStudent" asp-controller="Auth" method="post">
+                    <div class="row">
+                        <!-- Section 1: Account Information -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">Thông tin tài khoản</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input asp-for="Email" class="form-control" placeholder="example@fpt.edu.vn" />
+                                <span asp-validation-for="Email" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Password" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                                <input asp-for="Password" class="form-control" placeholder="Nhập mật khẩu" />
+                                <span asp-validation-for="Password" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="ConfirmPassword" class="form-label">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                                <input asp-for="ConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu" />
+                                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Profile Information -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">Thông tin cá nhân</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="FullName" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                                <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" />
+                                <span asp-validation-for="FullName" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="StudentCode" class="form-label">Mã số sinh viên <span class="text-danger">*</span></label>
+                                <input asp-for="StudentCode" class="form-control" placeholder="HE123456" />
+                                <span asp-validation-for="StudentCode" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Phone" class="form-label">Số điện thoại</label>
+                                <input asp-for="Phone" class="form-control" placeholder="0123456789" />
+                                <span asp-validation-for="Phone" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Major" class="form-label">Chuyên ngành</label>
+                                <select asp-for="Major" class="form-select">
+                                    <option value="">-- Chọn chuyên ngành --</option>
+                                    <option value="Software Engineering">Kỹ thuật phần mềm</option>
+                                    <option value="Information Systems">Hệ thống thông tin</option>
+                                    <option value="Computer Science">Khoa học máy tính</option>
+                                    <option value="Data Science">Khoa học dữ liệu</option>
+                                    <option value="Artificial Intelligence">Trí tuệ nhân tạo</option>
+                                    <option value="Cybersecurity">An ninh mạng</option>
+                                    <option value="Digital Marketing">Marketing số</option>
+                                    <option value="Business Administration">Quản trị kinh doanh</option>
+                                    <option value="Finance">Tài chính</option>
+                                    <option value="Accounting">Kế toán</option>
+                                    <option value="English Language">Ngôn ngữ Anh</option>
+                                    <option value="Japanese Language">Ngôn ngữ Nhật</option>
+                                    <option value="Korean Language">Ngôn ngữ Hàn</option>
+                                    <option value="Graphic Design">Thiết kế đồ họa</option>
+                                    <option value="Multimedia Communication">Truyền thông đa phương tiện</option>
+                                </select>
+                                <span asp-validation-for="Major" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Giới tính</label>
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" asp-for="Gender" value="Male" id="genderMale" />
+                                        <label class="form-check-label" for="genderMale">Nam</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" asp-for="Gender" value="Female" id="genderFemale" />
+                                        <label class="form-check-label" for="genderFemale">Nữ</label>
+                                    </div>
+                                </div>
+                                <span asp-validation-for="Gender" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a asp-action="Login" asp-controller="Auth" class="btn btn-secondary me-md-2">Hủy</a>
+                                <button type="submit" class="btn btn-primary">Đăng ký</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
