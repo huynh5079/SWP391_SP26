@@ -1,12 +1,14 @@
+using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Models.Authentication;
+using BusinessLogic.DTOs.Authentication.Login;
+using BusinessLogic.DTOs.Authentication.Register;
+using BusinessLogic.Service.Interface;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using BusinessLogic.Service.Interface;
-using BusinessLogic.DTOs.Authentication.Login;
-using BusinessLogic.DTOs.Authentication.Register;
 
-namespace AEMS_Solution.Controllers
+namespace AEMS_Solution.Controllers.Authentication
 {
     public class AuthController : BaseController
     {
@@ -18,22 +20,24 @@ namespace AEMS_Solution.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string? returnUrl = null)
         {
             if (User.Identity?.IsAuthenticated == true)
             {
                 return RedirectToAction("Index", "Home");
             }
-            return View();
+            return View(new LoginViewModel { ReturnUrl = returnUrl });
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(LoginRequestDto dto)
+        public async Task<IActionResult> Login(LoginViewModel model)
         {
-            if (!ModelState.IsValid) return View(dto);
+            if (!ModelState.IsValid) return View(model);
 
             try
             {
+                // Map ViewModel to DTO
+                var dto = new LoginRequestDto { Email = model.Email, Password = model.Password };
                 var response = await _authService.LoginAsync(dto);
 
                 // Create Claims
@@ -49,7 +53,7 @@ namespace AEMS_Solution.Controllers
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var authProperties = new AuthenticationProperties
                 {
-                    IsPersistent = true, // Remember me logic can be added here
+                    IsPersistent = true,
                     ExpiresUtc = DateTime.UtcNow.AddDays(7)
                 };
 
@@ -58,37 +62,54 @@ namespace AEMS_Solution.Controllers
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                NotifySuccess("Đăng nhập thành công!");
+                SetNotification($"Chào mừng trở lại, {response.User.FullName}!", "success");
+
+                if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+                {
+                    return Redirect(model.ReturnUrl);
+                }
                 return RedirectToAction("Index", "Home");
             }
             catch (Exception ex)
             {
-                NotifyError(ex.Message);
-                return View(dto);
+                SetNotification(ex.Message, "error");
+                return View(model);
             }
         }
 
         [HttpGet]
         public IActionResult RegisterStudent()
         {
-            return View();
+            return View(new RegisterStudentViewModel());
         }
 
         [HttpPost]
-        public async Task<IActionResult> RegisterStudent(RegisterStudentRequest dto)
+        public async Task<IActionResult> RegisterStudent(RegisterStudentViewModel model)
         {
-            if (!ModelState.IsValid) return View(dto);
+            if (!ModelState.IsValid) return View(model);
 
             try
             {
+                // Map ViewModel to DTO
+                var dto = new RegisterStudentRequest
+                {
+                    Email = model.Email,
+                    Password = model.Password,
+                    FullName = model.FullName,
+                    StudentCode = model.StudentCode,
+                    Phone = model.Phone,
+                    Major = model.Major,
+                    Gender = Enum.TryParse<DataAccess.Enum.Gender>(model.Gender, out var gender) ? gender : null
+                };
+
                 await _authService.RegisterStudentAsync(dto);
-                NotifySuccess("Đăng ký thành công! Vui lòng đăng nhập.");
+                SetNotification("Đăng ký thành công! Vui lòng đăng nhập.", "success");
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
             {
-                NotifyError(ex.Message);
-                return View(dto);
+                SetNotification(ex.Message, "error");
+                return View(model);
             }
         }
 
@@ -96,8 +117,15 @@ namespace AEMS_Solution.Controllers
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            NotifySuccess("Đăng xuất thành công.");
+            SetNotification("Đăng xuất thành công.", "success");
             return RedirectToAction(nameof(Login));
+        }
+
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            SetNotification("Bạn không có quyền truy cập trang này.", "error");
+            return RedirectToAction("Index", "Home");
         }
     }
 }
