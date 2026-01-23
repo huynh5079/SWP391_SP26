@@ -87,6 +87,91 @@ namespace AEMS_Solution.Controllers.Authentication
         }
 
         [HttpGet]
+        public IActionResult LoginGoogle(string returnUrl = "/")
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = Url.Action(nameof(GoogleResponse)),
+                Items = { { "returnUrl", returnUrl } }
+            };
+            return Challenge(properties, Microsoft.AspNetCore.Authentication.Google.GoogleDefaults.AuthenticationScheme);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GoogleResponse()
+        {
+            var result = await HttpContext.AuthenticateAsync(Microsoft.AspNetCore.Authentication.Google.GoogleDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded)
+            {
+                SetNotification("Đăng nhập Google thất bại.", "error");
+                return RedirectToAction(nameof(Login));
+            }
+
+            try
+            {
+                var claims = result.Principal.Identities.FirstOrDefault()?.Claims;
+                var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+                var name = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                var googleId = claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var avatarUrl = claims?.FirstOrDefault(c => c.Type == "picture")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(email))
+                {
+                    SetNotification("Không thể lấy email từ Google.", "error");
+                    return RedirectToAction(nameof(Login));
+                }
+
+                // Get returnUrl from properties if preserved, otherwise default
+                var returnUrl = result.Properties?.Items.ContainsKey("returnUrl") == true 
+                    ? result.Properties.Items["returnUrl"] 
+                    : "/";
+
+                var user = await _authService.LoginGoogleAsync(email, googleId, name ?? "Unknown", avatarUrl);
+
+                // Create Cookie Claims
+                var userClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(ClaimTypes.Name, user.StudentProfile?.FullName ?? user.StaffProfile?.FullName ?? "User"),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role.RoleName.ToString() ?? ""),
+                    new Claim("AvatarUrl", user.AvatarUrl ?? "")
+                };
+
+                var claimsIdentity = new ClaimsIdentity(userClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var authProperties = new AuthenticationProperties
+                {
+                    IsPersistent = true, // Google login is typically persistent
+                    ExpiresUtc = DateTime.UtcNow.AddDays(7)
+                };
+
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(claimsIdentity),
+                    authProperties);
+
+                SetNotification($"Chào mừng, {user.StudentProfile?.FullName ?? user.Email}!", "success");
+                
+                 if (Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+                return RedirectToAction("Index", "Home");
+            }
+            catch (Exception ex)
+            {
+                SetNotification($"Lỗi: {ex.Message}", "error");
+                 await _systemErrorLogService.LogErrorAsync(
+                    ex, 
+                    "System", 
+                    $"{nameof(AuthController)}.{nameof(GoogleResponse)}"
+                );
+                return RedirectToAction(nameof(Login));
+            }
+        }
+
+        [HttpGet]
         public IActionResult RegisterStudent()
         {
             return View(new RegisterStudentViewModel());
