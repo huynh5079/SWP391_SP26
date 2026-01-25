@@ -50,6 +50,19 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Auth/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
+    })
+    .AddGoogle(options => 
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+        options.CallbackPath = "/signin-google";
+        options.Events.OnRemoteFailure = context =>
+        {
+            // Handle "Access denied" (User clicked Cancel) or other remote errors
+            context.Response.Redirect("/Auth/Login?error=GoogleLoginFailed");
+            context.HandleResponse(); // Suppress the exception
+            return Task.CompletedTask;
+        };
     });
 
 // Controllers with Views + JSON Options
@@ -80,7 +93,7 @@ try
         await context.Database.MigrateAsync();
         
         // Seed Roles using raw SQL to avoid EF tracking issues
-        var now = DateTime.UtcNow;
+        var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
         
         // Insert Admin role if not exists
         await context.Database.ExecuteSqlRawAsync(@"

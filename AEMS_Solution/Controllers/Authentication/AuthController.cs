@@ -64,13 +64,13 @@ namespace AEMS_Solution.Controllers.Authentication
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                SetNotification($"Chào mừng trở lại, {response.User.FullName}!", "success");
+                SetSuccess($"Chào mừng trở lại, {response.User.FullName}!");
 
                 if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
                 {
                     return Redirect(model.ReturnUrl);
                 }
-                return RedirectToAction("Index", "Home");
+                return RedirectToDashboard(response.User.Role);
             }
             catch (Exception ex)
             {
@@ -81,8 +81,93 @@ namespace AEMS_Solution.Controllers.Authentication
                     $"{nameof(AuthController)}.{nameof(Login)}"
                 );
                 
-                SetNotification(ex.Message, "error");
+                SetError(ex.Message);
                 return View(model);
+            }
+        }
+
+        [HttpGet]
+        public IActionResult LoginGoogle(string returnUrl = "/")
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = Url.Action(nameof(GoogleResponse)),
+                Items = { { "returnUrl", returnUrl } }
+            };
+            return Challenge(properties, Microsoft.AspNetCore.Authentication.Google.GoogleDefaults.AuthenticationScheme);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GoogleResponse()
+        {
+            var result = await HttpContext.AuthenticateAsync(Microsoft.AspNetCore.Authentication.Google.GoogleDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded)
+            {
+                SetError("Đăng nhập Google thất bại.");
+                return RedirectToAction(nameof(Login));
+            }
+
+            try
+            {
+                var claims = result.Principal.Identities.FirstOrDefault()?.Claims;
+                var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+                var name = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                var googleId = claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var avatarUrl = claims?.FirstOrDefault(c => c.Type == "picture")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(email))
+                {
+                    SetError("Không thể lấy email từ Google.");
+                    return RedirectToAction(nameof(Login));
+                }
+
+                // Get returnUrl from properties if preserved, otherwise default
+                var returnUrl = result.Properties?.Items.ContainsKey("returnUrl") == true 
+                    ? result.Properties.Items["returnUrl"] 
+                    : "/";
+
+                var user = await _authService.LoginGoogleAsync(email, googleId, name ?? "Unknown", avatarUrl);
+
+                // Create Cookie Claims
+                var userClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(ClaimTypes.Name, user.FullName),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role.RoleName.ToString() ?? ""),
+                    new Claim("AvatarUrl", user.AvatarUrl ?? "")
+                };
+
+                var claimsIdentity = new ClaimsIdentity(userClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var authProperties = new AuthenticationProperties
+                {
+                    IsPersistent = true, // Google login is typically persistent
+                    ExpiresUtc = DateTime.UtcNow.AddDays(7)
+                };
+
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(claimsIdentity),
+                    authProperties);
+
+                SetSuccess($"Chào mừng, {user.FullName}!");
+                
+                 if (Url.IsLocalUrl(returnUrl) && returnUrl != "/")
+                {
+                    return Redirect(returnUrl);
+                }
+                return RedirectToDashboard(user.Role.RoleName.ToString() ?? "");
+            }
+            catch (Exception ex)
+            {
+                SetError($"Lỗi: {ex.Message}");
+                 await _systemErrorLogService.LogErrorAsync(
+                    ex, 
+                    "System", 
+                    $"{nameof(AuthController)}.{nameof(GoogleResponse)}"
+                );
+                return RedirectToAction(nameof(Login));
             }
         }
 
@@ -112,7 +197,7 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.RegisterStudentAsync(dto);
-                SetNotification("Đăng ký thành công! Vui lòng đăng nhập.", "success");
+                SetSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
@@ -124,7 +209,7 @@ namespace AEMS_Solution.Controllers.Authentication
                     $"{nameof(AuthController)}.{nameof(RegisterStudent)}"
                 );
                 
-                SetNotification(ex.Message, "error");
+                SetError(ex.Message);
                 return View(model);
             }
         }
@@ -133,15 +218,31 @@ namespace AEMS_Solution.Controllers.Authentication
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            SetNotification("Đăng xuất thành công.", "success");
+            SetSuccess("Đăng xuất thành công.");
             return RedirectToAction(nameof(Login));
         }
 
         [HttpGet]
         public IActionResult AccessDenied()
         {
-            SetNotification("Bạn không có quyền truy cập trang này.", "error");
+            SetError("Bạn không có quyền truy cập trang này.");
             return RedirectToAction("Index", "Home");
+        }
+        [HttpGet]
+        public IActionResult ChangePassword()
+        {
+            return View();
+        }
+
+        private IActionResult RedirectToDashboard(string role)
+        {
+            return role switch
+            {
+                "Student" => RedirectToAction("Index", "Student"),
+                "Staff" => RedirectToAction("Index", "Organizer"), // Staff maps to Organizer Dashboard
+                "Admin" => RedirectToAction("Index", "Admin"),
+                _ => RedirectToAction("Index", "Home") // Default fall back
+            };
         }
     }
 }
