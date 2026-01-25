@@ -9,8 +9,6 @@ public partial class StudentProfile: BaseEntity
 
     public string UserId { get; set; } = null!;
 
-    public string FullName { get; set; } = null!;
-
     public string StudentCode { get; set; } = null!;
 
     public string? DepartmentId { get; set; }

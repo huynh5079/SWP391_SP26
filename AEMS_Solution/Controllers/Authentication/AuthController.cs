@@ -64,13 +64,13 @@ namespace AEMS_Solution.Controllers.Authentication
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                SetNotification($"Chào mừng trở lại, {response.User.FullName}!", "success");
+                SetSuccess($"Chào mừng trở lại, {response.User.FullName}!");
 
                 if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
                 {
                     return Redirect(model.ReturnUrl);
                 }
-                return RedirectToAction("Index", "Home");
+                return RedirectToDashboard(response.User.Role);
             }
             catch (Exception ex)
             {
@@ -81,7 +81,7 @@ namespace AEMS_Solution.Controllers.Authentication
                     $"{nameof(AuthController)}.{nameof(Login)}"
                 );
                 
-                SetNotification(ex.Message, "error");
+                SetError(ex.Message);
                 return View(model);
             }
         }
@@ -104,7 +104,7 @@ namespace AEMS_Solution.Controllers.Authentication
 
             if (!result.Succeeded)
             {
-                SetNotification("Đăng nhập Google thất bại.", "error");
+                SetError("Đăng nhập Google thất bại.");
                 return RedirectToAction(nameof(Login));
             }
 
@@ -118,7 +118,7 @@ namespace AEMS_Solution.Controllers.Authentication
 
                 if (string.IsNullOrEmpty(email))
                 {
-                    SetNotification("Không thể lấy email từ Google.", "error");
+                    SetError("Không thể lấy email từ Google.");
                     return RedirectToAction(nameof(Login));
                 }
 
@@ -133,7 +133,7 @@ namespace AEMS_Solution.Controllers.Authentication
                 var userClaims = new List<Claim>
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id),
-                    new Claim(ClaimTypes.Name, user.StudentProfile?.FullName ?? user.StaffProfile?.FullName ?? "User"),
+                    new Claim(ClaimTypes.Name, user.FullName),
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, user.Role.RoleName.ToString() ?? ""),
                     new Claim("AvatarUrl", user.AvatarUrl ?? "")
@@ -151,17 +151,17 @@ namespace AEMS_Solution.Controllers.Authentication
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                SetNotification($"Chào mừng, {user.StudentProfile?.FullName ?? user.Email}!", "success");
+                SetSuccess($"Chào mừng, {user.FullName}!");
                 
-                 if (Url.IsLocalUrl(returnUrl))
+                 if (Url.IsLocalUrl(returnUrl) && returnUrl != "/")
                 {
                     return Redirect(returnUrl);
                 }
-                return RedirectToAction("Index", "Home");
+                return RedirectToDashboard(user.Role.RoleName.ToString() ?? "");
             }
             catch (Exception ex)
             {
-                SetNotification($"Lỗi: {ex.Message}", "error");
+                SetError($"Lỗi: {ex.Message}");
                  await _systemErrorLogService.LogErrorAsync(
                     ex, 
                     "System", 
@@ -197,7 +197,7 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.RegisterStudentAsync(dto);
-                SetNotification("Đăng ký thành công! Vui lòng đăng nhập.", "success");
+                SetSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
@@ -209,7 +209,7 @@ namespace AEMS_Solution.Controllers.Authentication
                     $"{nameof(AuthController)}.{nameof(RegisterStudent)}"
                 );
                 
-                SetNotification(ex.Message, "error");
+                SetError(ex.Message);
                 return View(model);
             }
         }
@@ -218,15 +218,31 @@ namespace AEMS_Solution.Controllers.Authentication
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            SetNotification("Đăng xuất thành công.", "success");
+            SetSuccess("Đăng xuất thành công.");
             return RedirectToAction(nameof(Login));
         }
 
         [HttpGet]
         public IActionResult AccessDenied()
         {
-            SetNotification("Bạn không có quyền truy cập trang này.", "error");
+            SetError("Bạn không có quyền truy cập trang này.");
             return RedirectToAction("Index", "Home");
+        }
+        [HttpGet]
+        public IActionResult ChangePassword()
+        {
+            return View();
+        }
+
+        private IActionResult RedirectToDashboard(string role)
+        {
+            return role switch
+            {
+                "Student" => RedirectToAction("Index", "Student"),
+                "Staff" => RedirectToAction("Index", "Organizer"), // Staff maps to Organizer Dashboard
+                "Admin" => RedirectToAction("Index", "Admin"),
+                _ => RedirectToAction("Index", "Home") // Default fall back
+            };
         }
     }
 }
