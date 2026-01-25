@@ -1,0 +1,37 @@
+@if (TempData["NotificationMessage"] != null)
+{
+    var message = TempData["NotificationMessage"] as string;
+    var type = TempData["NotificationType"] as string ?? "success";
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof toastr !== 'undefined') {
+                toastr.options = {
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-top-right",
+                    "timeOut": "5000"
+                };
+
+                switch ('@type'.toLowerCase()) {
+                    case 'success':
+                        toastr.success('@message');
+                        break;
+                    case 'error':
+                        toastr.error('@message');
+                        break;
+                    case 'warning':
+                        toastr.warning('@message');
+                        break;
+                    case 'info':
+                        toastr.info('@message');
+                        break;
+                    default:
+                        toastr.success('@message');
+                }
+            } else {
+                console.error("Toastr library is not loaded!");
+            }
+        });
+    </script>
+}
