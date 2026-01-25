@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DateTimeHelper = BusinessLogic.Helper.DateTimeHelper;
+using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 
 namespace BusinessLogic.Service
 {
@@ -48,7 +48,7 @@ namespace BusinessLogic.Service
                     Id = user.Id,
                     Email = user.Email,
                     Role = user.Role.RoleName.ToString()!,
-                    FullName = "User", // This should be fetched from Profile ideally, but for now simple User
+                    FullName = user.FullName,
                     AvatarUrl = user.AvatarUrl
                 }
             };
@@ -73,6 +73,7 @@ namespace BusinessLogic.Service
                 {
                     Email = dto.Email,
                     PasswordHash = HashPasswordHelper.HashPassword(dto.Password),
+                    FullName = dto.FullName,
                     Phone = dto.Phone,
                     RoleId = role.Id,
                     Status = UserStatusEnum.Active,
@@ -86,7 +87,6 @@ namespace BusinessLogic.Service
                 var profile = new StudentProfile
                 {
                     UserId = user.Id,
-                    FullName = dto.FullName,
                     StudentCode = dto.StudentCode,
                     // Major = dto.Major, 
                     // Gender = dto.Gender,
@@ -126,6 +126,7 @@ namespace BusinessLogic.Service
                 {
                     Email = dto.Email,
                     PasswordHash = HashPasswordHelper.HashPassword(dto.Password),
+                    FullName = dto.FullName,
                     Phone = dto.Phone,
                     RoleId = role.Id,
                     Status = UserStatusEnum.Active, // Or Pending if Staff needs approval? Lets assume Active for now.
@@ -139,7 +140,6 @@ namespace BusinessLogic.Service
                 var profile = new StaffProfile
                 {
                     UserId = user.Id,
-                    FullName = dto.FullName,
                     StaffCode = dto.StaffCode,
                     Position = dto.Position
                 };
@@ -214,6 +214,7 @@ namespace BusinessLogic.Service
                 {
                     Email = email,
                     GoogleId = googleId,
+                    FullName = fullName,
                     // UserName = email, // Removed: User entity does not have UserName property
                     AvatarUrl = avatarUrl,
                     RoleId = role.Id,
@@ -227,7 +228,7 @@ namespace BusinessLogic.Service
 
                 // Start: Student Code Generation (Simple Logic)
                 // Format: S + Year + Random 4 digits
-                var year = DateTime.Now.Year;
+                var year = DateTimeHelper.GetVietnamTime().Year;
                 var random = new Random();
                 var studentCode = $"S{year}{random.Next(1000, 9999)}"; 
                 // Note: In production, check for collision
@@ -235,7 +236,6 @@ namespace BusinessLogic.Service
                 var studentProfile = new StudentProfile
                 {
                     UserId = newUser.Id,
-                    FullName = fullName,
                     StudentCode = studentCode,
                 };
 

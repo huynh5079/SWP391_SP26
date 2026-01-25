@@ -1,0 +1,33 @@
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                             <i class="bi bi-person-circle display-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0">@User.Identity?.Name</h3>
+                            <p class="text-muted mb-0">User Profile</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body py-5">
+                     <div class="text-center text-muted">
+                        <i class="bi bi-cone-striped display-1 mb-3"></i>
+                        <h4>Under Construction</h4>
+                        <p>Your detailed usage statistics and personal information will be displayed here.</p>
+                     </div>
+                </div>
+                 <div class="card-footer bg-light text-end">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Close</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

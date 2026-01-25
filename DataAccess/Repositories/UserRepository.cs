@@ -20,6 +20,8 @@ namespace DataAccess.Repositories
             // Include Role as requested
             return await _dbSet
                 .Include(u => u.Role)
+                .Include(u => u.StudentProfile)
+                .Include(u => u.StaffProfile)
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 

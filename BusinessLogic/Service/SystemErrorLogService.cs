@@ -5,6 +5,7 @@ using DataAccess.Repositories.Abstraction;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using DataAccess.Helper;
 
 namespace BusinessLogic.Service
 {
