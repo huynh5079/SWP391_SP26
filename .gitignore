@@ -187,3 +187,6 @@ PublishScripts/
 # Python Virtual Environments (Custom)
 .venv-rag/
 .venv-gpu/
+
+# Local Notebooks (Secrets)
+Python/RAG_SWP.ipynb
