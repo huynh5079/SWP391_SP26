@@ -14,6 +14,7 @@ namespace BusinessLogic.Service.Interface
         Task<LoginResponseDto> LoginAsync(LoginRequestDto dto);
         Task RegisterStudentAsync(RegisterStudentRequest dto);
         Task RegisterStaffAsync(RegisterStaffRequest dto);
+        Task<DataAccess.Entities.User> LoginGoogleAsync(string email, string googleId, string fullName, string avatarUrl);
         Task<bool> IsEmailAvailableAsync(string email);
         Task ChangePasswordAsync(string userId, ChangePasswordRequest req);
         // Forgot password (simplified for now)

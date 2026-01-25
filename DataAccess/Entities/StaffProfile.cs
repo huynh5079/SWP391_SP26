@@ -9,8 +9,6 @@ public partial class StaffProfile: BaseEntity
 
     public string UserId { get; set; } = null!;
 
-    public string FullName { get; set; } = null!;
-
     public string? StaffCode { get; set; }
 
     public string? DepartmentId { get; set; }

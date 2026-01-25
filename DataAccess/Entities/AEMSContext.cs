@@ -373,7 +373,6 @@ public partial class AEMSContext : DbContext
             entity.HasIndex(e => e.StaffCode, "UQ__StaffPro__D83AD812EC58A448").IsUnique();
 
             entity.Property(e => e.DepartmentId).HasMaxLength(450);
-            entity.Property(e => e.FullName).HasMaxLength(255);
             entity.Property(e => e.Position).HasMaxLength(100);
             entity.Property(e => e.StaffCode).HasMaxLength(50);
 
@@ -398,7 +397,6 @@ public partial class AEMSContext : DbContext
 
             entity.Property(e => e.CurrentSemester).HasMaxLength(50);
             entity.Property(e => e.DepartmentId).HasMaxLength(450);
-            entity.Property(e => e.FullName).HasMaxLength(255);
             entity.Property(e => e.StudentCode).HasMaxLength(50);
 
             entity.HasOne(d => d.Department).WithMany(p => p.StudentProfiles)
@@ -494,6 +492,7 @@ public partial class AEMSContext : DbContext
             entity.HasIndex(e => e.Email, "UQ__User__A9D10534CD0FD16E").IsUnique();
 
             entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.FullName).HasMaxLength(255);
             entity.Property(e => e.IsBanned).HasDefaultValue(false);
             entity.Property(e => e.Phone).HasMaxLength(50);
             entity.Property(e => e.RoleId).HasMaxLength(450);

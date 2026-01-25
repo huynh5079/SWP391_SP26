@@ -12,5 +12,25 @@ namespace AEMS_Solution.Controllers.Common
             TempData["NotificationMessage"] = message;
             TempData["NotificationType"] = type; // success, error, warning, info
         }
+
+        protected void SetSuccess(string message)
+        {
+            SetNotification(message, "success");
+        }
+
+        protected void SetError(string message)
+        {
+            SetNotification(message, "error");
+        }
+
+        protected void SetWarning(string message)
+        {
+            SetNotification(message, "warning");
+        }
+        
+        protected void SetInfo(string message)
+        {
+            SetNotification(message, "info");
+        }
     }
 }

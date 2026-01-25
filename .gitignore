@@ -183,3 +183,7 @@ PublishScripts/
 
 # Tệp Strong Name Key (rủi ro bảo mật)
 # *.snk
+
+# Python Virtual Environments (Custom)
+.venv-rag/
+.venv-gpu/
