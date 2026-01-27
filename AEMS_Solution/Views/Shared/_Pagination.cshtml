@@ -1,0 +1,21 @@
+@{
+    var totalPages = (int)Model.TotalPages;
+    var currentPage = (int)Model.PageNumber;
+
+    string GetUrl(int page) {
+        var query = Context.Request.Query.ToDictionary(k => k.Key, v => v.Value.ToString());
+        query["page"] = page.ToString();
+        return "?" + string.Join("&", query.Select(x => $"{x.Key}={x.Value}"));
+    }
+}
+@if (totalPages > 1) {
+    <div class="card-footer bg-white border-top-0 py-3">
+        <ul class="pagination justify-content-center mb-0">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")"><a class="page-link" href="@GetUrl(currentPage - 1)">Trước</a></li>
+            @for (int i = 1; i <= totalPages; i++) {
+                <li class="page-item @(i == currentPage ? "active" : "")"><a class="page-link" href="@GetUrl(i)">@i</a></li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")"><a class="page-link" href="@GetUrl(currentPage + 1)">Sau</a></li>
+        </ul>
+    </div>
+}

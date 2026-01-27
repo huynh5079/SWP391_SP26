@@ -34,7 +34,8 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Services (Business Logic)
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
-// TODO: Register EmailService, RedisService when implemented
+builder.Services.AddScoped<IEmailService, EmailService>();
+// TODO: Register RedisService when implemented
 
 // HttpClient (External Services like PayOS)
 builder.Services.AddHttpClient();
@@ -48,7 +49,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     {
         options.LoginPath = "/Auth/Login";
         options.AccessDeniedPath = "/Auth/AccessDenied";
-        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
     })
     .AddGoogle(options => 
