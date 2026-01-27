@@ -19,10 +19,12 @@ namespace BusinessLogic.Service
     public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IEmailService _emailService;
 
-        public AuthService(IUnitOfWork uow)
+        public AuthService(IUnitOfWork uow, IEmailService emailService)
         {
             _uow = uow;
+            _emailService = emailService;
         }
 
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto dto)
@@ -165,7 +167,13 @@ namespace BusinessLogic.Service
             var user = await _uow.Users.GetByIdAsync(userId);
             if (user == null) throw new Exception("User not found");
 
-            if (!HashPasswordHelper.VerifyPassword(req.OldPassword, user.PasswordHash!))
+            // Google users might not have a password hash
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                 throw new Exception("Tài khoản này đăng nhập bằng Google, vui lòng dùng chức năng 'Quên mật khẩu' để thiết lập mật khẩu mới.");
+            }
+
+            if (!HashPasswordHelper.VerifyPassword(req.OldPassword, user.PasswordHash))
             {
                 throw new Exception("Mật khẩu cũ không chính xác");
             }
@@ -174,9 +182,60 @@ namespace BusinessLogic.Service
             await _uow.Users.UpdateAsync(user);
         }
 
-        public async Task ResetPasswordAsync(ForgotPasswordRequest req)
+        // Note: For MVP/Production without Redis, we might use a static dictionary or cache.
+        // Ideally, this should be in a separate TokenService or Redis.
+        private static readonly Dictionary<string, (string Email, DateTime Expiry)> _resetTokens = new();
+
+        public async Task ForgotPasswordAsync(ForgotPasswordRequest req)
         {
-            // Logic to send email/reset.
+            var user = await _uow.Users.FindByEmailAsync(req.Email);
+            // Security: Always return success even if user not found to prevent enumeration
+            if (user == null) return;
+
+            // Generate Token (GUID for now)
+            var token = Guid.NewGuid().ToString();
+            
+            // Store Token (Valid for 15 mins)
+            lock (_resetTokens)
+            {
+                // Remove old tokens for this email if any (cleanup)
+                var keysToRemove = _resetTokens.Where(x => x.Value.Email == req.Email).Select(x => x.Key).ToList();
+                foreach (var key in keysToRemove) _resetTokens.Remove(key);
+
+                _resetTokens[token] = (req.Email, DateTime.UtcNow.AddMinutes(15));
+            }
+
+            // Send Email
+            await _emailService.SendPasswordResetEmailAsync(req.Email, token);
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest req)
+        {
+            string email;
+            lock (_resetTokens)
+            {
+                if (!_resetTokens.ContainsKey(req.Token))
+                {
+                    throw new Exception("Mã xác thực không hợp lệ hoặc đã hết hạn.");
+                }
+
+                var data = _resetTokens[req.Token];
+                if (data.Expiry < DateTime.UtcNow)
+                {
+                   _resetTokens.Remove(req.Token);
+                   throw new Exception("Mã xác thực đã hết hạn.");
+                }
+                
+                email = data.Email;
+                // Invalidate token immediately
+                _resetTokens.Remove(req.Token);
+            }
+
+            var user = await _uow.Users.FindByEmailAsync(email);
+            if (user == null) throw new Exception("User not found via token context (Data consistency error).");
+
+            user.PasswordHash = HashPasswordHelper.HashPassword(req.NewPassword);
+            await _uow.Users.UpdateAsync(user);
         }
 
         public async Task<User> LoginGoogleAsync(string email, string googleId, string fullName, string avatarUrl)

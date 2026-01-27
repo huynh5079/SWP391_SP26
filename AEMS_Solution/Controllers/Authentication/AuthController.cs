@@ -1,6 +1,7 @@
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Authentication;
 using BusinessLogic.DTOs.Authentication.Login;
+using BusinessLogic.DTOs.Authentication.Password;
 using BusinessLogic.DTOs.Authentication.Register;
 using BusinessLogic.Service.Interface;
 using Microsoft.AspNetCore.Authentication;
@@ -214,7 +215,8 @@ namespace AEMS_Solution.Controllers.Authentication
             }
         }
 
-        [HttpGet]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -229,9 +231,106 @@ namespace AEMS_Solution.Controllers.Authentication
             return RedirectToAction("Index", "Home");
         }
         [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var req = new BusinessLogic.DTOs.Authentication.Password.ForgotPasswordRequest { Email = model.Email };
+                await _authService.ForgotPasswordAsync(req);
+                // Always show success message for security
+                SetSuccess("Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu của bạn.");
+                return RedirectToAction(nameof(Login));
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+                return View(model);
+            }
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string token, string email)
+        {
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(email))
+            {
+                SetError("Liên kết đặt lại mật khẩu không hợp lệ.");
+                return RedirectToAction(nameof(Login));
+            }
+            return View(new ResetPasswordViewModel { Token = token, Email = email });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+             if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var req = new BusinessLogic.DTOs.Authentication.Password.ResetPasswordRequest
+                {
+                    Token = model.Token,
+                    NewPassword = model.NewPassword
+                };
+
+                await _authService.ResetPasswordAsync(req);
+                SetSuccess("Đặt lại mật khẩu thành công! Vui lòng đăng nhập.");
+                return RedirectToAction(nameof(Login));
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+                return View(model);
+            }
+        }
+
+        [HttpGet]
         public IActionResult ChangePassword()
         {
             return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var req = new ChangePasswordRequest
+                {
+                    OldPassword = model.OldPassword,
+                    NewPassword = model.NewPassword,
+                    ConfirmNewPassword = model.ConfirmNewPassword
+                };
+
+                await _authService.ChangePasswordAsync(CurrentUserId, req);
+                SetSuccess("Đổi mật khẩu thành công!");
+                return RedirectToAction("Index", "Home");
+            }
+            catch (Exception ex)
+            {
+                // If it's a known logic error (Old password mismatch), display it on the field
+                if (ex.Message.Contains("Mật khẩu cũ không chính xác"))
+                {
+                    ModelState.AddModelError("OldPassword", "Mật khẩu cũ không chính xác");
+                }
+                else
+                {
+                    SetError(ex.Message);
+                }
+                return View(model);
+            }
         }
 
         private IActionResult RedirectToDashboard(string role)
