@@ -18,6 +18,7 @@ namespace BusinessLogic.Service.Interface
         Task<bool> IsEmailAvailableAsync(string email);
         Task ChangePasswordAsync(string userId, ChangePasswordRequest req);
         // Forgot password (simplified for now)
-        Task ResetPasswordAsync(ForgotPasswordRequest req);
+        Task ForgotPasswordAsync(BusinessLogic.DTOs.Authentication.Password.ForgotPasswordRequest req);
+        Task ResetPasswordAsync(BusinessLogic.DTOs.Authentication.Password.ResetPasswordRequest req);
     }
 }
