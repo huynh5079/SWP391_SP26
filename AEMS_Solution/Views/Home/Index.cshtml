@@ -15,7 +15,22 @@
         <div class="mt-4">
             <h3>Hello, @(User.FindFirst("Fullname")?.Value ?? User.Identity.Name)!</h3>
             <p>You are logged in as <strong>@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</strong>.</p>
-            <a href="#" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            @if (User.IsInRole("Admin"))
+            {
+                <a asp-controller="Admin" asp-action="Index" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            }
+            else if (User.IsInRole("Staff"))
+            {
+                <a asp-controller="Organizer" asp-action="Index" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            }
+            else if (User.IsInRole("Student"))
+            {
+                <a asp-controller="Student" asp-action="Index" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            }
+            else
+            {
+                 <a href="#" class="btn btn-secondary btn-lg disabled">Dasbhoard Unavailable</a>
+            }
         </div>
     }
     else
