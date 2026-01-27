@@ -1,0 +1,194 @@
+@model DataAccess.Entities.PaginationResult<DataAccess.Entities.SystemErrorLog>
+
+@{
+    ViewData["Title"] = "System Error Logs";
+    // Layout = "~/Views/Shared/_AdminLayout.cshtml"; // Ensure this matches your Admin Layout path. 
+    // Assuming _Layout is shared or handled by _ViewStart. If Admin area has specific layout, use it.
+    // For now, assuming default layout works, or user will adjust.
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0 text-primary"><i class="bi bi-journal-medical"></i> System Error Logs</h2>
+        
+        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tất cả log cũ hơn 30 không? Hành động này không thể hoàn tác.');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Dọn dẹp Log cũ (>30 ngày)
+            </button>
+        </form>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Search Message / Source / User</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Nhập từ khóa..." value="@ViewBag.Search">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status Code</label>
+                    <select name="status" class="form-select">
+                        <option value="">-- Tất cả --</option>
+                        <option value="200" selected="@(ViewBag.Status == 200)">200 (Success)</option>
+                        <option value="400" selected="@(ViewBag.Status == 400)">400 (Bad Request)</option>
+                        <option value="401" selected="@(ViewBag.Status == 401)">401 (Unauthorized)</option>
+                        <option value="403" selected="@(ViewBag.Status == 403)">403 (Forbidden)</option>
+                        <option value="500" selected="@(ViewBag.Status == 500)">500 (Server Error)</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th scope="col" class="ps-3">Time</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Exception / Message</th>
+                            <th scope="col">User</th>
+                            <th scope="col" class="text-end pe-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Data.Any())
+                        {
+                            foreach (var log in Model.Data)
+                            {
+                                var badgeClass = "bg-secondary";
+                                if (log.StatusCode >= 200 && log.StatusCode < 300) { badgeClass = "bg-success"; }
+                                else if (log.StatusCode >= 400 && log.StatusCode < 500) { badgeClass = "bg-warning text-dark"; }
+                                else if (log.StatusCode >= 500) { badgeClass = "bg-danger"; }
+
+                                <tr>
+                                    <td class="ps-3 text-nowrap">
+                                        @log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
+                                    </td>
+                                    <td>
+                                        <span class="badge @badgeClass">
+                                            @(log.StatusCode?.ToString() ?? "N/A")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>@log.ExceptionType</strong>
+                                        </div>
+                                        <small class="text-muted">
+                                            @if (!string.IsNullOrEmpty(log.ExceptionMessage) && log.ExceptionMessage.Length > 50)
+                                            {
+                                                @log.ExceptionMessage.Substring(0, 50) <text>...</text>
+                                            }
+                                            else
+                                            {
+                                                @log.ExceptionMessage
+                                            }
+                                        </small>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(log.UserId))
+                                        {
+                                            <span class="badge bg-light text-dark border"><i class="bi bi-person"></i> @log.UserId</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Anonymous</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" data-bs-target="#logDetailModal"
+                                                data-ex-type="@log.ExceptionType"
+                                                data-ex-msg="@log.ExceptionMessage"
+                                                data-ex-source="@log.Source"
+                                                data-ex-stack="@log.StackTrace"
+                                                title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="bi bi-check-circle display-4 mb-3 d-block"></i>
+                                    Không tìm thấy log lỗi nào phù hợp.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pagination -->
+        <partial name="_Pagination" model="Model" />
+    </div>
+</div>
+
+<!-- Log Detail Modal -->
+<div class="modal fade" id="logDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle"></i> Error Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="fw-bold">Exception Type:</label>
+                    <p class="text-danger" id="modalExType">Type</p>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">Source:</label>
+                    <kbd id="modalExSource">Source</kbd>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">Message:</label>
+                    <div class="alert alert-secondary text-break" id="modalExMsg">Message</div>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold">Stack Trace:</label>
+                    <pre class="bg-dark text-light p-3 rounded" style="font-size: 0.85rem; max-height: 400px; overflow: auto;" id="modalExStack">
+                        Stack Trace...
+                    </pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var logDetailModal = document.getElementById('logDetailModal');
+        logDetailModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            
+            var type = button.getAttribute('data-ex-type');
+            var msg = button.getAttribute('data-ex-msg');
+            var source = button.getAttribute('data-ex-source');
+            var stack = button.getAttribute('data-ex-stack');
+            
+            logDetailModal.querySelector('#modalExType').textContent = type || 'Unknown';
+            logDetailModal.querySelector('#modalExMsg').textContent = msg || 'No message';
+            logDetailModal.querySelector('#modalExSource').textContent = source || 'Unknown Source';
+            logDetailModal.querySelector('#modalExStack').textContent = stack || 'No Stack Trace available';
+        });
+    </script>
+}
