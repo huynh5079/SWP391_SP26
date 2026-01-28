@@ -53,7 +53,7 @@ namespace AEMS_Solution.Middlewares
                             : "Unknown";
 
                         // Log error to database
-                        await errorLogService.LogErrorAsync(ex, userId, source);
+                        await errorLogService.LogErrorAsync(ex, userId, source, DataAccess.Enum.SystemLogStatusEnum.ServerError);
                     }
                     catch (Exception logException)
                     {
