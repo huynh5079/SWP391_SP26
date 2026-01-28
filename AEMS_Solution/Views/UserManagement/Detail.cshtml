@@ -1,0 +1,123 @@
+@model BusinessLogic.DTOs.User.UserDetailDto
+@{
+    ViewData["Title"] = "Chi tiết Người dùng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4">
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary me-3">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+        <h2 class="h3 mb-0">Hồ sơ: @Model.FullName</h2>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.FullName : Model.AvatarUrl)" 
+                         alt="@Model.FullName" 
+                         class="rounded-circle img-thumbnail mb-3"
+                         style="width: 150px; height: 150px; object-fit: cover;">
+                    
+                    <h5 class="fw-bold">@Model.FullName</h5>
+                    <p class="text-muted">@Model.Email</p>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-secondary">@Model.RoleName</span>
+                        <span class="badge @(Model.Status == DataAccess.Enum.UserStatusEnum.Active ? "bg-success" : "bg-danger")">
+                            @(Model.Status?.ToString() ?? "Unknown")
+                        </span>
+                        @if(Model.IsBanned == true)
+                        {
+                            <span class="badge bg-danger">BANNED</span>
+                        }
+                    </div>
+
+                    <form asp-action="Ban" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Xác nhận thay đổi trạng thái?');">
+                        @if (Model.IsBanned == true)
+                        {
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-unlock me-2"></i> Mở khóa tài khoản
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-lock me-2"></i> Cấm tài khoản
+                            </button>
+                        }
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Thông tin chi tiết</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="small text-muted fw-bold">ID Hệ thống</label>
+                            <div class="text-break">@Model.Id</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="small text-muted fw-bold">Ngày tham gia</label>
+                            <div>@(Model.CreatedAt.HasValue ? Model.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-")</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="small text-muted fw-bold">Số điện thoại</label>
+                            <div>@(string.IsNullOrEmpty(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="small text-muted fw-bold">Google ID</label>
+                            <div class="text-break">@(string.IsNullOrEmpty(Model.GoogleId) ? "-" : Model.GoogleId)</div>
+                        </div>
+
+                        <div class="col-12"><hr /></div>
+
+                        @if (!string.IsNullOrEmpty(Model.StudentCode))
+                        {
+                            <div class="col-sm-6">
+                                <label class="small text-muted fw-bold">Mã sinh viên</label>
+                                <div class="h6 text-primary">@Model.StudentCode</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="small text-muted fw-bold">Phòng ban / Khoa</label>
+                                <div>@Model.DepartmentName</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="small text-muted fw-bold">Kỳ học</label>
+                                <div>@Model.CurrentSemester</div>
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(Model.StaffCode))
+                        {
+                            <div class="col-sm-6">
+                                <label class="small text-muted fw-bold">Mã nhân viên</label>
+                                <div class="h6 text-primary">@Model.StaffCode</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="small text-muted fw-bold">Phòng ban</label>
+                                <div>@Model.DepartmentName</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="small text-muted fw-bold">Chức vụ</label>
+                                <div>@Model.Position</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-12 text-muted fst-italic">
+                                Không có thông tin hồ sơ bổ sung (Student/Staff profile).
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
