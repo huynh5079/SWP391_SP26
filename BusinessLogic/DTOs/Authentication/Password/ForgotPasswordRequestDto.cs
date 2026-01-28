@@ -1,6 +1,6 @@
 ﻿namespace BusinessLogic.DTOs.Authentication.Password
 {
-    public class ForgotPasswordRequest
+    public class ForgotPasswordRequestDto
     {
         public string Email { get; set; } = null!;
     }

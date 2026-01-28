@@ -3,7 +3,7 @@ using AEMS_Solution.Models;
 using AEMS_Solution.Models.Shared;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers
+namespace AEMS_Solution.Controllers.Core
 {
     public class HomeController : Controller
     {

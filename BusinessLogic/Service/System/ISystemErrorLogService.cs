@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using DataAccess.Entities;
 
-namespace BusinessLogic.Service.Interface
+namespace BusinessLogic.Service.System
 {
     public interface ISystemErrorLogService
     {

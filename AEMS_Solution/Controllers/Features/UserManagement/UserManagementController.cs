@@ -1,10 +1,10 @@
 using BusinessLogic.DTOs;
-using BusinessLogic.Service.Interface;
+using BusinessLogic.Service.User;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Admin
+namespace AEMS_Solution.Controllers.Features.UserManagement
 {
     [Authorize(Roles = "Admin")]
     public class UserManagementController : Controller
@@ -57,7 +57,12 @@ namespace AEMS_Solution.Controllers.Admin
             }
             else
             {
-                TempData["Success"] = "User status updated successfully.";
+                // Get updated state to show correct message
+                var user = await _userService.GetUserDetailAsync(id);
+                var isBanned = user?.IsBanned == true;
+                TempData["Success"] = isBanned 
+                    ? "Đã khóa tài khoản thành công." 
+                    : "Đã mở khóa tài khoản thành công.";
             }
 
             return RedirectToAction(nameof(Index));

@@ -82,7 +82,7 @@
         function copyErrorDetails() {
             var content = document.getElementById('hiddenErrorContent').value;
             navigator.clipboard.writeText(content).then(function() {
-                alert('Đã copy chi tiết lỗi vào clipboard!');
+                toastr.success('Đã copy chi tiết lỗi vào clipboard!');
             }, function(err) {
                 console.error('Không thể copy: ', err);
                 // Fallback for older browsers
@@ -92,9 +92,9 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    alert('Đã copy chi tiết lỗi vào clipboard!');
+                    toastr.success('Đã copy chi tiết lỗi vào clipboard!');
                 } catch (err) {
-                    alert('Lỗi copy: ' + err);
+                    toastr.error('Lỗi copy: ' + err);
                 }
                 document.body.removeChild(textArea);
             });
