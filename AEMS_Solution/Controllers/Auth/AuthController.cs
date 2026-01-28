@@ -3,7 +3,8 @@ using AEMS_Solution.Models.Authentication;
 using BusinessLogic.DTOs.Authentication.Login;
 using BusinessLogic.DTOs.Authentication.Password;
 using BusinessLogic.DTOs.Authentication.Register;
-using BusinessLogic.Service.Interface;
+using BusinessLogic.Service.Auth;
+using BusinessLogic.Service.System;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -186,7 +187,7 @@ namespace AEMS_Solution.Controllers.Authentication
             try
             {
                 // Map ViewModel to DTO
-                var dto = new RegisterStudentRequest
+                var dto = new RegisterStudentRequestDto
                 {
                     Email = model.Email,
                     Password = model.Password,
@@ -244,7 +245,7 @@ namespace AEMS_Solution.Controllers.Authentication
 
             try
             {
-                var req = new BusinessLogic.DTOs.Authentication.Password.ForgotPasswordRequest { Email = model.Email };
+                var req = new BusinessLogic.DTOs.Authentication.Password.ForgotPasswordRequestDto { Email = model.Email };
                 await _authService.ForgotPasswordAsync(req);
                 // Always show success message for security
                 SetSuccess("Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu của bạn.");
@@ -276,7 +277,7 @@ namespace AEMS_Solution.Controllers.Authentication
 
             try
             {
-                var req = new BusinessLogic.DTOs.Authentication.Password.ResetPasswordRequest
+                var req = new BusinessLogic.DTOs.Authentication.Password.ResetPasswordRequestDto
                 {
                     Token = model.Token,
                     NewPassword = model.NewPassword
@@ -307,7 +308,7 @@ namespace AEMS_Solution.Controllers.Authentication
 
             try
             {
-                var req = new ChangePasswordRequest
+                var req = new ChangePasswordRequestDto
                 {
                     OldPassword = model.OldPassword,
                     NewPassword = model.NewPassword,

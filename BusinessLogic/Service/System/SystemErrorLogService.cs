@@ -1,15 +1,9 @@
-using BusinessLogic.Helper;
-using BusinessLogic.Service.Interface;
 using DataAccess.Entities;
 using DataAccess.Repositories.Abstraction;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using DataAccess.Helper;
 
-namespace BusinessLogic.Service
+namespace BusinessLogic.Service.System
 {
     public class SystemErrorLogService : ISystemErrorLogService
     {

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace BusinessLogic.DTOs.Authentication.Register
 {
-    public class RegisterStudentRequest
+    public class RegisterStudentRequestDto
     {
         [Required, EmailAddress]
         public string Email { get; set; } = default!;

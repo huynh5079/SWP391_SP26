@@ -106,4 +106,5 @@ namespace DataAccess.Enum
         NotFound = 404,
         ServerError = 500
     }
+
 }

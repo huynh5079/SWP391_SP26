@@ -1,10 +1,6 @@
-using BusinessLogic.DTOs.Authentication.Register;
-using BusinessLogic.Helper;
-using BusinessLogic.Service.Interface;
 using Microsoft.Extensions.Configuration;
-using System.Threading.Tasks;
 
-namespace BusinessLogic.Service
+namespace BusinessLogic.Service.System
 {
     public interface IEmailService
     {
@@ -45,13 +41,13 @@ namespace BusinessLogic.Service
             var senderName = _configuration["EmailSettings:SenderName"];
             var password = _configuration["EmailSettings:Password"];
 
-            using var client = new System.Net.Mail.SmtpClient(smtpServer, port);
+            using var client = new global::System.Net.Mail.SmtpClient(smtpServer, port);
             client.EnableSsl = true;
-            client.Credentials = new System.Net.NetworkCredential(senderEmail, password);
+            client.Credentials = new global::System.Net.NetworkCredential(senderEmail, password);
 
-            var mailMessage = new System.Net.Mail.MailMessage
+            var mailMessage = new global::System.Net.Mail.MailMessage
             {
-                From = new System.Net.Mail.MailAddress(senderEmail!, senderName),
+                From = new global::System.Net.Mail.MailAddress(senderEmail!, senderName),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = true

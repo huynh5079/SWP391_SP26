@@ -1,10 +1,10 @@
 using AEMS_Solution.Controllers.Common;
-using BusinessLogic.Service.Interface;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Admin
+namespace AEMS_Solution.Controllers.Core
 {
     [Authorize(Roles = "Admin")]
     public class SystemLogController : BaseController

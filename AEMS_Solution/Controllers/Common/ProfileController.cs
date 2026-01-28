@@ -1,6 +1,6 @@
 using AEMS_Solution.Extensions;
 using BusinessLogic.DTOs.User;
-using BusinessLogic.Service.Interface;
+using BusinessLogic.Service.User;
 using BusinessLogic.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

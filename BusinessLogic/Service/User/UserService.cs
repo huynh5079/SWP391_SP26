@@ -1,13 +1,12 @@
-using BusinessLogic.DTOs;
 using BusinessLogic.DTOs.User;
-using BusinessLogic.Service.Interface;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using UserEntity = DataAccess.Entities.User;
 
-namespace BusinessLogic.Service
+namespace BusinessLogic.Service.User
 {
     public class UserService : IUserService
     {
@@ -33,13 +32,13 @@ namespace BusinessLogic.Service
             }
 
             // Build predicate
-            Expression<Func<User, bool>> predicate = u => 
+            Expression<Func<UserEntity, bool>> predicate = u => 
                 (string.IsNullOrEmpty(searchTerm) || u.FullName.Contains(searchTerm) || u.Email.Contains(searchTerm)) &&
                 (!roleEnum.HasValue || u.Role.RoleName == roleEnum) &&
                 (!status.HasValue || u.Status == status);
 
             // Include Role
-            Func<IQueryable<User>, IQueryable<User>> includes = q => q.Include(u => u.Role);
+            Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q.Include(u => u.Role);
 
             var allUsers = await _uow.Users.GetAllAsync(predicate, includes);
             
@@ -65,7 +64,7 @@ namespace BusinessLogic.Service
 
         public async Task<UserDetailDto?> GetUserDetailAsync(string id)
         {
-            Func<IQueryable<User>, IQueryable<User>> includes = q => q
+            Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q
                 .Include(u => u.Role)
                 .Include(u => u.StudentProfile)
                 .ThenInclude(p => p.Department)
@@ -137,7 +136,7 @@ namespace BusinessLogic.Service
 
         public async Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequest request)
         {
-            Func<IQueryable<User>, IQueryable<User>> includes = q => q
+            Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q
               .Include(u => u.Role)
               .Include(u => u.StudentProfile)
               .Include(u => u.StaffProfile);
