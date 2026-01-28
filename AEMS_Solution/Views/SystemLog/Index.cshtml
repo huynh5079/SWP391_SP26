@@ -32,13 +32,15 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Status Code</label>
-                    <select name="status" class="form-select">
+                    <select name="statusCode" class="form-select">
                         <option value="">-- Tất cả --</option>
-                        <option value="200" selected="@(ViewBag.Status == 200)">200 (Success)</option>
-                        <option value="400" selected="@(ViewBag.Status == 400)">400 (Bad Request)</option>
-                        <option value="401" selected="@(ViewBag.Status == 401)">401 (Unauthorized)</option>
-                        <option value="403" selected="@(ViewBag.Status == 403)">403 (Forbidden)</option>
-                        <option value="500" selected="@(ViewBag.Status == 500)">500 (Server Error)</option>
+                        @foreach (var status in Enum.GetValues(typeof(DataAccess.Enum.SystemLogStatusEnum)))
+                        {
+                            var statusVal = (int)status;
+                            var isSelected = ViewBag.StatusCode == statusVal ? "selected" : "";
+                            // Using raw HTML string builder or just simple logic
+                            <option value="@statusVal" selected="@(ViewBag.StatusCode == statusVal)">@statusVal (@status)</option>
+                        }
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
@@ -97,9 +99,11 @@
                                         </small>
                                     </td>
                                     <td>
-                                        @if (!string.IsNullOrEmpty(log.UserId))
+                                        @if(!string.IsNullOrEmpty(log.UserId))
                                         {
-                                            <span class="badge bg-light text-dark border"><i class="bi bi-person"></i> @log.UserId</span>
+                                             <a href="javascript:void(0)" onclick="openUserDetail('@log.UserId')" class="text-decoration-none">
+                                                @log.UserId.Substring(0, 8)...
+                                             </a>
                                         }
                                         else
                                         {
@@ -169,6 +173,23 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="copySystemLogDetails()">
+                    <i class="bi bi-clipboard me-1"></i> Copy All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Detail Modal Container (Shared) -->
+<div class="modal fade" id="userDetailModal" tabindex="-1" aria-labelledby="userQuickDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" id="userDetailModalContent">
+            <!-- Content loaded via AJAX -->
+             <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
             </div>
         </div>
     </div>
@@ -190,5 +211,43 @@
             logDetailModal.querySelector('#modalExSource').textContent = source || 'Unknown Source';
             logDetailModal.querySelector('#modalExStack').textContent = stack || 'No Stack Trace available';
         });
+
+        function openUserDetail(userId) {
+            var modal = new bootstrap.Modal(document.getElementById('userDetailModal'));
+            modal.show();
+
+             // Load content
+            $('#userDetailModalContent').load('/Admin/UserManagement/GetQuickDetail?id=' + userId, function(response, status, xhr) {
+                if (status == "error") {
+                    $('#userDetailModalContent').html('<div class="modal-body text-danger">Error loading user details.</div>');
+                }
+            });
+        }
+
+        function copySystemLogDetails() {
+            var type = document.getElementById('modalExType').innerText;
+            var source = document.getElementById('modalExSource').innerText;
+            var msg = document.getElementById('modalExMsg').innerText;
+            var stack = document.getElementById('modalExStack').innerText;
+            
+            var content = `Exception Type:\n${type}\n\nSource: ${source}\n\nMessage:\n${msg}\n\nStack Trace:\n${stack}`;
+            
+            navigator.clipboard.writeText(content).then(function() {
+                alert('Đã copy chi tiết lỗi vào clipboard!');
+            }, function(err) {
+                // Fallback
+                var textArea = document.createElement("textarea");
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('Đã copy chi tiết lỗi vào clipboard!');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
     </script>
 }

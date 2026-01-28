@@ -20,7 +20,7 @@ namespace BusinessLogic.Service
             _serviceProvider = serviceProvider;
         }
 
-        public async Task LogErrorAsync(Exception ex, string? userId, string source)
+        public async Task LogErrorAsync(Exception ex, string? userId, string source, DataAccess.Enum.SystemLogStatusEnum? statusCode = DataAccess.Enum.SystemLogStatusEnum.ServerError)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace BusinessLogic.Service
                         StackTrace = deepestEx.StackTrace ?? ex.StackTrace,
                         Source = source,
                         UserId = userId,
-                        StatusCode = null
+                        StatusCode = (int?)statusCode
                     };
 
                     var vietnamTime = DateTimeHelper.GetVietnamTime();
@@ -64,7 +64,7 @@ namespace BusinessLogic.Service
             }
         }
         
-        public async Task<PaginationResult<SystemErrorLog>> GetLogsAsync(int page, int pageSize, string? search, int? statusCode)
+        public async Task<PaginationResult<SystemErrorLog>> GetLogsAsync(int page, int pageSize, string? search, DataAccess.Enum.SystemLogStatusEnum? statusCode)
         {
             using var scope = _serviceProvider.CreateScope();
             var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -84,7 +84,8 @@ namespace BusinessLogic.Service
 
             if (statusCode.HasValue)
             {
-                result = result.Where(x => x.StatusCode == statusCode.Value);
+                var codeVal = (int)statusCode.Value;
+                result = result.Where(x => x.StatusCode == codeVal);
             }
 
             if (!string.IsNullOrEmpty(search))

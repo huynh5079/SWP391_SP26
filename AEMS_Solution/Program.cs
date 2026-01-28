@@ -35,6 +35,14 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IUserService, BusinessLogic.Service.UserService>();
+
+// Storage Services
+builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
+builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));
+builder.Services.AddSingleton<BusinessLogic.Storage.StoragePathResolver>();
+builder.Services.AddScoped<BusinessLogic.Storage.IFileStorageService, BusinessLogic.Storage.CloudinaryStorageService>();
+
 // TODO: Register RedisService when implemented
 
 // HttpClient (External Services like PayOS)

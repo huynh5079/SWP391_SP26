@@ -30,7 +30,8 @@ namespace BusinessLogic.Service
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto dto)
         {
             var user = await _uow.Users.FindByEmailAsync(dto.Email);
-            if (user == null || user.Status == UserStatusEnum.Banned)
+            // Check if user exists, is banned via boolean flag, or has Banned/Inactive status
+            if (user == null || user.IsBanned == true || user.Status == UserStatusEnum.Banned || user.Status == UserStatusEnum.Inactive)
             {
                 throw new Exception("Email hoặc mật khẩu không chính xác hoặc tài khoản bị khóa.");
             }
@@ -245,9 +246,9 @@ namespace BusinessLogic.Service
             // Case A: User Exists
             if (user != null)
             {
-                if (user.Status == UserStatusEnum.Banned)
+                if (user.IsBanned == true || user.Status == UserStatusEnum.Banned || user.Status == UserStatusEnum.Inactive)
                 {
-                    throw new Exception("Tài khoản của bạn đã bị khóa.");
+                    throw new Exception("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
                 }
 
                 if (string.IsNullOrEmpty(user.GoogleId))
