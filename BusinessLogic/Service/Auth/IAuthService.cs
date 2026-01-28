@@ -19,6 +19,7 @@ namespace BusinessLogic.Service.Auth
         Task ForgotPasswordAsync(ForgotPasswordRequestDto req);
         Task ResetPasswordAsync(ResetPasswordRequestDto req);
         Task<DataAccess.Entities.User> LoginGoogleAsync(string email, string googleId, string fullName, string avatarUrl);
+        Task SetPasswordAsync(string userId, SetPasswordRequestDto req);
 
     }
 }

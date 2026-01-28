@@ -295,6 +295,37 @@ namespace AEMS_Solution.Controllers.Authentication
         }
 
         [HttpGet]
+        public IActionResult SetPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetPassword(SetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var req = new SetPasswordRequestDto
+                {
+                    NewPassword = model.NewPassword,
+                    ConfirmNewPassword = model.ConfirmNewPassword
+                };
+
+                await _authService.SetPasswordAsync(CurrentUserId, req);
+                SetSuccess("Thiết lập mật khẩu thành công!");
+                return RedirectToAction("Index", "Profile");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+                return View(model);
+            }
+        }
+
+        [HttpGet]
         public IActionResult ChangePassword()
         {
             return View();
