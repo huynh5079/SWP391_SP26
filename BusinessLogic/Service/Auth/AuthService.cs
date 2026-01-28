@@ -2,19 +2,14 @@
 using BusinessLogic.DTOs.Authentication.Password;
 using BusinessLogic.DTOs.Authentication.Register;
 using BusinessLogic.Helper;
-using BusinessLogic.Service.Interface;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
-using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
+using UserEntity = DataAccess.Entities.User;
 
-namespace BusinessLogic.Service
+namespace BusinessLogic.Service.Auth
 {
     public class AuthService : IAuthService
     {
@@ -57,7 +52,7 @@ namespace BusinessLogic.Service
             };
         }
 
-        public async Task RegisterStudentAsync(RegisterStudentRequest dto)
+        public async Task RegisterStudentAsync(RegisterStudentRequestDto dto)
         {
             if (await _uow.Users.ExistsByEmailAsync(dto.Email))
             {
@@ -72,7 +67,7 @@ namespace BusinessLogic.Service
                 if (role == null) throw new Exception("System Error: Student Role not found.");
 
                 // 2. Create User
-                var user = new User
+                var user = new UserEntity
                 {
                     Email = dto.Email,
                     PasswordHash = HashPasswordHelper.HashPassword(dto.Password),
@@ -110,7 +105,7 @@ namespace BusinessLogic.Service
             }
         }
 
-        public async Task RegisterStaffAsync(RegisterStaffRequest dto)
+        public async Task RegisterStaffAsync(RegisterStaffRequestDto dto)
         {
              if (await _uow.Users.ExistsByEmailAsync(dto.Email))
             {
@@ -125,7 +120,7 @@ namespace BusinessLogic.Service
                 if (role == null) throw new Exception("System Error: Staff Role not found.");
 
                 // 2. Create User
-                var user = new User
+                var user = new UserEntity
                 {
                     Email = dto.Email,
                     PasswordHash = HashPasswordHelper.HashPassword(dto.Password),
@@ -163,7 +158,7 @@ namespace BusinessLogic.Service
             return !await _uow.Users.ExistsByEmailAsync(email);
         }
 
-        public async Task ChangePasswordAsync(string userId, ChangePasswordRequest req)
+        public async Task ChangePasswordAsync(string userId, ChangePasswordRequestDto req)
         {
             var user = await _uow.Users.GetByIdAsync(userId);
             if (user == null) throw new Exception("User not found");
@@ -187,7 +182,7 @@ namespace BusinessLogic.Service
         // Ideally, this should be in a separate TokenService or Redis.
         private static readonly Dictionary<string, (string Email, DateTime Expiry)> _resetTokens = new();
 
-        public async Task ForgotPasswordAsync(ForgotPasswordRequest req)
+        public async Task ForgotPasswordAsync(ForgotPasswordRequestDto req)
         {
             var user = await _uow.Users.FindByEmailAsync(req.Email);
             // Security: Always return success even if user not found to prevent enumeration
@@ -203,14 +198,14 @@ namespace BusinessLogic.Service
                 var keysToRemove = _resetTokens.Where(x => x.Value.Email == req.Email).Select(x => x.Key).ToList();
                 foreach (var key in keysToRemove) _resetTokens.Remove(key);
 
-                _resetTokens[token] = (req.Email, DateTime.UtcNow.AddMinutes(15));
+                _resetTokens[token] = (req.Email, DateTimeHelper.GetVietnamTime().AddMinutes(15));
             }
 
             // Send Email
             await _emailService.SendPasswordResetEmailAsync(req.Email, token);
         }
 
-        public async Task ResetPasswordAsync(ResetPasswordRequest req)
+        public async Task ResetPasswordAsync(ResetPasswordRequestDto req)
         {
             string email;
             lock (_resetTokens)
@@ -221,7 +216,7 @@ namespace BusinessLogic.Service
                 }
 
                 var data = _resetTokens[req.Token];
-                if (data.Expiry < DateTime.UtcNow)
+                if (data.Expiry < DateTimeHelper.GetVietnamTime())
                 {
                    _resetTokens.Remove(req.Token);
                    throw new Exception("Mã xác thực đã hết hạn.");
@@ -239,7 +234,7 @@ namespace BusinessLogic.Service
             await _uow.Users.UpdateAsync(user);
         }
 
-        public async Task<User> LoginGoogleAsync(string email, string googleId, string fullName, string avatarUrl)
+        public async Task<UserEntity> LoginGoogleAsync(string email, string googleId, string fullName, string avatarUrl)
         {
             var user = await _uow.Users.FindByEmailAsync(email);
 
@@ -270,7 +265,7 @@ namespace BusinessLogic.Service
                 var role = await _uow.Roles.GetAsync(r => r.RoleName == RoleEnum.Student);
                 if (role == null) throw new Exception("System Error: Student Role not found.");
 
-                var newUser = new User
+                var newUser = new UserEntity
                 {
                     Email = email,
                     GoogleId = googleId,

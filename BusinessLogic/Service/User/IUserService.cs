@@ -3,7 +3,7 @@ using BusinessLogic.DTOs.User;
 using DataAccess.Enum;
 using DataAccess.Entities;
 
-namespace BusinessLogic.Service.Interface
+namespace BusinessLogic.Service.User
 {
     public interface IUserService
     {

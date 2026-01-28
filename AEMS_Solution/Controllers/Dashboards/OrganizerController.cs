@@ -2,10 +2,10 @@ using AEMS_Solution.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Student
+namespace AEMS_Solution.Controllers.Dashboards
 {
-    [Authorize(Roles = "Student")]
-    public class StudentController : BaseController
+    [Authorize(Roles = "Staff")]
+    public class OrganizerController : BaseController
     {
         public IActionResult Index()
         {

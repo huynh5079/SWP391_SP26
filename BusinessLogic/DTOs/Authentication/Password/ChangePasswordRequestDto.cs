@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BusinessLogic.DTOs.Authentication.Password
 {
-    public class ChangePasswordRequest
+    public class ChangePasswordRequestDto
     {
         [Required]
         public string OldPassword { get; set; } = default!;
