@@ -20,6 +20,6 @@ namespace BusinessLogic.Service.User
 
         Task<bool> ToggleBanUserAsync(string id);
 
-        Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequest request);
+        Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequestDto request);
     }
 }

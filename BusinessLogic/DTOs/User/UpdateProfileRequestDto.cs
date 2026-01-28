@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace BusinessLogic.DTOs.User
 {
-    public class UpdateProfileRequest
+    public class UpdateProfileRequestDto
     {
         // Common
         public string FullName { get; set; } = null!;

@@ -178,6 +178,20 @@ namespace BusinessLogic.Service.Auth
             await _uow.Users.UpdateAsync(user);
         }
 
+        public async Task SetPasswordAsync(string userId, SetPasswordRequestDto req)
+        {
+            var user = await _uow.Users.GetByIdAsync(userId);
+            if (user == null) throw new Exception("User not found");
+
+            if (!string.IsNullOrEmpty(user.PasswordHash))
+            {
+                throw new Exception("Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng Đổi mật khẩu.");
+            }
+
+            user.PasswordHash = HashPasswordHelper.HashPassword(req.NewPassword);
+            await _uow.Users.UpdateAsync(user);
+        }
+
         // Note: For MVP/Production without Redis, we might use a static dictionary or cache.
         // Ideally, this should be in a separate TokenService or Redis.
         private static readonly Dictionary<string, (string Email, DateTime Expiry)> _resetTokens = new();

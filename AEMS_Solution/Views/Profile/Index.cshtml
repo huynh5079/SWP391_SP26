@@ -41,9 +41,18 @@
                 <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white border-bottom-0">
                     <h6 class="m-0 font-weight-bold text-primary">Thông tin chi tiết</h6>
                     <div>
-                        <a asp-controller="Auth" asp-action="ChangePassword" class="btn btn-sm btn-outline-secondary me-2">
-                            <i class="bi bi-key me-1"></i> Đổi mật khẩu
-                        </a>
+                        @if (Model.HasPassword)
+                        {
+                            <a asp-controller="Auth" asp-action="ChangePassword" class="btn btn-sm btn-outline-secondary me-2">
+                                <i class="bi bi-key me-1"></i> Đổi mật khẩu
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Auth" asp-action="SetPassword" class="btn btn-sm btn-outline-danger me-2">
+                                <i class="bi bi-shield-lock-fill me-1"></i> Thiết lập mật khẩu
+                            </a>
+                        }
                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#editForm" aria-expanded="false" aria-controls="editForm">
                             <i class="bi bi-pencil me-1"></i> Chỉnh sửa
                         </button>
