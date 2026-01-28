@@ -17,14 +17,14 @@ namespace AEMS_Solution.Controllers.Admin
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(int page = 1, string? search = null, int? status = null)
+        public async Task<IActionResult> Index(int page = 1, string? search = null, DataAccess.Enum.SystemLogStatusEnum? statusCode = null)
         {
             const int pageSize = 20;
-            var logs = await _logService.GetLogsAsync(page, pageSize, search, status);
+            var logs = await _logService.GetLogsAsync(page, pageSize, search, statusCode);
             
             // Pass filters back to view for inputs
             ViewBag.Search = search;
-            ViewBag.Status = status;
+            ViewBag.StatusCode = (int?)statusCode;
             
             return View(logs);
         }

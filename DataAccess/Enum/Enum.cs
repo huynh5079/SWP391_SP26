@@ -96,4 +96,14 @@ namespace DataAccess.Enum
         Banned,      // Bị cấm vĩnh viễn
         Pending     // Chờ xác nhận (Email/Admin)
     }
+
+    public enum SystemLogStatusEnum
+    {
+        Success = 200,
+        BadRequest = 400,
+        Unauthorized = 401,
+        Forbidden = 403,
+        NotFound = 404,
+        ServerError = 500
+    }
 }

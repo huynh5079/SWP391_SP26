@@ -1,33 +1,165 @@
+@model BusinessLogic.DTOs.User.UserDetailDto
 @{
-    ViewData["Title"] = "My Profile";
+    ViewData["Title"] = "Hồ sơ cá nhân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <div class="d-flex align-items-center">
-                        <div class="me-3">
-                             <i class="bi bi-person-circle display-4 text-primary"></i>
-                        </div>
-                        <div>
-                            <h3 class="mb-0">@User.Identity?.Name</h3>
-                            <p class="text-muted mb-0">User Profile</p>
+<div class="container py-5">
+    <div class="row">
+        <!-- Identity Column -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-body text-center">
+                    <div class="position-relative d-inline-block mb-3">
+                        <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.FullName : Model.AvatarUrl)" 
+                             alt="@Model.FullName" 
+                             class="rounded-circle img-thumbnail"
+                             style="width: 150px; height: 150px; object-fit: cover;">
+                        <!-- Camera Icon Overlay (Visual only given requirements) -->
+                        <div class="position-absolute bottom-0 end-0 bg-white rounded-circle p-1 shadow-sm border border-2 border-white" style="cursor: pointer;" onclick="document.getElementById('avatar-input').click();">
+                            <i class="bi bi-camera-fill text-primary" style="font-size: 1.2rem;"></i>
                         </div>
                     </div>
+                    
+                    <h4 class="fw-bold mb-1">@Model.FullName</h4>
+                    <p class="text-muted mb-2">@Model.Email</p>
+                    <span class="badge bg-primary px-3 py-2 rounded-pill">@Model.RoleName</span>
+                    
+                    @if (Model.CreatedAt.HasValue)
+                    {
+                        <div class="mt-3 text-muted small">
+                            <i class="bi bi-calendar3 me-1"></i> Tham gia từ: @Model.CreatedAt.Value.ToString("MM/yyyy")
+                        </div>
+                    }
                 </div>
-                <div class="card-body py-5">
-                     <div class="text-center text-muted">
-                        <i class="bi bi-cone-striped display-1 mb-3"></i>
-                        <h4>Under Construction</h4>
-                        <p>Your detailed usage statistics and personal information will be displayed here.</p>
-                     </div>
+            </div>
+        </div>
+
+        <!-- Details Column -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white border-bottom-0">
+                    <h6 class="m-0 font-weight-bold text-primary">Thông tin chi tiết</h6>
+                    <div>
+                        <a asp-controller="Auth" asp-action="ChangePassword" class="btn btn-sm btn-outline-secondary me-2">
+                            <i class="bi bi-key me-1"></i> Đổi mật khẩu
+                        </a>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#editForm" aria-expanded="false" aria-controls="editForm">
+                            <i class="bi bi-pencil me-1"></i> Chỉnh sửa
+                        </button>
+                    </div>
                 </div>
-                 <div class="card-footer bg-light text-end">
-                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Close</a>
+                <div class="card-body">
+                    
+                    <!-- View Mode (Static Info) -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label class="small text-muted fw-bold">Số điện thoại</label>
+                            <div class="h6">@(string.IsNullOrEmpty(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="small text-muted fw-bold">Phòng ban / Khoa</label>
+                            <div class="h6">@(string.IsNullOrEmpty(Model.DepartmentName) ? "Chưa cập nhật" : Model.DepartmentName)</div>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(Model.StudentCode))
+                        {
+                            <div class="col-md-6 mb-3">
+                                <label class="small text-muted fw-bold">Mã số sinh viên</label>
+                                <div class="h6">@Model.StudentCode</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="small text-muted fw-bold">Kỳ học hiện tại</label>
+                                <div class="h6">@(string.IsNullOrEmpty(Model.CurrentSemester) ? "Chưa cập nhật" : Model.CurrentSemester)</div>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(Model.StaffCode))
+                        {
+                            <div class="col-md-6 mb-3">
+                                <label class="small text-muted fw-bold">Mã nhân viên</label>
+                                <div class="h6">@Model.StaffCode</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="small text-muted fw-bold">Chức vụ</label>
+                                <div class="h6">@(string.IsNullOrEmpty(Model.Position) ? "Chưa cập nhật" : Model.Position)</div>
+                            </div>
+                        }
+                    </div>
+
+                    <hr />
+
+                    <!-- Edit Mode (Collapse Form) -->
+                    <div class="collapse" id="editForm">
+                        <form asp-action="Update" method="post" enctype="multipart/form-data">
+                            <!-- Hidden Avatar Input triggers by Camera Icon -->
+                            <input type="file" name="AvatarFile" id="avatar-input" class="d-none" accept="image/*">
+                            
+                            <!-- Hidden read-only fields for binding if needed or just handled by backend -->
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Họ và Tên</label>
+                                <input type="text" name="FullName" class="form-control" value="@Model.FullName" required>
+                                <span class="text-danger small" data-valmsg-for="FullName"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Số điện thoại</label>
+                                <input type="tel" name="Phone" class="form-control" value="@Model.Phone">
+                                <span class="text-danger small" data-valmsg-for="Phone"></span>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(Model.StudentCode))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Mã số sinh viên (Read-only)</label>
+                                    <input type="text" class="form-control bg-light" value="@Model.StudentCode" readonly>
+                                    <input type="hidden" name="StudentCode" value="@Model.StudentCode">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Kỳ học hiện tại</label>
+                                    <input type="text" name="CurrentSemester" class="form-control" value="@Model.CurrentSemester">
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Model.StaffCode))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Mã nhân viên (Read-only)</label>
+                                    <input type="text" class="form-control bg-light" value="@Model.StaffCode" readonly>
+                                    <input type="hidden" name="StaffCode" value="@Model.StaffCode">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Chức vụ</label>
+                                    <input type="text" name="Position" class="form-control" value="@Model.Position">
+                                </div>
+                            }
+
+                            <div class="text-end">
+                                <button type="button" class="btn btn-secondary me-2" data-bs-toggle="collapse" data-bs-target="#editForm">Hủy</button>
+                                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                            </div>
+                        </form>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Simple script to preview avatar before upload (Enhancement)
+        document.getElementById('avatar-input').addEventListener('change', function(event){
+            var reader = new FileReader();
+            reader.onload = function(){
+                var output = document.querySelector('.img-thumbnail');
+                output.src = reader.result;
+            };
+            if(event.target.files[0])
+                reader.readAsDataURL(event.target.files[0]);
+        });
+    </script>
+}

@@ -1,0 +1,89 @@
+@using BusinessLogic.DTOs.User
+@model UserDetailDto
+
+<div class="modal-header">
+    <h5 class="modal-title" id="userQuickDetailModalLabel">User Quick View</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <div class="d-flex align-items-center mb-4">
+        @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+        {
+            <img src="@Model.AvatarUrl" alt="Avatar" class="rounded-circle me-3" style="width: 80px; height: 80px; object-fit: cover;">
+        }
+        else
+        {
+            <div class="rounded-circle me-3 d-flex justify-content-center align-items-center bg-secondary text-white" style="width: 80px; height: 80px; font-size: 2rem;">
+                @(Model.FullName?.FirstOrDefault() ?? 'U')
+            </div>
+        }
+        <div>
+            <h4 class="mb-0">@Model.FullName</h4>
+            <span class="badge bg-primary">@Model.RoleName</span>
+            @if (Model.IsBanned == true)
+            {
+                <span class="badge bg-danger">Banned</span>
+            }
+            else
+            {
+                <span class="badge bg-success">Active</span>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <strong>Email:</strong>
+            <p class="text-muted">@Model.Email</p>
+        </div>
+        <div class="col-md-6 mb-3">
+            <strong>Phone:</strong>
+            <p class="text-muted">@(Model.Phone ?? "N/A")</p>
+        </div>
+        <div class="col-md-6 mb-3">
+            <strong>Joined Date:</strong>
+            <p class="text-muted">@Model.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <hr />
+
+    <h6 class="text-uppercase text-muted fs-7">Specific Info</h6>
+    <div class="row">
+        @if (Model.RoleName == "Student")
+        {
+            <div class="col-md-6 mb-2">
+                <strong>Student Code:</strong>
+                <p>@Model.StudentCode</p>
+            </div>
+            <div class="col-md-6 mb-2">
+                <strong>Current Semester:</strong>
+                <p>@Model.CurrentSemester</p>
+            </div>
+            <div class="col-12 mb-2">
+                <strong>Department:</strong>
+                <p>@Model.DepartmentName</p>
+            </div>
+        }
+        else if (Model.RoleName == "Staff" || Model.RoleName == "Admin")
+        {
+            <div class="col-md-6 mb-2">
+                <strong>Staff Code:</strong>
+                <p>@Model.StaffCode</p>
+            </div>
+            <div class="col-md-6 mb-2">
+                <strong>Position:</strong>
+                <p>@Model.Position</p>
+            </div>
+            <div class="col-12 mb-2">
+                <strong>Department:</strong>
+                <p>@Model.DepartmentName</p>
+            </div>
+        }
+    </div>
+</div>
+<div class="modal-footer">
+    <!-- Placeholder for Full Profile link -->
+    <a href="#" class="btn btn-outline-primary btn-sm">View Full Profile</a>
+    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+</div>
