@@ -86,7 +86,8 @@ namespace BusinessLogic.Service.User
                 Status = user.Status,
                 IsBanned = user.IsBanned,
                 GoogleId = user.GoogleId,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                HasPassword = !string.IsNullOrEmpty(user.PasswordHash)
             };
 
             // Map specific profile data
@@ -134,7 +135,7 @@ namespace BusinessLogic.Service.User
             return true;
         }
 
-        public async Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequest request)
+        public async Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequestDto request)
         {
             Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q
               .Include(u => u.Role)
