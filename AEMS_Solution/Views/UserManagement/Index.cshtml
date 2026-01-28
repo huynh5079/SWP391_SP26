@@ -1,0 +1,175 @@
+@model DataAccess.Entities.PaginationResult<BusinessLogic.DTOs.User.UserListDto>
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Quản lý Người dùng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    // Helper to get bootstrap badge class
+    string GetRoleBadgeClass(string role) => role switch
+    {
+        "Admin" => "danger",
+        "Staff" => "info",
+        "Student" => "success",
+        _ => "secondary"
+    };
+
+    string GetStatusDetails(UserStatusEnum? status, bool? isBanned)
+    {
+        if (isBanned == true) return "badge bg-danger|Đang bị cấm";
+        if (status == UserStatusEnum.Active) return "badge bg-success|Hoạt động";
+        return "badge bg-secondary|Không hoạt động";
+    }
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0 text-gray-800">Quản lý Người dùng</h2>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Bộ lọc & Tìm kiếm</h6>
+        </div>
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Tìm kiếm</label>
+                    <input type="text" name="searchTerm" class="form-control" placeholder="Tên hoặc Email..." value="@ViewBag.SearchTerm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Vai trò</label>
+                    <select name="role" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option value="Student" selected="@(ViewBag.Role == "Student")">Học viên</option>
+                        <option value="Staff" selected="@(ViewBag.Role == "Staff")">Nhân viên</option>
+                        <option value="Admin" selected="@(ViewBag.Role == "Admin")">Quản trị viên</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Trạng thái</label>
+                    <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<UserStatusEnum>()">
+                        <option value="">Tất cả</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-2"></i>Tìm kiếm
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center" style="width: 80px;">Avatar</th>
+                            <th>Họ và Tên</th>
+                            <th>Email</th>
+                            <th class="text-center">Vai trò</th>
+                            <th class="text-center">Ngày tạo</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-center">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Data != null && Model.Data.Any())
+                        {
+                            foreach (var user in Model.Data)
+                            {
+                                var statusInfo = GetStatusDetails(user.Status, user.IsBanned).Split('|');
+                                <tr>
+                                    <td class="text-center">
+                                        <img src="@(string.IsNullOrEmpty(user.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + user.FullName : user.AvatarUrl)" 
+                                             alt="@user.FullName" 
+                                             class="rounded-circle"
+                                             style="width: 40px; height: 40px; object-fit: cover;">
+                                    </td>
+                                    <td class="fw-bold">@user.FullName</td>
+                                    <td>@user.Email</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-@GetRoleBadgeClass(user.RoleName)">@user.RoleName</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @(user.CreatedAt.HasValue ? user.CreatedAt.Value.ToString("dd/MM/yyyy") : "-")
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="@statusInfo[0]">@statusInfo[1]</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a asp-action="Detail" asp-route-id="@user.Id" class="btn btn-sm btn-outline-info" title="Chi tiết">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            
+                                            <form asp-action="Ban" asp-route-id="@user.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn thay đổi trạng thái người dùng này?');">
+                                                @if (user.IsBanned == true)
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Mở khóa">
+                                                        <i class="bi bi-unlock"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cấm">
+                                                        <i class="bi bi-lock"></i>
+                                                    </button>
+                                                }
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">Không tìm thấy dữ liệu</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(!Model.HasPreviousPage ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" 
+                               asp-route-pageNumber="@(Model.PageNumber - 1)"
+                               asp-route-searchTerm="@ViewBag.SearchTerm"
+                               asp-route-role="@ViewBag.Role"
+                               asp-route-status="@ViewBag.Status">Trước</a>
+                        </li>
+                        
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                <a class="page-link" asp-action="Index" 
+                                   asp-route-pageNumber="@i"
+                                   asp-route-searchTerm="@ViewBag.SearchTerm"
+                                   asp-route-role="@ViewBag.Role"
+                                   asp-route-status="@ViewBag.Status">@i</a>
+                            </li>
+                        }
+
+                        <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" 
+                               asp-route-pageNumber="@(Model.PageNumber + 1)"
+                               asp-route-searchTerm="@ViewBag.SearchTerm"
+                               asp-route-role="@ViewBag.Role"
+                               asp-route-status="@ViewBag.Status">Sau</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>
