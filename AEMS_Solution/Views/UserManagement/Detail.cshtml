@@ -35,7 +35,7 @@
                         }
                     </div>
 
-                    <form asp-action="Ban" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Xác nhận thay đổi trạng thái?');">
+                    <form asp-action="Ban" asp-route-id="@Model.Id" method="post" onsubmit="return confirmAction(event, 'Xác nhận thay đổi trạng thái?');">
                         @if (Model.IsBanned == true)
                         {
                             <button type="submit" class="btn btn-success w-100">

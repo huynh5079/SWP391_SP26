@@ -1,0 +1,34 @@
+using System.Diagnostics;
+using AEMS_Solution.Models;
+using AEMS_Solution.Models.Shared;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AEMS_Solution.Controllers.Core
+{
+    public class HomeController : Controller
+    {
+        private readonly ILogger<HomeController> _logger;
+
+        public HomeController(ILogger<HomeController> logger)
+        {
+            _logger = logger;
+        }
+
+        public IActionResult Index()
+        {
+            return View();
+            //throw new Exception("Test hê thống Log lỗi AEMS");  //Test error log
+        }
+
+        public IActionResult Privacy()
+        {
+            return View();
+        }
+
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+    }
+}
