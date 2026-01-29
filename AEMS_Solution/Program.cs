@@ -1,6 +1,7 @@
 using AEMS_Solution.Configurations;
-using BusinessLogic.Service;
-using BusinessLogic.Service.Interface;
+using BusinessLogic.Service.Auth;
+using BusinessLogic.Service.System;
+using BusinessLogic.Service.User;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories;
@@ -9,8 +10,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
-using ISystemErrorLogService = BusinessLogic.Service.Interface.ISystemErrorLogService;
-using SystemErrorLogService = BusinessLogic.Service.SystemErrorLogService;
+using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
+using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +36,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IUserService, BusinessLogic.Service.UserService>();
+builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
 
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
