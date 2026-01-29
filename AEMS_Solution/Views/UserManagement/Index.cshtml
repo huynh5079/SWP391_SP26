@@ -107,7 +107,7 @@
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                             
-                                            <form asp-action="Ban" asp-route-id="@user.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn thay đổi trạng thái người dùng này?');">
+                                            <form asp-action="Ban" asp-route-id="@user.Id" method="post" style="display:inline;" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn thay đổi trạng thái người dùng này?');">
                                                 @if (user.IsBanned == true)
                                                 {
                                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Mở khóa">

@@ -1,9 +1,5 @@
 using AEMS_Solution.Extensions;
-using BusinessLogic.Service.Interface;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Threading.Tasks;
+using BusinessLogic.Service.System;
 
 namespace AEMS_Solution.Middlewares
 {

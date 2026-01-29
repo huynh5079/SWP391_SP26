@@ -11,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0 text-primary"><i class="bi bi-journal-medical"></i> System Error Logs</h2>
         
-        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tất cả log cũ hơn 30 không? Hành động này không thể hoàn tác.');">
+        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn xóa tất cả log cũ hơn 30 không? Hành động này không thể hoàn tác.', 'Xóa ngay', 'Thôi');">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-danger">
                 <i class="bi bi-trash"></i> Dọn dẹp Log cũ (>30 ngày)
@@ -233,7 +233,7 @@
             var content = `Exception Type:\n${type}\n\nSource: ${source}\n\nMessage:\n${msg}\n\nStack Trace:\n${stack}`;
             
             navigator.clipboard.writeText(content).then(function() {
-                alert('Đã copy chi tiết lỗi vào clipboard!');
+                toastr.success('Đã copy chi tiết lỗi vào clipboard!');
             }, function(err) {
                 // Fallback
                 var textArea = document.createElement("textarea");
@@ -242,7 +242,7 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    alert('Đã copy chi tiết lỗi vào clipboard!');
+                    toastr.success('Đã copy chi tiết lỗi vào clipboard!');
                 } catch (err) {
                     console.error('Fallback copy failed', err);
                 }

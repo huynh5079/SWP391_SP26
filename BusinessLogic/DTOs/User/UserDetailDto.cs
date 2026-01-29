@@ -14,5 +14,6 @@ namespace BusinessLogic.DTOs.User
         public string? DepartmentName { get; set; }
         public string? CurrentSemester { get; set; } // Student
         public string? Position { get; set; } // Staff
+        public bool HasPassword { get; set; }
     }
 }
