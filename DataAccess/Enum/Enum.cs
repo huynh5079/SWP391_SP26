@@ -120,4 +120,22 @@ namespace DataAccess.Enum
         ServerError = 500
     }
 
+    public enum LocationStatusEnum
+    {
+        Available,
+        Maintenance,
+        Occupied,
+        Closed
+    }
+
+    public enum LocationTypeEnum
+    {
+        Room,
+        Hall,
+        Lab,
+        Auditorium,
+        Outdoor,
+        Online
+    }
+
 }

@@ -8,8 +8,9 @@ namespace DataAccess.Enum
 {
     public enum RoleEnum
     {
-        Admin,      // Admintrator
-        Staff,      // Organizer/Approver
+        Admin,      // Administrator
+        Organizer,  // Event Organizer
+        Approver,   // Proposal Approver
         Student     // Student/User
     }
 }
