@@ -20,7 +20,13 @@ public partial class Event : BaseEntity
 
     public string? DepartmentId { get; set; }
 
-    public string? Location { get; set; }
+    public string? LocationId { get; set; }
+
+    public virtual Location? Location { get; set; }
+
+    public string? TopicId { get; set; }
+
+    public virtual Topic? Topic { get; set; }
 
     public DateTime StartTime { get; set; }
 

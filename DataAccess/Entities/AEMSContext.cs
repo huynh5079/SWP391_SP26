@@ -38,6 +38,10 @@ public partial class AEMSContext : DbContext
 
     public virtual DbSet<Department> Departments { get; set; }
 
+    public virtual DbSet<Location> Locations { get; set; }
+
+    public virtual DbSet<Topic> Topics { get; set; }
+
     public virtual DbSet<Event> Events { get; set; }
 
     public virtual DbSet<EventAgenda> EventAgenda { get; set; }
@@ -237,6 +241,14 @@ public partial class AEMSContext : DbContext
             entity.HasOne(d => d.Semester).WithMany(p => p.Events)
                 .HasForeignKey(d => d.SemesterId)
                 .HasConstraintName("FK__Event__SemesterI__06CD04F7");
+
+            entity.HasOne(d => d.Location).WithMany(p => p.Events)
+                .HasForeignKey(d => d.LocationId)
+                .HasConstraintName("FK_Event_Location");
+
+            entity.HasOne(d => d.Topic).WithMany(p => p.Events)
+                .HasForeignKey(d => d.TopicId)
+                .HasConstraintName("FK_Event_Topic");
         });
 
         modelBuilder.Entity<EventAgenda>(entity =>
