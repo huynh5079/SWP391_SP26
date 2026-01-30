@@ -115,9 +115,9 @@ namespace BusinessLogic.Service.Auth
             using var transaction = await _uow.BeginTransactionAsync();
             try
             {
-                // 1. Get Role (Organizer/Approver share Staff Role)
-                var role = await _uow.Roles.GetAsync(r => r.RoleName == RoleEnum.Staff);
-                if (role == null) throw new Exception("System Error: Staff Role not found.");
+                // 1. Get Role (Organizer/Approver share Staff Role logic, defaulting to Organizer for now)
+                var role = await _uow.Roles.GetAsync(r => r.RoleName == RoleEnum.Organizer);
+                if (role == null) throw new Exception("System Error: Organizer Role not found.");
 
                 // 2. Create User
                 var user = new UserEntity
