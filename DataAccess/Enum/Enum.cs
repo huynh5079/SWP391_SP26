@@ -29,7 +29,20 @@ namespace DataAccess.Enum
         RequestChange  // Yêu cầu chỉnh sửa lại
     }
 
-    public enum ProposalStatusEnum
+    public enum ChatSessionStatus
+    {
+        Active,    // Đang hoạt động
+        Archived   // Đã lưu trữ
+	}
+
+    public enum ChatMessageStatus
+    {
+        Streaming, // Đang truyền tải
+        Final,     // Hoàn tất
+        Error      // Lỗi
+	}
+
+	public enum ProposalStatusEnum
     {
         Pending,    // Đang chờ duyệt
         Approved,   // Đã duyệt (Cho phép chi)
