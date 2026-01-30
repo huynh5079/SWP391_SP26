@@ -30,7 +30,11 @@ public partial class AEMSContext : DbContext
 
     public virtual DbSet<BudgetProposal> BudgetProposals { get; set; }
 
-    public virtual DbSet<CheckInHistory> CheckInHistories { get; set; }
+	public virtual DbSet<ChatSession> ChatSessions { get; set; }
+
+	public virtual DbSet<ChatMessage> ChatMessages { get; set; }
+
+	public virtual DbSet<CheckInHistory> CheckInHistories { get; set; }
 
     public virtual DbSet<Department> Departments { get; set; }
 
@@ -122,7 +126,57 @@ public partial class AEMSContext : DbContext
                 .HasConstraintName("FK__BudgetPro__Event__7F2BE32F");
         });
 
-        modelBuilder.Entity<CheckInHistory>(entity =>
+		modelBuilder.Entity<ChatSession>(entity =>
+		{
+			entity.ToTable("ChatSession");
+
+			// Indexes
+			entity.HasIndex(e => e.UserId, "IX_ChatSession_UserId");
+
+			entity.Property(e => e.UserId).HasMaxLength(450);
+			entity.Property(e => e.Title).HasMaxLength(255);
+			entity.Property(e => e.Status)
+				.HasMaxLength(50)
+				.HasConversion<string>();
+			entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+
+			// Relationship: ChatSession -> User
+			entity.HasOne(d => d.User)
+				.WithMany() // Or .WithMany(u => u.ChatSessions) if you add collection to User
+				.HasForeignKey(d => d.UserId)
+				.OnDelete(DeleteBehavior.Cascade);
+		});
+
+		modelBuilder.Entity<ChatMessage>(entity =>
+		{
+			entity.ToTable("ChatMessage");
+
+			// Indexes
+			entity.HasIndex(e => e.SessionId, "IX_ChatMessage_SessionId");
+
+			entity.Property(e => e.SessionId).HasMaxLength(450);
+			entity.Property(e => e.Sender).HasMaxLength(20);
+			entity.Property(e => e.Status)
+				.HasMaxLength(50)
+				.HasConversion<string>();
+			entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+			entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+			entity.Property(e => e.ReplyToMessageId).HasMaxLength(450);
+
+			// Relationship: ChatMessage -> ChatSession
+			entity.HasOne(d => d.ChatSession)
+				.WithMany(p => p.ChatMessages)
+				.HasForeignKey(d => d.SessionId)
+				.OnDelete(DeleteBehavior.Cascade);
+
+			// Self-Referencing Relationship: ReplyToMessage
+			entity.HasOne(d => d.ReplyToMessage)
+				.WithMany(p => p.InverseReplyToMessage)
+				.HasForeignKey(d => d.ReplyToMessageId)
+				.OnDelete(DeleteBehavior.Restrict); // Prevent cycles on delete
+		});
+
+		modelBuilder.Entity<CheckInHistory>(entity =>
         {
             entity.ToTable("CheckInHistory");
 
