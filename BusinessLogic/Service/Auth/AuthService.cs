@@ -117,7 +117,7 @@ namespace BusinessLogic.Service.Auth
             {
                 // 1. Get Role (Organizer/Approver share Staff Role logic, defaulting to Organizer for now)
                 var role = await _uow.Roles.GetAsync(r => r.RoleName == RoleEnum.Organizer);
-                if (role == null) throw new Exception("System Error: Organizer Role not found.");
+                if (role == null) throw new Exception("System Error: Organizer Role not found in Database. Please check Seeding.");
 
                 // 2. Create User
                 var user = new UserEntity
@@ -134,7 +134,7 @@ namespace BusinessLogic.Service.Auth
 
                 await _uow.Users.CreateAsync(user);
 
-                // 3. Create Staff Profile
+                // 3. Create Staff Profile (Note: Entity name is still StaffProfile, consider renaming in future phase)
                 var profile = new StaffProfile
                 {
                     UserId = user.Id,
