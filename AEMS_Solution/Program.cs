@@ -114,12 +114,21 @@ try
             END
         ", now);
         
-        // Insert Staff role if not exists
+            // Insert Organizer role if not exists
         await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Staff')
+            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Organizer')
             BEGIN
                 INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
-                VALUES (NEWID(), 'Staff', {0}, {0}, NULL)
+                VALUES (NEWID(), 'Organizer', {0}, {0}, NULL)
+            END
+        ", now);
+
+        // Insert Approver role if not exists
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Approver')
+            BEGIN
+                INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
+                VALUES (NEWID(), 'Approver', {0}, {0}, NULL)
             END
         ", now);
         
