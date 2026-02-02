@@ -370,7 +370,8 @@ namespace AEMS_Solution.Controllers.Authentication
             return role switch
             {
                 "Student" => RedirectToAction("Index", "Student"),
-                "Staff" => RedirectToAction("Index", "Organizer"), // Staff maps to Organizer Dashboard
+                "Organizer" => RedirectToAction("Index", "Organizer"), // Correct mapping
+                "Approver" => RedirectToAction("Index", "Organizer"), // Temporary: Approver uses Organizer Dashboard until separated
                 "Admin" => RedirectToAction("Index", "Admin"),
                 _ => RedirectToAction("Index", "Home") // Default fall back
             };
