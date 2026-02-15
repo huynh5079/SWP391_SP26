@@ -1,12 +1,28 @@
-@{
-    ViewData["Title"] = "Organizer Dashboard";
-}
+﻿@model AEMS_Solution.Models.Organizer.OrganizerDashboardViewModel
+    @{
+        ViewData["Title"] = "Organizer Dashboard";
+        Layout = "_OrganizerLayout";
+    }
 
-<div class="container mt-4">
-    <div class="p-5 mb-4 bg-light rounded-3">
-        <div class="container-fluid py-5">
-            <h1 class="display-5 fw-bold">Organizer Dashboard</h1>
-            <p class="col-md-8 fs-4">Welcome to the Organizer Dashboard. Manage events and verify applications here.</p>
+
+<div class="container-fluid py-4">
+    <h1 class="h3 mb-0 text-gray-800">Chào mừng ban tổ chức!</h1>
+    <div class="alert alert-info">Đây là thông báo mới của tôi</div>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Hello, Organizer!</h1>
+            <p class="text-muted small">Manage your events and track upcoming activities.</p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a asp-controller="Event" asp-action="Create" class="btn btn-sm btn-primary shadow-sm">
+                <i class="bi bi-plus-circle"></i> Create Event
+            </a>
+            <a asp-controller="Event" asp-action="Index" class="btn btn-sm btn-outline-primary shadow-sm">
+                <i class="bi bi-calendar-event"></i> My Events
+            </a>
         </div>
     </div>
-</div>
+
+  
