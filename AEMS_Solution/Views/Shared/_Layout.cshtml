@@ -20,12 +20,32 @@
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
+                
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
+                        
+
+                        @if (User.Identity?.IsAuthenticated == true &&
+                            (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")))
+                        {
+                             <li class="nav-item">
+                                 <a class="nav-link text-dark"
+                                    asp-controller="Event"
+                                    asp-action="Create">
+                                       Create Event
+                                 </a>
+                             </li>
+                        }
+
                     </ul>
+
+                    
+
                     <ul class="navbar-nav">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -39,6 +59,7 @@
                                             Signed in as 
                                             @if (User.IsInRole("Admin")) { <span>Admin</span> }
                                             else if (User.IsInRole("Staff")) { <span>Staff</span> }
+                                            else if (User.IsInRole("Organizer")) { <span>Organizer</span> }
                                             else if (User.IsInRole("Student")) { <span>Student</span> }
                                             else { <span>User</span> }
                                         </h6>
@@ -54,6 +75,10 @@
                                         <li><a class="dropdown-item" asp-controller="SystemLog" asp-action="Index">System Logs</a></li>
                                     }
                                     else if (User.IsInRole("Staff"))
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Index">Organizer Dashboard</a></li>
+                                    }
+                                    else if (User.IsInRole("Organizer"))
                                     {
                                         <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Index">Organizer Dashboard</a></li>
                                     }

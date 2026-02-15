@@ -188,5 +188,8 @@ PublishScripts/
 .venv-rag/
 .venv-gpu/
 
+# Python Dependencies (generated per environment)
+requirements.txt
+
 # Local Notebooks (Secrets)
 Python/RAG_SWP.ipynb
