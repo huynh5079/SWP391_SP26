@@ -23,6 +23,10 @@
             {
                 <a asp-controller="Organizer" asp-action="Index" class="btn btn-primary btn-lg">Go to Dashboard</a>
             }
+            else if (User.IsInRole("Organizer"))
+            {
+                <a asp-controller="Organizer" asp-action="Index" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            }
             else if (User.IsInRole("Student"))
             {
                 <a asp-controller="Student" asp-action="Index" class="btn btn-primary btn-lg">Go to Dashboard</a>
