@@ -104,7 +104,7 @@
 
                     <td>
                         <a href="#" data-url="@Url.Action("Manage", "Organizer", new { operation = "detailevent", id = e.EventId })" class="btn btn-sm btn-info view-detail">View</a>
-
+                        <a class="btn btn-sm btn-secondary ms-1" asp-controller="EventWaitlist"  asp-action="Index" asp-route-eventId="@e.EventId"> Waitlist </a>
                         <a asp-action="Edit" asp-route-id="@e.EventId"
                            class="btn btn-sm btn-warning">Edit</a>
                         @if (e.Status == "Draft" || e.Status == "Pending")
