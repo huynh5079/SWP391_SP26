@@ -29,19 +29,6 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         
-
-                        @if (User.Identity?.IsAuthenticated == true &&
-                            (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")))
-                        {
-                             <li class="nav-item">
-                                 <a class="nav-link text-dark"
-                                    asp-controller="Event"
-                                    asp-action="Create">
-                                       Create Event
-                                 </a>
-                             </li>
-                        }
-
                     </ul>
 
                     
