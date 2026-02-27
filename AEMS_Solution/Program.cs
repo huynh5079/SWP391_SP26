@@ -1,5 +1,6 @@
 using AEMS_Solution.Configurations;
 using BusinessLogic.Service.Auth;
+using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.User;
 using DataAccess.Entities;
@@ -12,7 +13,9 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
 using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
-
+using BusinessLogic.Service.ValidationDataforEvent;
+using BusinessLogic.Service.Interfaces;
+using BusinessLogic.Service.InterfaceforOrganizer;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
@@ -37,7 +40,15 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
-
+// Register refactored services
+builder.Services.AddScoped<IEventService, BusinessLogic.Service.Organizer.EventService>();
+builder.Services.AddScoped<IDropdownService, BusinessLogic.Service.Organizer.DropdownService>();
+builder.Services.AddScoped<IDashboardService, BusinessLogic.Service.Organizer.DashboardService>();
+// Event waitlist service
+builder.Services.AddScoped<BusinessLogic.Service.Interfaces.IEventWaitlistService, BusinessLogic.Service.Organizer.EventWaitlistService>();
+// keep facade for backward compatibility
+builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.OrganizerService>();
+builder.Services.AddScoped<IEventValidator, BusinessLogic.Service.ValidationDataforEvent.EventValidator>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));
@@ -53,18 +64,24 @@ builder.Services.AddHttpClient();
 builder.Services.AddSignalR(); 
 
 // Authentication (Cookie)
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+var authBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Auth/Login";
         options.AccessDeniedPath = "/Auth/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
-    })
-    .AddGoogle(options => 
+    });
+
+// Register Google only when configuration is present to avoid Options validation errors at runtime
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+{
+    authBuilder.AddGoogle(options =>
     {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
         options.CallbackPath = "/signin-google";
         options.Events.OnRemoteFailure = context =>
         {
@@ -74,6 +91,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             return Task.CompletedTask;
         };
     });
+}
 
 // Controllers with Views + JSON Options
 builder.Services.AddControllersWithViews()
@@ -142,6 +160,20 @@ try
         ", now);
         
         logger.LogInformation("Roles seeded successfully.");
+
+        // Seed StaffProfiles cho các user Organizer chưa có StaffProfile
+        await context.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO StaffProfile (Id, UserId, StaffCode, DepartmentId, [Position], CreatedAt, UpdatedAt, DeletedAt)
+            SELECT NEWID(), u.Id, 'ORG-' + SUBSTRING(u.Id, 1, 8), NULL, 'Event Organizer', {0}, {0}, NULL
+            FROM [User] u
+            INNER JOIN Role r ON u.RoleId = r.Id
+            WHERE r.RoleName = 'Organizer'
+            AND NOT EXISTS (
+                SELECT 1 FROM StaffProfile sp WHERE sp.UserId = u.Id
+            )
+        ", now);
+
+        logger.LogInformation("StaffProfiles seeded successfully for Organizer users.");
     }
 }
 catch (Exception ex)
