@@ -71,7 +71,7 @@ namespace AEMS_Solution.Models.Event
 		public List<TicketVm> Tickets { get; set; } = new();              // Organizer/Admin mới cần full list
 		public List<CheckInHistoryVm> CheckIns { get; set; } = new();     // Organizer/Admin
 
-		public List<WaitlistViewModel> Waitlist { get; set; } = new();           // Organizer/Admin
+		public List<EventWaitlistViewModel> Waitlist { get; set; } = new();           // Organizer/Admin
 		public List<FeedbackVm> Feedbacks { get; set; } = new();          // public/role-based
 		public QuizDetailVm? Quiz { get; set; }                           // nếu event có quiz
 
