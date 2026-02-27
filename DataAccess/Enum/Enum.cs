@@ -6,136 +6,157 @@ using System.Threading.Tasks;
 
 namespace DataAccess.Enum
 {
-    public enum Gender
-    {
-        Male,
-        Female
-    }
-
-    public enum UploadContext
-    {
-        Avatar,
-        Certificate,        // Chứng chỉ gia sư
-        IdentityDocument,   // CCCD/CMND
-        Material,           // Tài liệu học tập
-        LessonVideo,        // Video bài học
-        Chat                // File/hình ảnh trong chat
-    }
-
-    public enum ApprovalActionEnum
-    {
-        Approve,       // Đồng ý
-        Reject,        // Từ chối
-        RequestChange  // Yêu cầu chỉnh sửa lại
-    }
-
-    public enum ChatSessionStatus
-    {
-        Active,    // Đang hoạt động
-        Archived   // Đã lưu trữ
+	public enum Gender
+	{
+		Male,
+		Female
 	}
 
-    public enum ChatMessageStatus
-    {
-        Streaming, // Đang truyền tải
-        Final,     // Hoàn tất
-        Error      // Lỗi
+	public enum UploadContext
+	{
+		Avatar,
+		Certificate,        // Chứng chỉ gia sư
+		IdentityDocument,   // CCCD/CMND
+		Material,           // Tài liệu học tập
+		LessonVideo,        // Video bài học
+		Chat                // File/hình ảnh trong chat
+	}
+
+	public enum ApprovalActionEnum
+	{
+		Approve,       // Đồng ý
+		Reject,        // Từ chối
+		RequestChange  // Yêu cầu chỉnh sửa lại
+	}
+
+	public enum ChatSessionStatus
+	{
+		Active,    // Đang hoạt động
+		Archived   // Đã lưu trữ
+	}
+
+	public enum ChatMessageStatus
+	{
+		Streaming, // Đang truyền tải
+		Final,     // Hoàn tất
+		Error      // Lỗi
 	}
 
 	public enum ProposalStatusEnum
-    {
-        Pending,    // Đang chờ duyệt
-        Approved,   // Đã duyệt (Cho phép chi)
-        Rejected    // Từ chối
-    }
+	{
+		Pending,    // Đang chờ duyệt
+		Approved,   // Đã duyệt (Cho phép chi)
+		Rejected    // Từ chối
+	}
 
-    public enum ScanTypeEnum
-    {
-        CheckIn,
-        CheckOut
-    }
+	public enum ScanTypeEnum
+	{
+		CheckIn,
+		CheckOut
+	}
 
-    public enum EventTypeEnum
-    {
-        Workshop,
-        Seminar,      // Hội thảo
-        Competition,  // Cuộc thi
-        Training,     // Đào tạo
-        Social        // Hoạt động xã hội/ngoại khóa
-    }
+	public enum EventTypeEnum
+	{
+		Workshop,
+		Seminar,      // Hội thảo
+		Competition,  // Cuộc thi
+		Training,     // Đào tạo
+		Social,        // Hoạt động xã hội/ngoại khóa
+		Bootcamp       // Trại huấn luyện
+	}
 
-    public enum EventStatusEnum
-    {
-        Draft,      // Nháp (Chưa gửi duyệt)
-        Pending,    // Chờ duyệt (Đã gửi lên cấp trên)
-        Approved,   // Đã duyệt (Sắp diễn ra)
-        Rejected,   // Bị từ chối
-        Happening,  // Đang diễn ra
-        Completed,  // Đã kết thúc thành công
-        Cancelled   // Đã bị hủy
-    }
+	public enum EventStatusEnum
+	{
+		Draft,      // Nháp (Chưa gửi duyệt)
+		Pending,    // Chờ duyệt (Đã gửi lên cấp trên)
+		Approved,   // Đã duyệt (Sắp diễn ra)
+		Rejected,   // Bị từ chối
+		Published,  // Đã công khai (Đã duyệt và có thể hiển thị cho người dùng)
+		Upcoming,   // Sắp diễn ra
+		Happening,  // Đang diễn ra
+		Completed,  // Đã kết thúc thành công
+		Cancelled   // Đã bị hủy
+	}
 
-    public enum ExpenseStatusEnum
-    {
-        Pending,    // Mới nộp, chờ kiểm tra
-        Accepted,   // Hóa đơn hợp lệ, chấp nhận thanh toán
-        Rejected    // Hóa đơn không hợp lệ (mờ, sai số tiền...)
-    }
+	public enum ExpenseStatusEnum
+	{
+		Pending,    // Mới nộp, chờ kiểm tra
+		Accepted,   // Hóa đơn hợp lệ, chấp nhận thanh toán
+		Rejected    // Hóa đơn không hợp lệ (mờ, sai số tiền...)
+	}
 
-    public enum SemesterStatusEnum
-    {
-        Upcoming, // Sắp diễn ra
-        Active,   // Đang diễn ra (Học kỳ hiện tại)
-        Finished  // Đã kết thúc
-    }
+	public enum SemesterStatusEnum
+	{
+		Upcoming, // Sắp diễn ra
+		Active,   // Đang diễn ra (Học kỳ hiện tại)
+		Finished  // Đã kết thúc
+	}
 
-    public enum TeamRoleEnum
-    {
-        Leader, // Trưởng nhóm
-        Member  // Thành viên
-    }
+	public enum TeamRoleEnum
+	{
+		Leader, // Trưởng nhóm
+		Member  // Thành viên
+	}
 
-    public enum TicketStatusEnum
-    {
-        Registered, // Đã đăng ký thành công
-        CheckedIn,  // Đã điểm danh (tham gia sự kiện)
-        Cancelled   // Đã hủy vé
-    }
+	public enum TicketStatusEnum
+	{
+		Registered, // Đã đăng ký thành công
+		CheckedIn,  // Đã điểm danh (tham gia sự kiện)
+		Cancelled   // Đã hủy vé
+	}
 
-    public enum UserStatusEnum
-    {
-        Active,     // Đang hoạt động
-        Inactive,   // Tạm khóa
-        Banned,      // Bị cấm vĩnh viễn
-        Pending     // Chờ xác nhận (Email/Admin)
-    }
+	public enum UserStatusEnum
+	{
+		Active,     // Đang hoạt động
+		Inactive,   // Tạm khóa
+		Banned,      // Bị cấm vĩnh viễn
+		Pending     // Chờ xác nhận (Email/Admin)
+	}
 
-    public enum SystemLogStatusEnum
-    {
-        Success = 200,
-        BadRequest = 400,
-        Unauthorized = 401,
-        Forbidden = 403,
-        NotFound = 404,
-        ServerError = 500
-    }
+	public enum SystemLogStatusEnum
+	{
+		Success = 200,
+		BadRequest = 400,
+		Unauthorized = 401,
+		Forbidden = 403,
+		NotFound = 404,
+		ServerError = 500
+	}
 
-    public enum LocationStatusEnum
-    {
-        Available,
-        Maintenance,
-        Occupied,
-        Closed
-    }
+	public enum LocationStatusEnum
+	{
+		Available,
+		Maintenance,
+		Occupied,
+		Closed
+	}
 
-    public enum LocationTypeEnum
-    {
-        Room,
-        Hall,
-        Lab,
-        Auditorium,
-        Outdoor,
-        Online
-    }
+	public enum LocationTypeEnum
+	{
+		Room,
+		Hall,
+		Lab,
+		Auditorium,
+		Outdoor,
+		Online
+	}
+	//hình thức tổ chức
+	public enum EventModeEnum
+	{
+		Offline,
+		Online,
+		Hybrid
+	}
+	public enum EventWaitlistStatusEnum
+	{
+		Waiting, //đang chờ
 
+		Offered, //được mời đăng ký vì có slot trống
+
+		Accepted, //đã nhận slot
+
+		Expired, //quá hạn không phản hồi
+
+		Cancelled, //người dùng tự rời
+	}
 }

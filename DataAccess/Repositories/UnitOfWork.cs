@@ -17,8 +17,16 @@ namespace DataAccess.Repositories
         public IGenericRepository<StaffProfile> StaffProfiles { get; }
         public IGenericRepository<Role> Roles { get; }
         public IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
+        public IGenericRepository<Event> Events { get; }
+        public IGenericRepository<EventAgenda> EventAgenda { get; }
+        public IGenericRepository<Topic> Topics { get; }
+        public IGenericRepository<Location> Locations { get; }
+        public IGenericRepository<Semester> Semesters { get; }
+        public IGenericRepository<Department> Departments { get; }
 
-        public UnitOfWork(AEMSContext ctx, IUserRepository users)
+        public IGenericRepository<EventWaitlist> EventWaitlist{get;}
+
+		public UnitOfWork(AEMSContext ctx, IUserRepository users)
         {
             _ctx = ctx;
             Users = users;
@@ -26,7 +34,16 @@ namespace DataAccess.Repositories
             StaffProfiles = new GenericRepository<StaffProfile>(_ctx);
             Roles = new GenericRepository<Role>(_ctx);
             SystemErrorLogs = new GenericRepository<SystemErrorLog>(_ctx);
-        }
+			// ✅ Update
+			Events = new GenericRepository<Event>(_ctx);
+		    EventAgenda = new GenericRepository<EventAgenda>(_ctx);
+			Topics = new GenericRepository<Topic>(_ctx);
+			Locations = new GenericRepository<Location>(_ctx);
+			Semesters = new GenericRepository<Semester>(_ctx);
+			Departments = new GenericRepository<Department>(_ctx);
+            EventWaitlist = new GenericRepository<EventWaitlist>(_ctx);
+            //
+		}
 
         public Task<int> SaveChangesAsync() => _ctx.SaveChangesAsync();
 
