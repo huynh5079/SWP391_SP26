@@ -1,8 +1,7 @@
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.Interfaces;
 using DataAccess.Repositories.Abstraction;
 
-namespace BusinessLogic.Service.Organizer;
+namespace BusinessLogic.Service.Dashboard;
 
 public class DropdownService : IDropdownService
 {

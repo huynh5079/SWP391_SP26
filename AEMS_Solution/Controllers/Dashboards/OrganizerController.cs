@@ -3,8 +3,7 @@ using System.Net.NetworkInformation;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
-using BusinessLogic.Service.InterfaceforOrganizer;
-using BusinessLogic.Service.Interfaces;
+using BusinessLogic.Service.Organizer;
 using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -16,7 +15,7 @@ using Microsoft.EntityFrameworkCore;
 
 
 
-	[Authorize(Roles = "Organizer")]
+[Authorize(Roles = "Organizer")]
 	public class OrganizerController : BaseController
 	{
 		private readonly IOrganizerService _organizerService;

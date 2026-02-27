@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.Interfaces;
 using BusinessLogic.Service.ValidationDataforEvent;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -11,7 +10,7 @@ using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using Microsoft.EntityFrameworkCore;
 
-namespace BusinessLogic.Service.Organizer;
+namespace BusinessLogic.Service.Event;
 
 public class EventService : IEventService
 {
@@ -83,7 +82,7 @@ public class EventService : IEventService
         return list;
     }
 
-    public async Task<BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, string? status, string? semesterId, int page = 1, int pageSize = 10)
+    public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, string? status, string? semesterId, int page = 1, int pageSize = 10)
     {
         var items = await GetMyEventsAsync(userId);
 
@@ -103,7 +102,7 @@ public class EventService : IEventService
         var total = items.Count;
         var paged = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
-        return new BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>
+        return new PagedResult<EventListDto>
         {
             Items = paged,
             Total = total,
