@@ -20,6 +20,15 @@
     <h1 class="text-danger mb-3">Đã xảy ra lỗi!</h1>
     <h4 class="text-muted mb-4">Hệ thống gặp sự cố khi xử lý yêu cầu của bạn.</h4>
 
+    @if (exception != null)
+    {
+        <div class="mb-3">
+            <strong class="text-danger">Error:</strong>
+            <div class="text-danger">@exception?.Message</div>
+            <div class="small text-muted">Source: @path</div>
+        </div>
+    }
+
     @if (Model.ShowRequestId)
     {
         <p class="text-muted">

@@ -1,0 +1,95 @@
+﻿@model AEMS_Solution.Models.Event.EventDetailsViewModel
+
+@{
+    ViewData["Title"] = "Event Details";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container mt-4">
+    <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-sm btn-secondary mb-3">← Back to My Events</a>
+
+    <div class="card mb-3">
+        <div class="row g-0">
+            <div class="col-md-4">
+                @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
+                {
+                    <img src="@Model.ThumbnailUrl" class="img-fluid rounded-start" alt="Thumbnail" />
+                }
+                else
+                {
+                    <img src="https://via.placeholder.com/320x180?text=No+Image" class="img-fluid rounded-start" alt="No image" />
+                }
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                    <h3 class="card-title">@Model.Title</h3>
+                    <p class="text-muted">@Model.Location</p>
+                    <p>
+                        <strong>Semester:</strong> @Model.SemesterName<br />
+                        <strong>Department:</strong> @Model.DepartmentName
+                    </p>
+
+                    <p>
+                        <strong>Time:</strong>
+                        @Model.StartTime.ToString("HH:mm dd/MM/yyyy") &nbsp;→&nbsp; @Model.EndTime.ToString("HH:mm dd/MM/yyyy")
+                    </p>
+
+                    <p>
+                        <strong>Capacity:</strong> @Model.RegisteredCount / @Model.MaxCapacity
+                    </p>
+
+                    <p>
+                        <strong>Status:</strong> @Model.Status
+                    </p>
+
+                    <div class="mb-3">
+                        @if (Model.CanEdit)
+                        {
+                            <a class="btn btn-warning me-2" href="@Url.Action("Manage", "Organizer", new { operation = "edit", id = Model.EventId })">Edit</a>
+                        }
+
+                        @if (Model.CanSendForApproval)
+                        {
+                            <form asp-controller="Organizer" asp-action="SendForApproval" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.EventId" />
+                                <button type="submit" class="btn btn-primary">Send for approval</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Description</h5>
+            <div>@Html.Raw(Model.Description ?? "<em>No description</em>")</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5>Agendas</h5>
+            @if (Model.Agendas == null || Model.Agendas.Count == 0)
+            {
+                <p class="text-muted">No agendas.</p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var a in Model.Agendas)
+                    {
+                        <li class="list-group-item">
+                            <strong>@a.SessionName</strong>
+                            <div class="text-muted">@a.SpeakerName — @a.StartTime.ToString("HH:mm dd/MM/yyyy") → @a.EndTime.ToString("HH:mm dd/MM/yyyy")</div>
+                            <div>@a.Description</div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>
+</div>
