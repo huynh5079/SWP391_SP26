@@ -7,11 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Remove="Views\EventforOrganizer\AddEvent.cshtml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="Views\EventforOrganizer\AddEvent.cshtml" />
+    <Compile Remove="Views\EventforOrganizer\**" />
+    <Content Remove="Views\EventforOrganizer\**" />
+    <EmbeddedResource Remove="Views\EventforOrganizer\**" />
+    <None Remove="Views\EventforOrganizer\**" />
   </ItemGroup>
 
   <ItemGroup>
