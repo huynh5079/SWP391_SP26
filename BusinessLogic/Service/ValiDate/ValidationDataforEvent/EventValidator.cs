@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.ValidationDataforEvent;
 using DataAccess.Enum;
 
-namespace BusinessLogic.Service.ValidationDataforEvent
+namespace BusinessLogic.Service.ValiDate.ValidationDataforEvent
 {
 	public class EventValidator : IEventValidator
 	{
