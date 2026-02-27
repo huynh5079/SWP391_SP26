@@ -1,0 +1,87 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model List<BusinessLogic.DTOs.Role.Organizer.EventWaitlistDto>
+@{
+    ViewData["Title"] = "Event Waitlist";
+    var eventId = ViewData["EventId"] as string ?? "";
+}
+
+<h2>Event Waitlist</h2>
+
+<div>
+    <form asp-action="Add" asp-controller="EventWaitlist" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="EventId" value="@eventId" />
+        <div>
+            <label>StudentId</label>
+            <input name="StudentId" />
+            <button type="submit">Add to Waitlist</button>
+        </div>
+    </form>
+</div>
+
+<div style="margin-top:20px;">
+    <form asp-action="OfferNext" asp-controller="EventWaitlist" method="post" style="display:inline-block;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="eventId" value="@eventId" />
+        <button type="submit">Offer Next</button>
+    </form>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Pos</th>
+            <th>Student</th>
+            <th>Code</th>
+            <th>Email</th>
+            <th>Joined</th>
+            <th>Status</th>
+            <th>OfferedAt</th>
+            <th>RespondedAt</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.Position</td>
+            <td>@item.StudentName</td>
+            <td>@item.StudentCode</td>
+            <td>@item.StudentEmail</td>
+            <td>@(item.JoinedAt?.ToString("g"))</td>
+            <td>@item.Status</td>
+            <td>@(item.OfferedAt?.ToString("g"))</td>
+            <td>@(item.RespondedAt?.ToString("g"))</td>
+            <td>
+                <form asp-action="Remove" asp-controller="EventWaitlist" method="post" style="display:inline-block;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="EventId" value="@item.EventId" />
+                    <input type="hidden" name="StudentId" value="@item.StudentId" />
+                    <button type="submit">Remove</button>
+                </form>
+
+                @if (item.Status == "Offered")
+                {
+                    <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:8px;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="EventId" value="@item.EventId" />
+                        <input type="hidden" name="StudentId" value="@item.StudentId" />
+                        <button name="Accept" value="true" type="submit">Accept</button>
+                    </form>
+
+                    <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:4px;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="EventId" value="@item.EventId" />
+                        <input type="hidden" name="StudentId" value="@item.StudentId" />
+                        <button name="Accept" value="false" type="submit">Decline</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+

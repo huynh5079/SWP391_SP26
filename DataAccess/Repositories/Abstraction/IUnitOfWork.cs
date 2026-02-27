@@ -17,6 +17,19 @@ namespace DataAccess.Repositories.Abstraction
         IGenericRepository<StaffProfile> StaffProfiles { get; }
         IGenericRepository<Role> Roles { get; }
         IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
-    }
+		
+		
+
+		// ✅ Update for OrganizerService
+		IGenericRepository<Event> Events { get; }
+        IGenericRepository<EventAgenda> EventAgenda { get; }
+		IGenericRepository<Topic> Topics { get; }
+		IGenericRepository<Location> Locations { get; }
+		IGenericRepository<Semester> Semesters { get; }
+		IGenericRepository<Department> Departments { get; }
+        IGenericRepository<EventWaitlist> EventWaitlist { get; }
+		//
+
+	}
 
 }
