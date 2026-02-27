@@ -1,0 +1,191 @@
+﻿@model AEMS_Solution.Models.Organizer.MyEventsViewModel
+
+@{
+    ViewData["Title"] = "My Events";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">📅 My Events</h2>
+
+    <form class="row g-2 mb-3" method="get" asp-controller="Organizer" asp-action="MyEvents">
+        <div class="col-auto">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
+        </div>
+
+
+        <div class="col-auto">
+            @{ var statuses = new[] { "Draft", "Pending", "Upcoming", "Happening", "Completed" }; }
+            <select name="status" class="form-select">
+                <option value="">All Status</option>
+                @foreach (var s in statuses)
+                {
+                    <option value="@s" selected="@(Model.Status == s ? "selected" : null)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary">Filter</button>
+        </div>
+    </form>
+
+    <table class="table table-bordered table-hover shadow">
+        <thead class="table-dark">
+            <tr>
+                <th>Thumbnail</th>
+                <th>Title</th>
+                <th>Semester</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Time</th>
+                <th>Capacity</th>
+                <th>Status</th>
+                <th>Mode</th>
+                <th>Meeting Url</th>
+                <th>Time State</th>
+                <th>Stats</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in Model.Events)
+            {
+                <tr>
+                    <td style="width:120px">
+                        @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
+                        {
+                            <img src="@e.ThumbnailUrl" class="img-fluid rounded" />
+                        }
+                    </td>
+
+                    <td>
+                        <strong>@e.Title</strong>
+                    </td>
+
+                    <td>@e.SemesterName</td>
+                    <td>@e.DepartmentName</td>
+                    <td>@e.Location</td>
+
+                    <td class="event-time" data-start="@e.StartTime.ToString("o")" data-end="@e.EndTime.ToString("o")">
+                        <span class="start">@e.StartTime.ToString("dd/MM/yyyy HH:mm")</span>
+                        <br />
+                        →
+                        <br />
+                        <span class="end">@e.EndTime.ToString("dd/MM/yyyy HH:mm")</span>
+                    </td>
+
+                    <td>
+                        @e.RegisteredCount / @e.MaxCapacity
+                    </td>
+
+                    <td>
+                        <span class="workflow-badge badge bg-secondary">@e.Status</span>
+                    </td>
+                    <td>
+                        @e.Mode
+                    </td>
+
+                    <td style="max-width:200px; word-break:break-all;">
+                        @if (!string.IsNullOrEmpty(e.MeetingUrl))
+                        {
+                            <a href="@e.MeetingUrl" target="_blank">Link</a>
+                        }
+                    </td>
+                    <td>
+                        <span class="time-badge badge bg-light text-dark">--</span>
+                    </td>
+
+                    <td>
+                        🎟 @e.RegisteredCount <br />
+                        ✅ @e.CheckedInCount <br />
+                        ⏳ @e.WaitlistCount <br />
+                        ⭐ @e.AvgRating.ToString("0.0")
+                    </td>
+
+                    <td>
+                        <a href="#" data-url="@Url.Action("Manage", "Organizer", new { operation = "detailevent", id = e.EventId })" class="btn btn-sm btn-info view-detail">View</a>
+
+                        <a asp-action="Edit" asp-route-id="@e.EventId"
+                           class="btn btn-sm btn-warning">Edit</a>
+                        @if (e.Status == "Draft" || e.Status == "Pending")
+                        {
+                            <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="operation" value="sendforapproval" />
+                                <input type="hidden" name="id" value="@e.EventId" />
+                                <button type="submit" class="btn btn-sm btn-primary">Send</button>
+                            </form>
+                        }
+                        
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="MyEvents" asp-controller="Organizer" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-status="@Model.Status">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+    @section Scripts {
+        <script>
+            (function () {
+                function update() {
+                    const now = new Date();
+
+                    document.querySelectorAll('.event-time').forEach(el => {
+                        const startIso = el.getAttribute('data-start');
+                        const endIso = el.getAttribute('data-end');
+                        if (!startIso || !endIso) return;
+
+                        const start = new Date(startIso);
+                        const end = new Date(endIso);
+
+                        const row = el.closest('tr');
+                        if (!row) return;
+
+                        // ✅ chỉ update Time State badge
+                        const timeBadge = row.querySelector('.time-badge');
+                        if (!timeBadge) return;
+
+                        if (now < start) {
+                            timeBadge.textContent = 'Upcoming';
+                            timeBadge.className = 'time-badge badge bg-warning text-dark';
+                        } else if (now >= start && now <= end) {
+                            timeBadge.textContent = 'Happening';
+                            timeBadge.className = 'time-badge badge bg-info text-dark';
+                        } else {
+                            timeBadge.textContent = 'Completed';
+                            timeBadge.className = 'time-badge badge bg-secondary text-dark';
+                        }
+                    });
+                }
+
+                update();
+                setInterval(update, 30 * 1000);
+            })();
+        </script>
+        <script>
+            (function () {
+                document.querySelectorAll('.view-detail').forEach(btn => {
+                    btn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        var url = btn.getAttribute('data-url');
+                        if (!url) return;
+                        // open detail in new window/tab
+                        window.location.href = url;
+                    });
+                });
+            })();
+        </script>
+    }
+</div>

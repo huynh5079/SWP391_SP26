@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="~/AEMS_Solution.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 </head>
 <body>
     <header>
@@ -27,79 +28,92 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        
+
 
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="createEvent" asp-action="create">Create Event</a>
+                            <a class="nav-link text-dark" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" asp-action="Create">Create Event</a>
                         </li>
 
-                        @if (User.Identity?.IsAuthenticated == true &&
-                            (User.IsInRole("Admin") || User.IsInRole("Staff")))
-                        {
-                             <li class="nav-item">
-                                 <a class="nav-link text-dark"
-                                    asp-controller="Event"
-                                    asp-action="Create">
-                                       Create Event
-                                 </a>
-                             </li>
-                        }
-
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Organizer" asp-action="MyEvents">My Events</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Organizer" asp-action="EVentWaitList">Event WaitList</a>
+                        </li>
                     </ul>
 
                     
 
                     <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true)
+                        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")))
                         {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle text-dark" href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-person-circle"></i> @(User.Identity.Name ?? "User")
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userProfileDropdown">
-                                    <li>
-                                        <h6 class="dropdown-header">
-                                            Signed in as 
-                                            @if (User.IsInRole("Admin")) { <span>Admin</span> }
-                                            else if (User.IsInRole("Staff")) { <span>Staff</span> }
-                                            else if (User.IsInRole("Student")) { <span>Student</span> }
-                                            else { <span>User</span> }
-                                        </h6>
-                                    </li>
-                                    <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index">My Profile</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Auth" asp-action="ChangePassword">Change Password</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    
+                                    <li class="nav-item dropdown">
+                                        <a class="nav-link dropdown-toggle text-dark" href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-person-circle"></i> @(User.Identity.Name ?? "User")
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userProfileDropdown">
+                                            <li>
+                                                <h6 class="dropdown-header">
+                                                    Signed in as 
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                        <span>Admin</span>
+                                            }
+                                            else if (User.IsInRole("Staff"))
+                                            {
+                                                        <span>Staff</span>
+                                            }
+                                            else if (User.IsInRole("Organizer"))
+                                            {
+                                                        <span>Organizer</span>
+                                            }
+                                            else if (User.IsInRole("Student"))
+                                            {
+                                                        <span>Student</span>
+                                            }
+                                            else
+                                            {
+                                                        <span>User</span>
+                                            }
+                                                </h6>
+                                            </li>
+                                            <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index">My Profile</a></li>
+                                            <li><a class="dropdown-item" asp-controller="Auth" asp-action="ChangePassword">Change Password</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+
                                     @if (User.IsInRole("Admin"))
                                     {
-                                        <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index">Admin Dashboard</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index">Admin Dashboard</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="UserManagement" asp-action="Index">User Management</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="SystemLog" asp-action="Index">System Logs</a></li>
                                     }
-                                    else if (User.IsInRole("Staff"))
+                                    else if (User.IsInRole("Staff") || User.IsInRole("Organizer"))
                                     {
-                                        <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Index">Organizer Dashboard</a></li>
-                                    }
-                                    else if (User.IsInRole("Student"))
-                                    {
-                                        <li><a class="dropdown-item" asp-controller="Student" asp-action="Index">Student Dashboard</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Index">Organizer Dashboard</a></li>
                                     }
 
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <form asp-controller="Auth" asp-action="Logout" method="post" class="d-inline">
-                                            <button type="submit" class="dropdown-item">Logout</button>
-                                        </form>
+                                    else if (User.IsInRole("Student"))
+                                    {
+                                                        <li><a class="dropdown-item" asp-controller="Student" asp-action="Index">Student Dashboard</a></li>
+                                    }
+
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form asp-controller="Auth" asp-action="Logout" method="post" class="d-inline">
+                                                    <button type="submit" class="dropdown-item">Logout</button>
+                                                </form>
+                                            </li>
+                                        </ul>
                                     </li>
-                                </ul>
-                            </li>
                         }
                         else
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Auth" asp-action="RegisterStudent">Register</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Auth" asp-action="Login">Login</a>
-                            </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-controller="Auth" asp-action="RegisterStudent">Register</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link text-dark" asp-controller="Auth" asp-action="Login">Login</a>
+                                    </li>
                         }
                     </ul>
                 </div>
@@ -131,7 +145,8 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="~/js/site.js?v=2" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

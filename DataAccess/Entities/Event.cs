@@ -28,6 +28,12 @@ public partial class Event : BaseEntity
 
     public virtual Topic? Topic { get; set; }
 
+    // Mode of the event (Offline/Online/Hybrid)
+    public EventModeEnum? Mode { get; set; }
+
+    // If online or hybrid, meeting URL (nullable)
+    public string? MeetingUrl { get; set; }
+
     public DateTime StartTime { get; set; }
 
     public DateTime EndTime { get; set; }
