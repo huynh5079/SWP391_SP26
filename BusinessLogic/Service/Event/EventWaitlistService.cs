@@ -1,11 +1,10 @@
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.Interfaces;
 using DataAccess.Entities;
 using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 
-namespace BusinessLogic.Service.Organizer;
+namespace BusinessLogic.Service.Event;
 
 public class EventWaitlistService : IEventWaitlistService
 {

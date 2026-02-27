@@ -1,6 +1,5 @@
 using AEMS_Solution.Configurations;
 using BusinessLogic.Service.Auth;
-using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.User;
 using DataAccess.Entities;
@@ -14,8 +13,9 @@ using System.Text.Json.Serialization;
 using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
 using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
 using BusinessLogic.Service.ValidationDataforEvent;
-using BusinessLogic.Service.Interfaces;
-using BusinessLogic.Service.InterfaceforOrganizer;
+using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Dashboard;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
@@ -41,11 +41,11 @@ builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
 // Register refactored services
-builder.Services.AddScoped<IEventService, BusinessLogic.Service.Organizer.EventService>();
-builder.Services.AddScoped<IDropdownService, BusinessLogic.Service.Organizer.DropdownService>();
-builder.Services.AddScoped<IDashboardService, BusinessLogic.Service.Organizer.DashboardService>();
+builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IDropdownService, DropdownService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 // Event waitlist service
-builder.Services.AddScoped<BusinessLogic.Service.Interfaces.IEventWaitlistService, BusinessLogic.Service.Organizer.EventWaitlistService>();
+builder.Services.AddScoped<IEventWaitlistService, EventWaitlistService>();
 // keep facade for backward compatibility
 builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.OrganizerService>();
 builder.Services.AddScoped<IEventValidator, BusinessLogic.Service.ValidationDataforEvent.EventValidator>();

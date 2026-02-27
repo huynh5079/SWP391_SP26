@@ -1,6 +1,6 @@
 using BusinessLogic.DTOs.Role.Organizer;
 
-namespace BusinessLogic.Service.Interfaces
+namespace BusinessLogic.Service.Event
 {
     // Interface focused on Event-related use-cases (SRP)
     public interface IEventService
@@ -17,6 +17,6 @@ namespace BusinessLogic.Service.Interfaces
         Task<List<EventListDto>> GetMyEventsAsync(string userId);
 
         // Paged + filtered variant used by UI
-        Task<BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, string? status, string? semesterId, int page = 1, int pageSize = 10);
+        Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, string? status, string? semesterId, int page = 1, int pageSize = 10);
     }
 }

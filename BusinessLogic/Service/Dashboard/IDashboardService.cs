@@ -1,6 +1,6 @@
 using BusinessLogic.DTOs.Role.Organizer;
 
-namespace BusinessLogic.Service.Interfaces
+namespace BusinessLogic.Service.Dashboard
 {
     public interface IDashboardService
     {

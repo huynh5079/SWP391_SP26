@@ -1,8 +1,8 @@
-using BusinessLogic.Service.Interfaces;
 using BusinessLogic.DTOs.Role.Organizer;
 using Microsoft.AspNetCore.Mvc;
+using BusinessLogic.Service.Event;
 
-namespace AEMS_Solution.Controllers;
+namespace AEMS_Solution.Controllers.Features.Event;
 
 public class EventWaitlistController : Controller
 {
