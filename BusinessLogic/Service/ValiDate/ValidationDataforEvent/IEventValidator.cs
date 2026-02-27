@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
 
-namespace BusinessLogic.Service.ValidationDataforEvent
+namespace BusinessLogic.Service.ValiDate.ValidationDataforEvent
 {
 	public interface IEventValidator
 	{
@@ -15,5 +15,6 @@ namespace BusinessLogic.Service.ValidationDataforEvent
 		 void ValidateAgendas(List<CreateAgendaItemDto>? agendas);
 		 // Validate deposit rules
 		 void ValidateDeposit(CreateEventRequestDto dto);
+
 	}
 }

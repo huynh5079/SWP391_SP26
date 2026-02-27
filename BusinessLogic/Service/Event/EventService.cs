@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.ValidationDataforEvent;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using Microsoft.EntityFrameworkCore;
+using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 
 namespace BusinessLogic.Service.Event;
 
