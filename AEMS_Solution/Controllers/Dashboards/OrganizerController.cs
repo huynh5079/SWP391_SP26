@@ -4,6 +4,7 @@ using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
 using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -118,7 +119,7 @@ using Microsoft.EntityFrameworkCore;
 			{
 				SetError(ex.Message);
 			}
-			catch (BusinessLogic.Service.ValidationDataforEvent.EventValidator.BusinessValidationException ex)
+			catch (EventValidator.BusinessValidationException ex)
 			{
 				SetError(ex.Message);
 			}
@@ -231,7 +232,7 @@ using Microsoft.EntityFrameworkCore;
                 await LoadDropdowns(vm);
                 return View("~/Views/Event/CreateEvent.cshtml", vm);
             }
-            catch (BusinessLogic.Service.ValidationDataforEvent.EventValidator.BusinessValidationException ex)
+            catch (EventValidator.BusinessValidationException ex)
             {
                 // Validation from validator -> show on page
                 ModelState.AddModelError("", ex.Message);
