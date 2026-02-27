@@ -1,8 +1,9 @@
 using BusinessLogic.Service.Interfaces;
 using BusinessLogic.DTOs.Role.Organizer;
 using Microsoft.AspNetCore.Mvc;
+using AEMS_Solution.Models.Event;
 
-namespace AEMS_Solution.Controllers;
+namespace AEMS_Solution.Controllers.Dashboards;
 
 public class EventWaitlistController : Controller
 {
@@ -16,12 +17,18 @@ public class EventWaitlistController : Controller
     // GET: /EventWaitlist/Index?eventId=...
     public async Task<IActionResult> Index(string eventId)
     {
-        if (string.IsNullOrEmpty(eventId)) return BadRequest("eventId is required");
+		if (string.IsNullOrEmpty(eventId)) return BadRequest("eventId is required");
 
-        var list = await _waitlistService.GetWaitlistByEventAsync(eventId);
-        ViewData["EventId"] = eventId;
-        return View(list);
-    }
+		var list = await _waitlistService.GetWaitlistByEventAsync(eventId);
+
+		var vm = new EventWaitlistViewModel
+		{
+			EventId = eventId,
+			Items = list
+		};
+
+		return View(vm);
+	}
 
     [HttpPost]
     [ValidateAntiForgeryToken]

@@ -76,7 +76,7 @@ namespace AEMS_Solution.Services
         /// <summary>
         /// Ask a question and get streaming response (token by token)
         /// </summary>
-        public async IAsyncEnumerable<string> AskStreamAsync(string question, int topK = 5, string role = "user")
+        /*public async IAsyncEnumerable<string> AskStreamAsync(string question, int topK = 5, string role = "user")
         {
             var request = new AskRequest
             {
@@ -106,7 +106,7 @@ namespace AEMS_Solution.Services
             {
                 throw new Exception($"Error streaming from RAG API: {ex.Message}", ex);
             }
-        }
+        }*/
 
         /// <summary>
         /// Get system statistics
