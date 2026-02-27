@@ -6,8 +6,8 @@ using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using Microsoft.EntityFrameworkCore;
-using BusinessLogic.Service.Interfaces;
-using BusinessLogic.Service.InterfaceforOrganizer;
+using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Dashboard;
 
 namespace BusinessLogic.Service.Organizer
 {

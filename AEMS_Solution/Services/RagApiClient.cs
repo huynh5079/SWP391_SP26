@@ -76,37 +76,37 @@ namespace AEMS_Solution.Services
         /// <summary>
         /// Ask a question and get streaming response (token by token)
         /// </summary>
-        public async IAsyncEnumerable<string> AskStreamAsync(string question, int topK = 5, string role = "user")
-        {
-            var request = new AskRequest
-            {
-                Question = question,
-                TopK = topK,
-                Role = role
-            };
+        //public async IAsyncEnumerable<string> AskStreamAsync(string question, int topK = 5, string role = "user")
+        //{
+        //    var request = new AskRequest
+        //    {
+        //        Question = question,
+        //        TopK = topK,
+        //        Role = role
+        //    };
 
-            var json = JsonSerializer.Serialize(request, _jsonOptions);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+        //    var json = JsonSerializer.Serialize(request, _jsonOptions);
+        //    var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            try
-            {
-                using var response = await _httpClient.PostAsync($"{_baseUrl}/ask_stream", content);
-                response.EnsureSuccessStatusCode();
-                using var stream = await response.Content.ReadAsStreamAsync();
-                using var reader = new System.IO.StreamReader(stream);
+        //    try
+        //    {
+        //        using var response = await _httpClient.PostAsync($"{_baseUrl}/ask_stream", content);
+        //        response.EnsureSuccessStatusCode();
+        //        using var stream = await response.Content.ReadAsStreamAsync();
+        //        using var reader = new System.IO.StreamReader(stream);
 
-                string line;
-                while ((line = await reader.ReadLineAsync()) != null)
-                {
-                    if (!string.IsNullOrWhiteSpace(line))
-                        yield return line;
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                throw new Exception($"Error streaming from RAG API: {ex.Message}", ex);
-            }
-        }
+        //        string line;
+        //        while ((line = await reader.ReadLineAsync()) != null)
+        //        {
+        //            if (!string.IsNullOrWhiteSpace(line))
+        //                yield return line;
+        //        }
+        //    }
+        //    catch (HttpRequestException ex)
+        //    {
+        //        throw new Exception($"Error streaming from RAG API: {ex.Message}", ex);
+        //    }
+        //}
 
         /// <summary>
         /// Get system statistics

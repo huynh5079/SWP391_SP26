@@ -1,10 +1,9 @@
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.Interfaces;
 using DataAccess.Repositories.Abstraction;
 using DataAccess.Enum;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 
-namespace BusinessLogic.Service.Organizer;
+namespace BusinessLogic.Service.Dashboard;
 
 public class DashboardService : IDashboardService
 {
