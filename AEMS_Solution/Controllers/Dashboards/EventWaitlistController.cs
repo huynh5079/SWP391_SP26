@@ -27,7 +27,7 @@ public class EventWaitlistController : Controller
 			Items = list
 		};
 
-		return View(vm);
+		return View("~/Views/Event/EventWaitList.cshtml",vm);
 	}
 
     [HttpPost]
