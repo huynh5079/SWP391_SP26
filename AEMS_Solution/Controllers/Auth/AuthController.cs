@@ -371,7 +371,7 @@ namespace AEMS_Solution.Controllers.Authentication
             {
                 "Student" => RedirectToAction("Index", "Student"),
                 "Organizer" => RedirectToAction("Index", "Organizer"), // Correct mapping
-                "Approver" => RedirectToAction("Index", "Organizer"), // Temporary: Approver uses Organizer Dashboard until separated
+                "Approver" => RedirectToAction("Index", "Approver"), // Temporary: Approver uses Organizer Dashboard until separated
                 "Admin" => RedirectToAction("Index", "Admin"),
 
                 _ => RedirectToAction("Index", "Home") // Default fall back

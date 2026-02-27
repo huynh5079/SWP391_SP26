@@ -193,3 +193,5 @@ requirements.txt
 
 # Local Notebooks (Secrets)
 Python/RAG_SWP.ipynb
+# Python Dependencies
+requirements.txt

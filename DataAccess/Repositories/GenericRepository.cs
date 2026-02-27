@@ -43,19 +43,31 @@ namespace DataAccess.Repositories
         public async Task CreateAsync(T entity)
         {
             await _dbSet.AddAsync(entity);
-            await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateAsync(T entity)
+        public Task UpdateAsync(T entity)
         {
             _dbSet.Attach(entity);
             _context.Entry(entity).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            // Do not call SaveChanges here; UnitOfWork should control commits
+            return Task.CompletedTask;
         }
 
-        public async Task RemoveAsync(T entity)
+        public Task RemoveAsync(T entity)
         {
             _dbSet.Remove(entity);
+            // Do not call SaveChanges here; UnitOfWork should control commits
+            return Task.CompletedTask;
         }
-    }
+        
+		public async Task<int> CountAsync(Expression<Func<T, bool>> predicate = null)
+		{
+			if (predicate == null)
+				return await _dbSet.CountAsync();
+
+			return await _dbSet.CountAsync(predicate);
+		}
+		
+		
+	}
 }
