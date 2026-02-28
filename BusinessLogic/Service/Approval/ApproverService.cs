@@ -101,11 +101,15 @@ namespace BusinessLogic.Service.Approval
 			ev.Status = EventStatusEnum.Approved;
 			ev.UpdatedAt = now;
 
+			// Map approverId (which may be AspNetUsers.Id) -> StaffProfile.Id for FK
+			var approverProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == approverId);
+			var approverProfileId = approverProfile?.Id;
+
 			await _uow.EventApprovalLogs.CreateAsync(new ApprovalLog
 			{
 				Id = Guid.NewGuid().ToString(),
 				EventId = eventId,
-				ApproverId = approverId,
+				ApproverId = approverProfileId,
 				Action = ApprovalActionEnum.Approve,
 				Comment = comment,
 				CreatedAt = now,
@@ -133,11 +137,15 @@ namespace BusinessLogic.Service.Approval
 			ev.Status = EventStatusEnum.Rejected;
 			ev.UpdatedAt = now;
 
+			// Map approverId -> StaffProfile.Id
+			var approverProfileForReject = await _uow.StaffProfiles.GetAsync(s => s.UserId == approverId);
+			var approverProfileForRejectId = approverProfileForReject?.Id;
+
 			await _uow.EventApprovalLogs.CreateAsync(new ApprovalLog
 			{
 				Id = Guid.NewGuid().ToString(),
 				EventId = eventId,
-				ApproverId = approverId,
+				ApproverId = approverProfileForRejectId,
 				Action = ApprovalActionEnum.Reject,
 				Comment = comment,
 				CreatedAt = now,
@@ -168,11 +176,15 @@ namespace BusinessLogic.Service.Approval
 			ev.Status = EventStatusEnum.Draft;
 			ev.UpdatedAt = now;
 
+			// Map approverId -> StaffProfile.Id
+			var approverProfileForRequest = await _uow.StaffProfiles.GetAsync(s => s.UserId == approverId);
+			var approverProfileForRequestId = approverProfileForRequest?.Id;
+
 			await _uow.EventApprovalLogs.CreateAsync(new ApprovalLog
 			{
 				Id = Guid.NewGuid().ToString(),
 				EventId = eventId,
-				ApproverId = approverId,
+				ApproverId = approverProfileForRequestId,
 				Action = ApprovalActionEnum.RequestChange,
 				Comment = comment,
 				CreatedAt = now,
