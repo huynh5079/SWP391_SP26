@@ -14,7 +14,7 @@ public partial class Ticket: BaseEntity
 
     public string StudentId { get; set; } = null!;
 
-    public TicketStatusEnum? Status { get; set; }
+    public TicketStatusEnum Status { get; set; }
 
     //public DateTime? RegisteredAt { get; set; }
 

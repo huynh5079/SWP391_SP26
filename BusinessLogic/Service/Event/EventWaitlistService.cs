@@ -94,7 +94,7 @@ public class EventWaitlistService : IEventWaitlistService
 			OfferedAt = w.OfferedAt,
 			RespondedAt = w.RespondedAt,
 			Position = w.Position,
-			Status = w.Status?.ToString() ?? "",
+			Status = w.Status,
 			CreatedAt = w.CreatedAt,
 			UpdatedAt = w.UpdatedAt
 		}).ToList();

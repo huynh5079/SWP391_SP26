@@ -1,4 +1,6 @@
 using System;
+using DataAccess.Entities;
+using DataAccess.Enum;
 
 namespace BusinessLogic.DTOs.Role.Organizer;
 
@@ -17,7 +19,7 @@ public class EventWaitlistDto
     public DateTime? JoinedAt { get; set; }
     public bool? IsNotified { get; set; }
 
-    public string Status { get; set; } = ""; // enum as string for UI
+    public EventWaitlistStatusEnum Status { get; set; } 
     public DateTime? OfferedAt { get; set; }
     public DateTime? RespondedAt { get; set; }
 
@@ -33,7 +35,7 @@ public class EventWaitlistListItemDto
     public string StudentId { get; set; } = "";
     public string? StudentName { get; set; }
     public int? Position { get; set; }
-    public string Status { get; set; } = "";
+    public EventWaitlistStatusEnum Status { get; set; }
     public DateTime? JoinedAt { get; set; }
 }
 

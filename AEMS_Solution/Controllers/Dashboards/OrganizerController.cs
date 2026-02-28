@@ -4,6 +4,7 @@ using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
 using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -46,7 +47,14 @@ using Microsoft.EntityFrameworkCore;
 				        //return
 					//case "update":
                     case "myevents":
-                        return await MyEvents(search, status, semesterId, page, pageSize);
+					EventStatusEnum? parsedStatus = null;
+
+					if (!string.IsNullOrWhiteSpace(status) &&
+						Enum.TryParse<EventStatusEnum>(status, true, out var tmp))
+					{
+						parsedStatus = tmp;
+					}
+					return await MyEvents(search, parsedStatus, semesterId, page, pageSize);
 					
 						
                     default:
@@ -118,7 +126,7 @@ using Microsoft.EntityFrameworkCore;
 			{
 				SetError(ex.Message);
 			}
-			catch (BusinessLogic.Service.ValidationDataforEvent.EventValidator.BusinessValidationException ex)
+			catch (EventValidator.BusinessValidationException ex)
 			{
 				SetError(ex.Message);
 			}
@@ -231,7 +239,7 @@ using Microsoft.EntityFrameworkCore;
                 await LoadDropdowns(vm);
                 return View("~/Views/Event/CreateEvent.cshtml", vm);
             }
-            catch (BusinessLogic.Service.ValidationDataforEvent.EventValidator.BusinessValidationException ex)
+            catch (EventValidator.BusinessValidationException ex)
             {
                 // Validation from validator -> show on page
                 ModelState.AddModelError("", ex.Message);
@@ -298,7 +306,7 @@ using Microsoft.EntityFrameworkCore;
 		}
         // POST detail handler removed — use Manage POST if needed
 		[HttpGet]
-		public async Task<IActionResult> MyEvents(string? search, string? status, string? semesterId, int page = 1, int pageSize = 10)
+		public async Task<IActionResult> MyEvents(string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 		{
 			var userId = CurrentUserId;
 			if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
@@ -311,7 +319,7 @@ using Microsoft.EntityFrameworkCore;
 				var now = DateTimeHelper.GetVietnamTime();
 				foreach (var e in paged.Items)
 				{
-					string displayStatus = e.Status ?? "";
+					string displayStatus = e.Status.ToString();
 					if (string.Equals(displayStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
 						displayStatus = "Cancelled";
 					else if (string.Equals(displayStatus, "Pending", StringComparison.OrdinalIgnoreCase))
@@ -336,7 +344,7 @@ using Microsoft.EntityFrameworkCore;
 						StartTime = e.StartTime,
 						EndTime = e.EndTime,
 						MaxCapacity = e.MaxCapacity,
-						Status = displayStatus,
+						Status = e.Status,
 						RegisteredCount = e.RegisteredCount,
 						CheckedInCount = e.CheckedInCount,
 						WaitlistCount = e.WaitlistCount,
@@ -349,21 +357,22 @@ using Microsoft.EntityFrameworkCore;
 				vm.Page = paged.Page;
 				vm.PageSize = paged.PageSize;
 				vm.TotalItems = paged.Total;
-				vm.Search = search;
-				vm.Status = status;
-				vm.SemesterId = semesterId;
+                vm.Search = search;
+                // Ensure viewmodel always has a concrete Status value to avoid Nullable exception
+                vm.Status = status ?? DataAccess.Enum.EventStatusEnum.Draft;
+                vm.SemesterId = semesterId;
 
 				return View("~/Views/Event/MyEvent.cshtml", vm);
 			}
 			catch (InvalidOperationException ex)
 			{
 				SetError($"Lỗi: {ex.Message}");
-				return View("MyEvent", new MyEventsViewModel());
+				return View("~/Views/Event/MyEvent.cshtml", new MyEventsViewModel());
 			}
 			catch (Exception ex)
 			{
 				SetError("Đã xảy ra lỗi khi tải danh sách. Vui lòng thử lại hoặc liên hệ quản trị viên.");
-				return View("MyEvent", new MyEventsViewModel());
+				return View("~/Views/Event/MyEvent.cshtml", new MyEventsViewModel());
 			}
 		}
 		
@@ -392,7 +401,7 @@ using Microsoft.EntityFrameworkCore;
 						EventId = x.Id,
 						Title = x.Title,
 						StartTime = x.StartTime,
-						Status = x.Status
+						Status = x.Status!.Value,
 					})
 					.ToList();
 

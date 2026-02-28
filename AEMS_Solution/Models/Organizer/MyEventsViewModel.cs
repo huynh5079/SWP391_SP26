@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Models.Organizer
 {
@@ -11,7 +12,7 @@ namespace AEMS_Solution.Models.Organizer
         public int PageSize { get; set; } = 10;
         public int TotalItems { get; set; }
         public string? Search { get; set; }
-        public string? Status { get; set; }
+        public EventStatusEnum Status { get; set; } //???????????????????????????????
         public string? SemesterId { get; set; }
 
 

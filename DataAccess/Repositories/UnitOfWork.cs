@@ -25,7 +25,7 @@ namespace DataAccess.Repositories
         public IGenericRepository<Department> Departments { get; }
 
         public IGenericRepository<EventWaitlist> EventWaitlist{get;}
-
+		public IGenericRepository<ApprovalLog> EventApprovalLogs { get; }
 		public UnitOfWork(AEMSContext ctx, IUserRepository users)
         {
             _ctx = ctx;

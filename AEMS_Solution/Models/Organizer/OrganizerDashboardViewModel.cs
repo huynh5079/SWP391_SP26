@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Models.Organizer
 {
@@ -17,7 +18,7 @@ namespace AEMS_Solution.Models.Organizer
 
 		// ===== Filters (optional) =====
 		public string? SemesterId { get; set; }
-		public string? StatusFilter { get; set; }          // Draft / Published / Ended...
+		public string? StatusFilter { get; set; }          // Draft / Published / Ended...???????????????
 		public string? Search { get; set; }                // search theo title
 		public DateTime? FromDate { get; set; }
 		public DateTime? ToDate { get; set; }
@@ -90,7 +91,7 @@ namespace AEMS_Solution.Models.Organizer
 		public DateTime EndTime { get; set; }
 		public int MaxCapacity { get; set; }
 
-		public string Status { get; set; } = "Draft";   // Draft/Published/...
+		public EventStatusEnum Status { get; set; } // Draft/Published/...
 
 		// Aggregations for UI
 		public int RegisteredCount { get; set; }        // Ticket count
