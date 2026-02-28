@@ -17,11 +17,10 @@ namespace BusinessLogic.Service.Approval
 		private readonly IApproverCommandService _approvercommandservice;
 		private readonly IApproverQueryService _approverqueryservice;
 		private readonly IUnitOfWork _uow;
-		public ApproverService(IUnitOfWork uow, IApproverCommandService approverCommandService, IApproverQueryService approverQueryService)
+		public ApproverService(IUnitOfWork uow)
 		{
 			_uow = uow;
-			_approvercommandservice = approverCommandService;
-			_approverqueryservice = approverQueryService;
+			
 		}
 		public async Task<List<EventItemDto>> GetPendingEventsAsync(string? search, string? status, int page = 1, int pageSize = 10)
 		{
