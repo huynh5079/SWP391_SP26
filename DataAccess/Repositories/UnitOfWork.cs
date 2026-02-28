@@ -42,6 +42,7 @@ namespace DataAccess.Repositories
 			Semesters = new GenericRepository<Semester>(_ctx);
 			Departments = new GenericRepository<Department>(_ctx);
             EventWaitlist = new GenericRepository<EventWaitlist>(_ctx);
+            EventApprovalLogs = new GenericRepository<ApprovalLog>(_ctx);
             //
 		}
 
