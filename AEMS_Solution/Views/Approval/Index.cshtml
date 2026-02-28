@@ -25,6 +25,7 @@
                 <th>Time</th>
                 <th>Status</th>
                 <th>Action</th>
+                <th>Detail Event<th/>
             </tr>
         </thead>
         <tbody>
@@ -46,8 +47,11 @@
                         <span class="badge bg-warning text-dark">@e.Status</span>
                     </td>
                     <td>
-                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">View</a>
+                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">Approve</a>
+                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">Reject</a>
+                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">Request Change</a>
                     </td>
+                    <td><a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">View</a><td/>
                 </tr>
             }
         </tbody>
