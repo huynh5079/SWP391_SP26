@@ -16,7 +16,7 @@ using Microsoft.EntityFrameworkCore;
 
 
 
-[Authorize(Roles = "Organizer")]
+[Authorize(Roles = "Organizer")] 
 	public class OrganizerController : BaseController
 	{
 		private readonly IOrganizerService _organizerService;
