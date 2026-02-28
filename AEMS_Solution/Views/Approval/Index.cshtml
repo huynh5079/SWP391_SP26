@@ -1,0 +1,55 @@
+@model AEMS_Solution.Models.Approver.ApproverDashboardViewModel
+@{
+    ViewData["Title"] = "Approval - Pending Events";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">📋 Pending Approvals</h2>
+
+    <form class="row g-2 mb-3" method="get" asp-controller="Approver" asp-action="Index">
+        <div class="col-auto">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary">Filter</button>
+        </div>
+    </form>
+
+    <table class="table table-bordered table-hover shadow">
+        <thead class="table-dark">
+            <tr>
+                <th>Thumbnail</th>
+                <th>Title</th>
+                <th>Location</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in Model.Events)
+            {
+                <tr>
+                    <td style="width:120px">
+                        @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
+                        {
+                            <img src="@e.ThumbnailUrl" class="img-fluid rounded" />
+                        }
+                    </td>
+                    <td><strong>@e.Title</strong></td>
+                    <td>@e.Location</td>
+                    <td>
+                        @e.StartTime.ToString("dd/MM/yyyy HH:mm")<br />→<br />@e.EndTime.ToString("dd/MM/yyyy HH:mm")
+                    </td>
+                    <td>
+                        <span class="badge bg-warning text-dark">@e.Status</span>
+                    </td>
+                    <td>
+                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

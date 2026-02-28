@@ -46,7 +46,7 @@ public partial class Event : BaseEntity
 
     public EventTypeEnum? Type { get; set; }
 
-    public EventStatusEnum? Status { get; set; }
+    public EventStatusEnum Status { get; set; }
 
     //public DateTime? CreatedAt { get; set; }
 

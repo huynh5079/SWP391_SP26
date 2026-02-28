@@ -1,10 +1,10 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@model List<BusinessLogic.DTOs.Role.Organizer.EventWaitlistDto>
+﻿@using AEMS_Solution.Models.Organizer
+@model AEMS_Solution.Models.Event.EventWaitlistViewModel
+
 @{
     ViewData["Title"] = "Event Waitlist";
-    var eventId = ViewData["EventId"] as string ?? "";
+    Layout = "_Organizerlayout";
+    var eventId = Model.EventId;
 }
 
 <h2>Event Waitlist</h2>
@@ -22,6 +22,7 @@
 </div>
 
 <div style="margin-top:20px;">
+	@using DataAccess.Enum
     <form asp-action="OfferNext" asp-controller="EventWaitlist" method="post" style="display:inline-block;">
         @Html.AntiForgeryToken()
         <input type="hidden" name="eventId" value="@eventId" />
@@ -44,44 +45,46 @@
         </tr>
     </thead>
     <tbody>
-    @foreach (var item in Model)
-    {
-        <tr>
-            <td>@item.Position</td>
-            <td>@item.StudentName</td>
-            <td>@item.StudentCode</td>
-            <td>@item.StudentEmail</td>
-            <td>@(item.JoinedAt?.ToString("g"))</td>
-            <td>@item.Status</td>
-            <td>@(item.OfferedAt?.ToString("g"))</td>
-            <td>@(item.RespondedAt?.ToString("g"))</td>
-            <td>
-                <form asp-action="Remove" asp-controller="EventWaitlist" method="post" style="display:inline-block;">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="EventId" value="@item.EventId" />
-                    <input type="hidden" name="StudentId" value="@item.StudentId" />
-                    <button type="submit">Remove</button>
-                </form>
-
-                @if (item.Status == "Offered")
-                {
-                    <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:8px;">
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td>@item.Position</td>
+                <td>@item.StudentName</td>
+                <td>@item.StudentCode</td>
+                <td>@item.StudentEmail</td>
+                <td>@(item.JoinedAt?.ToString("g"))</td>
+                <td>@item.Status</td>
+                <td>@(item.OfferedAt?.ToString("g"))</td>
+                <td>@(item.RespondedAt?.ToString("g"))</td>
+                <td>
+                    <form asp-action="Remove" asp-controller="EventWaitlist" method="post" style="display:inline-block;">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="EventId" value="@item.EventId" />
                         <input type="hidden" name="StudentId" value="@item.StudentId" />
-                        <button name="Accept" value="true" type="submit">Accept</button>
+                        <button type="submit">Remove</button>
                     </form>
 
-                    <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:4px;">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="EventId" value="@item.EventId" />
-                        <input type="hidden" name="StudentId" value="@item.StudentId" />
-                        <button name="Accept" value="false" type="submit">Decline</button>
-                    </form>
-                }
-            </td>
-        </tr>
-    }
+                    @if (item.Status == EventWaitlistStatusEnum.Offered)
+                    {
+                        <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:8px;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="EventId" value="@item.EventId" />
+                            <input type="hidden" name="StudentId" value="@item.StudentId" />
+                            <input type="hidden" name="Accept" value="true" />
+                            <button type="submit">Accept</button>
+                        </form>
+
+                        <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:4px;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="EventId" value="@item.EventId" />
+                            <input type="hidden" name="StudentId" value="@item.StudentId" />
+                            <input type="hidden" name="Accept" value="false" />
+                            <button type="submit">Decline</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
     </tbody>
-</table>
 
+</table>

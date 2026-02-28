@@ -28,7 +28,8 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<Semester> Semesters { get; }
 		IGenericRepository<Department> Departments { get; }
         IGenericRepository<EventWaitlist> EventWaitlist { get; }
-		//
+		//Update for ApprovalService
+        IGenericRepository<ApprovalLog> EventApprovalLogs { get; }
 
 	}
 

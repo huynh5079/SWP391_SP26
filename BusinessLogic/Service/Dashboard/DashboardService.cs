@@ -36,7 +36,7 @@ public class DashboardService : IDashboardService
             Id = e.Id,
             Title = e.Title,
             StartTime = e.StartTime,
-            Status = e.Status.ToString()
+            Status = e.Status
         }).ToList();
 
         return new OrganizerDto

@@ -12,7 +12,7 @@ public partial class Location : BaseEntity
 
     public int Capacity { get; set; }
 
-    public LocationStatusEnum? Status { get; set; } 
+    public LocationStatusEnum Status { get; set; } 
 
     public LocationTypeEnum? Type { get; set; }
 

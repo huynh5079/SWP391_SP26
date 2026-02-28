@@ -8,7 +8,7 @@ using BusinessLogic.Service.Event;
 
 namespace BusinessLogic.Service.Organizer
 {
-	public interface IOrganizerService : IDashboardService,IEventService,IDropdownService
+	public interface IOrganizerService : IDashboardService,IEventService,IDropdownService,IEventWaitlistService
 	{
 	}
 }
