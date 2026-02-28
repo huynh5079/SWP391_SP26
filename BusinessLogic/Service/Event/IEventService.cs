@@ -1,4 +1,5 @@
 using BusinessLogic.DTOs.Role.Organizer;
+using DataAccess.Enum;
 
 namespace BusinessLogic.Service.Event
 {
@@ -17,6 +18,6 @@ namespace BusinessLogic.Service.Event
         Task<List<EventListDto>> GetMyEventsAsync(string userId);
 
         // Paged + filtered variant used by UI
-        Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, string? status, string? semesterId, int page = 1, int pageSize = 10);
+        Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
     }
 }

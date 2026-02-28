@@ -41,10 +41,12 @@ public class EventDetailsDto
 
 public class EventItemDto
 {
-    public string Id { get; set; } = "";
+	public string? OrganizerId { get; set; }
+	public string? OrganizerName { get; set; }
+	public string Id { get; set; } = "";
     public string Title { get; set; } = "";
     public DateTime StartTime { get; set; }
-    public string Status { get; set; } = "";
+    public EventStatusEnum? Status { get; set; }
 
     // Optional UI fields
     public DateTime? EndTime { get; set; }
@@ -89,7 +91,7 @@ public class EventListDto
 
     public int MaxCapacity { get; set; }
 
-    public string Status { get; set; } = "Draft";
+    public EventStatusEnum Status { get; set; }
     public string? Type { get; set; }
     public string? Mode { get; set; }
 
@@ -149,7 +151,7 @@ public class EventListItemDto
     public string EventId { get; set; } = "";
     public string Title { get; set; } = "";
     public DateTime StartTime { get; set; }
-    public string Status { get; set; } = "";
+    public EventStatusEnum Status { get; set; } 
 }
 public class EventWaitListDTO
     {

@@ -12,7 +12,7 @@ public partial class ApprovalLog : BaseEntity
 
     public string? ApproverId { get; set; }
 
-    public ApprovalActionEnum? Action { get; set; }
+    public ApprovalActionEnum Action { get; set; }
 
     public string? Comment { get; set; }
 

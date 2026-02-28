@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Models.Event
 {
@@ -36,7 +37,7 @@ namespace AEMS_Solution.Models.Event
 
 		// Type / Status đang lưu dạng string trong DB (theo ERD)
 		public string? Type { get; set; }      // EventTypeEnum.ToString()
-		public string Status { get; set; } = "Draft"; // EventStatusEnum.ToString()
+		public EventStatusEnum Status { get; set; }  // EventStatusEnum
 
 		public bool IsDepositRequired { get; set; }
 		public decimal DepositAmount { get; set; }
@@ -168,7 +169,7 @@ namespace AEMS_Solution.Models.Event
 		public string StudentId { get; set; } = "";
 		public StudentMiniVm? Student { get; set; }
 
-		public string Status { get; set; } = ""; // nếu Ticket.Status là string
+		public TicketStatusEnum Status { get; set; }  // nếu Ticket.Status là string
 		public DateTime RegisteredAt { get; set; }
 		public DateTime? CheckInTime { get; set; }
 	}
@@ -278,7 +279,7 @@ namespace AEMS_Solution.Models.Event
 		public string? Description { get; set; }
 		public decimal Amount { get; set; }
 		public decimal PlannedAmount { get; set; } // nếu bạn dùng field này
-		public string? Status { get; set; }
+	//	public string? Status { get; set; }
 		public DateTime CreatedAt { get; set; }
 	}
 

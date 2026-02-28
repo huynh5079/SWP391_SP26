@@ -19,7 +19,7 @@ public partial class EventWaitlist : BaseEntity
     public bool? IsNotified { get; set; }
 
     // Current status of the waitlist entry
-    public EventWaitlistStatusEnum? Status { get; set; }
+    public EventWaitlistStatusEnum Status { get; set; }
 
     // When an offer was sent to the student (if any)
     public DateTime? OfferedAt { get; set; }
