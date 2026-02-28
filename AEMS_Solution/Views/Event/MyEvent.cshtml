@@ -1,5 +1,5 @@
 ﻿@model AEMS_Solution.Models.Organizer.MyEventsViewModel
-
+@using DataAccess.Enum
 @{
     ViewData["Title"] = "My Events";
     Layout = "_Organizerlayout";
@@ -20,7 +20,7 @@
                 <option value="">All Status</option>
                 @foreach (var s in statuses)
                 {
-                    <option value="@s" selected="@(Model.Status == s ? "selected" : null)">@s</option>
+                    <option value="@s" selected="@((Model.Status.ToString() == s) ? "selected" : null)">@s</option>
                 }
             </select>
         </div>
@@ -107,7 +107,7 @@
                         <a class="btn btn-sm btn-secondary ms-1" asp-controller="EventWaitlist"  asp-action="Index" asp-route-eventId="@e.EventId"> Waitlist </a>
                         <a asp-action="Edit" asp-route-id="@e.EventId"
                            class="btn btn-sm btn-warning">Edit</a>
-                        @if (e.Status == "Draft" || e.Status == "Pending")
+                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending)
                         {
                             <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
                                 @Html.AntiForgeryToken()

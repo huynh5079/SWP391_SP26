@@ -1,7 +1,8 @@
-﻿using DataAccess.Helper;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using DataAccess.Enum;
+using DataAccess.Helper;
+using Microsoft.EntityFrameworkCore;
 
 namespace DataAccess.Entities;
 
@@ -107,6 +108,9 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.EventId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__ApprovalL__Event__0A9D95DB");
+			entity.Property(x => x.Action)
+				.HasMaxLength(50)
+				.HasConversion<string>();
 		});
 
 		modelBuilder.Entity<BudgetProposal>(entity =>
@@ -258,6 +262,10 @@ public partial class AEMSContext : DbContext
 			entity.HasOne(d => d.Topic).WithMany(p => p.Events)
 				.HasForeignKey(d => d.TopicId)
 				.HasConstraintName("FK_Event_Topic");
+			entity.Property(x => x.Status)
+			    .HasMaxLength(50)
+	            .HasConversion<string>()
+				.HasDefaultValue(EventStatusEnum.Draft);
 		});
 
 		modelBuilder.Entity<EventAgenda>(entity =>
@@ -348,6 +356,10 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.StudentId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__EventWait__Stude__114A936A");
+			entity.Property(x => x.Status)
+			    .HasMaxLength(50)
+	            .HasConversion<string>()
+				.HasDefaultValue(EventWaitlistStatusEnum.Waiting);
 		});
 
 		modelBuilder.Entity<ExpenseReceipt>(entity =>
@@ -437,6 +449,11 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)
 				.HasConversion<string>();
+			entity.Property(x => x.Status)
+			    .HasMaxLength(50)
+	            .HasConversion<string>()
+				.HasDefaultValue(SemesterStatusEnum.Upcoming);
+			
 		});
 
 		modelBuilder.Entity<StaffProfile>(entity =>
@@ -558,6 +575,11 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.StudentId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__Ticket__StudentI__0D7A0286");
+			entity.Property(x => x.Status)
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(TicketStatusEnum.Registered);
+
 		});
 
 		modelBuilder.Entity<User>(entity =>
@@ -582,8 +604,21 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.RoleId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__User__RoleId__01142BA1");
+			entity.Property(x => x.Status)
+			    .HasMaxLength(50)
+	            .HasConversion<string>()
+				.HasDefaultValue(UserStatusEnum.Pending);
 		});
 
+		modelBuilder.Entity<Location>(entity =>
+		{
+			entity.ToTable("Locations");
+
+			entity.Property(x => x.Status)
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(LocationStatusEnum.Available);
+		});
 		OnModelCreatingPartial(modelBuilder);
 	}
 

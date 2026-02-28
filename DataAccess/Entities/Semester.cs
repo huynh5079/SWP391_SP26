@@ -16,7 +16,7 @@ public partial class Semester: BaseEntity
 
     public DateTime? EndDate { get; set; }
 
-    public SemesterStatusEnum? Status { get; set; }
+    public SemesterStatusEnum Status { get; set; }
 
     public virtual ICollection<Event> Events { get; set; } = new List<Event>();
 }
