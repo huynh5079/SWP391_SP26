@@ -28,7 +28,7 @@ namespace BusinessLogic.DTOs.Role
 		public DateTime EndTime { get; set; }
 		public int MaxCapacity { get; set; }
 
-		public string Status { get; set; } = ""; // Pending/Approved/Rejected/Published...
+		public EventStatusEnum Status { get; set; } // Pending/Approved/Rejected/Published...
 
 		// Organizer info (nếu cần)
 		public string OrganizerId { get; set; } = "";

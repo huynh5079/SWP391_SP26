@@ -10,7 +10,7 @@ using static System.Collections.Specialized.BitVector32;
 
 namespace BusinessLogic.Service.ValiDate.ValiDateforApproval
 {
-	internal class ApprovalValidator : IApprovalValidator
+	/*internal class ApprovalValidator : IApprovalValidator
 	{
 		private readonly DataAccess.Repositories.Abstraction.IUnitOfWork _uow;
 		public ApprovalValidator(IUnitOfWork uow) {
@@ -29,5 +29,5 @@ namespace BusinessLogic.Service.ValiDate.ValiDateforApproval
 			if (action == ApprovalActionEnum.Reject && string.IsNullOrWhiteSpace(comment))
 				throw new ValidationException("Reject must include comment");
 		}
-	}
+	}*/
 }

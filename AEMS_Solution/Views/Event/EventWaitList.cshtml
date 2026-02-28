@@ -22,6 +22,7 @@
 </div>
 
 <div style="margin-top:20px;">
+	@using DataAccess.Enum
     <form asp-action="OfferNext" asp-controller="EventWaitlist" method="post" style="display:inline-block;">
         @Html.AntiForgeryToken()
         <input type="hidden" name="eventId" value="@eventId" />
@@ -63,7 +64,7 @@
                         <button type="submit">Remove</button>
                     </form>
 
-                    @if (item.Status == "Offered")
+                    @if (item.Status == EventWaitlistStatusEnum.Offered)
                     {
                         <form asp-action="Respond" asp-controller="EventWaitlist" method="post" style="display:inline-block;margin-left:8px;">
                             @Html.AntiForgeryToken()
