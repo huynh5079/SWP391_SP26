@@ -12,10 +12,11 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
 using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
-using BusinessLogic.Service.ValidationDataforEvent;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Dashboard;
+using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
@@ -48,7 +49,10 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IEventWaitlistService, EventWaitlistService>();
 // keep facade for backward compatibility
 builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.OrganizerService>();
-builder.Services.AddScoped<IEventValidator, BusinessLogic.Service.ValidationDataforEvent.EventValidator>();
+builder.Services.AddScoped<IEventValidator, EventValidator>();
+// Approver services (query + command)
+builder.Services.AddScoped<IApproverQueryService, ApproverService>();
+builder.Services.AddScoped<IApproverCommandService, ApproverService>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));

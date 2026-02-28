@@ -43,7 +43,7 @@
                     
 
                     <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")))
+                        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")) || User.IsInRole("Approval"))
                         {
                                     <li class="nav-item dropdown">
                                         <a class="nav-link dropdown-toggle text-dark" href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -68,6 +68,10 @@
                                             else if (User.IsInRole("Student"))
                                             {
                                                         <span>Student</span>
+                                            }
+                                            else if (User.IsInRole("Approval"))
+                                            {
+                                                <span>Approval</span>
                                             }
                                             else
                                             {

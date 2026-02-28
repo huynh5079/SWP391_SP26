@@ -1,0 +1,63 @@
+@model AEMS_Solution.Models.Approver.ApproverEventDetailVm
+@{
+    ViewData["Title"] = "Approval - Event Detail";
+    Layout = "_Approvallayout";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-3">Event Detail</h2>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h4>@Model.Title</h4>
+            <p>@Model.Description</p>
+            <p><strong>Organizer:</strong> @Model.OrganizerName (@Model.OrganizerEmail)</p>
+            <p><strong>Time:</strong> @Model.StartTime.ToString("dd/MM/yyyy HH:mm") → @Model.EndTime.ToString("dd/MM/yyyy HH:mm")</p>
+            <p><strong>Capacity:</strong> @Model.MaxCapacity</p>
+            <p><strong>Status:</strong> <span class="badge bg-info">@Model.Status</span></p>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <form asp-action="Approve" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.EventId" />
+            <button class="btn btn-success">Approve</button>
+        </form>
+
+        <form asp-action="Reject" method="post" class="d-inline ms-2">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.EventId" />
+            <button class="btn btn-danger">Reject</button>
+        </form>
+
+        <form asp-action="RequestChange" method="post" class="d-inline ms-2">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.EventId" />
+            <button class="btn btn-warning">Request Change</button>
+        </form>
+    </div>
+
+    <h5>Approval Logs</h5>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Approver</th>
+                <th>Action</th>
+                <th>Comment</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var l in Model.ApprovalLogs)
+            {
+                <tr>
+                    <td>@l.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@l.ApproverId</td>
+                    <td>@l.Action</td>
+                    <td>@l.Comment</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,5 +1,5 @@
 ﻿@model AEMS_Solution.Models.Organizer.OrganizerDashboardViewModel
-
+@using DataAccess.Enum
 @{
     ViewData["Title"] = "Organizer Dashboard";
     Layout = "_OrganizerLayout";
@@ -175,13 +175,13 @@
                                                 @{
                                                     string badgeClass = evt.Status switch
                                                     {
-                                                        "Draft" => "bg-secondary",
-                                                        "Pending" => "bg-warning",
-                                                        "Approved" => "bg-success",
-                                                        "Happening" => "bg-info",
-                                                        "Completed" => "bg-primary",
-                                                        "Rejected" => "bg-danger",
-                                                        "Cancelled" => "bg-dark",
+                                                        EventStatusEnum.Draft => "bg-secondary",
+                                                        EventStatusEnum.Pending => "bg - warning",
+                                                        EventStatusEnum.Approved => "bg-success",
+                                                        EventStatusEnum.Happening => "bg-info",
+                                                        EventStatusEnum.Completed => "bg-primary",
+                                                        EventStatusEnum.Rejected => "bg-danger",
+                                                        EventStatusEnum.Cancelled => "bg-dark",
                                                         _ => "bg-secondary"
                                                     };
                                                 }

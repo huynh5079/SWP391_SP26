@@ -1,6 +1,6 @@
 ﻿using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.ValidationDataforEvent;
+using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
@@ -17,15 +17,16 @@ namespace BusinessLogic.Service.Organizer
         private readonly IEventService _eventService;
         private readonly IDropdownService _dropdownService;
         private readonly IDashboardService _dashboardService;
-
-        public OrganizerService(IEventService eventService, IDropdownService dropdownService, IDashboardService dashboardService)
+		private readonly IEventWaitlistService _eventwaitlist;
+		public OrganizerService(IEventService eventService, IDropdownService dropdownService, IDashboardService dashboardService, IEventWaitlistService eventwaitlist)
         {
             _eventService = eventService;
             _dropdownService = dropdownService;
             _dashboardService = dashboardService;
+			_eventwaitlist = eventwaitlist;
         }
 
-		public async Task<BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, string? status, string? semesterId, int page = 1, int pageSize = 10)
+		public async Task<BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 		{
 			return await _eventService.GetMyEventsAsync(userId, search, status, semesterId, page, pageSize);
 		}
@@ -61,6 +62,17 @@ namespace BusinessLogic.Service.Organizer
 
 		public Task<CreateEventDropdownsDto> GetCreateEventDropdownsAsync() => _dropdownService.GetCreateEventDropdownsAsync();
 
-		
+
+        // ======= EVENT WaitList =======
+
+		public Task AddToWaitlistAsync(AddToWaitlistRequestDto dto)=>_eventwaitlist.AddToWaitlistAsync(dto);
+
+		public Task RemoveFromWaitlistAsync(string studentId, string eventId)=>_eventwaitlist.RemoveFromWaitlistAsync(studentId, eventId);
+
+		public Task<List<EventWaitlistDto>> GetWaitlistByEventAsync(string eventId)=>_eventwaitlist.GetWaitlistByEventAsync(eventId);
+
+		public Task OfferNextAsync(string eventId)=>_eventwaitlist.OfferNextAsync(eventId);
+		public Task RespondToOfferAsync(RespondOfferRequestDto dto)=>_eventwaitlist.RespondToOfferAsync(dto);
+
 	}
 }

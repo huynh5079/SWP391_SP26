@@ -26,7 +26,8 @@ namespace DataAccess.Enum
 	{
 		Approve,       // Đồng ý
 		Reject,        // Từ chối
-		RequestChange  // Yêu cầu chỉnh sửa lại
+		RequestChange,  // Yêu cầu chỉnh sửa lại
+		
 	}
 
 	public enum ChatSessionStatus
@@ -89,7 +90,8 @@ namespace DataAccess.Enum
 	{
 		Upcoming, // Sắp diễn ra
 		Active,   // Đang diễn ra (Học kỳ hiện tại)
-		Finished  // Đã kết thúc
+		Finished, // Đã kết thúc
+	
 	}
 
 	public enum TeamRoleEnum
@@ -102,7 +104,8 @@ namespace DataAccess.Enum
 	{
 		Registered, // Đã đăng ký thành công
 		CheckedIn,  // Đã điểm danh (tham gia sự kiện)
-		Cancelled   // Đã hủy vé
+		Cancelled,   // Đã hủy vé
+		
 	}
 
 	public enum UserStatusEnum
