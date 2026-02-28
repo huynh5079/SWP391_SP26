@@ -10,7 +10,7 @@ namespace DataAccess.Enum
     {
         Admin,      // Administrator
         Organizer,  // Event Organizer
-        Approver,   // Proposal Approver
+        Approval,   // Proposal Approver
         Student     // Student/User
     }
 }
