@@ -58,6 +58,29 @@
                         }
                     </div>
                 </div>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5>Documents</h5>
+            @if (Model.Documents == null || Model.Documents.Count == 0)
+            {
+                <p class="text-muted">No documents.</p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var d in Model.Documents)
+                    {
+                        <li class="list-group-item">
+                            <strong>@d.FileName</strong>
+                            <div class="text-muted">@d.Type</div>
+                            <div><a href="@d.Url" target="_blank">Open</a></div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
             </div>
         </div>
     </div>
