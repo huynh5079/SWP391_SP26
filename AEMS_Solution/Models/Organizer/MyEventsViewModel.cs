@@ -13,7 +13,8 @@ namespace AEMS_Solution.Models.Organizer
         public int TotalItems { get; set; }
         public string? Search { get; set; }
         public EventStatusEnum Status { get; set; } //???????????????????????????????
-        public string? SemesterId { get; set; }
+        public ApprovalActionEnum StatusActionApprover { get; set; }
+		public string? SemesterId { get; set; }
 
 
         public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling((double)TotalItems / PageSize);

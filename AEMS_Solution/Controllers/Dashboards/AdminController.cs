@@ -29,7 +29,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 var allUsers = await _uow.Users.GetAllAsync();
                 var totalUsers = allUsers.Count();
                 var totalStudents = allUsers.Count(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Student);
-                var totalStaff = allUsers.Count(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approval));
+                var totalStaff = allUsers.Count(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver));
                 
                 // Get Admin Count too?
                 // Distribution

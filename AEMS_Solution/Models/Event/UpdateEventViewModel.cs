@@ -53,6 +53,8 @@ namespace AEMS_Solution.Models.Event
 
         // Danh sách Agenda (Lịch trình) hiện có của Event
         public List<UpdateAgendaItemVm> Agendas { get; set; } = new();
+        // Documents
+        public List<UpdateDocumentVm> Documents { get; set; } = new();
     }
 
     public class UpdateAgendaItemVm
@@ -66,6 +68,14 @@ namespace AEMS_Solution.Models.Event
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public string? Location { get; set; }
+    }
+
+    public class UpdateDocumentVm
+    {
+        public string? Id { get; set; }
+        public string? FileName { get; set; }
+        public string? Url { get; set; }
+        public string? Type { get; set; }
     }
 
 }
