@@ -1,0 +1,397 @@
+﻿@model AEMS_Solution.Models.Event.UpdateEventViewModel
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Edit Event";
+    Layout = "_OrganizerLayout";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Edit Event - @Model.Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        /* Giữ nguyên Style của bản Create để đồng bộ UI */
+        body {
+            font-family: system-ui, Arial;
+            margin: 24px;
+        }
+
+        .card {
+            max-width: 980px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .col {
+            flex: 1;
+            min-width: 240px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin: 10px 0 6px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .error {
+            color: #b00020;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 18px 0;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .agenda-item {
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 12px;
+            background: #f9fafb;
+        }
+
+        .agenda-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .agenda-title {
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+            .checkbox input {
+                width: auto;
+            }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #e5e7eb;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h2 style="margin:0 0 6px;">Edit Event</h2>
+                <div class="status-badge">Current Status: <strong>@Model.Status</strong></div>
+            </div>
+            <a href="@Url.Action("MyEvents", "Organizer")" class="btn btn-secondary" style="text-decoration: none; font-size: 14px;">← Back to List</a>
+        </div>
+
+        <form asp-controller="Event" asp-action="Edit" method="post" id="editEventForm">
+            @Html.AntiForgeryToken()
+            @* Quan trọng: Hidden field cho EventId và Status *@
+            <input type="hidden" asp-for="EventId" />
+            <input type="hidden" asp-for="Status" />
+
+            @Html.ValidationSummary(excludePropertyErrors: false, message: "", htmlAttributes: new { @class = "text-danger" })
+
+            <label asp-for="Title">Title *</label>
+            <input asp-for="Title" />
+            <span asp-validation-for="Title" class="error"></span>
+
+            <label asp-for="Description">Description</label>
+            <textarea asp-for="Description"></textarea>
+
+            <div class="row">
+                <div class="col">
+                    <label asp-for="SemesterId">Semester *</label>
+                    <select asp-for="SemesterId" asp-items="Model.Semesters">
+                        <option value="">-- Select Semester --</option>
+                    </select>
+                    <span asp-validation-for="SemesterId" class="error"></span>
+                </div>
+
+                <div class="col">
+                    <label asp-for="DepartmentId">Department</label>
+                    <select asp-for="DepartmentId" asp-items="Model.Departments">
+                        <option value="">-- Select Department --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label asp-for="LocationId">Location *</label>
+                    <select asp-for="LocationId" asp-items="Model.Locations">
+                        <option value="">-- Select Location --</option>
+                    </select>
+                    <span asp-validation-for="LocationId" class="error"></span>
+                </div>
+
+                <div class="col">
+                    <label asp-for="TopicId">Topic</label>
+                    <select asp-for="TopicId" asp-items="Model.Topics">
+                        <option value="">-- Select Topic --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label asp-for="StartTime">Start Time *</label>
+                    <input asp-for="StartTime" type="datetime-local" />
+                    <span asp-validation-for="StartTime" class="error"></span>
+                </div>
+                <div class="col">
+                    <label asp-for="EndTime">End Time *</label>
+                    <input asp-for="EndTime" type="datetime-local" />
+                    <span asp-validation-for="EndTime" class="error"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label asp-for="MaxCapacity">Max Capacity *</label>
+                    <input asp-for="MaxCapacity" type="number" min="1" />
+                </div>
+                <div class="col">
+                    <label asp-for="ThumbnailUrl">Thumbnail Url</label>
+                    <input asp-for="ThumbnailUrl" placeholder="https://..." />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label asp-for="Type">Event Type</label>
+                    <select asp-for="Type" asp-items="Html.GetEnumSelectList<EventTypeEnum>()"></select>
+                </div>
+                <div class="col">
+                    @* Không cho phép đổi Status tùy tiện ở đây nếu bạn quản lý bằng Workflow riêng *@
+                    <label>Status Information</label>
+                    <input value="@Model.Status" disabled style="background: #f3f4f6;" />
+                </div>
+            </div>
+
+            <div class="checkbox">
+                <input asp-for="IsDepositRequired" id="IsDepositRequired" />
+                <label for="IsDepositRequired" style="margin:0;">Require Deposit</label>
+            </div>
+
+            <div class="row" id="depositRow">
+                <div class="col">
+                    <label asp-for="DepositAmount">Deposit Amount</label>
+                    <input asp-for="DepositAmount" type="number" min="0" step="0.01" />
+                    <span asp-validation-for="DepositAmount" class="error"></span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row" style="align-items:center; justify-content:space-between;">
+                <h3 style="margin:0;">Event Agendas</h3>
+                <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
+            </div>
+
+            <div id="agendaContainer">
+                @for (int i = 0; i < (Model.Agendas?.Count ?? 0); i++)
+                {
+                    <div class="agenda-item" data-index="@i">
+                        <div class="agenda-head">
+                            <div class="agenda-title">Agenda #@(i + 1)</div>
+                            <button type="button" class="btn btn-danger btnRemoveAgenda">Remove</button>
+                        </div>
+
+                        @* Hidden field cho ID của Agenda cũ *@
+                        <input type="hidden" asp-for="Agendas[i].Id" />
+
+                        <div class="row">
+                            <div class="col">
+                                <label>Session Name</label>
+                                <input asp-for="Agendas[i].SessionName" />
+                            </div>
+                            <div class="col">
+                                <label>Speaker</label>
+                                <input asp-for="Agendas[i].SpeakerName" />
+                            </div>
+                        </div>
+
+                        <label>Description</label>
+                        <textarea asp-for="Agendas[i].Description"></textarea>
+
+                        <div class="row">
+                            <div class="col">
+                                <label>Start</label>
+                                <input asp-for="Agendas[i].StartTime" type="datetime-local" />
+                            </div>
+                            <div class="col">
+                                <label>End</label>
+                                <input asp-for="Agendas[i].EndTime" type="datetime-local" />
+                            </div>
+                        </div>
+
+                        <label>Location (agenda)</label>
+                        <input asp-for="Agendas[i].Location" placeholder="VD: Room 201" />
+                    </div>
+                }
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-weight: bold;">Update Event</button>
+                <a href="@Url.Action("MyEvents")" class="btn btn-secondary" style="text-decoration: none; text-align: center;">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    @* Template cho Agenda mới (giống hệt Create nhưng thêm hidden Id rỗng) *@
+    <template id="agendaTemplate">
+        <div class="agenda-item" data-index="__i__">
+            <div class="agenda-head">
+                <div class="agenda-title">Agenda #__n__</div>
+                <button type="button" class="btn btn-danger btnRemoveAgenda">Remove</button>
+            </div>
+
+            <input type="hidden" name="Agendas[__i__].Id" value="" />
+
+            <div class="row">
+                <div class="col">
+                    <label>Session Name</label>
+                    <input name="Agendas[__i__].SessionName" />
+                </div>
+                <div class="col">
+                    <label>Speaker</label>
+                    <input name="Agendas[__i__].SpeakerName" />
+                </div>
+            </div>
+
+            <label>Description</label>
+            <textarea name="Agendas[__i__].Description"></textarea>
+
+            <div class="row">
+                <div class="col">
+                    <label>Start</label>
+                    <input name="Agendas[__i__].StartTime" type="datetime-local" />
+                </div>
+                <div class="col">
+                    <label>End</label>
+                    <input name="Agendas[__i__].EndTime" type="datetime-local" />
+                </div>
+            </div>
+
+            <label>Location (agenda)</label>
+            <input name="Agendas[__i__].Location" placeholder="VD: Room 201" />
+        </div>
+    </template>
+
+    <script>
+        (function () {
+            const agendaContainer = document.getElementById("agendaContainer");
+            const tpl = document.getElementById("agendaTemplate");
+            const btnAdd = document.getElementById("btnAddAgenda");
+            const isDeposit = document.getElementById("IsDepositRequired");
+            const depositRow = document.getElementById("depositRow");
+
+            function updateDepositUI() {
+                depositRow.style.display = isDeposit.checked ? "flex" : "none";
+            }
+            updateDepositUI();
+            isDeposit.addEventListener("change", updateDepositUI);
+
+            function renumber() {
+                const items = agendaContainer.querySelectorAll(".agenda-item");
+                items.forEach((item, i) => {
+                    item.dataset.index = i;
+                    const title = item.querySelector(".agenda-title");
+                    if (title) title.textContent = `Agenda #${i + 1}`;
+
+                    // Cập nhật tất cả các thuộc tính name để giữ đúng index cho ASP.NET Core Model Binding
+                    item.querySelectorAll("input[name], textarea[name]").forEach(el => {
+                        el.name = el.name.replace(/Agendas\[\d+\]/, `Agendas[${i}]`);
+                    });
+                });
+            }
+
+            function addAgenda() {
+                const i = agendaContainer.querySelectorAll(".agenda-item").length;
+                const html = tpl.innerHTML.replaceAll("__i__", i).replaceAll("__n__", i + 1);
+                const wrapper = document.createElement("div");
+                wrapper.innerHTML = html.trim();
+                agendaContainer.appendChild(wrapper.firstElementChild);
+            }
+
+           btnAdd.addEventListener("click", addAgenda);
+
+            agendaContainer.addEventListener("click", function (e) {
+                const btn = e.target.closest(".btnRemoveAgenda");
+                if (btn) {
+                    btn.closest(".agenda-item").remove();
+                    renumber();
+                }
+            });
+
+            // THÊM DÒNG NÀY: Nếu danh sách từ Model trống, tự động thêm 1 dòng để nhập
+            if (agendaContainer.querySelectorAll(".agenda-item").length === 0) {
+                addAgenda();
+            }
+            });
+        })();
+    </script>
+
+    <partial name="_ValidationScriptsPartial" />
+</body>
+</html>
