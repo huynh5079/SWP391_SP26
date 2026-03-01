@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace AEMS_Solution.Controllers.Features.ActionApproval;
 
-[Authorize(Roles = "Approval")]
+[Authorize(Roles = "Approver")]
 public class ApprovalActionController : BaseController
 {
     private readonly IApproverCommandService _approverCommandService;

@@ -11,7 +11,7 @@ namespace DataAccess.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Seed Roles: Admin, Staff, Student
+            // Seed Roles: Admin, Organizer, Approver, Student
             // Only insert if they don't already exist
             var now = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
             
@@ -24,10 +24,18 @@ namespace DataAccess.Migrations
             ");
 
             migrationBuilder.Sql($@"
-                IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Staff')
+                IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Organizer')
                 BEGIN
                     INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
-                    VALUES (NEWID(), 'Staff', '{now}', '{now}', NULL)
+                    VALUES (NEWID(), 'Organizer', '{now}', '{now}', NULL)
+                END
+            ");
+
+            migrationBuilder.Sql($@"
+                IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Approver')
+                BEGIN
+                    INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
+                    VALUES (NEWID(), 'Approver', '{now}', '{now}', NULL)
                 END
             ");
 
@@ -44,7 +52,7 @@ namespace DataAccess.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             // Remove seeded roles
-            migrationBuilder.Sql("DELETE FROM Role WHERE RoleName IN ('Admin', 'Staff', 'Student')");
+            migrationBuilder.Sql("DELETE FROM Role WHERE RoleName IN ('Admin', 'Organizer', 'Approver', 'Student')");
         }
     }
 }

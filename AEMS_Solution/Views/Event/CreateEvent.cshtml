@@ -249,6 +249,37 @@
             <div class="divider"></div>
 
             <div class="row" style="align-items:center; justify-content:space-between;">
+                <h3 style="margin:0;">Event Documents</h3>
+                <button type="button" class="btn btn-secondary" id="btnAddDocument">+ Add document</button>
+            </div>
+
+            <div id="documentsContainer">
+                @for (int i = 0; i < (Model.Documents?.Count ?? 0); i++)
+                {
+                    <div class="agenda-item" data-index="@i">
+                        <div class="agenda-head">
+                            <div class="agenda-title">Document #@(i + 1)</div>
+                            <button type="button" class="btn btn-danger btnRemoveDocument">Remove</button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col">
+                                <label>File name</label>
+                                <input name="Documents[@i].FileName" value="@Model.Documents[i].FileName" />
+                            </div>
+                            <div class="col">
+                                <label>Type</label>
+                                <input name="Documents[@i].Type" value="@Model.Documents[i].Type" />
+                            </div>
+                        </div>
+
+                        <label>Url</label>
+                        <input name="Documents[@i].Url" value="@Model.Documents[i].Url" />
+                    </div>
+                }
+            </div>
+
+            <div class="row" style="align-items:center; justify-content:space-between;">
                 <h3 style="margin:0;">Event Agendas</h3>
                 <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
             </div>
@@ -293,6 +324,7 @@
                 }
             </div>
 
+
             <div class="actions">
                 <button type="submit" class="btn btn-primary">Create Event</button>
                 <button type="reset" class="btn btn-danger">Reset</button>
@@ -334,6 +366,29 @@
 
             <label>Location (agenda)</label>
             <input name="Agendas[__i__].Location" placeholder="VD: Room 201" />
+        </div>
+    </template>
+
+    <template id="documentTemplate">
+        <div class="agenda-item" data-index="__i__">
+            <div class="agenda-head">
+                <div class="agenda-title">Document #__n__</div>
+                <button type="button" class="btn btn-danger btnRemoveDocument">Remove</button>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label>File name</label>
+                    <input name="Documents[__i__].FileName" />
+                </div>
+                <div class="col">
+                    <label>Type</label>
+                    <input name="Documents[__i__].Type" />
+                </div>
+            </div>
+
+            <label>Url</label>
+            <input name="Documents[__i__].Url" />
         </div>
     </template>
 
@@ -413,6 +468,48 @@
             });
 
             if (agendaContainer.querySelectorAll(".agenda-item").length === 0) addAgenda();
+            
+            // Documents UI
+            const docsContainer = document.getElementById("documentsContainer");
+            const btnAddDoc = document.getElementById("btnAddDocument");
+            const docTpl = document.getElementById("documentTemplate");
+
+            function getNextDocIndex() { return docsContainer.querySelectorAll('.agenda-item').length; }
+            function renumberDocs() {
+                const items = docsContainer.querySelectorAll('.agenda-item');
+                items.forEach((item, i) => {
+                    item.dataset.index = i;
+                    const title = item.querySelector('.agenda-title');
+                    if (title) title.textContent = `Document #${i + 1}`;
+                    item.querySelectorAll("input[name]").forEach(el => {
+                        el.name = el.name.replace(/Documents\[\d+\]/, `Documents[${i}]`);
+                    });
+                });
+            }
+
+            function addDocument() {
+                const i = getNextDocIndex();
+                const html = docTpl.innerHTML.replaceAll('__i__', i).replaceAll('__n__', i+1);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = html.trim();
+                docsContainer.appendChild(wrapper.firstElementChild);
+            }
+
+            function removeDocument(btn) {
+                const item = btn.closest('.agenda-item');
+                if (item) item.remove();
+                renumberDocs();
+            }
+
+            btnAddDoc.addEventListener('click', addDocument);
+            docsContainer.addEventListener('click', function(e) {
+                const btn = e.target.closest('.btnRemoveDocument');
+                if (btn) removeDocument(btn);
+            });
+
+            if (docsContainer.querySelectorAll('.agenda-item').length === 0) {
+                // don't auto-add doc by default
+            }
         })();
     </script>
 

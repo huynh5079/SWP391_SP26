@@ -33,7 +33,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Title = e.Title,
                     StartTime = e.StartTime,
                     EndTime = e.EndTime ?? System.DateTime.MinValue,
-                    Status = e.Status ?? DataAccess.Enum.EventStatusEnum.Pending,
+                    Status = e.Status,
                     ThumbnailUrl = e.ThumbnailUrl,
                     Location = e.Location
                 });
