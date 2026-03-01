@@ -97,7 +97,7 @@ namespace BusinessLogic.Service.User
                 dto.DepartmentName = user.StudentProfile.Department?.Name;
                 dto.CurrentSemester = user.StudentProfile.CurrentSemester;
             }
-            else if ((user.Role.RoleName == RoleEnum.Organizer || user.Role.RoleName == RoleEnum.Approval || user.Role.RoleName == RoleEnum.Admin) && user.StaffProfile != null)
+            else if ((user.Role.RoleName == RoleEnum.Organizer || user.Role.RoleName == RoleEnum.Approver || user.Role.RoleName == RoleEnum.Admin) && user.StaffProfile != null)
             {
                 dto.StaffCode = user.StaffProfile.StaffCode;
                 dto.DepartmentName = user.StaffProfile.Department?.Name;
@@ -171,7 +171,7 @@ namespace BusinessLogic.Service.User
                    if(!string.IsNullOrEmpty(request.CurrentSemester)) user.StudentProfile.CurrentSemester = request.CurrentSemester;
                 }
             }
-            else if (user.Role.RoleName == RoleEnum.Organizer || user.Role.RoleName == RoleEnum.Approval || user.Role.RoleName == RoleEnum.Admin)
+            else if (user.Role.RoleName == RoleEnum.Organizer || user.Role.RoleName == RoleEnum.Approver || user.Role.RoleName == RoleEnum.Admin)
             {
                 if (user.StaffProfile != null)
                 {

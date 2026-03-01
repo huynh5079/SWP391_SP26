@@ -93,7 +93,8 @@ namespace AEMS_Solution.Models.Organizer
 
 		public EventStatusEnum Status { get; set; } // Draft/Published/...
 
-		// Aggregations for UI
+        public ApprovalActionEnum ApprovalActionEnum { get; set; }  // Pending/Approved/Rejected/RequestChange
+																   // Aggregations for UI
 		public int RegisteredCount { get; set; }        // Ticket count
 		public int CheckedInCount { get; set; }         // Ticket checked in
 		public int WaitlistCount { get; set; }          // waitlist count

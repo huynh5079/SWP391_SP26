@@ -27,7 +27,7 @@ namespace DataAccess.Enum
 		Approve,       // Đồng ý
 		Reject,        // Từ chối
 		RequestChange,  // Yêu cầu chỉnh sửa lại
-		
+		NYA	//Not yet approved(for Organizer)
 	}
 
 	public enum ChatSessionStatus
@@ -47,7 +47,8 @@ namespace DataAccess.Enum
 	{
 		Pending,    // Đang chờ duyệt
 		Approved,   // Đã duyệt (Cho phép chi)
-		Rejected    // Từ chối
+		Rejected,    // Từ chối
+		
 	}
 
 	public enum ScanTypeEnum
