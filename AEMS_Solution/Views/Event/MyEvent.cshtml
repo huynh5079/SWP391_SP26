@@ -40,6 +40,7 @@
                 <th>Time</th>
                 <th>Capacity</th>
                 <th>Status</th>
+                <th>Request Approver</>
                 <th>Mode</th>
                 <th>Meeting Url</th>
                 <th>Time State</th>
@@ -80,6 +81,9 @@
 
                     <td>
                         <span class="workflow-badge badge bg-secondary">@e.Status</span>
+                    </td>
+                    <td>
+                        <span class="workflow-badge badge bg-secondary">@e.ApprovalActionEnum</span>
                     </td>
                     <td>
                         @e.Mode

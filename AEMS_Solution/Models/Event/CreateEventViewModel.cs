@@ -48,6 +48,9 @@ namespace AEMS_Solution.Models.Event
 
 		// agendas
 		public List<CreateAgendaItemVm> Agendas { get; set; } = new();
+
+		// documents (simple: name + url)
+		public List<CreateDocumentVm> Documents { get; set; } = new();
 	}
 
 	public class CreateAgendaItemVm
@@ -58,5 +61,12 @@ namespace AEMS_Solution.Models.Event
 		public DateTime? StartTime { get; set; }
 		public DateTime? EndTime { get; set; }
 		public string? Location { get; set; } // agenda location text (bảng agenda của bạn là nvarchar)
+	}
+
+	public class CreateDocumentVm
+	{
+		public string? FileName { get; set; }
+		public string? Url { get; set; }
+		public string? Type { get; set; }
 	}
 }
