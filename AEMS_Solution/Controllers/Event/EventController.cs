@@ -268,6 +268,26 @@ namespace AEMS_Solution.Controllers.Event
 				}
 			}
 
+			// Insert documents (if any)
+			if (vm.Documents != null && vm.Documents.Count > 0)
+			{
+				foreach (var d in vm.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName)) continue;
+
+					_db.EventDocuments.Add(new EventDocument
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = eventId,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
 			await _db.SaveChangesAsync();
 
 			SetSuccess("Tạo Event thành công (Draft).");
@@ -369,6 +389,9 @@ namespace AEMS_Solution.Controllers.Event
 
             // 2. Cập nhật Agendas (Cách đơn giản nhất: Xóa cũ, thêm mới)
             _db.EventAgenda.RemoveRange(ev.EventAgenda);
+            // Remove existing documents as well (simplest approach)
+            var existingDocs = await _db.EventDocuments.Where(ed => ed.EventId == ev.Id).ToListAsync();
+            if (existingDocs.Any()) _db.EventDocuments.RemoveRange(existingDocs);
             if (vm.Agendas != null)
             {
                 foreach (var item in vm.Agendas)
@@ -383,6 +406,26 @@ namespace AEMS_Solution.Controllers.Event
                         StartTime = item.StartTime,
                         EndTime = item.EndTime,
                         Location = item.Location
+                    });
+                }
+            }
+
+            // Add updated documents
+            if (vm.Documents != null)
+            {
+                foreach (var d in vm.Documents)
+                {
+                    if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName)) continue;
+
+                    _db.EventDocuments.Add(new EventDocument
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        EventId = ev.Id,
+                        Name = d.FileName,
+                        Url = d.Url,
+                        Type = d.Type,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
                     });
                 }
             }

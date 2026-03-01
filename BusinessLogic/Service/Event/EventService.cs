@@ -41,6 +41,7 @@ public class EventService : IEventService
 				.Include(x => x.Semester)
 				.Include(x => x.Department)
 				.Include(x => x.Location)
+				.Include(x => x.ApprovalLogs)
 		);
 
 		var list = new List<EventListDto>();
@@ -55,6 +56,9 @@ public class EventService : IEventService
 				var ratings = e.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).ToList();
 				if (ratings.Count > 0) avg = ratings.Average();
 			}
+
+			// Determine last approval action from logs (if any)
+			var lastApproval = e.ApprovalLogs?.Where(l => l.DeletedAt == null).OrderByDescending(l => l.CreatedAt).FirstOrDefault();
 
 			list.Add(new EventListDto
 			{
@@ -76,6 +80,9 @@ public class EventService : IEventService
 				AvgRating = avg,
 				Mode = e.Mode?.ToString(),
 				MeetingUrl = e.MeetingUrl,
+				LastApprovalAction = lastApproval?.Action,
+				LastApprovalActionAt = lastApproval?.CreatedAt,
+				LastApprovalBy = lastApproval?.ApproverId,
 			});
 		}
 
@@ -306,13 +313,14 @@ public class EventService : IEventService
 		if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
 
 		var ev = (await _uow.Events.GetAllAsync(e => e.Id == eventId,
-			q => q.Include(x => x.EventAgenda)
+				q => q.Include(x => x.EventAgenda)
 				  .Include(x => x.Tickets)
 				  .Include(x => x.EventWaitlists)
 				  .Include(x => x.Feedbacks)
 				  .Include(x => x.Semester)
 				  .Include(x => x.Department)
-				  .Include(x => x.Location))).FirstOrDefault();
+				  .Include(x => x.Location)
+				  .Include(x => x.EventDocuments))).FirstOrDefault();
 
 		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
@@ -352,6 +360,21 @@ public class EventService : IEventService
 					Location = a.Location
 				});
 			}
+
+		if (ev.EventDocuments != null)
+		{
+			foreach (var d in ev.EventDocuments.OrderBy(x => x.CreatedAt))
+			{
+				dto.Documents.Add(new EventDocumentDto
+				{
+					Id = d.Id,
+					EventId = d.EventId,
+					FileName = d.Name,
+					Url = d.Url,
+					Type = d.Type
+				});
+			}
+		}
 		}
 
 		if (!string.IsNullOrEmpty(userId))

@@ -14,6 +14,15 @@ public class EventAgendaDto
     public string? Location { get; set; }
 }
 
+public class EventDocumentDto
+{
+    public string Id { get; set; } = "";
+    public string EventId { get; set; } = "";
+    public string? FileName { get; set; }
+    public string? Url { get; set; }
+    public string? Type { get; set; }
+}
+
 public class EventDetailsDto
 {
     public string EventId { get; set; } = "";
@@ -33,6 +42,7 @@ public class EventDetailsDto
     public int WaitlistCount { get; set; }
     public double AvgRating { get; set; }
     public List<EventAgendaDto> Agendas { get; set; } = new();
+    public List<EventDocumentDto> Documents { get; set; } = new();
 
     // Permission flags
     public bool CanEdit { get; set; }
@@ -46,10 +56,10 @@ public class EventItemDto
 	public string Id { get; set; } = "";
     public string Title { get; set; } = "";
     public DateTime StartTime { get; set; }
-    public EventStatusEnum? Status { get; set; }
+    public EventStatusEnum Status { get; set; }
 
-    // Optional UI fields
-    public DateTime? EndTime { get; set; }
+	// Optional UI fields
+	public DateTime? EndTime { get; set; }
     public string? ThumbnailUrl { get; set; }
     public string? Location { get; set; }
     public string? TimeState { get; set; }
@@ -108,6 +118,11 @@ public class EventListDto
     public double AvgRating { get; set; }
     public int FeedbackCount { get; set; }
 
+    // Last approval info (recent approver action for UI)
+    public ApprovalActionEnum? LastApprovalAction { get; set; }
+    public DateTime? LastApprovalActionAt { get; set; }
+    public string? LastApprovalBy { get; set; }
+
     public string TimeState { get; set; } = "";
     public int RemainingCapacity { get; set; }
 
@@ -119,9 +134,7 @@ public class EventListDto
     public bool IsRegistrationOpen { get; set; }
     public bool HasThumbnail { get; set; }
 
-    public DateTime? LastApprovalActionAt { get; set; }
-    public string? LastApprovalAction { get; set; }
-    public string? LastApprovalBy { get; set; }
+    // (kept above)
     public string? LastRejectReason { get; set; }
 
     public bool HasQuiz { get; set; }
