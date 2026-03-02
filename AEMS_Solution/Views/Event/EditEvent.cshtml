@@ -293,7 +293,7 @@
 
             <div class="actions">
                 <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-weight: bold;">Update Event</button>
-                <a href="@Url.Action("MyEvents")" class="btn btn-secondary" style="text-decoration: none; text-align: center;">Cancel</a>
+                <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-secondary" style="text-decoration: none; text-align: center;">Cancel</a>
             </div>
         </form>
     </div>
@@ -346,12 +346,16 @@
             const isDeposit = document.getElementById("IsDepositRequired");
             const depositRow = document.getElementById("depositRow");
 
+            // 1. Xử lý ẩn/hiện tiền cọc
             function updateDepositUI() {
-                depositRow.style.display = isDeposit.checked ? "flex" : "none";
+                if (depositRow) {
+                    depositRow.style.display = isDeposit.checked ? "flex" : "none";
+                }
             }
             updateDepositUI();
             isDeposit.addEventListener("change", updateDepositUI);
 
+            // 2. Hàm đánh lại chỉ số (Index) cho các input
             function renumber() {
                 const items = agendaContainer.querySelectorAll(".agenda-item");
                 items.forEach((item, i) => {
@@ -359,37 +363,54 @@
                     const title = item.querySelector(".agenda-title");
                     if (title) title.textContent = `Agenda #${i + 1}`;
 
-                    // Cập nhật tất cả các thuộc tính name để giữ đúng index cho ASP.NET Core Model Binding
-                    item.querySelectorAll("input[name], textarea[name]").forEach(el => {
-                        el.name = el.name.replace(/Agendas\[\d+\]/, `Agendas[${i}]`);
+                    // Cập nhật tất cả các thuộc tính name: Agendas[0] -> Agendas[i]
+                    item.querySelectorAll("input, textarea, select").forEach(el => {
+                        if (el.name) {
+                            el.name = el.name.replace(/Agendas\[\d+\]/, `Agendas[${i}]`);
+                        }
+                        // Cập nhật cả ID để tránh trùng lặp nếu cần dùng label
+                        if (el.id) {
+                            el.id = el.id.replace(/Agendas_\d+__/, `Agendas_${i}__`);
+                        }
                     });
                 });
             }
 
+            // 3. Hàm thêm mới Agenda
             function addAgenda() {
                 const i = agendaContainer.querySelectorAll(".agenda-item").length;
-                const html = tpl.innerHTML.replaceAll("__i__", i).replaceAll("__n__", i + 1);
+                // Thay thế placeholder trong template
+                let html = tpl.innerHTML.replace(/__i__/g, i).replace(/__n__/g, i + 1);
+
                 const wrapper = document.createElement("div");
                 wrapper.innerHTML = html.trim();
-                agendaContainer.appendChild(wrapper.firstElementChild);
+                const newNode = wrapper.firstElementChild;
+
+                agendaContainer.appendChild(newNode);
+                // Không cần gọi renumber ở đây vì index đã được set đúng lúc add
             }
 
-           btnAdd.addEventListener("click", addAgenda);
+            // 4. Sự kiện nút Add
+            btnAdd.addEventListener("click", function(e) {
+                e.preventDefault(); // Ngăn chặn submit form ngoài ý muốn
+                addAgenda();
+            });
 
+            // 5. Sự kiện nút Remove (Event Delegation)
             agendaContainer.addEventListener("click", function (e) {
-                const btn = e.target.closest(".btnRemoveAgenda");
-                if (btn) {
-                    btn.closest(".agenda-item").remove();
+                if (e.target.classList.contains("btnRemoveAgenda")) {
+                    e.preventDefault();
+                    const item = e.target.closest(".agenda-item");
+                    item.remove();
                     renumber();
                 }
             });
 
-            // THÊM DÒNG NÀY: Nếu danh sách từ Model trống, tự động thêm 1 dòng để nhập
+            // 6. Tự động thêm dòng đầu tiên nếu danh sách trống
             if (agendaContainer.querySelectorAll(".agenda-item").length === 0) {
                 addAgenda();
             }
-            });
-        })();
+        })(); // Kết thúc IIFE
     </script>
 
     <partial name="_ValidationScriptsPartial" />
