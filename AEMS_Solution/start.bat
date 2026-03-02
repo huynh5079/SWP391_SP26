@@ -1,0 +1,6 @@
+@echo off
+echo Starting Project...
+start "AEMS_Solution" dotnet run --launch-profile "https"
+
+echo Starting ngrok...
+start "ngrok" "D:\Ngrok\ngrok.exe" http https://localhost:7149
