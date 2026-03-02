@@ -34,6 +34,7 @@ namespace DataAccess.Repositories.Abstraction
 		// ✅ Update for StudentFeature
 		IGenericRepository<Ticket> Tickets { get; }
 		IGenericRepository<Feedback> Feedbacks { get; }
+        IGenericRepository<CheckInHistory> CheckInHistories { get; }
 
 	}
 
