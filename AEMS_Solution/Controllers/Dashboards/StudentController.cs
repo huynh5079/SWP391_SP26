@@ -9,7 +9,8 @@ namespace AEMS_Solution.Controllers.Dashboards
     {
         public IActionResult Index()
         {
-            return View();
+            // Redirect straight to the event calendar — the student's home page
+            return RedirectToAction("Index", "StudentEvent");
         }
     }
 }

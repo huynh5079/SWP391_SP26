@@ -1,0 +1,268 @@
+@model List<BusinessLogic.DTOs.Student.StudentEventBrowseDto>
+@{
+    ViewData["Title"] = "Lịch sự kiện";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // ── Week range ────────────────────────────────────────────────────────────
+    int weekOffset  = (int)(ViewBag.WeekOffset ?? 0);
+    var today       = DateTime.Now.Date;
+    int daysFromMon = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+    var weekStart   = today.AddDays(-daysFromMon + weekOffset * 7);
+    var weekEnd     = weekStart.AddDays(6);
+    var days        = Enumerable.Range(0, 7).Select(i => weekStart.AddDays(i)).ToList();
+    string? search  = ViewBag.Search as string;
+
+    // ── Calendar constants ────────────────────────────────────────────────────
+    const int GRID_START = 7;      // 07:00
+    const int GRID_END   = 19;     // 19:00
+    const int PX_PER_H   = 60;     // pixels per hour
+    int totalHours  = GRID_END - GRID_START;               // 12 h
+    int gridHeight  = totalHours * PX_PER_H;               // 720 px
+    // Labels every 2 hours: 7,9,11,13,15,17,19
+    var timeSlots   = Enumerable.Range(0, totalHours / 2 + 1).Select(i => GRID_START + i * 2).ToArray();
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    int TopPx(DateTime t)
+    {
+        double mins = (t.Hour - GRID_START) * 60.0 + t.Minute;
+        return (int)Math.Max(0, Math.Min(mins * PX_PER_H / 60.0, gridHeight));
+    }
+    int HeightPx(DateTime s, DateTime e)
+    {
+        int h = (int)((e - s).TotalMinutes * PX_PER_H / 60.0);
+        return Math.Max(h, 24);
+    }
+    string EventBg(BusinessLogic.DTOs.Student.StudentEventBrowseDto ev) =>
+        ev.IsRegistered ? "#1a8754" :
+        ev.Status == DataAccess.Enum.EventStatusEnum.Happening ? "#0d6efd" :
+        ev.Status == DataAccess.Enum.EventStatusEnum.Upcoming  ? "#0a9dbe" :
+        "#4361ee";
+    string FormatH(int h) => h < 12 ? $"{h} AM" : h == 12 ? "12 PM" : $"{h-12} PM";
+    string DayLabel(DayOfWeek d) => d switch {
+        DayOfWeek.Monday    => "T2", DayOfWeek.Tuesday  => "T3",
+        DayOfWeek.Wednesday => "T4", DayOfWeek.Thursday => "T5",
+        DayOfWeek.Friday    => "T6", DayOfWeek.Saturday => "T7",
+        _                   => "CN"
+    };
+}
+
+<style>
+    .gc-wrap    { border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; background: #fff; }
+
+    /* header */
+    .gc-header  { display: grid; grid-template-columns: 52px repeat(7, 1fr);
+                  border-bottom: 2px solid #dee2e6; background: #f8f9fa; }
+    .gc-hcell   { text-align: center; padding: 7px 4px; border-left: 1px solid #dee2e6; }
+    .gc-hcell:first-child { border-left: none; }
+    .gc-hcell .dn { font-size: .7rem; color: #6c757d; text-transform: uppercase; }
+    .gc-hcell .dd { font-size: 1.1rem; font-weight: 700; line-height: 1.4; }
+    .gc-hcell.today .dd { background: #0d6efd; color: #fff; border-radius: 50%;
+                           width: 30px; height: 30px; display: inline-flex;
+                           align-items: center; justify-content: center; font-size: .95rem; }
+
+    /* body */
+    .gc-body    { display: grid; grid-template-columns: 52px repeat(7, 1fr);
+                  position: relative; height: @(gridHeight)px; }
+    .gc-tcol    { position: relative; background: #f8f9fa; border-right: 1px solid #dee2e6; }
+    .gc-tlabel  { position: absolute; right: 5px; font-size: .65rem; color: #6c757d;
+                  transform: translateY(-50%); white-space: nowrap; user-select: none; }
+    .gc-dcol    { position: relative; border-left: 1px solid #dee2e6; }
+    .gc-dcol.today-col { background: rgba(13,110,253,.03); }
+    .gc-gridline { position: absolute; left: 0; right: 0; border-top: 1px solid #e9ecef;
+                   pointer-events: none; }
+    .gc-gridline.major { border-top-color: #d0d4d8; }
+
+    /* now line */
+    .gc-nowline { position: absolute; left: -1px; right: 0; height: 2px;
+                  background: #dc3545; z-index: 6; pointer-events: none; }
+    .gc-nowline::before { content:''; position: absolute; left: -5px; top: -4px;
+                          width: 10px; height: 10px; border-radius: 50%; background: #dc3545; }
+
+    /* event pill */
+    .ev-pill {
+        position: absolute; left: 3px; right: 3px;
+        border-radius: 5px; padding: 3px 6px;
+        font-size: .71rem; line-height: 1.25; color: #fff;
+        overflow: hidden; text-decoration: none;
+        display: flex; flex-direction: column; justify-content: flex-start;
+        box-shadow: 0 1px 4px rgba(0,0,0,.22);
+        transition: filter .12s, box-shadow .12s;
+        z-index: 4;
+    }
+    .ev-pill:hover { filter: brightness(1.13); box-shadow: 0 3px 10px rgba(0,0,0,.3); color: #fff; z-index: 10; }
+    .ev-pill .ep-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ev-pill .ep-sub   { font-size: .63rem; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ev-pill .ep-reg   { font-size: .6rem; opacity: .8; margin-bottom: 1px; }
+</style>
+
+<div class="container-fluid py-3" style="max-width: 1320px;">
+
+    @* ─── Top bar ──────────────────────────────────────────────────────────── *@
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h5 class="mb-0 fw-bold me-auto">
+            <i class="bi bi-calendar-week me-2 text-primary"></i>Lịch sự kiện
+        </h5>
+
+        @* Week nav *@
+        <div class="d-flex align-items-center gap-1">
+            <a asp-action="Index" asp-route-weekOffset="0" asp-route-search="@search"
+               class="btn btn-sm btn-outline-secondary">Hôm nay</a>
+            <a asp-action="Index" asp-route-weekOffset="@(weekOffset-1)" asp-route-search="@search"
+               class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
+            <a asp-action="Index" asp-route-weekOffset="@(weekOffset+1)" asp-route-search="@search"
+               class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
+            <span class="fw-semibold ms-1 text-nowrap">
+                @if (weekOffset == 0)
+                {
+                    <span class="badge bg-primary me-1">Tuần này</span>
+                }
+                @weekStart.ToString("dd/MM") – @weekEnd.ToString("dd/MM/yyyy")
+            </span>
+        </div>
+
+        @* Search *@
+        <form method="get" class="d-flex gap-1">
+            <input type="hidden" name="weekOffset" value="@weekOffset" />
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" value="@search" class="form-control"
+                       placeholder="Tìm sự kiện…" style="width:170px;" />
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">Tìm</button>
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <a asp-action="Index" asp-route-weekOffset="@weekOffset"
+                   class="btn btn-sm btn-outline-secondary">✕</a>
+            }
+        </form>
+
+        <a asp-action="MyEvents" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-ticket-detailed me-1"></i>Vé của tôi
+        </a>
+    </div>
+
+    @* ─── Calendar card ────────────────────────────────────────────────────── *@
+    <div class="gc-wrap shadow-sm">
+
+        @* Header *@
+        <div class="gc-header">
+            <div class="gc-hcell"></div>
+            @foreach (var day in days)
+            {
+                bool isToday = day.Date == today;
+                int cnt = Model.Count(e => e.StartTime.Date == day.Date);
+                <div class="gc-hcell @(isToday ? "today" : "")">
+                    <div class="dn">@DayLabel(day.DayOfWeek)</div>
+                    <div class="dd">@day.Day</div>
+                    @if (cnt > 0)
+                    {
+                        <div><span class="badge rounded-pill"
+                                   style="font-size:.58rem;background:#e8f0fe;color:#4361ee;padding:1px 5px;">
+                            @cnt
+                        </span></div>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Body *@
+        <div class="gc-body">
+
+            @* Time label column *@
+            <div class="gc-tcol">
+                @foreach (var h in timeSlots)
+                {
+                    <span class="gc-tlabel" style="top:@((h - GRID_START) * PX_PER_H)px;">@FormatH(h)</span>
+                }
+            </div>
+
+            @* Day columns *@
+            @foreach (var day in days)
+            {
+                bool isToday = day.Date == today;
+                var dayEvts  = Model
+                    .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
+                    .OrderBy(e => e.StartTime)
+                    .ToList();
+
+                <div class="gc-dcol @(isToday ? "today-col" : "")">
+
+                    @* Grid lines *@
+                    @foreach (var h in timeSlots)
+                    {
+                        <div class="gc-gridline major" style="top:@((h - GRID_START) * PX_PER_H)px;"></div>
+                    }
+                    @* Minor lines at each hour *@
+                    @for (int mh = GRID_START + 1; mh < GRID_END; mh++)
+                    {
+                        if (!timeSlots.Contains(mh))
+                        {
+                            <div class="gc-gridline" style="top:@((mh - GRID_START) * PX_PER_H)px;"></div>
+                        }
+                    }
+
+                    @* Now line *@
+                    @if (isToday)
+                    {
+                        var now = DateTime.Now;
+                        if (now.Hour >= GRID_START && now.Hour < GRID_END)
+                        {
+                            <div class="gc-nowline" style="top:@TopPx(now)px;"></div>
+                        }
+                    }
+
+                    @* Events *@
+                    @foreach (var ev in dayEvts)
+                    {
+                        // For multi-day events, clamp visible start/end to this day's grid bounds
+                        var visStart = ev.StartTime.Date < day.Date
+                            ? day.Date.AddHours(GRID_START)
+                            : (ev.StartTime.Hour < GRID_START ? day.Date.AddHours(GRID_START) : ev.StartTime);
+                        var visEnd = ev.EndTime.Date > day.Date
+                            ? day.Date.AddHours(GRID_END)
+                            : (ev.EndTime.Hour > GRID_END ? day.Date.AddHours(GRID_END) : ev.EndTime);
+
+                        if (visStart >= day.Date.AddHours(GRID_END) ||
+                            visEnd   <= day.Date.AddHours(GRID_START)) { continue; }
+
+                        int top = TopPx(visStart);
+                        int ht  = HeightPx(visStart, visEnd);
+                        string bg = EventBg(ev);
+
+                        <a asp-action="Detail" asp-route-id="@ev.EventId"
+                           class="ev-pill"
+                           style="top:@(top)px; height:@(ht)px; background:@bg;"
+                           title="@ev.Title&#10;@ev.StartTime.ToString("HH:mm") – @ev.EndTime.ToString("HH:mm")@(ev.Location != null ? "\n" + ev.Location : "")">
+                            @if (ev.IsRegistered)
+                            {
+                                <span class="ep-reg">✓ Đã đăng ký</span>
+                            }
+                            <span class="ep-title">@ev.Title</span>
+                            @if (ht >= 36)
+                            {
+                                <span class="ep-sub">@ev.StartTime.ToString("HH:mm") – @ev.EndTime.ToString("HH:mm")</span>
+                            }
+                            @if (ht >= 56 && !string.IsNullOrEmpty(ev.Location))
+                            {
+                                <span class="ep-sub"><i class="bi bi-geo-alt"></i> @ev.Location</span>
+                            }
+                        </a>
+                    }
+
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ─── Legend ───────────────────────────────────────────────────────────── *@
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-2" style="font-size:.77rem; color:#555;">
+        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#1a8754;vertical-align:middle;"></span> Đã đăng ký</span>
+        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#0d6efd;vertical-align:middle;"></span> Đang diễn ra</span>
+        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#0a9dbe;vertical-align:middle;"></span> Sắp diễn ra</span>
+        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#4361ee;vertical-align:middle;"></span> Đã công bố</span>
+        @if (!Model.Any())
+        {
+            <span class="text-muted ms-auto"><i class="bi bi-info-circle me-1"></i>Không có sự kiện trong tuần này</span>
+        }
+    </div>
+</div>
