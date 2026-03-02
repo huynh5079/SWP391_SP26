@@ -42,11 +42,11 @@
                         <strong>Status:</strong> @Model.Status
                     </p>
 
-                    <div class="mb-3">
+                    <div class="mb-3 d-flex flex-wrap gap-2">
                         @if (Model.CanEdit)
                         {
                             <a asp-action="Edit" asp-route-id="@Model.EventId"
-                               class="btn btn-sm btn-warning">Edit</a>
+                               class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Chỉnh sửa</a>
                         }
 
                         @if (Model.CanSendForApproval)
@@ -54,9 +54,15 @@
                             <form asp-controller="Organizer" asp-action="SendForApproval" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@Model.EventId" />
-                                <button type="submit" class="btn btn-primary">Send for approval</button>
+                                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-paper-plane"></i> Gửi duyệt</button>
                             </form>
                         }
+
+                        @* Button to open Check-in Scanner *@
+                        <a asp-controller="CheckIn" asp-action="Scanner" asp-route-eventId="@Model.EventId" 
+                           class="btn btn-sm btn-success">
+                            <i class="fas fa-camera"></i> Bắt đầu Check-in
+                        </a>
                     </div>
                 </div>
 
