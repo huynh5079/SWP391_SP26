@@ -15,6 +15,11 @@ namespace BusinessLogic.Service.Student
             string? semesterId = null);
 
         /// <summary>
+        /// Returns dashboard statistics for a student.
+        /// </summary>
+        Task<StudentDashboardStatsDto> GetDashboardStatsAsync(string studentId);
+
+        /// <summary>
         /// Full event detail with per-student registration state.
         /// </summary>
         Task<StudentEventDetailDto> GetEventDetailAsync(string eventId, string studentId);
