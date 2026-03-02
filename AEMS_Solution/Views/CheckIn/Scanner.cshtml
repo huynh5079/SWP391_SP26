@@ -1,0 +1,321 @@
+@{
+    ViewData["Title"] = "Quét thẻ Check-in sự kiện";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currentEventId = ViewBag.EventId as string;
+}
+
+<!-- CSRF Token for Secure AJAX POST -->
+@Html.AntiForgeryToken()
+
+<div class="container-fluid page-body-wrapper">
+    <div class="main-panel">
+        <div class="content-wrapper">
+            <div class="row mb-3">
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="font-weight-bold text-primary">Camera Check-in Sự Kiện</h3>
+                        <p class="text-muted">Đưa mã QR của học sinh vào khung màu xanh bên dưới.</p>
+                    </div>
+                    <a href="@Url.Action("Detail", "Event", new { id = currentEventId })" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Camera Section -->
+                <div class="col-md-7 stretch-card grid-margin">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <h4 class="card-title text-start mb-4"><i class="fas fa-qrcode text-info"></i> Máy quét QR</h4>
+                            
+                            <!-- Scanner Placeholder -->
+                            <div id="qr-reader" style="width: 100%; max-width: 600px; margin: 0 auto; border-radius: 10px; overflow: hidden; border: 2px solid #e0e0e0;"></div>
+                            
+                            <div class="mt-3">
+                                <button id="btn-switch-camera" class="btn btn-outline-primary btn-sm mt-3" style="display: none;">
+                                    <i class="fas fa-sync-alt"></i> Đổi Camera
+                                </button>
+                                <button id="btn-stop-camera" class="btn btn-outline-danger btn-sm mt-3" style="display: none;">
+                                    <i class="fas fa-stop"></i> Dừng Camera
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result/Log Section -->
+                <div class="col-md-5 stretch-card grid-margin">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body d-flex flex-column">
+                            <h4 class="card-title"><i class="fas fa-history text-secondary"></i> Kết quả Check-in</h4>
+                            
+                            <!-- State Flags -->
+                            <div id="scan-status-alert" class="alert alert-secondary text-center mt-3" role="alert">
+                                Đang chờ quét thẻ...
+                            </div>
+
+                            <!-- Real-time Last Scan Result Card -->
+                            <div id="latest-scan-card" class="card bg-light mt-2" style="display: none;">
+                                <div class="card-body text-center p-3">
+                                    <h5 id="result-title" class="mb-2 font-weight-bold">---</h5>
+                                    <h6 id="result-name" class="text-primary mb-1">---</h6>
+                                    <p id="result-email" class="text-muted mb-0 small">---</p>
+                                </div>
+                            </div>
+
+                            <!-- Log List -->
+                            <div class="mt-4 flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                                <h6 class="text-muted mb-3 font-weight-bold" style="font-size: 0.9rem;">Lịch sử thao tác</h6>
+                                <ul id="scan-log-list" class="list-group list-group-flush">
+                                    <!-- Dynamic logs will appear here -->
+                                </ul>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- HTML5-QRCode Library CDN -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            
+            // UI Elements
+            const currentEventId = '@currentEventId';
+            const statusAlert = document.getElementById('scan-status-alert');
+            const latestScanCard = document.getElementById('latest-scan-card');
+            const resultTitle = document.getElementById('result-title');
+            const resultName = document.getElementById('result-name');
+            const resultEmail = document.getElementById('result-email');
+            const logList = document.getElementById('scan-log-list');
+            
+            // Scanner Configuration
+            let html5QrCode = null;
+            let isScanning = false;
+            let isProcessing = false;
+            let currentCameraId = null;
+            let cameras = [];
+
+            // Add log helper
+            function addLog(message, isError = false) {
+                const li = document.createElement('li');
+                li.className = "list-group-item px-0 py-2 d-flex justify-content-between align-items-center";
+                
+                const timeStr = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+                
+                let iconHtml = isError 
+                    ? `<i class="fas fa-times-circle text-danger mr-2"></i>` 
+                    : `<i class="fas fa-check-circle text-success mr-2"></i>`;
+                    
+                li.innerHTML = `<div>${iconHtml}<span class="text-sm font-weight-medium">${message}</span></div><small class="text-muted">${timeStr}</small>`;
+                
+                // Add to top of list
+                logList.insertBefore(li, logList.firstChild);
+            }
+
+            // Fetch Antiforgery Token for Security
+            function getAntiForgeryToken() {
+                return document.querySelector('input[name="__RequestVerificationToken"]').value;
+            }
+
+            // POST to API
+            async function processCheckInPayload(qrPayloadText) {
+                if(isProcessing) return; // Prevent double scan
+                
+                isProcessing = true;
+                html5QrCode.pause(); // Pause camera while processing to prevent spamming
+
+                // Update UI state to loading
+                statusAlert.className = "alert alert-warning text-center mt-3";
+                statusAlert.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang xử lý dữ liệu...`;
+
+                try {
+                    const response = await fetch('/CheckIn/ProcessQR', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': getAntiForgeryToken()
+                        },
+                        body: JSON.stringify({
+                            qrPayload: qrPayloadText,
+                            eventId: currentEventId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    // Show detailed card
+                    latestScanCard.style.display = 'block';
+
+                    if (data.success) {
+                        // Success 200 OK
+                        statusAlert.className = "alert alert-success text-center mt-3";
+                        statusAlert.innerHTML = `<i class="fas fa-check-circle lg"></i> <strong>Thành công!</strong>`;
+                        
+                        resultTitle.className = "mb-2 font-weight-bold text-success";
+                        resultTitle.innerHTML = data.message; // "Check-in thành công!"
+                        
+                        resultName.innerText = data.studentName || "Không rõ tên";
+                        resultEmail.innerText = data.studentEmail || "Không có email";
+
+                        addLog(`Check-in: ${data.studentName || 'Unkown'}`, false);
+                        
+                        // Resume scanner quickly for success (1s)
+                        setTimeout(() => {
+                            statusAlert.className = "alert alert-primary text-center mt-3";
+                            statusAlert.innerHTML = "Sẵn sàng quét thẻ tiếp theo...";
+                            latestScanCard.style.display = 'none';
+                            html5QrCode.resume();
+                            isProcessing = false;
+                        }, 2000);
+                        
+                    } else {
+                        // Failed (Already checked in, Invalid ticket, etc.)
+                        statusAlert.className = "alert alert-danger text-center mt-3";
+                        statusAlert.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Từ chối</strong>`;
+                        
+                        resultTitle.className = "mb-2 font-weight-bold text-danger";
+                        resultTitle.innerHTML = data.message; 
+                        
+                        resultName.innerText = data.studentName || "Không xác định";
+                        resultEmail.innerText = data.studentEmail || "---";
+
+                        addLog(data.message, true);
+
+                        // Pause scanner longer for error (3s) so the staff can read the error
+                        setTimeout(() => {
+                            statusAlert.className = "alert alert-primary text-center mt-3";
+                            statusAlert.innerHTML = "Sẵn sàng quét thẻ tiếp theo...";
+                            latestScanCard.style.display = 'none';
+                            html5QrCode.resume();
+                            isProcessing = false;
+                        }, 4000);
+                    }
+
+                } catch (error) {
+                    console.error("Lỗi gọi API Checkout:", error);
+                    statusAlert.className = "alert alert-danger text-center mt-3";
+                    statusAlert.innerHTML = "Mất kết nối server. Hãy thử lại.";
+                    addLog("Lỗi kết nối", true);
+                    
+                    setTimeout(() => {
+                        html5QrCode.resume();
+                        isProcessing = false;
+                    }, 3000);
+                }
+            }
+
+            // QR Success Callback
+            function onScanSuccess(decodedText, decodedResult) {
+                // Play a beep sound if desired here
+                // console.log(`Scan matched: ${decodedText}`);
+                processCheckInPayload(decodedText);
+            }
+
+            function onScanFailure(error) {
+                // This triggers every frame a QR code is NOT detected. 
+                // We ignore it to avoid flooding console.
+            }
+
+            // Main Scanner Initialization
+            async function startScanner() {
+                try {
+                    cameras = await Html5Qrcode.getCameras();
+                    if (cameras && cameras.length > 0) {
+                        
+                        // Fallback logic for finding back camera first if available
+                        let backCamera = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('rear'));
+                        currentCameraId = backCamera ? backCamera.id : cameras[0].id;
+
+                        html5QrCode = new Html5Qrcode("qr-reader");
+
+                        const config = { 
+                            fps: 15, 
+                            qrbox: { width: 250, height: 250 },
+                            aspectRatio: 1.0,
+                            disableFlip: false // allow scanning mirrored
+                        };
+
+                        await html5QrCode.start(
+                            currentCameraId, 
+                            config, 
+                            onScanSuccess,
+                            onScanFailure
+                        );
+
+                        isScanning = true;
+                        document.getElementById('btn-stop-camera').style.display = 'inline-block';
+                        
+                        if(cameras.length > 1) {
+                            document.getElementById('btn-switch-camera').style.display = 'inline-block';
+                        }
+
+                        statusAlert.className = "alert alert-primary text-center mt-3";
+                        statusAlert.innerHTML = "Camera đang hoạt động. Sẵn sàng quét thẻ.";
+
+                    } else {
+                        statusAlert.className = "alert alert-danger text-center mt-3";
+                        statusAlert.innerHTML = "Không tìm thấy Camera nào trên thiết bị.";
+                    }
+                } catch (err) {
+                    console.error("Error starting camera", err);
+                    statusAlert.className = "alert alert-danger text-center mt-3";
+                    statusAlert.innerHTML = "Không thể bật Camera. Vui lòng cấp quyền Camera cho trình duyệt (Ngrok HTTPS).";
+                }
+            }
+
+            // Set up button listeners
+            document.getElementById('btn-stop-camera').addEventListener('click', () => {
+                if(html5QrCode && isScanning) {
+                    html5QrCode.stop().then(() => {
+                        isScanning = false;
+                        document.getElementById('btn-stop-camera').style.display = 'none';
+                        document.getElementById('btn-switch-camera').style.display = 'none';
+                        statusAlert.className = "alert alert-secondary text-center mt-3";
+                        statusAlert.innerHTML = "Camera đã tắt.";
+                    }).catch(err => {
+                        console.error('Lỗi khi tắt camera:', err);
+                    });
+                }
+            });
+
+            document.getElementById('btn-switch-camera').addEventListener('click', () => {
+                if(html5QrCode && isScanning && cameras.length > 1) {
+                    // find current index
+                    let idx = cameras.findIndex(c => c.id === currentCameraId);
+                    let nxtIdx = (idx + 1) % cameras.length;
+                    let nextCameraId = cameras[nxtIdx].id;
+
+                    html5QrCode.stop().then(async () => {
+                        isScanning = false;
+                        currentCameraId = nextCameraId;
+                        
+                        const config = { 
+                            fps: 15, 
+                            qrbox: { width: 250, height: 250 },
+                            aspectRatio: 1.0
+                        };
+
+                        await html5QrCode.start(
+                            currentCameraId, 
+                            config, 
+                            onScanSuccess, 
+                            onScanFailure
+                        );
+                        isScanning = true;
+                    });
+                }
+            });
+
+            // Start immediately on load
+            startScanner();
+        });
+    </script>
+}
