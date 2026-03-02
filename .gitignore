@@ -173,8 +173,7 @@ FodyWeavers.xsd
 
 # Bỏ qua các file cấu hình appsettings cụ thể cho môi trường
 **/appsettings.*.json
-!appsettings.json
-
+appsettings.json
 # Bỏ qua các file cài đặt publish có thể chứa thông tin nhạy cảm
 *.pubxml
 *.publishproj

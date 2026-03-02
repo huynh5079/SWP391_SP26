@@ -45,7 +45,8 @@
                     <div class="mb-3">
                         @if (Model.CanEdit)
                         {
-                            <a class="btn btn-warning me-2" href="@Url.Action("Manage", "Organizer", new { operation = "edit", id = Model.EventId })">Edit</a>
+                            <a asp-action="Edit" asp-route-id="@Model.EventId"
+                               class="btn btn-sm btn-warning">Edit</a>
                         }
 
                         @if (Model.CanSendForApproval)
