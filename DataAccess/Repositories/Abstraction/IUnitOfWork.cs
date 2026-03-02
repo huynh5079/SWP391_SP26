@@ -31,6 +31,10 @@ namespace DataAccess.Repositories.Abstraction
 		//Update for ApprovalService
         IGenericRepository<ApprovalLog> EventApprovalLogs { get; }
 
+		// ✅ Update for StudentFeature
+		IGenericRepository<Ticket> Tickets { get; }
+		IGenericRepository<Feedback> Feedbacks { get; }
+
 	}
 
 }

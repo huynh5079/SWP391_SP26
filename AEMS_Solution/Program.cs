@@ -17,6 +17,7 @@ using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.Student;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
@@ -53,6 +54,8 @@ builder.Services.AddScoped<IEventValidator, EventValidator>();
 // Approver services (query + command)
 builder.Services.AddScoped<IApproverQueryService, ApproverService>();
 builder.Services.AddScoped<IApproverCommandService, ApproverService>();
+// Student services
+builder.Services.AddScoped<IStudentEventService, StudentEventService>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));
