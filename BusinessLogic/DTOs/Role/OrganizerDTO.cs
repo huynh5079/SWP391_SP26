@@ -7,8 +7,28 @@ public class OrganizerDto
     public int TotalEvents { get; set; }
     public int UpcomingEvents { get; set; }
     public int DraftEvents { get; set; }
+    
+    // New stats requested by view
+    public int RegistrationsToday { get; set; }
+    public decimal DepositCollectedThisMonth { get; set; }
+    public List<string> RegistrationTrendLabels { get; set; } = new();
+    public List<int> RegistrationTrendData { get; set; } = new();
+    public Dictionary<string, int> EventStatusDistribution { get; set; } = new();
 
     public List<EventItemDto> UpcomingList { get; set; } = new();
+    
+    public List<EventFeedbackSummaryDto> RecentFeedbacks { get; set; } = new();
+}
+
+public class EventFeedbackSummaryDto
+{
+    public string EventId { get; set; } = "";
+    public string EventTitle { get; set; } = "";
+    public int Rating { get; set; }
+    public string? Comment { get; set; }
+    public DateTime? CreatedAt { get; set; }
+    public string? StudentId { get; set; }
+    public string? StudentCode { get; set; }
 }
 
 // Simple paged result used by services

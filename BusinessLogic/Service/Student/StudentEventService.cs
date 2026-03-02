@@ -44,6 +44,41 @@ namespace BusinessLogic.Service.Student
                 IsRegistered = isRegistered
             };
 
+        // ─── Dashboard Stats ──────────────────────────────────────────────────
+        public async Task<StudentDashboardStatsDto> GetDashboardStatsAsync(string studentId)
+        {
+            var profile = await RequireStudentProfileAsync(studentId);
+            var now = DateTimeHelper.GetVietnamTime();
+            var weekEnd = now.AddDays(7);
+
+            // Total registered events (exclude cancelled)
+            var tickets = await _uow.Tickets.GetAllAsync(
+                t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled,
+                q => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.Include(q, x => x.Event!)
+                      .Include(x => x.Event!.Feedbacks!));
+
+            int totalRegistered = tickets.Count();
+
+            // Upcoming this week
+            int upcomingThisWeek = tickets.Count(t => 
+                t.Event!.StartTime > now && 
+                t.Event!.StartTime <= weekEnd &&
+                t.Event!.Status != EventStatusEnum.Cancelled);
+
+            // Pending feedbacks (completed events without student's feedback)
+            int pendingFeedbacks = tickets.Count(t => 
+                t.Event!.Status == EventStatusEnum.Completed &&
+                t.Event!.Feedbacks != null &&
+                !t.Event!.Feedbacks.Any(f => f.StudentId == profile.Id && f.DeletedAt == null));
+
+            return new StudentDashboardStatsDto
+            {
+                TotalRegistered = totalRegistered,
+                UpcomingThisWeek = upcomingThisWeek,
+                PendingFeedbacks = pendingFeedbacks
+            };
+        }
+
         // ─── 1. Browse: all Published/Upcoming/Happening events ───────────────
         public async Task<List<StudentEventBrowseDto>> GetPublishedEventsAsync(
             string studentId,
