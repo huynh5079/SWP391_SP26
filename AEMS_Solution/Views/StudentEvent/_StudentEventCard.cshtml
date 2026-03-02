@@ -1,0 +1,60 @@
+@model BusinessLogic.DTOs.Student.StudentEventBrowseDto
+@{
+    string statusClass = Model.Status switch
+    {
+        DataAccess.Enum.EventStatusEnum.Upcoming  => "bg-info text-dark",
+        DataAccess.Enum.EventStatusEnum.Happening => "bg-success",
+        DataAccess.Enum.EventStatusEnum.Published => "bg-primary",
+        _                                          => "bg-secondary"
+    };
+}
+<div class="card h-100 shadow-sm @(Model.IsRegistered ? "border-success border-2" : "")">
+    @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
+    {
+        <img src="@Model.ThumbnailUrl" class="card-img-top" alt="@Model.Title"
+             style="height: 140px; object-fit: cover;">
+    }
+    else
+    {
+        <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+             style="height: 90px;">
+            <i class="bi bi-calendar-event text-muted" style="font-size: 2rem;"></i>
+        </div>
+    }
+    <div class="card-body pb-1">
+        <div class="d-flex justify-content-between mb-1">
+            <span class="badge @statusClass">@Model.Status</span>
+            @if (Model.IsRegistered)
+            {
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã đăng ký</span>
+            }
+            else if (Model.IsFull)
+            {
+                <span class="badge bg-danger">Hết chỗ</span>
+            }
+        </div>
+        <h6 class="card-title fw-bold mb-1 text-truncate" title="@Model.Title">@Model.Title</h6>
+        <div class="small text-muted">
+            <i class="bi bi-clock me-1"></i>@Model.StartTime.ToString("dd/MM/yyyy HH:mm")
+        </div>
+        @if (!string.IsNullOrEmpty(Model.Location))
+        {
+            <div class="small text-muted text-truncate">
+                <i class="bi bi-geo-alt me-1"></i>@Model.Location
+            </div>
+        }
+        <div class="small text-muted">
+            <i class="bi bi-people me-1"></i>@Model.RegisteredCount / @Model.MaxCapacity chỗ
+            @if (!Model.IsFull)
+            {
+                <span class="text-success">(@Model.AvailableSeats trống)</span>
+            }
+        </div>
+    </div>
+    <div class="card-footer bg-transparent border-0 pt-0">
+        <a asp-controller="StudentEvent" asp-action="Detail" asp-route-id="@Model.EventId"
+           class="btn btn-sm btn-outline-primary w-100">
+            Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+    </div>
+</div>
