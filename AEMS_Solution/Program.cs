@@ -56,6 +56,8 @@ builder.Services.AddScoped<IApproverQueryService, ApproverService>();
 builder.Services.AddScoped<IApproverCommandService, ApproverService>();
 // Student services
 builder.Services.AddScoped<IStudentEventService, StudentEventService>();
+// Organizer CheckIn service
+builder.Services.AddScoped<ICheckInService, CheckInService>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));
