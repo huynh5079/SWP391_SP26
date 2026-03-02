@@ -412,6 +412,27 @@ using Microsoft.EntityFrameworkCore;
 				vm.Stats.UpcomingEvents = dto.UpcomingEvents;
 				vm.Stats.DraftEvents = dto.DraftEvents;
 
+                // Extensions for charts and cards
+                vm.RegistrationsToday = dto.RegistrationsToday;
+                vm.DepositCollectedThisMonth = dto.DepositCollectedThisMonth;
+                vm.RegistrationTrendLabels = dto.RegistrationTrendLabels;
+                vm.RegistrationTrendData = dto.RegistrationTrendData;
+                vm.EventStatusDistribution = dto.EventStatusDistribution;
+                
+                if (dto.RecentFeedbacks != null && dto.RecentFeedbacks.Any())
+                {
+                    vm.RecentFeedbacks = dto.RecentFeedbacks.Select(f => new EventFeedbackSummaryVm
+                    {
+                        EventId = f.EventId,
+                        EventTitle = f.EventTitle,
+                        Rating = f.Rating,
+                        Comment = f.Comment,
+                        CreatedAt = f.CreatedAt,
+                        StudentId = f.StudentId,
+                        StudentCode = f.StudentCode
+                    }).ToList();
+                }
+
 				vm.RecentEvents = dto.UpcomingList
 					.Select(x => new OrganizerEventCardVm
 					{
