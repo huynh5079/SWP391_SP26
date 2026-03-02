@@ -32,10 +32,18 @@ namespace AEMS_Solution.Controllers.Features.Student
             var events = await _service.GetPublishedEventsAsync(
                 CurrentUserId, search, topicId, semesterId);
 
+            var stats = await _service.GetDashboardStatsAsync(CurrentUserId);
+
             ViewBag.WeekOffset = weekOffset;
             ViewBag.Search = search;
 
-            return View(events);
+            var vm = new StudentEventBrowseViewModel
+            {
+                Stats = stats,
+                Events = events
+            };
+
+            return View(vm);
         }
 
         // ─── Event detail ─────────────────────────────────────────────────────
