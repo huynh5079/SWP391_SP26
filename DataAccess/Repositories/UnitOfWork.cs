@@ -24,8 +24,11 @@ namespace DataAccess.Repositories
         public IGenericRepository<Semester> Semesters { get; }
         public IGenericRepository<Department> Departments { get; }
 
-        public IGenericRepository<EventWaitlist> EventWaitlist{get;}
+		public IGenericRepository<EventWaitlist> EventWaitlist{get;}
 		public IGenericRepository<ApprovalLog> EventApprovalLogs { get; }
+		// ✅ StudentFeature
+		public IGenericRepository<Ticket> Tickets { get; }
+		public IGenericRepository<Feedback> Feedbacks { get; }
 		public UnitOfWork(AEMSContext ctx, IUserRepository users)
         {
             _ctx = ctx;
@@ -43,6 +46,8 @@ namespace DataAccess.Repositories
 			Departments = new GenericRepository<Department>(_ctx);
             EventWaitlist = new GenericRepository<EventWaitlist>(_ctx);
             EventApprovalLogs = new GenericRepository<ApprovalLog>(_ctx);
+			Tickets = new GenericRepository<Ticket>(_ctx);
+			Feedbacks = new GenericRepository<Feedback>(_ctx);
             //
 		}
 

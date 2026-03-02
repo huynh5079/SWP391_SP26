@@ -1,0 +1,213 @@
+@model BusinessLogic.DTOs.Student.StudentEventDetailDto
+@{
+    ViewData["Title"] = Model.Title;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string modeIcon = Model.Mode switch
+    {
+        DataAccess.Enum.EventModeEnum.Online => "bi-camera-video",
+        DataAccess.Enum.EventModeEnum.Hybrid => "bi-laptop",
+        _                                     => "bi-geo-alt"
+    };
+    string statusClass = Model.Status switch
+    {
+        DataAccess.Enum.EventStatusEnum.Upcoming  => "bg-info text-dark",
+        DataAccess.Enum.EventStatusEnum.Happening => "bg-success",
+        DataAccess.Enum.EventStatusEnum.Published => "bg-primary",
+        _                                          => "bg-secondary"
+    };
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a asp-action="Index" asp-controller="StudentEvent">Sự kiện</a>
+            </li>
+            <li class="breadcrumb-item active">@Model.Title</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <!-- ── Left: info ──────────────────────────────────────────────── -->
+        <div class="col-lg-8">
+            @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
+            {
+                <img src="@Model.ThumbnailUrl" alt="@Model.Title"
+                     class="img-fluid rounded-3 mb-3 shadow-sm w-100"
+                     style="max-height: 360px; object-fit: cover;">
+            }
+
+            <h3 class="fw-bold mb-2">@Model.Title</h3>
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge @statusClass fs-6">@Model.Status</span>
+                @if (!string.IsNullOrEmpty(Model.TopicName))
+                {
+                    <span class="badge bg-light border text-dark">@Model.TopicName</span>
+                }
+                @if (!string.IsNullOrEmpty(Model.SemesterName))
+                {
+                    <span class="badge bg-light border text-dark">@Model.SemesterName</span>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-2"><i class="bi bi-file-text me-1 text-primary"></i>Mô tả</h6>
+                        <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
+                    </div>
+                </div>
+            }
+
+            <!-- ── Organizer info ──────────────────────────────────────── -->
+            @if (!string.IsNullOrEmpty(Model.OrganizerName))
+            {
+                <div class="d-flex align-items-center gap-2 mb-3 text-muted small">
+                    <i class="bi bi-person-badge fs-5 text-primary"></i>
+                    <span>Tổ chức bởi: <strong>@Model.OrganizerName</strong></span>
+                </div>
+            }
+        </div>
+
+        <!-- ── Right: action card ──────────────────────────────────────── -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm position-sticky" style="top: 80px;">
+                <div class="card-body">
+                    <!-- Time -->
+                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-info-circle me-1"></i>Thông tin</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2">
+                            <i class="bi bi-clock me-2 text-primary"></i>
+                            <strong>Bắt đầu:</strong> @Model.StartTime.ToString("HH:mm, dd/MM/yyyy")
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-clock-history me-2 text-danger"></i>
+                            <strong>Kết thúc:</strong> @Model.EndTime.ToString("HH:mm, dd/MM/yyyy")
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi @modeIcon me-2 text-secondary"></i>
+                            <strong>Hình thức:</strong> @(Model.Mode?.ToString() ?? "Chưa xác định")
+                            @if (!string.IsNullOrEmpty(Model.MeetingUrl))
+                            {
+                                <br />
+                                <a href="@Model.MeetingUrl" target="_blank" class="ms-4 small">
+                                    <i class="bi bi-link-45deg"></i> Tham gia online
+                                </a>
+                            }
+                        </li>
+                        @if (!string.IsNullOrEmpty(Model.Location))
+                        {
+                            <li class="mb-2">
+                                <i class="bi bi-geo-alt me-2 text-danger"></i>
+                                <strong>Địa điểm:</strong> @Model.Location
+                            </li>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.DepartmentName))
+                        {
+                            <li class="mb-2">
+                                <i class="bi bi-building me-2 text-secondary"></i>
+                                <strong>Khoa/Phòng:</strong> @Model.DepartmentName
+                            </li>
+                        }
+                        <li class="mb-2">
+                            <i class="bi bi-people me-2 text-info"></i>
+                            <strong>Sức chứa:</strong>
+                            @Model.RegisteredCount / @Model.MaxCapacity
+                            @if (!Model.IsFull)
+                            {
+                                <span class="text-success ms-1">(@Model.AvailableSeats còn trống)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger ms-1">Hết chỗ</span>
+                            }
+                        </li>
+                        @if (Model.IsDepositRequired == true)
+                        {
+                            <li class="mb-2">
+                                <i class="bi bi-credit-card me-2 text-warning"></i>
+                                <strong>Đặt cọc:</strong>
+                                @Model.DepositAmount?.ToString("N0") VNĐ
+                            </li>
+                        }
+                    </ul>
+
+                    <hr />
+
+                    <!-- ── Action buttons ──────────────────────────────── -->
+                    @if (Model.IsRegistered)
+                    {
+                        <div class="alert alert-success py-2 d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>Bạn đã đăng ký sự kiện này.</span>
+                        </div>
+
+                        @if (Model.CanCancel)
+                        {
+                            <form asp-action="Cancel" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="ticketId" value="@Model.TicketId" />
+                                <input type="hidden" name="eventId"  value="@Model.EventId"  />
+                                <button type="submit" class="btn btn-outline-danger w-100"
+                                        onclick="return confirm('Bạn chắc chắn muốn hủy đăng ký?')">
+                                    <i class="bi bi-x-circle me-1"></i> Hủy đăng ký
+                                </button>
+                            </form>
+                        }
+                    }
+                    else if (Model.CanRegister)
+                    {
+                        <form asp-action="Register" asp-route-id="@Model.EventId" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-primary w-100 fw-bold">
+                                <i class="bi bi-ticket-detailed me-1"></i> Đăng ký ngay
+                            </button>
+                        </form>
+                    }
+                    else if (Model.IsFull)
+                    {
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-person-x me-1"></i> Hết chỗ
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-lock me-1"></i> Không thể đăng ký
+                        </button>
+                    }
+
+                    <!-- ── Feedback form (only after event ends) ───────── -->
+                    @if (Model.IsRegistered && Model.EndTime < DateTime.Now)
+                    {
+                        <hr />
+                        <h6 class="fw-bold"><i class="bi bi-star me-1 text-warning"></i>Đánh giá</h6>
+                        <form asp-action="SubmitFeedback" asp-route-id="@Model.EventId" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-2">
+                                <label class="form-label small">Rating (1-5)</label>
+                                <select name="Rating" class="form-select form-select-sm">
+                                    <option value="5">⭐⭐⭐⭐⭐ Xuất sắc</option>
+                                    <option value="4">⭐⭐⭐⭐ Tốt</option>
+                                    <option value="3">⭐⭐⭐ Bình thường</option>
+                                    <option value="2">⭐⭐ Chưa tốt</option>
+                                    <option value="1">⭐ Tệ</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <textarea name="Comment" class="form-control form-control-sm"
+                                          rows="3" placeholder="Nhận xét (tuỳ chọn)" maxlength="1000"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-warning btn-sm w-100">
+                                <i class="bi bi-send me-1"></i> Gửi feedback
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
