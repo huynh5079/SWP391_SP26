@@ -5,15 +5,22 @@ using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 
+using BusinessLogic.Utilities;
+using BusinessLogic.Service.System;
+
 namespace BusinessLogic.Service.Student
 {
     public class StudentEventService : IStudentEventService
     {
         private readonly IUnitOfWork _uow;
+        private readonly IEmailService _emailService;
+        private readonly ISystemErrorLogService _errorLogService;
 
-        public StudentEventService(IUnitOfWork uow)
+        public StudentEventService(IUnitOfWork uow, IEmailService emailService, ISystemErrorLogService errorLogService)
         {
             _uow = uow;
+            _emailService = emailService;
+            _errorLogService = errorLogService;
         }
 
         // ─── Helper: resolve StudentProfile.Id from User.Id ───────────────────
@@ -216,13 +223,43 @@ namespace BusinessLogic.Service.Student
                 existing.Status = TicketStatusEnum.Registered;
                 existing.DeletedAt = null;
                 existing.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                using var transaction = await _uow.BeginTransactionAsync();
                 try
                 {
                     await _uow.Tickets.UpdateAsync(existing);
                     await _uow.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    
+                    try
+                    {
+                        // Generate QR & send email
+                        string qrPayload = existing.Id;
+                        string qrCodeBase64 = QRCodeGeneratorHelper.GenerateQRCodeBase64(qrPayload);
+                        
+                        // Fetch user info for email
+                        var user = await _uow.Users.GetAsync(u => u.Id == profile.UserId);
+                        if (user != null)
+                        {
+                            string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+                            await _emailService.SendEventRegistrationEmailAsync(
+                                user.Email,
+                                user.FullName ?? user.Email ?? "Sinh viên",
+                                ev.Title,
+                                ev.StartTime,
+                                locationName,
+                                qrCodeBase64
+                            );
+                        }
+                    }
+                    catch (Exception emailEx)
+                    {
+                        await _errorLogService.LogErrorAsync(emailEx, profile.UserId, "StudentEventService.RegisterForEventAsync (Reactivate)");
+                        // Do not throw; we already registered the student successfully. Email failure shouldn't rollback registration.
+                    }
                 }
                 catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
                 {
+                    await transaction.RollbackAsync();
                     Exception inner = dbEx;
                     while (inner.InnerException != null) inner = inner.InnerException;
                     throw new InvalidOperationException($"Lỗi lưu dữ liệu: {inner.Message}", dbEx);
@@ -249,13 +286,42 @@ namespace BusinessLogic.Service.Student
                 TicketCode = $"TK-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
             };
 
+            using var newTrans = await _uow.BeginTransactionAsync();
             try
             {
                 await _uow.Tickets.CreateAsync(ticket);
                 await _uow.SaveChangesAsync();
+                await newTrans.CommitAsync();
+
+                try
+                {
+                    // Generate QR & send email
+                    string qrPayload = ticket.Id;
+                    string qrCodeBase64 = QRCodeGeneratorHelper.GenerateQRCodeBase64(qrPayload);
+                    
+                    // Fetch user info for email
+                    var user = await _uow.Users.GetAsync(u => u.Id == profile.UserId);
+                    if (user != null)
+                    {
+                        string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+                        await _emailService.SendEventRegistrationEmailAsync(
+                            user.Email,
+                            user.FullName ?? user.Email ?? "Sinh viên",
+                            ev.Title,
+                            ev.StartTime,
+                            locationName,
+                            qrCodeBase64
+                        );
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    await _errorLogService.LogErrorAsync(emailEx, profile.UserId, "StudentEventService.RegisterForEventAsync (New Ticket)");
+                }
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
             {
+                await newTrans.RollbackAsync();
                 // Unwrap to deepest inner exception for a meaningful message
                 Exception inner = dbEx;
                 while (inner.InnerException != null) inner = inner.InnerException;
