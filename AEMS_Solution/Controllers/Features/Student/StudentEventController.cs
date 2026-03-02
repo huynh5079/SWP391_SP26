@@ -1,0 +1,147 @@
+using AEMS_Solution.Controllers.Common;
+using BusinessLogic.DTOs.Student;
+using BusinessLogic.Service.Student;
+using BusinessLogic.Service.System;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AEMS_Solution.Controllers.Features.Student
+{
+    [Authorize(Roles = "Student")]
+    public class StudentEventController : BaseController
+    {
+        private readonly IStudentEventService _service;
+        private readonly ISystemErrorLogService _errorLog;
+
+        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog)
+        {
+            _service = service;
+            _errorLog = errorLog;
+        }
+
+        // ─── Browse (weekly calendar) ─────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> Index(
+            string? search,
+            string? topicId,
+            string? semesterId,
+            int weekOffset = 0)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            var events = await _service.GetPublishedEventsAsync(
+                CurrentUserId, search, topicId, semesterId);
+
+            ViewBag.WeekOffset = weekOffset;
+            ViewBag.Search = search;
+
+            return View(events);
+        }
+
+        // ─── Event detail ─────────────────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> Detail(string id)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
+            return View(detail);
+        }
+
+        // ─── Register ─────────────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(string id)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                await _service.RegisterForEventAsync(CurrentUserId, id);
+                SetSuccess("Đăng ký thành công!");
+            }
+            catch (Exception ex)
+            {
+                // Log full exception (incl. inner) to system error log
+                await _errorLog.LogErrorAsync(
+                    ex, CurrentUserId,
+                    $"{nameof(StudentEventController)}.{nameof(Register)}");
+
+                // Show deepest message to user
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        // ─── Cancel registration ──────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Cancel(string ticketId, string eventId)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                await _service.CancelRegistrationAsync(CurrentUserId, ticketId);
+                SetSuccess("Hủy đăng ký thành công.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(
+                    ex, CurrentUserId,
+                    $"{nameof(StudentEventController)}.{nameof(Cancel)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { id = eventId });
+        }
+
+        // ─── My events ────────────────────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> MyEvents()
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            var events = await _service.GetMyRegisteredEventsAsync(CurrentUserId);
+            return View(events);
+        }
+
+        // ─── Submit feedback ──────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitFeedback(string id, SubmitFeedbackRequestDto dto)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            if (!ModelState.IsValid)
+            {
+                SetError("Dữ liệu không hợp lệ. Rating phải từ 1 đến 5.");
+                return RedirectToAction(nameof(Detail), new { id });
+            }
+
+            try
+            {
+                await _service.SubmitFeedbackAsync(CurrentUserId, id, dto);
+                SetSuccess("Feedback đã được gửi. Cảm ơn bạn!");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(
+                    ex, CurrentUserId,
+                    $"{nameof(StudentEventController)}.{nameof(SubmitFeedback)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+    }
+}
