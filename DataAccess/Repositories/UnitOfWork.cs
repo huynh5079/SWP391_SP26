@@ -29,6 +29,7 @@ namespace DataAccess.Repositories
 		// ✅ StudentFeature
 		public IGenericRepository<Ticket> Tickets { get; }
 		public IGenericRepository<Feedback> Feedbacks { get; }
+        public IGenericRepository<CheckInHistory> CheckInHistories { get; }
 		public UnitOfWork(AEMSContext ctx, IUserRepository users)
         {
             _ctx = ctx;
@@ -48,6 +49,7 @@ namespace DataAccess.Repositories
             EventApprovalLogs = new GenericRepository<ApprovalLog>(_ctx);
 			Tickets = new GenericRepository<Ticket>(_ctx);
 			Feedbacks = new GenericRepository<Feedback>(_ctx);
+            CheckInHistories = new GenericRepository<CheckInHistory>(_ctx);
             //
 		}
 
