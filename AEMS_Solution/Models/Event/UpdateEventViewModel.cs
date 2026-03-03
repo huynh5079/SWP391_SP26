@@ -77,5 +77,13 @@ namespace AEMS_Solution.Models.Event
         public string? Url { get; set; }
         public string? Type { get; set; }
     }
+	public class SoftDeleteEventViewModel
+	{
+		[Required]
+		public string EventId { get; set; } = string.Empty;
 
+		// NotAvailable = soft delete; Available = restore
+		[Required]
+		public EventStatusAvailableEnum StatusEventAvailable { get; set; }
+	}
 }
