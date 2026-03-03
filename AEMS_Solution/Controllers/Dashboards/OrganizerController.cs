@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Drawing.Printing;
+using System.Linq;
 using System.Net.NetworkInformation;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
@@ -44,19 +45,28 @@ using Microsoft.EntityFrameworkCore;
 				case "detail":
 					return await DetailEvent(id);
 
-				case "eventwaitlist":
+				//case "eventwaitlist":
 				//return
 				//case "update":
 				case "myevents":
-					EventStatusEnum? parsedStatus = null;
-
-					if (!string.IsNullOrWhiteSpace(status) &&
-						Enum.TryParse<EventStatusEnum>(status, true, out var tmp))
 					{
-						parsedStatus = tmp;
+						EventStatusEnum? parsedStatus = null;
+						if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<EventStatusEnum>(status, true, out var tmp))
+						{
+							parsedStatus = tmp;
+						}
+						return await MyEvents(search, parsedStatus, semesterId, page, pageSize);
 					}
 
-					return await MyEvents(search, parsedStatus, semesterId, page, pageSize);
+				case "myeventsdelete":
+					{
+						EventStatusEnum? parsedStatus = null;
+						if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<EventStatusEnum>(status, true, out var tmp))
+						{
+							parsedStatus = tmp;
+						}
+						return await MyEventsDelete(search, parsedStatus, semesterId, page, pageSize);
+					}
 
 				default:
 					return BadRequest("Operation không hợp lệ.");
@@ -88,10 +98,45 @@ using Microsoft.EntityFrameworkCore;
                     case "sendforapproval":
                     case "send":
                         return await SendForApproval(id);
-					// case "eventwaitlist":
-					//return
-					//case "update":
-					case "detailevent":
+				    // case "eventwaitlist":
+				    //return
+				    //case "update":
+                    case "softdelete":
+                        if (string.IsNullOrEmpty(id))
+                        {
+                            SetError("Event id không hợp lệ.");
+                            return RedirectToAction("MyEvents");
+                        }
+
+                        var userId = CurrentUserId;
+                        if (string.IsNullOrEmpty(userId))
+                        {
+                            return RedirectToAction("Login", "Auth");
+                        }
+
+                        await _organizerService.SoftDeleteEventAsync(userId, id);
+                        SetSuccess("Xóa sự kiện thành công.");
+                        return RedirectToAction("MyEvents");
+
+                    case "restore":
+                        if (string.IsNullOrEmpty(id))
+                        {
+                            SetError("Event id không hợp lệ.");
+                            return RedirectToAction("MyEventsDelete");
+                        }
+
+                        var restoreUser = CurrentUserId;
+                        if (string.IsNullOrEmpty(restoreUser))
+                        {
+                            return RedirectToAction("Login", "Auth");
+                        }
+
+                        await _organizerService.RestoreEventAsync(restoreUser, id);
+                        SetSuccess("Khôi phục sự kiện thành công.");
+                        // quay lại danh sách đã xóa để người dùng thấy mục đã được gỡ khỏi đây
+                        return RedirectToAction("MyEventsDelete");
+
+                    case "detailevent":
                     case "detail":
                         return await DetailEvent(id);
                     default:
@@ -365,9 +410,8 @@ using Microsoft.EntityFrameworkCore;
 						WaitlistCount = e.WaitlistCount,
 						AvgRating = e.AvgRating,
 						Mode = e.Mode,
-					MeetingUrl = e.MeetingUrl,
-					// Map last approval action (if present) to ApprovalActionEnum on the card
-					ApprovalActionEnum = e.LastApprovalAction ?? DataAccess.Enum.ApprovalActionEnum.NYA,
+					    MeetingUrl = e.MeetingUrl,
+					
 					});
 				}
 
@@ -392,9 +436,78 @@ using Microsoft.EntityFrameworkCore;
 				return View("~/Views/Event/MyEvent.cshtml", new MyEventsViewModel());
 			}
 		}
-		
-		//default
-		public async Task<IActionResult> Index()
+	        public async Task<IActionResult> MyEventsDelete(string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+	        {
+			var userId = CurrentUserId;
+			if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+
+			try
+			{
+				var paged = await _organizerService.GetMyDeletedEventsAsync(userId, search, status, semesterId, page, pageSize);
+
+				var vm = new MyEventsViewModel();
+				var now = DateTimeHelper.GetVietnamTime();
+				foreach (var e in paged.Items)
+				{
+					string displayStatus = e.Status.ToString();
+					if (string.Equals(displayStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
+						displayStatus = "Cancelled";
+					else if (string.Equals(displayStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+						displayStatus = "Pending";
+					else if (string.Equals(displayStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+						displayStatus = now > e.EndTime ? "Completed" : "Draft";
+					else if (string.Equals(displayStatus, "Published", StringComparison.OrdinalIgnoreCase) || string.Equals(displayStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
+					else
+						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
+
+					vm.Events.Add(new OrganizerEventCardVm
+					{
+						EventId = e.EventId,
+						Title = e.Title,
+						ThumbnailUrl = e.ThumbnailUrl,
+						SemesterId = e.SemesterId,
+						SemesterName = e.SemesterName,
+						DepartmentId = e.DepartmentId,
+						DepartmentName = e.DepartmentName,
+						Location = e.Location,
+						StartTime = e.StartTime,
+						EndTime = e.EndTime,
+						MaxCapacity = e.MaxCapacity,
+						Status = e.Status,
+						RegisteredCount = e.RegisteredCount,
+						CheckedInCount = e.CheckedInCount,
+						WaitlistCount = e.WaitlistCount,
+						AvgRating = e.AvgRating,
+						Mode = e.Mode,
+						MeetingUrl = e.MeetingUrl,
+
+					});
+				}
+
+				vm.Page = paged.Page;
+				vm.PageSize = paged.PageSize;
+				vm.TotalItems = paged.Total;
+				vm.Search = search;
+				vm.Status = status ?? DataAccess.Enum.EventStatusEnum.Draft;
+				vm.SemesterId = semesterId;
+
+				return View("~/Views/Event/MyEventDelete.cshtml", vm);
+			}
+			catch (InvalidOperationException ex)
+			{
+				SetError($"Lỗi: {ex.Message}");
+				return View("~/Views/Event/MyEventDelete.cshtml", new MyEventsViewModel());
+			}
+			catch (Exception)
+			{
+				SetError("Đã xảy ra lỗi khi tải danh sách. Vui lòng thử lại hoặc liên hệ quản trị viên.");
+				return View("~/Views/Event/MyEventDelete.cshtml", new MyEventsViewModel());
+			}
+		}
+	
+	//default
+	public async Task<IActionResult> Index()
 		{
 			try
 			{

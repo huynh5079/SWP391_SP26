@@ -67,7 +67,7 @@ namespace DataAccess.Repositories
 
 			return await _dbSet.CountAsync(predicate);
 		}
-		
+
 		
 	}
 }
