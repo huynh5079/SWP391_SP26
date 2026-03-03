@@ -33,7 +33,7 @@ public class EventService : IEventService
 			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên để tạo hồ sơ của bạn.");
 
 		var events = await _uow.Events.GetAllAsync(
-			e => e.OrganizerId == staff.Id,
+			e => e.OrganizerId == staff.Id && e.DeletedAt == null,
 			q => q
 				.Include(x => x.Tickets)
 				.Include(x => x.EventWaitlists)
@@ -89,6 +89,71 @@ public class EventService : IEventService
 		return list;
 	}
 
+	public async Task<List<EventListDto>> GetMyDeletedEventsAsync(string userId)
+	{
+		if (string.IsNullOrEmpty(userId))
+			throw new InvalidOperationException("UserId không được để trống.");
+
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null)
+			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên để tạo hồ sơ của bạn.");
+
+		var events = await _uow.Events.GetAllAsync(
+			e => e.OrganizerId == staff.Id && e.DeletedAt != null,
+			q => q
+				.Include(x => x.Tickets)
+				.Include(x => x.EventWaitlists)
+				.Include(x => x.Feedbacks)
+				.Include(x => x.Semester)
+				.Include(x => x.Department)
+				.Include(x => x.Location)
+				.Include(x => x.ApprovalLogs)
+		);
+
+		var list = new List<EventListDto>();
+		foreach (var e in events.OrderByDescending(x => x.StartTime))
+		{
+			int ticketCount = e.Tickets?.Count ?? 0;
+			int checkedIn = e.Tickets?.Count(t => t.CheckInTime != null) ?? 0;
+			int waitlist = e.EventWaitlists?.Count ?? 0;
+			double avg = 0;
+			if (e.Feedbacks != null && e.Feedbacks.Count > 0)
+			{
+				var ratings = e.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).ToList();
+				if (ratings.Count > 0) avg = ratings.Average();
+			}
+
+			var lastApproval = e.ApprovalLogs?.Where(l => l.DeletedAt == null).OrderByDescending(l => l.CreatedAt).FirstOrDefault();
+
+			list.Add(new EventListDto
+			{
+				EventId = e.Id,
+				Title = e.Title,
+				ThumbnailUrl = e.ThumbnailUrl,
+				SemesterId = e.SemesterId,
+				SemesterName = e.Semester?.Name,
+				DepartmentId = e.DepartmentId,
+				DepartmentName = e.Department?.Name,
+				Location = e.Location?.Name ?? e.LocationId,
+				StartTime = e.StartTime,
+				EndTime = e.EndTime,
+				MaxCapacity = e.MaxCapacity,
+				Status = e.Status,
+				RegisteredCount = ticketCount,
+				CheckedInCount = checkedIn,
+				WaitlistCount = waitlist,
+				AvgRating = avg,
+				Mode = e.Mode?.ToString(),
+				MeetingUrl = e.MeetingUrl,
+				LastApprovalAction = lastApproval?.Action,
+				LastApprovalActionAt = lastApproval?.CreatedAt,
+				LastApprovalBy = lastApproval?.ApproverId,
+			});
+		}
+
+		return list;
+	}
+
 	public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 	{
 		var items = await GetMyEventsAsync(userId);
@@ -97,13 +162,39 @@ public class EventService : IEventService
 		{
 			items = items.Where(x => x.Title != null && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
 		}
-		// Safely filter by status only when a value is provided
-		if (status.HasValue)
-			if (Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
-			{
-				items = items.Where(x => x.Status == status.Value).ToList();
-				items = items.Where(x => x.Status == parsedStatus).ToList();
-			}
+		if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
+		{
+			items = items.Where(x => x.Status == parsedStatus).ToList();
+		}
+		if (!string.IsNullOrWhiteSpace(semesterId))
+		{
+			items = items.Where(x => x.SemesterId == semesterId).ToList();
+		}
+
+		var total = items.Count;
+		var paged = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+		return new PagedResult<EventListDto>
+		{
+			Items = paged,
+			Total = total,
+			Page = page,
+			PageSize = pageSize
+		};
+	}
+
+	public async Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+	{
+		var items = await GetMyDeletedEventsAsync(userId);
+
+		if (!string.IsNullOrWhiteSpace(search))
+		{
+			items = items.Where(x => x.Title != null && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+		}
+		if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
+		{
+			items = items.Where(x => x.Status == parsedStatus).ToList();
+		}
 		if (!string.IsNullOrWhiteSpace(semesterId))
 		{
 			items = items.Where(x => x.SemesterId == semesterId).ToList();
@@ -194,6 +285,36 @@ public class EventService : IEventService
 				}
 			}
 
+			await _uow.SaveChangesAsync();
+			await transaction.CommitAsync();
+		}
+		catch
+		{
+			await transaction.RollbackAsync();
+			throw;
+		}
+	}
+
+	public async Task RestoreEventAsync(string userId, string eventId)
+	{
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền khôi phục event này.");
+
+		using var transaction = await _uow.BeginTransactionAsync();
+		try
+		{
+			var now = DateTimeHelper.GetVietnamTime();
+			ev.DeletedAt = null;
+			ev.StatusEventAvailable = EventStatusAvailableEnum.Available;
+			ev.UpdatedAt = now;
+
+			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
 		}
@@ -390,6 +511,35 @@ public class EventService : IEventService
 		return dto;
 	}
 
+	public async Task SoftDeleteEventAsync(string userId, string eventId)
+	{
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
 
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền xóa event này.");
+
+		using var transaction = await _uow.BeginTransactionAsync();
+		try
+		{
+			var now = DateTimeHelper.GetVietnamTime();
+			ev.DeletedAt = now;
+			// đánh dấu trạng thái khả dụng là NotAvailable nếu có cột này
+			ev.StatusEventAvailable = EventStatusAvailableEnum.NA;
+			ev.UpdatedAt = now;
+
+			await _uow.Events.UpdateAsync(ev);   
+			await _uow.SaveChangesAsync();
+			await transaction.CommitAsync();
+		}
+		catch
+		{
+			await transaction.RollbackAsync();
+			throw;
+		}
+	}
 }
 
