@@ -35,8 +35,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                     EndTime = e.EndTime ?? System.DateTime.MinValue,
                     Status = e.Status,
                     ThumbnailUrl = e.ThumbnailUrl,
-                    Location = e.Location
-                });
+					Location = e.Location,
+					LastApprovalComment = e.LastApprovalComment
+				});
             }
 
             vm.Search = search;

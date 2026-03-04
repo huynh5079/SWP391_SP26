@@ -115,7 +115,7 @@
                         <a class="btn btn-sm btn-secondary ms-1" asp-controller="EventWaitlist"  asp-action="Index" asp-route-eventId="@e.EventId"> Waitlist </a>
                         <a asp-action="Edit" asp-route-id="@e.EventId"
                            class="btn btn-sm btn-warning">Edit</a>
-                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending)
+                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending || e.Status == EventStatusEnum.Rejected)
                         {
                             <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
                                 @Html.AntiForgeryToken()

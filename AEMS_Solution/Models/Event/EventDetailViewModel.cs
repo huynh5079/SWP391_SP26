@@ -53,6 +53,10 @@ namespace AEMS_Solution.Models.Event
 		public bool CanPublish { get; set; }
 		public bool CanCancel { get; set; }
 
+		public ApprovalActionEnum? LastApprovalAction { get; set; }
+		public string? LastApprovalComment { get; set; }
+		public DateTime? LastApprovalAt { get; set; }
+
 		// --- Convenience/stat fields (some views expect top-level props) ---
 		public int RegisteredCount { get; set; }
 		public int CheckedInCount { get; set; }
