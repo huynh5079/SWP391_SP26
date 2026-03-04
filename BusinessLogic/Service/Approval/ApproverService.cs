@@ -30,7 +30,8 @@ namespace BusinessLogic.Service.Approval
 			// NOTE: Repository của bạn có thể khác.
 			// Mình assume _uow.Events.Query() trả về IQueryable<Event>.
 			// Nếu không có Query(), bạn đổi sang method tương đương GetAllAsync + include.
-			var list = await _uow.Events.GetAllAsync( e => e.Status == EventStatusEnum.Pending);
+			var list = await _uow.Events.GetAllAsync( e => e.Status == EventStatusEnum.Pending,
+				q => q.Include(x => x.ApprovalLogs));
 
 			if (!string.IsNullOrWhiteSpace(search))
 			{
@@ -44,14 +45,23 @@ namespace BusinessLogic.Service.Approval
 				.Take(pageSize)
 				.ToList();
 
-			var items = list.Select(e => new EventItemDto
+			var items = list.Select(e =>
 			{
-				Id = e.Id,
-				Title = e.Title,
-				StartTime = e.StartTime,
-				EndTime = e.EndTime,
-				Status = e.Status,
-				ThumbnailUrl = e.ThumbnailUrl
+				var lastLog = e.ApprovalLogs?
+					.Where(l => l.DeletedAt == null)
+					.OrderByDescending(l => l.CreatedAt)
+					.FirstOrDefault();
+
+				return new EventItemDto
+				{
+					Id = e.Id,
+					Title = e.Title,
+					StartTime = e.StartTime,
+					EndTime = e.EndTime,
+					Status = e.Status,
+					ThumbnailUrl = e.ThumbnailUrl,
+					LastApprovalComment = lastLog?.Comment
+				};
 			}).ToList();
 
 			return items;
