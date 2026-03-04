@@ -321,7 +321,10 @@ using Microsoft.EntityFrameworkCore;
 					RegisteredCount = dto.RegisteredCount,
 					CheckedInCount = dto.CheckedInCount,
 					WaitlistCount = dto.WaitlistCount,
-					AvgRating = dto.AvgRating
+					AvgRating = dto.AvgRating,
+					LastApprovalAction = dto.LastApprovalAction,
+					LastApprovalComment = dto.LastApprovalComment,
+					LastApprovalAt = dto.LastApprovalAt
 				};
 
 				foreach (var a in dto.Agendas)
