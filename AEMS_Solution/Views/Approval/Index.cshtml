@@ -11,6 +11,7 @@
         <div class="col-auto">
             <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
         </div>
+
         <div class="col-auto">
             <button class="btn btn-primary">Filter</button>
         </div>
@@ -24,6 +25,7 @@
                 <th>Location</th>
                 <th>Time</th>
                 <th>Status</th>
+                <th>Last Reason</th>
                 <th>Action</th>
                 <th>Detail Event<th/>
             </tr>
@@ -46,10 +48,11 @@
                     <td>
                         <span class="badge bg-warning text-dark">@e.Status</span>
                     </td>
+                    <td class="text-break" style="max-width:200px;">@(!string.IsNullOrWhiteSpace(e.LastApprovalComment) ? e.LastApprovalComment : "")</td>
                     <td>
-                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">Approve</a>
-                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">Reject</a>
-                        <a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">Request Change</a>
+                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="approve" class="btn btn-sm btn-success">Approve</a>
+                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="reject" class="btn btn-sm btn-danger ms-1">Reject</a>
+                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="requestchange" class="btn btn-sm btn-warning ms-1">Request Change</a>
                     </td>
                     <td><a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">View</a><td/>
                 </tr>
