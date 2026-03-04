@@ -26,11 +26,11 @@ public class DashboardService : IDashboardService
 
         var now = DateTimeHelper.GetVietnamTime();
 
-        var total = await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id);
-        var upcoming = await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.Status == EventStatusEnum.Upcoming && e.StartTime >= now);
-        var draft = await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.Status == EventStatusEnum.Draft);
+		var total = await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null);
+		var upcoming = await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null && e.Status == EventStatusEnum.Upcoming && e.StartTime >= now);
+		var draft = await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null && e.Status == EventStatusEnum.Draft);
 
-        var upcomingList = await _uow.Events.GetAllAsync(e => e.OrganizerId == staff.Id && e.Status == EventStatusEnum.Upcoming && e.StartTime >= now);
+		var upcomingList = await _uow.Events.GetAllAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null && e.Status == EventStatusEnum.Upcoming && e.StartTime >= now);
 
         var top5 = upcomingList.OrderBy(e => e.StartTime).Take(5).Select(e => new EventItemDto
         {
@@ -55,7 +55,7 @@ public class DashboardService : IDashboardService
 
         // 2. Deposit Collected This Month
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
-        var allEvents = await _uow.Events.GetAllAsync(e => e.OrganizerId == staff.Id);
+		var allEvents = await _uow.Events.GetAllAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null);
         
         // Count deposits from active tickets for paid events this month
         var thisMonthTickets = await _uow.Tickets.GetAllAsync(
@@ -122,7 +122,7 @@ public class DashboardService : IDashboardService
         var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
         if (staff == null) return 0;
 
-        return await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id);
+		return await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null);
     }
 
     public async Task<int> GetUpcomingEventAsync(string userId)
@@ -131,7 +131,7 @@ public class DashboardService : IDashboardService
         if (staff == null) return 0;
 
         var now = DateTimeHelper.GetVietnamTime();
-        return await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.Status == EventStatusEnum.Upcoming && e.StartTime >= now);
+		return await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null && e.Status == EventStatusEnum.Upcoming && e.StartTime >= now);
     }
 
     public async Task<int> GetDraftEventAsync(string userId)
@@ -139,6 +139,6 @@ public class DashboardService : IDashboardService
         var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
         if (staff == null) return 0;
 
-        return await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.Status == EventStatusEnum.Draft);
+		return await _uow.Events.CountAsync(e => e.OrganizerId == staff.Id && e.DeletedAt == null && e.Status == EventStatusEnum.Draft);
     }
 }
