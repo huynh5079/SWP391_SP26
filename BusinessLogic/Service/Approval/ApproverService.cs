@@ -30,7 +30,8 @@ namespace BusinessLogic.Service.Approval
 			// NOTE: Repository của bạn có thể khác.
 			// Mình assume _uow.Events.Query() trả về IQueryable<Event>.
 			// Nếu không có Query(), bạn đổi sang method tương đương GetAllAsync + include.
-			var list = await _uow.Events.GetAllAsync( e => e.Status == EventStatusEnum.Pending);
+			var list = await _uow.Events.GetAllAsync( e => e.Status == EventStatusEnum.Pending,
+				q => q.Include(x => x.ApprovalLogs));
 
 			if (!string.IsNullOrWhiteSpace(search))
 			{
@@ -44,14 +45,23 @@ namespace BusinessLogic.Service.Approval
 				.Take(pageSize)
 				.ToList();
 
-			var items = list.Select(e => new EventItemDto
+			var items = list.Select(e =>
 			{
-				Id = e.Id,
-				Title = e.Title,
-				StartTime = e.StartTime,
-				EndTime = e.EndTime,
-				Status = e.Status,
-				ThumbnailUrl = e.ThumbnailUrl
+				var lastLog = e.ApprovalLogs?
+					.Where(l => l.DeletedAt == null)
+					.OrderByDescending(l => l.CreatedAt)
+					.FirstOrDefault();
+
+				return new EventItemDto
+				{
+					Id = e.Id,
+					Title = e.Title,
+					StartTime = e.StartTime,
+					EndTime = e.EndTime,
+					Status = e.Status,
+					ThumbnailUrl = e.ThumbnailUrl,
+					LastApprovalComment = lastLog?.Comment
+				};
 			}).ToList();
 
 			return items;
@@ -111,7 +121,7 @@ namespace BusinessLogic.Service.Approval
 				EventId = eventId,
 				ApproverId = approverProfileId,
 				Action = ApprovalActionEnum.Approve,
-				Comment = comment,
+				Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim(),
 				CreatedAt = now,
 				UpdatedAt = now,
 				DeletedAt = null
@@ -132,6 +142,9 @@ namespace BusinessLogic.Service.Approval
 			if (ev.Status != EventStatusEnum.Pending)
 				throw new Exception($"Event status must be Pending to reject. Current: {ev.Status}");
 
+			if (string.IsNullOrWhiteSpace(comment))
+				throw new InvalidOperationException("Vui lòng nhập lý do khi từ chối sự kiện.");
+
 			var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
 
 			ev.Status = EventStatusEnum.Rejected;
@@ -147,7 +160,7 @@ namespace BusinessLogic.Service.Approval
 				EventId = eventId,
 				ApproverId = approverProfileForRejectId,
 				Action = ApprovalActionEnum.Reject,
-				Comment = comment,
+				Comment = comment?.Trim(),
 				CreatedAt = now,
 				UpdatedAt = now,
 				DeletedAt = null
@@ -168,6 +181,9 @@ namespace BusinessLogic.Service.Approval
 			if (ev.Status != EventStatusEnum.Pending)
 				throw new Exception($"Event status must be Pending to request change. Current: {ev.Status}");
 
+			if (string.IsNullOrWhiteSpace(comment))
+				throw new InvalidOperationException("Vui lòng nhập yêu cầu chỉnh sửa khi gửi trả sự kiện.");
+
 			var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
 
 			// ⚠️ Tuỳ enum EventStatusEnum của bạn:
@@ -186,7 +202,7 @@ namespace BusinessLogic.Service.Approval
 				EventId = eventId,
 				ApproverId = approverProfileForRequestId,
 				Action = ApprovalActionEnum.RequestChange,
-				Comment = comment,
+				Comment = comment?.Trim(),
 				CreatedAt = now,
 				UpdatedAt = now,
 				DeletedAt = null

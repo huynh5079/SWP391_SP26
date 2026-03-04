@@ -20,6 +20,21 @@
         <div class="col-auto">
             <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
         </div>
+
+
+        <div class="col-auto">
+            @{ var statuses = new[] { "Draft", "Pending", "Upcoming", "Happening", "Completed" }; }
+            <select name="status" class="form-select">
+                <option value="">All Status</option>
+                @foreach (var s in statuses)
+                {
+                    <option value="@s" selected="@((Model.Status?.ToString() == s) ? "selected" : null)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary">Filter</button>
+        </div>
     </form>
 
     <table class="table table-bordered table-hover shadow" style="width:100%;">
@@ -174,7 +189,7 @@
                         <a class="btn btn-sm btn-secondary ms-1" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId"> Waitlist </a>
                         <a asp-action="Edit" asp-route-id="@e.EventId"
                            class="btn btn-sm btn-warning">Edit</a>
-                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending)
+                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending || e.Status == EventStatusEnum.Rejected)
                         {
                             <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
                                 @Html.AntiForgeryToken()
@@ -198,8 +213,12 @@
 
     @if (Model.TotalPages > 1)
     {
-        <nav>
+        <nav aria-label="Pagination">
             <ul class="pagination">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="MyEvents" asp-controller="Organizer" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-status="@Model.Status">Previous</a>
+                </li>
+
                 @for (int i = 1; i <= Model.TotalPages; i++)
                 {
                     <li class="page-item @(i == Model.Page ? "active" : "")">
@@ -211,8 +230,13 @@
                            asp-route-dateTo="@(Model.DateTo.HasValue? Model.DateTo.Value.ToString("yyyy-MM-dd") : "")">@i</a>
                     </li>
                 }
+
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="MyEvents" asp-controller="Organizer" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-status="@Model.Status">Next</a>
+                </li>
             </ul>
         </nav>
+        <div class="text-muted">Page @Model.Page of @Model.TotalPages (@Model.TotalItems total items)</div>
     }
     @section Scripts {
         <script>

@@ -47,6 +47,11 @@ public class EventDetailsDto
     // Permission flags
     public bool CanEdit { get; set; }
     public bool CanSendForApproval { get; set; }
+
+    // Latest approval info
+    public ApprovalActionEnum? LastApprovalAction { get; set; }
+    public string? LastApprovalComment { get; set; }
+    public DateTime? LastApprovalAt { get; set; }
 }
 
 public class EventItemDto
@@ -63,6 +68,7 @@ public class EventItemDto
     public string? ThumbnailUrl { get; set; }
     public string? Location { get; set; }
     public string? TimeState { get; set; }
+    public string? LastApprovalComment { get; set; }
 }
 
 // DTO for listing events in organizer area

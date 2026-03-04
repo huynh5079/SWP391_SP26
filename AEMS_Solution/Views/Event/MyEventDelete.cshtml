@@ -15,8 +15,8 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
-
-    <form class="row g-2 mb-3" method="get" asp-controller="Organizer" asp-action="MyEvents">
+    x
+    <form class="row g-2 mb-3" method="get" asp-controller="Organizer" asp-action="MyEventsDelete">
         <div class="col-auto">
             <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
         </div>
@@ -28,7 +28,7 @@
                 <option value="">All Status</option>
                 @foreach (var s in statuses)
                 {
-                    <option value="@s" selected="@((Model.Status.ToString() == s) ? "selected" : null)">@s</option>
+                    <option value="@s" selected="@((Model.Status?.ToString() == s) ? "selected" : null)">@s</option>
                 }
             </select>
         </div>
@@ -125,16 +125,25 @@
 
     @if (Model.TotalPages > 1)
     {
-        <nav>
+        <nav aria-label="Pagination">
             <ul class="pagination">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="MyEventsDelete" asp-controller="Organizer" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-status="@Model.Status">Previous</a>
+                </li>
+
                 @for (int i = 1; i <= Model.TotalPages; i++)
                 {
                     <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="MyEvents" asp-controller="Organizer" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-status="@Model.Status">@i</a>
+                        <a class="page-link" asp-action="MyEventsDelete" asp-controller="Organizer" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-status="@Model.Status">@i</a>
                     </li>
                 }
+
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="MyEventsDelete" asp-controller="Organizer" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-status="@Model.Status">Next</a>
+                </li>
             </ul>
         </nav>
+        <div class="text-muted">Page @Model.Page of @Model.TotalPages (@Model.TotalItems total items)</div>
     }
     @section Scripts {
         <script>

@@ -157,7 +157,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 			if (string.IsNullOrEmpty(id))
 		     {
 				SetError("Event id không hợp lệ.");
-				return RedirectToAction("MyEvent", "Organizer");
+				return RedirectToAction("MyEvents", "Organizer");
 		      }
 
 			var userId = CurrentUserId;
@@ -182,7 +182,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 				SetError("Đã xảy ra lỗi khi gửi duyệt. Vui lòng thử lại.");
 			}
 
-			return RedirectToAction("MyEvent", "Organizer");
+			return RedirectToAction("MyEvents", "Organizer");
 		}
 		//load drop down for event
 		//load drop down for event
@@ -322,7 +322,10 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 					RegisteredCount = dto.RegisteredCount,
 					CheckedInCount = dto.CheckedInCount,
 					WaitlistCount = dto.WaitlistCount,
-					AvgRating = dto.AvgRating
+					AvgRating = dto.AvgRating,
+					LastApprovalAction = dto.LastApprovalAction,
+					LastApprovalComment = dto.LastApprovalComment,
+					LastApprovalAt = dto.LastApprovalAt
 				};
 
 				foreach (var a in dto.Agendas)
@@ -421,8 +424,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 				vm.PageSize = paged.PageSize;
 				vm.TotalItems = paged.Total;
 				vm.Search = search;
-				// Ensure viewmodel always has a concrete Status value to avoid Nullable exception
-				vm.Status = status ?? DataAccess.Enum.EventStatusEnum.Draft;
+				vm.Status = status;
 				vm.SemesterId = semesterId;
                 vm.DateFrom = dateFrom;
                 vm.DateTo = dateTo;
@@ -496,7 +498,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 				vm.PageSize = paged.PageSize;
 				vm.TotalItems = paged.Total;
 				vm.Search = search;
-				vm.Status = status ?? DataAccess.Enum.EventStatusEnum.Draft;
+				vm.Status = status;
 				vm.SemesterId = semesterId;
 
 				return View("~/Views/Event/MyEventDelete.cshtml", vm);
