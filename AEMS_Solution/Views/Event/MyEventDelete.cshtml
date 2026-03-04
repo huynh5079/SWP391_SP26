@@ -6,7 +6,7 @@
 }
 
 <div class="container mt-4">
-    <h2 class="mb-4">📅 My Events</h2>
+    <h2 class="mb-4"> My Events Delete</h2>
 
     @if (TempData["SuccessMessage"] != null)
     {
@@ -47,7 +47,6 @@
                 <th>Location</th>
                 <th>Time</th>
                 <th>Capacity</th>
-                <th>Status</th>
                 <th>Mode</th>
                 <th>Meeting Url</th>
                 <th>Time State</th>
@@ -87,9 +86,6 @@
                     </td>
 
                     <td>
-                        <span class="workflow-badge badge bg-secondary">@e.Status</span>
-                    </td>
-                    <td>
                         @e.Mode
                     </td>
 
@@ -112,24 +108,14 @@
 
                     <td>
                         <a href="#" data-url="@Url.Action("Manage", "Organizer", new { operation = "detailevent", id = e.EventId })" class="btn btn-sm btn-info view-detail">View</a>
-                        <a class="btn btn-sm btn-secondary ms-1" asp-controller="EventWaitlist"  asp-action="Index" asp-route-eventId="@e.EventId"> Waitlist </a>
-                        <a asp-action="Edit" asp-route-id="@e.EventId"
-                           class="btn btn-sm btn-warning">Edit</a>
-                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending)
-                        {
-                            <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="operation" value="sendforapproval" />
-                                <input type="hidden" name="id" value="@e.EventId" />
-                                <button type="submit" class="btn btn-sm btn-primary">Send</button>
-                            </form>
-                        }
-                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
+                       
+                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
-                            <input type="hidden" name="operation" value="softdelete" />
+                            <input type="hidden" name="operation" value="restore" />
                             <input type="hidden" name="id" value="@e.EventId" />
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
+                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Khôi phục sự kiện này?');">Restore</button>
                         </form>
+                       
                         
                     </td>
                 </tr>

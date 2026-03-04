@@ -56,6 +56,13 @@ namespace BusinessLogic.Service.Organizer
 
 		public Task DeleteEventAsync(string userId, string eventId) => _eventService.DeleteEventAsync(userId, eventId);
 
+        public Task SoftDeleteEventAsync(string userId, string eventId) => _eventService.SoftDeleteEventAsync(userId, eventId);
+
+        public Task RestoreEventAsync(string userId, string eventId) => _eventService.RestoreEventAsync(userId, eventId);
+
+        public Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+            => _eventService.GetMyDeletedEventsAsync(userId, search, status, semesterId, page, pageSize);
+
         public Task SendForApprovalAsync(string userId, string eventId) => _eventService.SendForApprovalAsync(userId, eventId);
 
         public Task<EventDetailsDto> GetEventDetailsAsync(string eventId, string? userId = null) => _eventService.GetEventDetailsAsync(eventId, userId);
