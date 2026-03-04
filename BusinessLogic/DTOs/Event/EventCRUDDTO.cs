@@ -79,3 +79,14 @@ public class UpdateEventRequestDto
     public DateTime? RegistrationCloseTime { get; set; }
 }
 
+// Soft-delete DTO: toggle availability instead of physical delete
+public class SoftDeleteEventRequestDto
+{
+    [Required]
+    public string EventId { get; set; } = "";
+
+    // NotAvailable = soft delete; Available = restore
+    [Required]
+    public EventStatusAvailableEnum StatusEventAvailable { get; set; }
+}
+

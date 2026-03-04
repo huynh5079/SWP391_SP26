@@ -163,4 +163,8 @@ namespace DataAccess.Enum
 
 		Cancelled, //người dùng tự rời
 	}
+	public enum EventStatusAvailableEnum { 
+		Available,
+		NA //not available
+	}
 }
