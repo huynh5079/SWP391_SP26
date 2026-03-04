@@ -156,7 +156,7 @@ using Microsoft.EntityFrameworkCore;
 			if (string.IsNullOrEmpty(id))
 		     {
 				SetError("Event id không hợp lệ.");
-				return RedirectToAction("MyEvent", "Organizer");
+				return RedirectToAction("MyEvents", "Organizer");
 		      }
 
 			var userId = CurrentUserId;
@@ -181,7 +181,7 @@ using Microsoft.EntityFrameworkCore;
 				SetError("Đã xảy ra lỗi khi gửi duyệt. Vui lòng thử lại.");
 			}
 
-			return RedirectToAction("MyEvent", "Organizer");
+			return RedirectToAction("MyEvents", "Organizer");
 		}
 		//load drop down for event
 		//load drop down for event
@@ -419,8 +419,7 @@ using Microsoft.EntityFrameworkCore;
 				vm.PageSize = paged.PageSize;
 				vm.TotalItems = paged.Total;
 				vm.Search = search;
-				// Ensure viewmodel always has a concrete Status value to avoid Nullable exception
-				vm.Status = status ?? DataAccess.Enum.EventStatusEnum.Draft;
+				vm.Status = status;
 				vm.SemesterId = semesterId;
 
 				return View("~/Views/Event/MyEvent.cshtml", vm);
@@ -489,7 +488,7 @@ using Microsoft.EntityFrameworkCore;
 				vm.PageSize = paged.PageSize;
 				vm.TotalItems = paged.Total;
 				vm.Search = search;
-				vm.Status = status ?? DataAccess.Enum.EventStatusEnum.Draft;
+				vm.Status = status;
 				vm.SemesterId = semesterId;
 
 				return View("~/Views/Event/MyEventDelete.cshtml", vm);

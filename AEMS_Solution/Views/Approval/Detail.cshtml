@@ -19,23 +19,9 @@
     </div>
 
     <div class="mb-3">
-        <form asp-action="Approve" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.EventId" />
-            <button class="btn btn-success">Approve</button>
-        </form>
-
-        <form asp-action="Reject" method="post" class="d-inline ms-2">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.EventId" />
-            <button class="btn btn-danger">Reject</button>
-        </form>
-
-        <form asp-action="RequestChange" method="post" class="d-inline ms-2">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.EventId" />
-            <button class="btn btn-warning">Request Change</button>
-        </form>
+        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@Model.EventId" asp-route-operation="approve" class="btn btn-success">Approve</a>
+        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@Model.EventId" asp-route-operation="reject" class="btn btn-danger ms-2">Reject</a>
+        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@Model.EventId" asp-route-operation="requestchange" class="btn btn-warning ms-2">Request Change</a>
     </div>
 
     <h5>Approval Logs</h5>

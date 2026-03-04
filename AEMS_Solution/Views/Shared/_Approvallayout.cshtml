@@ -43,7 +43,7 @@
                     
 
                     <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")) || User.IsInRole("Approval"))
+                        @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer") || User.IsInRole("Approver")))
                         {
                                     <li class="nav-item dropdown">
                                         <a class="nav-link dropdown-toggle text-dark" href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -69,7 +69,7 @@
                                             {
                                                         <span>Student</span>
                                             }
-                                            else if (User.IsInRole("Approval"))
+                                            else if (User.IsInRole("Approver"))
                                             {
                                                 <span>Approval</span>
                                             }
@@ -93,7 +93,10 @@
                                     {
                                                         <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Index">Organizer Dashboard</a></li>
                                     }
-
+                                    else if (User.IsInRole("Approver"))
+                                    {
+                                                        <li><a class="dropdown-item" asp-controller="Approver" asp-action="Index">Approver Dashboard</a></li>
+                                    }
                                     else if (User.IsInRole("Student"))
                                     {
                                                         <li><a class="dropdown-item" asp-controller="Student" asp-action="Index">Student Dashboard</a></li>
