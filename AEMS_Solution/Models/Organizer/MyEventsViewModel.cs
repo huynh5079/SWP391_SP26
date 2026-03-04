@@ -12,7 +12,7 @@ namespace AEMS_Solution.Models.Organizer
         public int PageSize { get; set; } = 10;
         public int TotalItems { get; set; }
         public string? Search { get; set; }
-        public EventStatusEnum Status { get; set; } //???????????????????????????????
+        public EventStatusEnum? Status { get; set; } // Ensure nullable status is retained
         public ApprovalActionEnum StatusActionApprover { get; set; }
 		public string? SemesterId { get; set; }
         

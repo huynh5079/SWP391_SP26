@@ -35,8 +35,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                     EndTime = e.EndTime ?? System.DateTime.MinValue,
                     Status = e.Status,
                     ThumbnailUrl = e.ThumbnailUrl,
-                    Location = e.Location
-                });
+					Location = e.Location,
+					LastApprovalComment = e.LastApprovalComment
+				});
             }
 
             vm.Search = search;
@@ -79,6 +80,45 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
 
             return View("~/Views/Approval/Detail.cshtml", vm);
+        }
+
+        [HttpGet]
+        public IActionResult DescriptAction(string id, string operation)
+        {
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(operation))
+            {
+                SetError("Event hoặc hành động không hợp lệ.");
+                return RedirectToAction("Index");
+            }
+
+            var op = operation.Trim().ToLowerInvariant();
+            var actionName = op switch
+            {
+                "approve" or "approved" => "Approve",
+                "reject" or "rejected" => "Reject",
+                "requestchange" or "request-change" or "request_change" or "request" => "RequestChange",
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrEmpty(actionName))
+            {
+                SetError("Hành động không hợp lệ.");
+                return RedirectToAction("Index");
+            }
+
+            var vm = new Models.Approver.ApproverActionFormVm
+            {
+                EventId = id,
+                Operation = actionName,
+                Heading = actionName switch
+                {
+                    "Approve" => "Phê duyệt sự kiện",
+                    "Reject" => "Từ chối sự kiện",
+                    _ => "Yêu cầu chỉnh sửa"
+                }
+            };
+
+            return View("~/Views/Approval/DescriptAction.cshtml", vm);
         }
 
         [HttpPost]

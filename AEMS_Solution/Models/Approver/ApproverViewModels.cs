@@ -21,6 +21,7 @@ namespace AEMS_Solution.Models.Approver
         public EventStatusEnum Status { get; set; }
         public string? ThumbnailUrl { get; set; }
         public string? Location { get; set; }
+        public string? LastApprovalComment { get; set; }
     }
 
     public class ApproverEventDetailVm
@@ -45,5 +46,13 @@ namespace AEMS_Solution.Models.Approver
         public DataAccess.Enum.ApprovalActionEnum Action { get; set; }
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class ApproverActionFormVm
+    {
+        public string EventId { get; set; } = string.Empty;
+        public string Operation { get; set; } = string.Empty; // approve | reject | requestchange
+        public string? EventTitle { get; set; }
+        public string? Heading { get; set; }
     }
 }
