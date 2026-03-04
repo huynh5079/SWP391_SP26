@@ -438,8 +438,8 @@ public class EventService : IEventService
 		if (ev.Status == EventStatusEnum.Pending)
 			throw new InvalidOperationException("Event đã ở trạng thái Pending.");
 
-		if (ev.Status != EventStatusEnum.Draft)
-			throw new InvalidOperationException("Chỉ event ở trạng thái Draft mới có thể gửi duyệt.");
+		if (ev.Status != EventStatusEnum.Draft && ev.Status != EventStatusEnum.Rejected)
+			throw new InvalidOperationException("Chỉ event ở trạng thái Draft hoặc Rejected mới có thể gửi duyệt lại.");
 
 		var now = DateTimeHelper.GetVietnamTime();
 		if (ev.StartTime <= now)
@@ -471,15 +471,21 @@ public class EventService : IEventService
 
 		var ev = (await _uow.Events.GetAllAsync(e => e.Id == eventId,
 				q => q.Include(x => x.EventAgenda)
-				  .Include(x => x.Tickets)
-				  .Include(x => x.EventWaitlists)
-				  .Include(x => x.Feedbacks)
-				  .Include(x => x.Semester)
-				  .Include(x => x.Department)
-				  .Include(x => x.Location)
-				  .Include(x => x.EventDocuments))).FirstOrDefault();
+			  .Include(x => x.Tickets)
+			  .Include(x => x.EventWaitlists)
+			  .Include(x => x.Feedbacks)
+			  .Include(x => x.Semester)
+			  .Include(x => x.Department)
+			  .Include(x => x.Location)
+			  .Include(x => x.EventDocuments)
+			  .Include(x => x.ApprovalLogs))).FirstOrDefault();
 
 		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+
+		var lastApproval = ev.ApprovalLogs?
+			.Where(l => l.DeletedAt == null)
+			.OrderByDescending(l => l.CreatedAt)
+			.FirstOrDefault();
 
 		var dto = new EventDetailsDto
 		{
@@ -498,7 +504,10 @@ public class EventService : IEventService
 			RegisteredCount = ev.Tickets?.Count ?? 0,
 			CheckedInCount = ev.Tickets?.Count(t => t.CheckInTime != null) ?? 0,
 			WaitlistCount = ev.EventWaitlists?.Count ?? 0,
-			AvgRating = (ev.Feedbacks != null && ev.Feedbacks.Count > 0) ? ev.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).DefaultIfEmpty(0).Average() : 0
+			AvgRating = (ev.Feedbacks != null && ev.Feedbacks.Count > 0) ? ev.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).DefaultIfEmpty(0).Average() : 0,
+			LastApprovalAction = lastApproval?.Action,
+			LastApprovalComment = lastApproval?.Comment,
+			LastApprovalAt = lastApproval?.CreatedAt
 		};
 
 		if (ev.EventAgenda != null)
@@ -540,7 +549,7 @@ public class EventService : IEventService
 			if (staff != null && ev.OrganizerId == staff.Id)
 			{
 				dto.CanEdit = true;
-				dto.CanSendForApproval = ev.Status == EventStatusEnum.Draft;
+				dto.CanSendForApproval = ev.Status == EventStatusEnum.Draft || ev.Status == EventStatusEnum.Rejected;
 			}
 		}
 
