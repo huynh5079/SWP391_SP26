@@ -1,0 +1,31 @@
+﻿@model AEMS_Solution.Models.Approver.ApproverActionFormVm
+
+@{
+    ViewData["Title"] = Model.Heading ?? "Thực hiện hành động";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4" style="max-width: 720px;">
+    <h3 class="mb-3">@Model.Heading</h3>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p class="text-muted">Vui lòng nhập ghi chú cho hành động này.</p>
+
+            <form asp-controller="Approver" asp-action="@Model.Operation" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.EventId" />
+
+                <div class="mb-3">
+                    @{ var requireComment = !(Model.Operation?.Equals("Approve", StringComparison.OrdinalIgnoreCase) ?? false); }
+                    <label class="form-label">Comment @(requireComment ? "(bắt buộc)" : "(không bắt buộc)")</label>
+                    <textarea name="comment" class="form-control" rows="4" placeholder="Nhập lý do hoặc ghi chú" @(requireComment ? "required" : "")></textarea>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-controller="Approver" asp-action="Index" class="btn btn-secondary">Hủy</a>
+                    <button type="submit" class="btn btn-primary">Gửi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
