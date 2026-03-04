@@ -50,7 +50,7 @@ namespace BusinessLogic.Service.Organizer
 		public Task<int> GetDraftEventAsync(string userId) => _dashboardService.GetDraftEventAsync(userId);
 
 		// ======= CRUD EVENT =======
-		public Task CreateEventAsync(string userId, CreateEventRequestDto dto) => _eventService.CreateEventAsync(userId, dto);
+		public Task<string> CreateEventAsync(string userId, CreateEventRequestDto dto) => _eventService.CreateEventAsync(userId, dto);
 
 		public Task UpdateEventAsync(string userId, string eventId, UpdateEventRequestDto dto) => _eventService.UpdateEventAsync(userId, eventId, dto);
 
@@ -64,6 +64,10 @@ namespace BusinessLogic.Service.Organizer
             => _eventService.GetMyDeletedEventsAsync(userId, search, status, semesterId, page, pageSize);
 
         public Task SendForApprovalAsync(string userId, string eventId) => _eventService.SendForApprovalAsync(userId, eventId);
+
+        public Task CancelEventAsync(string userId, string eventId) => _eventService.CancelEventAsync(userId, eventId);
+
+        public Task PublishEventAsync(string userId, string eventId) => _eventService.PublishEventAsync(userId, eventId);
 
         public Task<EventDetailsDto> GetEventDetailsAsync(string eventId, string? userId = null) => _eventService.GetEventDetailsAsync(eventId, userId);
 
