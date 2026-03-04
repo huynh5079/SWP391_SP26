@@ -347,6 +347,8 @@ namespace AEMS_Solution.Controllers.Event
                 Status = (EventStatusEnum)ev.Status,
                 IsDepositRequired = (bool)ev.IsDepositRequired,
                 DepositAmount = (decimal)ev.DepositAmount,
+                Mode = ev.Mode ?? EventModeEnum.Offline,
+                MeetingUrl = ev.MeetingUrl,
                 // 2. Thêm .ToList() ở cuối để sửa lỗi kiểu dữ liệu
                 Agendas = ev.EventAgenda.Select(a => new UpdateAgendaItemVm
                 {
@@ -368,6 +370,12 @@ namespace AEMS_Solution.Controllers.Event
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UpdateEventViewModel vm)
         {
+            if (vm.EndTime <= vm.StartTime)
+                ModelState.AddModelError(nameof(vm.EndTime), "EndTime phải lớn hơn StartTime");
+
+            if (!vm.IsDepositRequired)
+                vm.DepositAmount = 0;
+
             if (!ModelState.IsValid)
             {
                 await LoadDropdowns(vm);
@@ -378,13 +386,45 @@ namespace AEMS_Solution.Controllers.Event
             var ev = await _db.Events.Include(e => e.EventAgenda).FirstOrDefaultAsync(e => e.Id == vm.EventId);
             if (ev == null) return NotFound();
 
+            var originalStatus = ev.Status;
+
+            // Cho phép đổi trạng thái chỉ khi event đang Cancelled và chỉ được chuyển sang Draft hoặc Pending
+            var targetStatus = originalStatus;
+            if (originalStatus == EventStatusEnum.Cancelled)
+            {
+                if (vm.Status == EventStatusEnum.Draft || vm.Status == EventStatusEnum.Pending)
+                {
+                    targetStatus = vm.Status;
+                }
+                else
+                {
+                    ModelState.AddModelError(nameof(vm.Status), "Chỉ được chuyển từ Cancelled sang Draft hoặc Pending.");
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                await LoadDropdowns(vm);
+                return View("EditEvent", vm);
+            }
+
             // 1. Cập nhật thông tin cơ bản
             ev.Title = vm.Title;
             ev.Description = vm.Description;
             ev.SemesterId = vm.SemesterId;
             ev.LocationId = vm.LocationId;
+            ev.DepartmentId = vm.DepartmentId;
+            ev.TopicId = vm.TopicId;
             ev.StartTime = vm.StartTime;
             ev.EndTime = vm.EndTime;
+            ev.MaxCapacity = vm.MaxCapacity;
+            ev.ThumbnailUrl = vm.ThumbnailUrl;
+            ev.Type = vm.Type;
+            ev.Status = targetStatus;
+            ev.IsDepositRequired = vm.IsDepositRequired;
+            ev.DepositAmount = vm.DepositAmount;
+            ev.Mode = vm.Mode;
+            ev.MeetingUrl = vm.MeetingUrl;
             ev.UpdatedAt = DateTime.Now;
 
             // 2. Cập nhật Agendas (Cách đơn giản nhất: Xóa cũ, thêm mới)
@@ -431,7 +471,22 @@ namespace AEMS_Solution.Controllers.Event
             }
 
             await _db.SaveChangesAsync();
-            SetSuccess("Cập nhật thành công!");
+
+            // Nếu từ Cancelled chuyển sang Pending -> gửi duyệt ngay
+            if (originalStatus == EventStatusEnum.Cancelled && targetStatus == EventStatusEnum.Pending)
+            {
+                var userId = CurrentUserId;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return RedirectToAction("Login", "Auth");
+                }
+                await _organizerService.SendForApprovalAsync(userId, ev.Id);
+                SetSuccess("Cập nhật và gửi duyệt thành công.");
+            }
+            else
+            {
+                SetSuccess("Cập nhật thành công!");
+            }
             return RedirectToAction("MyEvents", "Organizer");
         }
         //view detail aboout event

@@ -65,7 +65,8 @@ builder.Services.AddSingleton<BusinessLogic.Storage.StoragePathResolver>();
 builder.Services.AddScoped<BusinessLogic.Storage.IFileStorageService, BusinessLogic.Storage.CloudinaryStorageService>();
 
 // TODO: Register RedisService when implemented
-
+// AutoMapper - register all loaded assemblies
+builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
 // HttpClient (External Services like PayOS)
 builder.Services.AddHttpClient();
 
