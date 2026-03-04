@@ -77,6 +77,7 @@ public class UpdateEventRequestDto
 
     public DateTime? RegistrationOpenTime { get; set; }
     public DateTime? RegistrationCloseTime { get; set; }
+    public string? LastApprovalComment { get; set; }
 }
 
 // Soft-delete DTO: toggle availability instead of physical delete
