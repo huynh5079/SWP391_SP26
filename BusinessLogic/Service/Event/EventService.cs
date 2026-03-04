@@ -439,7 +439,7 @@ public class EventService : IEventService
 			throw new InvalidOperationException("Event đã ở trạng thái Pending.");
 
 		if (ev.Status != EventStatusEnum.Draft && ev.Status != EventStatusEnum.Rejected)
-			throw new InvalidOperationException("Chỉ event ở trạng thái Draft hoặc Rejected mới có thể gửi duyệt lại.");
+			throw new InvalidOperationException("Chỉ event ở trạng thái Draft hoặc Rejected mới có thể gửi duyệt.");
 
 		var now = DateTimeHelper.GetVietnamTime();
 		if (ev.StartTime <= now)
