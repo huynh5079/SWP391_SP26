@@ -5,39 +5,51 @@ namespace BusinessLogic.DTOs.Role.Organizer;
 
 public class CreateEventRequestDto
 {
-    [Required, MaxLength(200)]
-    public string Title { get; set; } = "";
-    [MaxLength(4000)]
-    public string Description { get; set; } = "";
+	// ===== 1. Basic Info =====
+	[Required, MaxLength(200)]
+	public string Title { get; set; } = "";
 
-    public DateTime StartTime { get; set; }
-    public DateTime EndTime { get; set; }
+	[MaxLength(4000)]
+	public string Description { get; set; } = "";
 
-    public DateTime RegistrationOpenTime { get; set; }
-    public DateTime RegistrationCloseTime { get; set; }
+	public string? BannerUrl { get; set; } //*
 
-    public string TopicId { get; set; } = "";
-    public string LocationId { get; set; } = "";
+	// ===== 2. Time =====
+	public DateTime StartTime { get; set; }
 
-    public int Capacity { get; set; }
+	public DateTime EndTime { get; set; }
 
-    public EventModeEnum? Mode { get; set; }
-    public string? MeetingUrl { get; set; }
+	public DateTime RegistrationOpenTime { get; set; }
 
-    public string? BannerUrl { get; set; }
+	public DateTime RegistrationCloseTime { get; set; }
 
-    // Match DB Event
-    public string SemesterId { get; set; } = "";
-    public string? DepartmentId { get; set; }
+	// ===== 3. Relations =====
+	public string SemesterId { get; set; } = "";
 
-    public EventTypeEnum? Type { get; set; }
+	public string? DepartmentId { get; set; }
 
-    public bool IsDepositRequired { get; set; }
-    public decimal DepositAmount { get; set; }
+	public string TopicId { get; set; } = "";
 
-    public EventStatusEnum? Status { get; set; }
+	public string LocationId { get; set; } = "";
 
-    public List<CreateAgendaItemDto> Agendas { get; set; } = new();
+	// ===== 4. Capacity & Deposit =====
+	public int Capacity { get; set; }
+
+	public bool IsDepositRequired { get; set; }
+
+	public decimal DepositAmount { get; set; }
+
+	// ===== 5. Type / Status / Mode =====
+	public EventTypeEnum? Type { get; set; }
+
+	public EventStatusEnum? Status { get; set; }
+
+	public EventModeEnum? Mode { get; set; }
+
+	public string? MeetingUrl { get; set; }
+
+	// ===== 6. Child Collections =====
+	public List<CreateAgendaItemDto> Agendas { get; set; } = new();
 }
 
 public class CreateAgendaItemDto
