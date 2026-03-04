@@ -229,10 +229,33 @@ public class EventService : IEventService
 		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
 		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
 
+		var now = DateTimeHelper.GetVietnamTime();
+		if (dto.StartTime < now.AddDays(7))
+			throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
+
+		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
+			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
+
+		if (dto.Agendas != null)
+		{
+			foreach (var a in dto.Agendas)
+			{
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+				if (isEmpty) continue;
+
+				if (!a.StartTime.HasValue || !a.EndTime.HasValue)
+					throw new InvalidOperationException("Agenda phải có thời gian bắt đầu và kết thúc.");
+				if (a.StartTime > a.EndTime)
+					throw new InvalidOperationException("Thời gian bắt đầu Agenda phải bé hơn thời gian kết thúc");
+				if (a.StartTime < dto.StartTime || a.EndTime > dto.EndTime)
+					throw new InvalidOperationException("Thời gian agenda phải nằm trong khoảng thời gian của sự kiện.");
+			}
+		}
+
 		using var transaction = await _uow.BeginTransactionAsync();
 		try
 		{
-			var now = DateTimeHelper.GetVietnamTime();
 			var entity = new DataAccess.Entities.Event
 			{
 				Id = Guid.NewGuid().ToString(),
@@ -251,7 +274,7 @@ public class EventService : IEventService
 				DepositAmount = dto.DepositAmount,
 				Type = dto.Type,
 				Mode = dto.Mode,
-				MeetingUrl = dto.MeetingUrl,
+				MeetingUrl = dto.MeetingUrl?.Trim(),
 				Status = dto.Status ?? EventStatusEnum.Draft,
 				CreatedAt = now,
 				UpdatedAt = now
@@ -343,16 +366,22 @@ public class EventService : IEventService
 		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
 		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
 
+		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
+			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
+
 		using var transaction = await _uow.BeginTransactionAsync();
 		try
 		{
+			var now = DateTimeHelper.GetVietnamTime();
 			ev.Title = dto.Title;
 			ev.Description = dto.Description;
 			ev.StartTime = dto.StartTime;
 			ev.EndTime = dto.EndTime;
 			ev.TopicId = dto.TopicId;
 			ev.LocationId = dto.LocationId;
-			ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+			ev.Mode = dto.Mode;
+			ev.MeetingUrl = dto.MeetingUrl?.Trim();
+			ev.UpdatedAt = now;
 
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
@@ -412,8 +441,15 @@ public class EventService : IEventService
 		if (ev.Status != EventStatusEnum.Draft)
 			throw new InvalidOperationException("Chỉ event ở trạng thái Draft mới có thể gửi duyệt.");
 
+		var now = DateTimeHelper.GetVietnamTime();
+		if (ev.StartTime <= now)
+			throw new InvalidOperationException("Thời gian bắt đầu phải lớn hơn thời gian hiện tại mới có thể gửi duyệt.");
+
+		if (ev.StartTime - now < TimeSpan.FromDays(5))
+			throw new InvalidOperationException("Cần gửi duyệt trước ít nhất 5 ngày so với thời gian bắt đầu.");
+
 		ev.Status = EventStatusEnum.Pending;
-		ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+		ev.UpdatedAt = now;
 
 		using var tx = await _uow.BeginTransactionAsync();
 		try

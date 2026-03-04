@@ -46,4 +46,12 @@ namespace AEMS_Solution.Models.Approver
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; }
     }
+
+    public class ApproverActionFormVm
+    {
+        public string EventId { get; set; } = string.Empty;
+        public string Operation { get; set; } = string.Empty; // approve | reject | requestchange
+        public string? EventTitle { get; set; }
+        public string? Heading { get; set; }
+    }
 }
