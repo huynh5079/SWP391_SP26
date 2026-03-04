@@ -1,7 +1,4 @@
-﻿using System.Drawing.Printing;
-using System.Linq;
-using System.Net.NetworkInformation;
-using AEMS_Solution.Controllers.Common;
+﻿using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
 using BusinessLogic.Service.Organizer;
@@ -14,6 +11,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Drawing.Printing;
+using System.Linq;
+using System.Net.NetworkInformation;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 
@@ -26,8 +27,8 @@ using Microsoft.EntityFrameworkCore;
 			_organizerService = organizerService;
 		}
         [HttpGet]
-        public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, int page = 1, int pageSize = 10)
-        {
+    public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, string? location = null, string? department = null, string? timeState= null, DateTime? dateFrom = null, DateTime? dateTo = null, int page = 1, int pageSize = 10)
+    {
             // support both `operation` and legacy `action` param names
             var op = (operation ?? legacyAction)?.Trim();
             if (string.IsNullOrWhiteSpace(op)) return RedirectToAction("Index");
@@ -55,7 +56,7 @@ using Microsoft.EntityFrameworkCore;
 						{
 							parsedStatus = tmp;
 						}
-						return await MyEvents(search, parsedStatus, semesterId, page, pageSize);
+						return await MyEvents(search, parsedStatus, semesterId,location, department, timeState, dateFrom, dateTo, page, pageSize);
 					}
 
 				case "myeventsdelete":
@@ -369,16 +370,17 @@ using Microsoft.EntityFrameworkCore;
 		}
 		// POST detail handler removed — use Manage POST if needed
 		[HttpGet]
-		public async Task<IActionResult> MyEvents(string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
-		{
+    public async Task<IActionResult> MyEvents(string? search, EventStatusEnum? status, string? semesterId, string? location, string? department, string? timeState, DateTime? dateFrom, DateTime? dateTo, int page = 1, int pageSize = 10)
+    {
 			var userId = CurrentUserId;
 			if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+        
 
-			try
+        try
 			{
-				var paged = await _organizerService.GetMyEventsAsync(userId, search, status, semesterId, page, pageSize);
+            var paged = await _organizerService.GetMyEventsAsync(userId, search, status, semesterId, location, department, timeState, dateFrom, dateTo, page, pageSize);
 
-				var vm = new MyEventsViewModel();
+            var vm = new MyEventsViewModel();
 				var now = DateTimeHelper.GetVietnamTime();
 				foreach (var e in paged.Items)
 				{
@@ -424,8 +426,13 @@ using Microsoft.EntityFrameworkCore;
 				vm.Search = search;
 				vm.Status = status;
 				vm.SemesterId = semesterId;
-
-				return View("~/Views/Event/MyEvent.cshtml", vm);
+                vm.DateFrom = dateFrom;
+                vm.DateTo = dateTo;
+                vm.Location = location;
+                vm.Department = department;
+			    
+			 
+            return View("~/Views/Event/MyEvent.cshtml", vm);
 			}
 			catch (InvalidOperationException ex)
 			{
