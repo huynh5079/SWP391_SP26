@@ -1,0 +1,1376 @@
+import json
+import os
+import re
+import asyncio
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional, AsyncGenerator
+from uuid import uuid4
+
+import faiss
+import json5
+import numpy as np
+import pyodbc
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from groq import Groq
+from pydantic import BaseModel, Field
+from sentence_transformers import SentenceTransformer
+
+from db_service import DatabaseService
+
+load_dotenv()
+
+
+@dataclass
+class Chunk:
+    text: str
+    meta: dict[str, Any]
+
+
+@dataclass
+class ConversationMessage:
+    role: str
+    content: str
+    timestamp: str = None
+
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now().isoformat()
+
+
+class AskRequest(BaseModel):
+    question: str = Field(..., min_length=2)
+    top_k: int = Field(default=5, ge=1, le=20)
+    role: str = Field(default="user")
+    session_id: Optional[str] = Field(default=None, description="Session ID for conversation tracking")
+    user_id: Optional[str] = Field(default=None, description="User ID to save conversation to database")
+    save_to_db: bool = Field(default=True, description="Whether to save conversation to database")
+    
+
+class ChatSessionResponse(BaseModel):
+    session_id: str
+    message: str
+    sources: list[dict[str, Any]]
+    error: Optional[str] = None
+
+
+class RagEngine:
+    def __init__(self) -> None:
+        self.embedding_model_name = os.getenv(
+            "RAG_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+        )
+        self.llm_model_name = os.getenv("RAG_LLM_MODEL", "llama-3.3-70b-versatile")
+        self.data_limit = int(os.getenv("RAG_DATA_LIMIT", "1200"))
+        self.default_top_k = int(os.getenv("RAG_TOP_K_DEFAULT", "3"))  # Default: 3 for concise answers
+        self.auto_reload_interval = int(os.getenv("RAG_AUTO_RELOAD_SECONDS", "60"))  # Default: 60 seconds
+
+        kb_dir = Path(os.getenv("RAG_KB_DIR", "./kb"))
+        self.kb_dir = kb_dir
+        self.kb_dir.mkdir(parents=True, exist_ok=True)
+
+        self.index_path = self.kb_dir / "faiss.index"
+        self.chunks_path = self.kb_dir / "chunks.json"
+        self.meta_path = self.kb_dir / "meta.json"
+
+        self._embedding_model = SentenceTransformer(self.embedding_model_name)
+
+        api_key = os.getenv("GROQ_API_KEY", "").strip()
+        if not api_key:
+            raise ValueError("Missing GROQ_API_KEY. Please set it in environment or .env file.")
+
+        self._llm = Groq(api_key=api_key)
+
+        self._chunks: list[Chunk] = []
+        self._index: faiss.IndexFlatIP | None = None
+        self._last_reload: str | None = None
+        
+        # Conversation sessions: session_id -> list of ConversationMessage
+        self._sessions: dict[str, list[ConversationMessage]] = {}
+        
+        # Background task control
+        self._auto_reload_task: Optional[asyncio.Task] = None
+        self._stop_auto_reload = False
+        
+        # Database service for saving conversations
+        try:
+            self.db_service = DatabaseService(self.db_connection_string)
+            print(f"[RAG] Database service initialized")
+        except Exception as e:
+            print(f"[RAG] Database service initialization failed: {e}")
+            self.db_service = None
+
+    @property
+    def db_connection_string(self) -> str:
+        from_env = os.getenv("AEMS_DB_CONNECTION_STRING", "").strip()
+        if from_env:
+            return from_env
+
+        appsettings_path = Path(__file__).resolve().parent.parent / "AEMS_Solution" / "appsettings.Development.json"
+        if appsettings_path.exists():
+            with appsettings_path.open("r", encoding="utf-8") as f:
+                raw_content = f.read()
+            data = self._parse_jsonc(raw_content)
+            conn = data.get("ConnectionStrings", {}).get("DefaultConnection", "").strip()
+            if conn:
+                return conn
+
+        raise ValueError(
+            "Không tìm thấy connection string. Hãy set AEMS_DB_CONNECTION_STRING hoặc appsettings.Development.json"
+        )
+
+    @staticmethod
+    def _parse_jsonc(content: str) -> dict[str, Any]:
+        return json5.loads(content)
+
+    @staticmethod
+    def _to_pyodbc_conn_str(dotnet_conn: str) -> str:
+        parts: dict[str, str] = {}
+        for token in dotnet_conn.split(";"):
+            token = token.strip()
+            if not token or "=" not in token:
+                continue
+            key, value = token.split("=", 1)
+            parts[key.strip().lower()] = value.strip()
+
+        server = parts.get("server") or parts.get("data source")
+        database = parts.get("initial catalog") or parts.get("database")
+        user = parts.get("user id") or parts.get("uid")
+        password = parts.get("password") or parts.get("pwd")
+        timeout = parts.get("connection timeout", "30")
+
+        if not server or not database or not user or not password:
+            raise ValueError("Connection string không đủ thông tin Server/Database/User/Password")
+
+        server = re.sub(r"^tcp:", "", server, flags=re.IGNORECASE)
+
+        drivers = [
+            "ODBC Driver 18 for SQL Server",
+            "ODBC Driver 17 for SQL Server",
+            "SQL Server",
+        ]
+
+        selected_driver = None
+        installed = {d.strip() for d in pyodbc.drivers()}
+        for d in drivers:
+            if d in installed:
+                selected_driver = d
+                break
+
+        if not selected_driver:
+            raise ValueError(
+                "Không tìm thấy ODBC SQL Server Driver. Hãy cài ODBC Driver 18 hoặc 17 for SQL Server."
+            )
+
+        encrypt = RagEngine._to_odbc_yes_no(parts.get("encrypt", "True"))
+        trust = RagEngine._to_odbc_yes_no(parts.get("trustservercertificate", "False"))
+
+        return (
+            f"DRIVER={{{selected_driver}}};"
+            f"SERVER={server};"
+            f"DATABASE={database};"
+            f"UID={user};"
+            f"PWD={password};"
+            f"Encrypt={encrypt};"
+            f"TrustServerCertificate={trust};"
+            f"Connection Timeout={timeout};"
+        )
+
+    @staticmethod
+    def _to_odbc_yes_no(value: Any) -> str:
+        normalized = str(value).strip().lower()
+        if normalized in {"true", "yes", "1", "mandatory", "strict"}:
+            return "yes"
+        if normalized in {"false", "no", "0", "optional"}:
+            return "no"
+        return str(value)
+
+    def _connect(self) -> pyodbc.Connection:
+        conn_str = self._to_pyodbc_conn_str(self.db_connection_string)
+        return pyodbc.connect(conn_str)
+
+    def _fetch_rows(self, query: str) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchall()
+        return [dict(zip(columns, row)) for row in rows]
+
+    def _fetch_rows_with_fallback(
+        self,
+        primary_query: str,
+        fallback_query: str,
+        query_name: str,
+    ) -> list[dict[str, Any]]:
+        try:
+            return self._fetch_rows(primary_query)
+        except Exception as ex:
+            print(f"[RAG] Primary query failed ({query_name}): {ex}")
+            print(f"[RAG] Falling back to simplified query for: {query_name}")
+            return self._fetch_rows(fallback_query)
+    def _build_chunks_from_db(self) -> list[Chunk]:
+        top_n = self.data_limit
+
+        # 1. Event data with full details
+        event_rows = self._fetch_rows_with_fallback(
+            primary_query=f"""
+            SELECT TOP ({top_n})
+                e.Id AS EventId,
+                e.Title,
+                e.Description,
+                e.Status,
+                e.Type,
+                e.Mode,
+                e.StartTime,
+                e.EndTime,
+                e.MaxCapacity,
+                e.MeetingUrl,
+                d.Name AS DepartmentName,
+                sem.Name AS SemesterName,
+                loc.Name AS LocationName,
+                organizerUser.FullName AS OrganizerName,
+                t.Name AS TopicName,
+                e.IsDepositRequired,
+                e.DepositAmount,
+                e.PublishedAt,
+                (SELECT COUNT(*) FROM [EventWaitlist] WHERE EventId = e.Id) AS WaitlistCount,
+                (SELECT COUNT(*) FROM [EventTeam] WHERE EventId = e.Id) AS TeamMemberCount,
+                (SELECT COUNT(*) FROM [EventAgenda] WHERE EventId = e.Id) AS AgendaCount,
+                (SELECT COUNT(*) FROM [Ticket] WHERE EventId = e.Id) AS RegisteredCount,
+                (SELECT AVG(CAST(Rating AS FLOAT)) FROM [Feedback] WHERE EventId = e.Id) AS AvgRating,
+                (SELECT COUNT(*) FROM [Feedback] WHERE EventId = e.Id) AS FeedbackCount,
+                e.CreatedAt,
+                e.UpdatedAt
+            FROM [Event] e
+            LEFT JOIN [Department] d ON d.Id = e.DepartmentId
+            LEFT JOIN [Semester] sem ON sem.Id = e.SemesterId
+            LEFT JOIN [Locations] loc ON loc.Id = e.LocationId
+            LEFT JOIN [StaffProfile] sp ON sp.Id = e.OrganizerId
+            LEFT JOIN [User] organizerUser ON organizerUser.Id = sp.UserId
+            LEFT JOIN [Topic] t ON t.Id = e.TopicId
+            WHERE e.Status != 'Deleted' AND e.PublishedAt IS NOT NULL
+            ORDER BY e.UpdatedAt DESC
+            """,
+            fallback_query=f"""
+            SELECT TOP ({top_n})
+                e.Id AS EventId,
+                e.Title,
+                e.Description,
+                e.Status,
+                e.Type,
+                e.Mode,
+                e.StartTime,
+                e.EndTime,
+                e.MaxCapacity,
+                e.MeetingUrl,
+                CAST(NULL AS NVARCHAR(255)) AS DepartmentName,
+                CAST(NULL AS NVARCHAR(255)) AS SemesterName,
+                CAST(NULL AS NVARCHAR(255)) AS LocationName,
+                CAST(NULL AS NVARCHAR(255)) AS OrganizerName,
+                CAST(NULL AS NVARCHAR(255)) AS TopicName,
+                e.IsDepositRequired,
+                e.DepositAmount,
+                e.PublishedAt,
+                0 AS WaitlistCount,
+                0 AS TeamMemberCount,
+                0 AS AgendaCount,
+                0 AS RegisteredCount,
+                NULL AS AvgRating,
+                0 AS FeedbackCount,
+                e.CreatedAt,
+                e.UpdatedAt
+            FROM [Event] e
+            ORDER BY e.UpdatedAt DESC
+            """,
+            query_name="event_rows",
+        )
+
+        # 2. Event agenda (program schedule)
+        agenda_rows = self._fetch_rows_with_fallback(
+            primary_query=f"""
+            SELECT TOP ({top_n})
+                ea.Id AS AgendaId,
+                ea.EventId,
+                e.Title AS EventTitle,
+                ea.Title AS AgendaTitle,
+                ea.Description AS AgendaDescription,
+                ea.StartTime,
+                ea.EndTime,
+                ea.Location,
+                ea.CreatedAt
+            FROM [EventAgenda] ea
+            LEFT JOIN [Event] e ON e.Id = ea.EventId
+            ORDER BY ea.StartTime DESC
+            """,
+            fallback_query=f"""
+            SELECT TOP ({top_n})
+                ea.Id AS AgendaId,
+                ea.EventId,
+                CAST(NULL AS NVARCHAR(500)) AS EventTitle,
+                ea.Title AS AgendaTitle,
+                ea.Description AS AgendaDescription,
+                ea.StartTime,
+                ea.EndTime,
+                ea.Location,
+                ea.CreatedAt
+            FROM [EventAgenda] ea
+            ORDER BY ea.StartTime DESC
+            """,
+            query_name="agenda_rows",
+        )
+
+        # 3. Event team members (organizers and speakers)
+        team_rows = self._fetch_rows_with_fallback(
+            primary_query=f"""
+            SELECT TOP ({top_n})
+                et.Id AS TeamId,
+                et.EventId,
+                e.Title AS EventTitle,
+                u.FullName AS MemberName,
+                u.Email,
+                et.Role,
+                et.CreatedAt
+            FROM [EventTeam] et
+            LEFT JOIN [Event] e ON e.Id = et.EventId
+            LEFT JOIN [User] u ON u.Id = et.UserId
+            ORDER BY et.CreatedAt DESC
+            """,
+            fallback_query=f"""
+            SELECT TOP ({top_n})
+                et.Id AS TeamId,
+                et.EventId,
+                CAST(NULL AS NVARCHAR(500)) AS EventTitle,
+                CAST(NULL AS NVARCHAR(255)) AS MemberName,
+                CAST(NULL AS NVARCHAR(255)) AS Email,
+                CAST(NULL AS NVARCHAR(100)) AS Role,
+                et.CreatedAt
+            FROM [EventTeam] et
+            ORDER BY et.CreatedAt DESC
+            """,
+            query_name="team_rows",
+        )
+
+        feedback_rows = self._fetch_rows_with_fallback(
+            primary_query=f"""
+            SELECT TOP ({top_n})
+                f.Id AS FeedbackId,
+                f.EventId,
+                e.Title AS EventTitle,
+                f.StudentId,
+                u.FullName AS StudentName,
+                sp.StudentCode,
+                f.Rating,
+                f.Comment,
+                f.CreatedAt,
+                f.UpdatedAt
+            FROM [Feedback] f
+            LEFT JOIN [Event] e ON e.Id = f.EventId
+            LEFT JOIN [StudentProfile] sp ON sp.Id = f.StudentId
+            LEFT JOIN [User] u ON u.Id = sp.UserId
+            ORDER BY f.CreatedAt DESC
+            """,
+            fallback_query=f"""
+            SELECT TOP ({top_n})
+                f.Id AS FeedbackId,
+                f.EventId,
+                CAST(NULL AS NVARCHAR(500)) AS EventTitle,
+                f.StudentId,
+                CAST(NULL AS NVARCHAR(255)) AS StudentName,
+                CAST(NULL AS NVARCHAR(50)) AS StudentCode,
+                f.Rating,
+                f.Comment,
+                f.CreatedAt,
+                f.UpdatedAt
+            FROM [Feedback] f
+            ORDER BY f.CreatedAt DESC
+            """,
+            query_name="feedback_rows",
+        )
+
+        log_rows = self._fetch_rows_with_fallback(
+            primary_query=f"""
+            SELECT TOP ({top_n})
+                l.Id AS LogId,
+                l.StatusCode,
+                l.ExceptionType,
+                l.ExceptionMessage,
+                l.Source,
+                l.UserId,
+                u.FullName AS UserName,
+                l.CreatedAt,
+                l.UpdatedAt
+            FROM [SystemErrorLog] l
+            LEFT JOIN [User] u ON u.Id = l.UserId
+            ORDER BY l.CreatedAt DESC
+            """,
+            fallback_query=f"""
+            SELECT TOP ({top_n})
+                l.Id AS LogId,
+                l.StatusCode,
+                l.ExceptionType,
+                l.ExceptionMessage,
+                l.Source,
+                l.UserId,
+                CAST(NULL AS NVARCHAR(255)) AS UserName,
+                l.CreatedAt,
+                l.UpdatedAt
+            FROM [SystemErrorLog] l
+            ORDER BY l.CreatedAt DESC
+            """,
+            query_name="log_rows",
+        )
+
+        agg_feedback_rows = self._fetch_rows_with_fallback(
+            primary_query="""
+            SELECT TOP (200)
+                e.Id AS EventId,
+                e.Title AS EventTitle,
+                COUNT(f.Id) AS FeedbackCount,
+                AVG(CAST(f.Rating AS FLOAT)) AS AvgRating,
+                SUM(CASE WHEN f.Rating >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
+                SUM(CASE WHEN f.Rating <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
+                MAX(f.CreatedAt) AS LastFeedbackAt
+            FROM [Event] e
+            LEFT JOIN [Feedback] f ON f.EventId = e.Id
+            GROUP BY e.Id, e.Title
+            ORDER BY AvgRating DESC, FeedbackCount DESC
+            """,
+            fallback_query="""
+            SELECT TOP (200)
+                CAST(NULL AS NVARCHAR(450)) AS EventId,
+                CAST(NULL AS NVARCHAR(500)) AS EventTitle,
+                COUNT(f.Id) AS FeedbackCount,
+                AVG(CAST(f.Rating AS FLOAT)) AS AvgRating,
+                SUM(CASE WHEN f.Rating >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
+                SUM(CASE WHEN f.Rating <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
+                MAX(f.CreatedAt) AS LastFeedbackAt
+            FROM [Feedback] f
+            GROUP BY f.EventId
+            ORDER BY AvgRating DESC, FeedbackCount DESC
+            """,
+            query_name="agg_feedback_rows",
+        )
+
+        agg_log_rows = self._fetch_rows_with_fallback(
+            primary_query="""
+            SELECT TOP (200)
+                COALESCE(CAST(StatusCode AS VARCHAR(10)), 'NA') AS StatusCode,
+                COALESCE(ExceptionType, 'Unknown') AS ExceptionType,
+                COUNT(*) AS ErrorCount,
+                MAX(CreatedAt) AS LastSeenAt
+            FROM [SystemErrorLog]
+            GROUP BY StatusCode, ExceptionType
+            ORDER BY ErrorCount DESC
+            """,
+            fallback_query="""
+            SELECT TOP (200)
+                COALESCE(CAST(StatusCode AS VARCHAR(10)), 'NA') AS StatusCode,
+                COALESCE(ExceptionType, 'Unknown') AS ExceptionType,
+                COUNT(*) AS ErrorCount,
+                MAX(CreatedAt) AS LastSeenAt
+            FROM [SystemErrorLog]
+            GROUP BY StatusCode, ExceptionType
+            ORDER BY ErrorCount DESC
+            """,
+            query_name="agg_log_rows",
+        )
+
+        chunks: list[Chunk] = []
+
+        # Build event chunks with enhanced information
+        for row in event_rows:
+            capacity_used = row.get('RegisteredCount', 0) or 0
+            max_capacity = row.get('MaxCapacity', 0) or 1
+            capacity_percent = int((capacity_used / max_capacity) * 100) if max_capacity > 0 else 0
+            
+            avg_rating = row.get('AvgRating')
+            rating_str = f"{self._format_float(avg_rating)}/5" if avg_rating else "Chưa có đánh giá"
+            
+            status_indicator = self._get_event_quality_indicator(avg_rating, row.get('Status'))
+            
+            text = (
+                f"[SỰ KIỆN] Tên: {row.get('Title')} | Trạng thái: {row.get('Status')} | Loại: {row.get('Type')} | "
+                f"Hình thức: {row.get('Mode')} | Phòng ban: {row.get('DepartmentName')} | Kỳ học: {row.get('SemesterName')} | "
+                f"Địa điểm: {row.get('LocationName')} | Người tổ chức: {row.get('OrganizerName')} | "
+                f"Bắt đầu: {row.get('StartTime')} | Kết thúc: {row.get('EndTime')} | "
+                f"Sức chứa: {capacity_used}/{max_capacity} ({capacity_percent}%) | "
+                f"Đánh giá: {rating_str} {status_indicator} | Ý kiến: {row.get('FeedbackCount')} | "
+                f"Danh sách chờ: {row.get('WaitlistCount')} | Thành viên: {row.get('TeamMemberCount')} | "
+                f"Chương trình: {row.get('AgendaCount')} | URL họp: {row.get('MeetingUrl')} | "
+                f"Mô tả: {row.get('Description')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "event",
+                        "event_id": row.get("EventId"),
+                        "title": row.get("Title"),
+                        "status": str(row.get("Status")),
+                        "type": str(row.get("Type")),
+                        "mode": str(row.get("Mode")),
+                        "organizer": row.get("OrganizerName"),
+                        "avg_rating": self._format_float(row.get("AvgRating")),
+                        "registered": capacity_used,
+                        "max_capacity": max_capacity,
+                        "feedback_count": row.get('FeedbackCount', 0),
+                        "start_time": self._safe_iso(row.get("StartTime")),
+                        "end_time": self._safe_iso(row.get("EndTime")),
+                        "updated_at": self._safe_iso(row.get("UpdatedAt")),
+                    },
+                )
+            )
+
+        # Build event agenda chunks
+        for row in agenda_rows:
+            text = (
+                f"[CHƯƠNG TRÌNH SỰ KIỆN] Sự kiện: {row.get('EventTitle')} | "
+                f"Tiêu đề: {row.get('AgendaTitle')} | "
+                f"Thời gian: {row.get('StartTime')} - {row.get('EndTime')} | "
+                f"Địa điểm: {row.get('Location')} | "
+                f"Mô tả: {row.get('AgendaDescription')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "event_agenda",
+                        "agenda_id": row.get("AgendaId"),
+                        "event_id": row.get("EventId"),
+                        "event_title": row.get("EventTitle"),
+                        "title": row.get("AgendaTitle"),
+                        "start_time": self._safe_iso(row.get("StartTime")),
+                    },
+                )
+            )
+
+        # Build event team chunks
+        for row in team_rows:
+            text = (
+                f"[THÀNH VIÊN SỰ KIỆN] Sự kiện: {row.get('EventTitle')} | "
+                f"Tên: {row.get('MemberName')} | "
+                f"Email: {row.get('Email')} | "
+                f"Vai trò: {row.get('Role')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "event_team",
+                        "team_id": row.get("TeamId"),
+                        "event_id": row.get("EventId"),
+                        "event_title": row.get("EventTitle"),
+                        "member_name": row.get("MemberName"),
+                        "role": row.get("Role"),
+                    },
+                )
+            )
+
+        for row in feedback_rows:
+            text = (
+                f"[FEEDBACK] Sự kiện: {row.get('EventTitle')} | Sinh viên: {row.get('StudentName')} ({row.get('StudentCode')}) | "
+                f"Đánh giá: {row.get('Rating')}/5 | Ý kiến: {row.get('Comment')} | Ngày: {row.get('CreatedAt')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "feedback",
+                        "feedback_id": row.get("FeedbackId"),
+                        "event_id": row.get("EventId"),
+                        "event_title": row.get("EventTitle"),
+                        "rating": row.get("Rating"),
+                        "created_at": self._safe_iso(row.get("CreatedAt")),
+                    },
+                )
+            )
+
+        for row in log_rows:
+            text = (
+                f"[SYSTEM_LOG] StatusCode: {row.get('StatusCode')} | ExceptionType: {row.get('ExceptionType')} | "
+                f"Message: {row.get('ExceptionMessage')} | Source: {row.get('Source')} | "
+                f"User: {row.get('UserName')} | CreatedAt: {row.get('CreatedAt')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "system_log",
+                        "log_id": row.get("LogId"),
+                        "status_code": row.get("StatusCode"),
+                        "exception_type": row.get("ExceptionType"),
+                        "created_at": self._safe_iso(row.get("CreatedAt")),
+                    },
+                )
+            )
+
+        for row in agg_feedback_rows:
+            event_title = row.get('EventTitle') or 'Unknown'
+            avg_rating = row.get('AvgRating')
+            quality = "Chất lượng cao ⭐" if avg_rating and avg_rating >= 4 else ("Chất lượng trung bình" if avg_rating and avg_rating >= 3 else "Cần cải thiện")
+            
+            text = (
+                f"[PHÂN TÍCH FEEDBACK] Sự kiện: {event_title} | "
+                f"Số lượng ý kiến: {row.get('FeedbackCount')} | "
+                f"Đánh giá TB: {self._format_float(avg_rating)}/5 {quality} | "
+                f"Ý kiến tích cực: {row.get('HighRatingCount')} | "
+                f"Ý kiến tiêu cực: {row.get('LowRatingCount')} | "
+                f"Feedback gần nhất: {row.get('LastFeedbackAt')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "feedback_analytics",
+                        "event_id": row.get("EventId"),
+                        "event_title": event_title,
+                        "avg_rating": self._format_float(avg_rating),
+                        "feedback_count": row.get("FeedbackCount"),
+                    },
+                )
+            )
+
+        for row in agg_log_rows:
+            text = (
+                f"[PHÂN TÍCH LOG] Mã lỗi: {row.get('StatusCode')} | Loại lỗi: {row.get('ExceptionType')} | "
+                f"Số lần xảy ra: {row.get('ErrorCount')} | Lần cuối cùng: {row.get('LastSeenAt')}"
+            )
+            chunks.append(
+                Chunk(
+                    text=text,
+                    meta={
+                        "doc_type": "log_analytics",
+                        "status_code": row.get("StatusCode"),
+                        "exception_type": row.get("ExceptionType"),
+                        "error_count": row.get("ErrorCount"),
+                    },
+                )
+            )
+
+        return chunks
+
+    @staticmethod
+    def _safe_iso(value: Any) -> str | None:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if value is None:
+            return None
+        return str(value)
+
+    @staticmethod
+    def _format_float(value: Any) -> str:
+        if value is None:
+            return "NA"
+        try:
+            return f"{float(value):.2f}"
+        except Exception:
+            return str(value)
+
+    def _encode_texts(self, texts: list[str]) -> np.ndarray:
+        vectors = self._embedding_model.encode(
+            texts,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return vectors.astype(np.float32)
+
+    def rebuild_index(self) -> None:
+        chunks = self._build_chunks_from_db()
+        if not chunks:
+            raise ValueError("Không có dữ liệu để build KB")
+
+        texts = [chunk.text for chunk in chunks]
+        vectors = self._encode_texts(texts)
+
+        dim = vectors.shape[1]
+        index = faiss.IndexFlatIP(dim)
+        index.add(vectors)
+
+        self._chunks = chunks
+        self._index = index
+        self._last_reload = datetime.now().isoformat()
+
+        faiss.write_index(index, str(self.index_path))
+        with self.chunks_path.open("w", encoding="utf-8") as f:
+            json.dump([{"text": c.text, "meta": c.meta} for c in chunks], f, ensure_ascii=False)
+        with self.meta_path.open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "embedding_model": self.embedding_model_name,
+                    "llm_model": self.llm_model_name,
+                    "kb_chunks": len(chunks),
+                    "updated_at": self._last_reload,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+    def _load_index_if_exists(self) -> bool:
+        if not (self.index_path.exists() and self.chunks_path.exists()):
+            return False
+
+        index = faiss.read_index(str(self.index_path))
+        with self.chunks_path.open("r", encoding="utf-8") as f:
+            raw_chunks = json.load(f)
+        chunks = [Chunk(text=item["text"], meta=item["meta"]) for item in raw_chunks]
+
+        self._index = index
+        self._chunks = chunks
+        self._last_reload = datetime.now().isoformat()
+        return True
+
+    def warmup(self) -> None:
+        loaded = self._load_index_if_exists()
+        if not loaded:
+            self.rebuild_index()
+
+    async def _auto_reload_loop(self) -> None:
+        """Background task to automatically reload index at regular intervals"""
+        print(f"[RAG] Auto-reload enabled: refreshing data every {self.auto_reload_interval} seconds")
+        await asyncio.sleep(self.auto_reload_interval)  # Wait before first reload
+        
+        while not self._stop_auto_reload:
+            try:
+                print(f"[RAG] Auto-reloading index at {datetime.now().isoformat()}")
+                self.rebuild_index()
+                print(f"[RAG] Auto-reload completed. Next reload in {self.auto_reload_interval} seconds")
+            except Exception as e:
+                print(f"[RAG] Auto-reload failed: {e}")
+            
+            await asyncio.sleep(self.auto_reload_interval)
+
+    def start_auto_reload(self) -> None:
+        """Start the auto-reload background task"""
+        if self._auto_reload_task is None or self._auto_reload_task.done():
+            self._stop_auto_reload = False
+            self._auto_reload_task = asyncio.create_task(self._auto_reload_loop())
+            print(f"[RAG] Auto-reload task started")
+
+    def stop_auto_reload(self) -> None:
+        """Stop the auto-reload background task"""
+        self._stop_auto_reload = True
+        if self._auto_reload_task and not self._auto_reload_task.done():
+            self._auto_reload_task.cancel()
+            print(f"[RAG] Auto-reload task stopped")
+
+    @staticmethod
+    def _normalize_role(role: str) -> str:
+        value = (role or "").strip().lower()
+        if value in {"admin", "administrator"}:
+            return "admin"
+        if value in {"organizer", "approver", "staff"}:
+            return "staff"
+        return "user"
+
+    @staticmethod
+    def _get_event_quality_indicator(avg_rating: Any, status: str) -> str:
+        """Get quality indicator emoji/text for event based on rating and status"""
+        if status and str(status).lower() == "closed":
+            return "✓ Đã kết thúc"
+        if avg_rating is None:
+            return ""
+        try:
+            rating = float(avg_rating)
+            if rating >= 4.5:
+                return "⭐⭐⭐⭐⭐ Xuất sắc"
+            elif rating >= 4:
+                return "⭐⭐⭐⭐ Rất tốt"
+            elif rating >= 3:
+                return "⭐⭐⭐ Tốt"
+            elif rating >= 2:
+                return "⭐⭐ Bình thường"
+            else:
+                return "⚠️ Cần cải thiện"
+        except:
+            return ""
+
+    def _allowed_doc_types(self, normalized_role: str) -> set[str]:
+        if normalized_role == "admin":
+            return {"event", "feedback", "feedback_analytics", "system_log", "log_analytics", "event_agenda", "event_team"}
+        if normalized_role == "staff":
+            return {"event", "feedback", "feedback_analytics", "event_agenda", "event_team"}
+        return {"event", "feedback_analytics", "event_agenda"}
+
+    def _get_session_context(self, session_id: Optional[str]) -> str:
+        """Get conversation history context for the session"""
+        if not session_id or session_id not in self._sessions:
+            return ""
+        
+        messages = self._sessions[session_id]
+        if not messages:
+            return ""
+        
+        # Get last 4 messages for context
+        recent_messages = messages[-4:]
+        context_lines = []
+        for msg in recent_messages:
+            role_text = "Người dùng" if msg.role == "user" else "Cố vấn"
+            context_lines.append(f"{role_text}: {msg.content[:300]}")
+        
+        return "\n".join(context_lines)
+
+    def retrieve(self, question: str, top_k: int, role: str) -> list[dict[str, Any]]:
+        if self._index is None or not self._chunks:
+            self.warmup()
+
+        normalized_role = self._normalize_role(role)
+        allowed_doc_types = self._allowed_doc_types(normalized_role)
+
+        query_vec = self._encode_texts([question])
+        search_k = min(max(top_k * 5, top_k), len(self._chunks))
+        scores, indices = self._index.search(query_vec, search_k)
+
+        results: list[dict[str, Any]] = []
+        for score, idx in zip(scores[0], indices[0]):
+            if idx < 0 or idx >= len(self._chunks):
+                continue
+            chunk = self._chunks[idx]
+            if chunk.meta.get("doc_type") not in allowed_doc_types:
+                continue
+            results.append(
+                {
+                    "score": float(score),
+                    "text": chunk.text,
+                    "meta": chunk.meta,
+                }
+            )
+            if len(results) >= top_k:
+                break
+        return results
+
+    def _build_fallback_answer(
+        self,
+        question: str,
+        retrieved: list[dict[str, Any]],
+        normalized_role: str,
+        error: Exception,
+    ) -> str:
+        type_counts: dict[str, int] = {}
+        for item in retrieved:
+            doc_type = str(item.get("meta", {}).get("doc_type", "unknown"))
+            type_counts[doc_type] = type_counts.get(doc_type, 0) + 1
+
+        top_items = retrieved[: min(3, len(retrieved))]
+        evidence_lines = [f"- {item['text'][:220]}" for item in top_items]
+
+        if normalized_role == "admin":
+            role_scope = "Dữ liệu đang xét gồm sự kiện, feedback và log hệ thống (theo quyền admin)."
+        elif normalized_role == "staff":
+            role_scope = "Dữ liệu đang xét gồm sự kiện và feedback (không bao gồm chi tiết log hệ thống)."
+        else:
+            role_scope = "Dữ liệu đang xét ở mức an toàn cho người dùng, chủ yếu là sự kiện và feedback tổng hợp."
+
+        return (
+            "1) Chẩn đoán nhanh\n"
+            f"- Chưa thể gọi LLM bên ngoài ({str(error)}), nên hệ thống chuyển sang tư vấn fallback từ dữ liệu truy xuất.\n"
+            f"- {role_scope}\n\n"
+            "2) Bằng chứng từ dữ liệu\n"
+            f"- Số nguồn truy xuất: {len(retrieved)}\n"
+            f"- Phân bố nguồn: {type_counts}\n"
+            + "\n".join(evidence_lines)
+            + "\n\n"
+            "3) Khuyến nghị ưu tiên\n"
+            "- Ưu tiên kiểm tra các sự kiện/feedback xuất hiện ở top nguồn vì độ liên quan cao.\n"
+            "- Nếu cần kết luận sâu hơn, hãy xác nhận lại GROQ_API_KEY và kết nối mạng để bật phân tích LLM đầy đủ.\n\n"
+            "4) Cảnh báo rủi ro\n"
+            "- Khi đang ở chế độ fallback, chất lượng tổng hợp ngữ nghĩa có thể thấp hơn chế độ LLM đầy đủ."
+        )
+
+    def answer(self, question: str, top_k: int, role: str, session_id: Optional[str] = None, user_id: Optional[str] = None, save_to_db: bool = True) -> tuple[str, list[dict[str, Any]], str]:
+        """
+        Answer a question with RAG and conversation context.
+        Returns: (answer, sources, session_id)
+        """
+        normalized_role = self._normalize_role(role)
+        retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
+        
+        if not retrieved:
+            answer = "Hiện tại chưa có dữ liệu phù hợp để tư vấn. Vui lòng thử câu hỏi cụ thể hơn về các sự kiện trong hệ thống."
+            return answer, [], session_id or str(uuid4())
+
+        # Create or reuse session
+        if not session_id:
+            session_id = str(uuid4())
+            self._sessions[session_id] = []
+        elif session_id not in self._sessions:
+            self._sessions[session_id] = []
+
+        # Build context with conversation history
+        context = "\n\n".join(
+            [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
+        )
+        
+        conversation_history = self._get_session_context(session_id)
+
+        system_prompt = (
+            "Bạn là cố vấn sự kiện thân thiện và chuyên nghiệp cho sinh viên tại hệ thống AEMS.\n\n"
+            
+            "NHIỆM VỤ:\n"
+            "- Gợi ý sự kiện phù hợp nhất với câu hỏi của người dùng\n"
+            "- Ưu tiên sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
+            "- Giải thích rõ ràng về thời gian, địa điểm, cách tham gia\n"
+            "- Cảnh báo nếu sự kiện gần hết chỗ hoặc cần chú ý gì đặc biệt\n\n"
+            
+            "PHONG CÁCH TRẢ LỜI:\n"
+            "- Ngắn gọn, dễ hiểu, thân thiện\n"
+            "- Chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
+            "- KHÔNG dump toàn bộ data, chỉ trích xuất thông tin quan trọng\n"
+            "- Sử dụng emoji phù hợp để dễ đọc: ⭐📅📍💡\n"
+            "- Tránh lặp lại thông tin không cần thiết\n\n"
+            
+            "CẤU TRÚC:\n"
+            "1. Câu mở đầu ngắn gọn (1-2 câu)\n"
+            "2. Giới thiệu 2-3 sự kiện phù hợp nhất:\n"
+            "   - Tên sự kiện\n"
+            "   - Thời gian & Địa điểm\n"
+            "   - Điểm nổi bật (đánh giá, nội dung)\n"
+            "   - Cách đăng ký/tham gia\n"
+            "3. Lời khuyên ngắn (nếu cần)\n\n"
+            
+            "LƯU Ý:\n"
+            "- Không hiển thị ID, timestamp chi tiết, hay metadata kỹ thuật\n"
+            "- Chỉ nói về sự kiện còn mở đăng ký hoặc sắp diễn ra\n"
+            "- Nếu không có sự kiện phù hợp, gợi ý thay thế hoặc hướng dẫn tìm kiếm\n"
+        )
+
+        if normalized_role == "admin":
+            role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
+        elif normalized_role == "staff":
+            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        else:
+            role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
+
+        user_prompt = (
+            f"{role_hint}\n\n"
+        )
+        
+        if conversation_history:
+            user_prompt += (
+                f"Lịch sử hội thoại:\n{conversation_history}\n\n"
+            )
+        
+        user_prompt += (
+            f"Câu hỏi: {question}\n\n"
+            f"Dữ liệu liên quan:\n{context}\n\n"
+            "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
+        )
+
+        try:
+            completion = self._llm.chat.completions.create(
+                model=self.llm_model_name,
+                temperature=0.2,
+                max_tokens=800,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+
+            answer = completion.choices[0].message.content or ""
+            answer = answer.strip()
+            
+            # Save to conversation history
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=answer))
+            
+            # Save to database if requested
+            if save_to_db and user_id and self.db_service:
+                try:
+                    self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=answer,
+                        title=None,
+                    )
+                except Exception as e:
+                    print(f"[RAG] Failed to save conversation to DB: {e}")
+            
+            return answer, retrieved, session_id
+        except Exception as ex:
+            fallback_answer = self._build_fallback_answer(
+                question=question,
+                retrieved=retrieved,
+                normalized_role=normalized_role,
+                error=ex,
+            )
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=fallback_answer))
+            
+            # Save to database if requested
+            if save_to_db and user_id and self.db_service:
+                try:
+                    self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=fallback_answer,
+                        title=None,
+                    )
+                except Exception as e:
+                    print(f"[RAG] Failed to save fallback conversation to DB: {e}")
+            
+            return fallback_answer, retrieved, session_id
+
+    async def answer_stream(self, question: str, top_k: int, role: str, session_id: Optional[str] = None, user_id: Optional[str] = None, save_to_db: bool = True) -> AsyncGenerator[str, None]:
+        """
+        Answer a question with streaming tokens.
+        Yields: JSON lines with streaming content
+        """
+        normalized_role = self._normalize_role(role)
+        retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
+        
+        if not retrieved:
+            yield json.dumps({
+                "type": "answer",
+                "content": "Hiện tại chưa có dữ liệu phù hợp để tư vấn. Vui lòng thử câu hỏi cụ thể hơn về các sự kiện trong hệ thống.",
+                "session_id": session_id or str(uuid4())
+            }) + "\n"
+            return
+
+        # Create or reuse session
+        if not session_id:
+            session_id = str(uuid4())
+            self._sessions[session_id] = []
+        elif session_id not in self._sessions:
+            self._sessions[session_id] = []
+
+        # Build context
+        context = "\n\n".join(
+            [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
+        )
+        
+        conversation_history = self._get_session_context(session_id)
+
+        system_prompt = (
+            "Bạn là cố vấn sự kiện thân thiện và chuyên nghiệp cho sinh viên tại hệ thống AEMS.\n\n"
+            
+            "NHIỆM VỤ:\n"
+            "- Gợi ý sự kiện phù hợp nhất với câu hỏi của người dùng\n"
+            "- Ưu tiên sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
+            "- Giải thích rõ ràng về thời gian, địa điểm, cách tham gia\n"
+            "- Cảnh báo nếu sự kiện gần hết chỗ hoặc cần chú ý gì đặc biệt\n\n"
+            
+            "PHONG CÁCH TRẢ LỜI:\n"
+            "- Ngắn gọn, dễ hiểu, thân thiện\n"
+            "- Chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
+            "- KHÔNG dump toàn bộ data, chỉ trích xuất thông tin quan trọng\n"
+            "- Sử dụng emoji phù hợp để dễ đọc: ⭐📅📍💡\n"
+            "- Tránh lặp lại thông tin không cần thiết\n\n"
+            
+            "CẤU TRÚC:\n"
+            "1. Câu mở đầu ngắn gọn (1-2 câu)\n"
+            "2. Giới thiệu 2-3 sự kiện phù hợp nhất:\n"
+            "   - Tên sự kiện\n"
+            "   - Thời gian & Địa điểm\n"
+            "   - Điểm nổi bật (đánh giá, nội dung)\n"
+            "   - Cách đăng ký/tham gia\n"
+            "3. Lời khuyên ngắn (nếu cần)\n\n"
+            
+            "LƯU Ý:\n"
+            "- Không hiển thị ID, timestamp chi tiết, hay metadata kỹ thuật\n"
+            "- Chỉ nói về sự kiện còn mở đăng ký hoặc sắp diễn ra\n"
+            "- Nếu không có sự kiện phù hợp, gợi ý thay thế hoặc hướng dẫn tìm kiếm\n"
+        )
+
+        if normalized_role == "admin":
+            role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
+        elif normalized_role == "staff":
+            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        else:
+            role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
+
+        user_prompt = (
+            f"{role_hint}\n\n"
+        )
+        
+        if conversation_history:
+            user_prompt += (
+                f"Lịch sử hội thoại:\n{conversation_history}\n\n"
+            )
+        
+        user_prompt += (
+            f"Câu hỏi: {question}\n\n"
+            f"Dữ liệu liên quan:\n{context}\n\n"
+            "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
+        )
+
+        try:
+            # Stream response from LLM
+            stream = self._llm.chat.completions.create(
+                model=self.llm_model_name,
+                temperature=0.2,
+                max_tokens=800,
+                stream=True,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+
+            full_answer = ""
+            
+            # First yield session info
+            yield json.dumps({
+                "type": "session",
+                "session_id": session_id
+            }) + "\n"
+
+            # Stream tokens
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    token = chunk.choices[0].delta.content
+                    full_answer += token
+                    yield json.dumps({
+                        "type": "token",
+                        "content": token
+                    }) + "\n"
+
+            # Yield sources at the end
+            yield json.dumps({
+                "type": "sources",
+                "sources": [
+                    {
+                        "score": f"{s['score']:.2%}",
+                        "meta": s["meta"],
+                    }
+                    for s in retrieved
+                ]
+            }) + "\n"
+
+            # Save to conversation history
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=full_answer))
+            
+            # Save to database if requested
+            if save_to_db and user_id and self.db_service:
+                try:
+                    self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=full_answer,
+                        title=None,
+                    )
+                except Exception as e:
+                    print(f"[RAG] Failed to save streaming conversation to DB: {e}")
+
+            # Yield end signal
+            yield json.dumps({
+                "type": "done"
+            }) + "\n"
+
+        except Exception as ex:
+            fallback_answer = self._build_fallback_answer(
+                question=question,
+                retrieved=retrieved,
+                normalized_role=normalized_role,
+                error=ex,
+            )
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=fallback_answer))
+            
+            # Save to database if requested
+            if save_to_db and user_id and self.db_service:
+                try:
+                    self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=fallback_answer,
+                        title=None,
+                    )
+                except Exception as e:
+                    print(f"[RAG] Failed to save error fallback to DB: {e}")
+            
+            yield json.dumps({
+                "type": "error",
+                "content": fallback_answer
+            }) + "\n"
+
+    def stats(self) -> dict[str, Any]:
+        log_chunks = sum(1 for c in self._chunks if c.meta.get("doc_type") in {"system_log", "log_analytics"})
+        return {
+            "kb_chunks": len(self._chunks),
+            "log_chunks": log_chunks,
+            "kb_index_size": int(self._index.ntotal if self._index is not None else 0),
+            "log_index_size": log_chunks,
+            "model": self.embedding_model_name,
+            "llm": self.llm_model_name,
+            "api_version": "role-aware-rag-v2",
+            "last_reload": self._last_reload,
+        }
+
+
+app = FastAPI(title="AEMS Smart Event Chatbot API", version="2.0.0")
+engine = RagEngine()
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Initialize the engine and start auto-reload"""
+    print("[RAG] Starting up...")
+    engine.warmup()
+    engine.start_auto_reload()
+    print("[RAG] Startup complete. Auto-reload is active.")
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Stop auto-reload task on shutdown"""
+    print("[RAG] Shutting down...")
+    engine.stop_auto_reload()
+    print("[RAG] Shutdown complete.")
+
+
+@app.get("/health")
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "kb_size": len(engine._chunks),
+        "log_size": sum(
+            1
+            for c in engine._chunks
+            if c.meta.get("doc_type") in {"system_log", "log_analytics"}
+        ),
+        "auto_reload_enabled": not engine._stop_auto_reload,
+        "auto_reload_interval": engine.auto_reload_interval,
+        "last_reload": engine._last_reload,
+    }
+
+
+@app.get("/stats")
+def stats() -> dict[str, Any]:
+    return engine.stats()
+
+
+@app.post("/reload")
+def reload_index() -> dict[str, Any]:
+    """Manually trigger a reload of the knowledge base"""
+    engine.rebuild_index()
+    return {"status": "reloaded", **engine.stats()}
+
+
+@app.post("/auto-reload/enable")
+async def enable_auto_reload() -> dict[str, Any]:
+    """Enable automatic reloading"""
+    engine.start_auto_reload()
+    return {
+        "status": "enabled",
+        "interval_seconds": engine.auto_reload_interval,
+        "message": f"Auto-reload enabled. Data will refresh every {engine.auto_reload_interval} seconds"
+    }
+
+
+@app.post("/auto-reload/disable")
+def disable_auto_reload() -> dict[str, Any]:
+    """Disable automatic reloading"""
+    engine.stop_auto_reload()
+    return {
+        "status": "disabled",
+        "message": "Auto-reload disabled. Data will only update on manual /reload or server restart"
+    }
+
+
+@app.get("/auto-reload/status")
+def auto_reload_status() -> dict[str, Any]:
+    """Get auto-reload status"""
+    return {
+        "enabled": not engine._stop_auto_reload,
+        "interval_seconds": engine.auto_reload_interval,
+        "last_reload": engine._last_reload,
+        "next_reload_in_seconds": engine.auto_reload_interval if not engine._stop_auto_reload else None
+    }
+
+
+@app.post("/ask")
+def ask(request: AskRequest) -> dict[str, Any]:
+    try:
+        answer, sources, session_id = engine.answer(
+            question=request.question,
+            top_k=request.top_k or engine.default_top_k,
+            role=request.role,
+            session_id=request.session_id,
+            user_id=request.user_id,
+            save_to_db=request.save_to_db,
+        )
+        return {
+            "session_id": session_id,
+            "question": request.question,
+            "answer": answer,
+            "sources": [
+                {
+                    "score": f"{s['score']:.2%}",
+                    "meta": s["meta"],
+                }
+                for s in sources
+            ],
+            "error": None,
+        }
+    except Exception as ex:
+        return {
+            "session_id": request.session_id or str(uuid4()),
+            "question": request.question,
+            "answer": "",
+            "sources": [],
+            "error": str(ex),
+        }
+
+
+@app.post("/ask-stream")
+async def ask_stream(request: AskRequest) -> StreamingResponse:
+    """Stream response tokens one by one"""
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            async for chunk in engine.answer_stream(
+                question=request.question,
+                top_k=request.top_k or engine.default_top_k,
+                role=request.role,
+                session_id=request.session_id,
+                user_id=request.user_id,
+                save_to_db=request.save_to_db,
+            ):
+                yield chunk
+        except Exception as ex:
+            yield json.dumps({
+                "type": "error",
+                "error": str(ex),
+            }) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/json")
+
+
+@app.get("/conversation/{session_id}")
+def get_conversation_history(session_id: str) -> dict[str, Any]:
+    """Get conversation history for a session"""
+    if session_id not in engine._sessions:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    
+    messages = engine._sessions[session_id]
+    return {
+        "session_id": session_id,
+        "message_count": len(messages),
+        "messages": [
+            {
+                "role": msg.role,
+                "content": msg.content,
+                "timestamp": msg.timestamp,
+            }
+            for msg in messages
+        ],
+    }
+
+
+@app.post("/conversation/{session_id}/clear")
+def clear_conversation(session_id: str) -> dict[str, Any]:
+    """Clear conversation history for a session"""
+    if session_id in engine._sessions:
+        del engine._sessions[session_id]
+    return {"session_id": session_id, "status": "cleared"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("rag_api_server:app", host="0.0.0.0", port=8000, reload=False)
