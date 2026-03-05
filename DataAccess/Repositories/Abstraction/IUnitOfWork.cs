@@ -17,6 +17,7 @@ namespace DataAccess.Repositories.Abstraction
         IGenericRepository<StaffProfile> StaffProfiles { get; }
         IGenericRepository<Role> Roles { get; }
         IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
+		IGenericRepository<Notification> Notifications { get; }
 		
 		
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
@@ -16,11 +17,13 @@ public class EventService : IEventService
 {
 	private readonly IUnitOfWork _uow;
 	private readonly IEventValidator _validator;
+	private readonly INotificationService _notificationService;
 
-	public EventService(IUnitOfWork uow, IEventValidator validator)
+	public EventService(IUnitOfWork uow, IEventValidator validator, INotificationService notificationService)
 	{
 		_uow = uow;
 		_validator = validator;
+		_notificationService = notificationService;
 	}
 
 	public async Task CancelEventAsync(string userId, string eventId)
@@ -56,6 +59,26 @@ public class EventService : IEventService
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await tx.CommitAsync();
+
+			// Notify all ticket holders
+			var tickets = await _uow.Tickets.GetAllAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+			foreach (var ticket in tickets)
+			{
+				if (!string.IsNullOrEmpty(ticket.StudentId))
+				{
+					// Convert StudentId to UserId
+					var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
+					if (studentProfile?.UserId != null)
+					{
+						await _notificationService.SendNotificationAsync(
+							studentProfile.UserId,
+							"Sự kiện đã bị hủy",
+							$"Sự kiện '{ev.Title}' mà bạn đăng ký tham gia đã bị hủy bởi Ban Tổ Chức.",
+							"EventOrganizeCancel"
+						);
+					}
+				}
+			}
 		}
 		catch
 		{
@@ -92,6 +115,17 @@ public class EventService : IEventService
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await tx.CommitAsync();
+
+			// Notify Organizer that their event is live
+			if (staff.UserId != null)
+			{
+				await _notificationService.SendNotificationAsync(
+					staff.UserId,
+					"Sự kiện đã được xuất bản",
+					$"Sự kiện '{ev.Title}' của bạn đã chính thức được công khai trên hệ thống.",
+					"EventPublished"
+				);
+			}
 		}
 		catch
 		{
@@ -464,6 +498,28 @@ public class EventService : IEventService
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
+
+			// Notify all valid ticket holders
+			if (ev.Status == EventStatusEnum.Published || ev.Status == EventStatusEnum.Happening)
+			{
+				var tickets = await _uow.Tickets.GetAllAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+				foreach (var ticket in tickets)
+				{
+					if (!string.IsNullOrEmpty(ticket.StudentId))
+					{
+						var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
+						if (studentProfile?.UserId != null)
+						{
+							await _notificationService.SendNotificationAsync(
+								studentProfile.UserId,
+								"Sự kiện đã thay đổi thông tin",
+								$"Sự kiện '{ev.Title}' mà bạn đã đăng ký vừa được Ban Tổ Chức cập nhật lại thông tin.",
+								"EventUpdated"
+							);
+						}
+					}
+				}
+			}
 		}
 		catch
 		{
