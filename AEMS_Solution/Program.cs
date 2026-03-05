@@ -40,6 +40,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Services (Business Logic)
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
 // Register refactored services
@@ -226,7 +227,7 @@ app.UseAuthorization();
 // ==========================================
 
 // SignalR Hubs
-// app.MapHub<NotificationHub>("/hub/v1/notification");
+app.MapHub<BusinessLogic.Hubs.NotificationHub>("/hub/v1/notification");
 // app.MapHub<ChatHub>("/hub/v1/chat");
 
 // MVC Default Route
