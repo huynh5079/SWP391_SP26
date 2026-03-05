@@ -145,9 +145,8 @@
 
         <form asp-controller="Event" asp-action="Edit" method="post" id="editEventForm">
             @Html.AntiForgeryToken()
-            @* Quan trọng: Hidden field cho EventId và Status *@
+            @* Hidden EventId; Status được xử lý theo điều kiện bên dưới *@
             <input type="hidden" asp-for="EventId" />
-            <input type="hidden" asp-for="Status" />
 
             @Html.ValidationSummary(excludePropertyErrors: false, message: "", htmlAttributes: new { @class = "text-danger" })
 
@@ -222,9 +221,20 @@
                     <select asp-for="Type" asp-items="Html.GetEnumSelectList<EventTypeEnum>()"></select>
                 </div>
                 <div class="col">
-                    @* Không cho phép đổi Status tùy tiện ở đây nếu bạn quản lý bằng Workflow riêng *@
-                    <label>Status Information</label>
-                    <input value="@Model.Status" disabled style="background: #f3f4f6;" />
+                    <label>Status</label>
+                    @if (Model.Status == EventStatusEnum.Cancelled)
+                    {
+                        <select asp-for="Status" class="form-select">
+                            <option value="@EventStatusEnum.Cancelled">Cancelled</option>
+                            <option value="@EventStatusEnum.Draft">Draft</option>
+                            <option value="@EventStatusEnum.Pending">Pending</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <input value="@Model.Status" disabled style="background: #f3f4f6;" />
+                        <input type="hidden" asp-for="Status" />
+                    }
                 </div>
             </div>
 

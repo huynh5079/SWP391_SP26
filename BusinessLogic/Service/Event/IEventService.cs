@@ -6,11 +6,13 @@ namespace BusinessLogic.Service.Event
     // Interface focused on Event-related use-cases (SRP)
     public interface IEventService
     {
-        Task CreateEventAsync(string userId, CreateEventRequestDto dto);
+        Task<string> CreateEventAsync(string userId, CreateEventRequestDto dto);
         Task UpdateEventAsync(string userId, string eventId, UpdateEventRequestDto dto);
         Task DeleteEventAsync(string userId, string eventId);
 
         Task SendForApprovalAsync(string userId, string eventId);
+        Task CancelEventAsync(string userId, string eventId);
+        Task PublishEventAsync(string userId, string eventId);
 
         Task<EventDetailsDto> GetEventDetailsAsync(string eventId, string? userId = null);
 

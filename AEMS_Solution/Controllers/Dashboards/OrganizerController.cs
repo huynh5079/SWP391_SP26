@@ -1,6 +1,7 @@
 ﻿using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
+using AutoMapper;
 using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 using CloudinaryDotNet;
@@ -21,10 +22,12 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 [Authorize(Roles = "Organizer")] 
 	public class OrganizerController : BaseController
 	{
-		private readonly IOrganizerService _organizerService;
-		public OrganizerController(IOrganizerService organizerService)
+	private readonly IOrganizerService _organizerService;
+	    private readonly IMapper _mapper;
+		public OrganizerController(IOrganizerService organizerService, IMapper mapper)
 		{
 			_organizerService = organizerService;
+			_mapper = mapper;
 		}
         [HttpGet]
     public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, string? location = null, string? department = null, string? timeState= null, DateTime? dateFrom = null, DateTime? dateTo = null, int page = 1, int pageSize = 10)
@@ -99,6 +102,12 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
                     case "sendforapproval":
                     case "send":
                         return await SendForApproval(id);
+
+                    case "publish":
+                        return await PublishEvent(id);
+
+                    case "cancel":
+                        return await CancelEvent(id);
 				    // case "eventwaitlist":
 				    //return
 				    //case "update":
@@ -108,6 +117,8 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
                             SetError("Event id không hợp lệ.");
                             return RedirectToAction("MyEvents");
                         }
+
+        
 
                         var userId = CurrentUserId;
                         if (string.IsNullOrEmpty(userId))
@@ -150,7 +161,70 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
                 return RedirectToAction("Index");
             }
         }
-		[HttpPost]
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public async Task<IActionResult> PublishEvent(string id)
+	{
+		if (string.IsNullOrEmpty(id))
+		{
+			SetError("Event id không hợp lệ.");
+			return RedirectToAction("MyEvents", "Organizer");
+		}
+
+		var userId = CurrentUserId;
+		if (string.IsNullOrEmpty(userId))
+			return RedirectToAction("Login", "Auth");
+
+		try
+		{
+			await _organizerService.PublishEventAsync(userId, id);
+			SetSuccess("Public event thành công.");
+		}
+		catch (InvalidOperationException ex)
+		{
+			SetError(ex.Message);
+		}
+		catch (Exception)
+		{
+			SetError("Đã xảy ra lỗi khi public event. Vui lòng thử lại.");
+		}
+
+		return RedirectToAction("MyEvents", "Organizer");
+	}
+
+
+
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public async Task<IActionResult> CancelEvent(string id)
+	{
+		if (string.IsNullOrEmpty(id))
+		{
+			SetError("Event id không hợp lệ.");
+			return RedirectToAction("MyEvents", "Organizer");
+		}
+
+		var userId = CurrentUserId;
+		if (string.IsNullOrEmpty(userId))
+			return RedirectToAction("Login", "Auth");
+
+		try
+		{
+			await _organizerService.CancelEventAsync(userId, id);
+			SetSuccess("Hủy sự kiện thành công.");
+		}
+		catch (InvalidOperationException ex)
+		{
+			SetError(ex.Message);
+		}
+		catch (Exception)
+		{
+			SetError("Đã xảy ra lỗi khi hủy sự kiện. Vui lòng thử lại.");
+		}
+
+		return RedirectToAction("MyEvents", "Organizer");
+	}
+	[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> SendForApproval(string id)
 		{
@@ -236,40 +310,12 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 			var userId = CurrentUserId;
 			if (string.IsNullOrEmpty(userId))
 				return RedirectToAction("Login", "Auth");
-
-			// Map VM -> DTO
-			var dto = new BusinessLogic.DTOs.Role.Organizer.CreateEventRequestDto
-			{
-				Title = vm.Title,
-				Description = vm.Description,
-				StartTime = vm.StartTime,
-				EndTime = vm.EndTime,
-				TopicId = vm.TopicId,
-				LocationId = vm.LocationId,
-				SemesterId = vm.SemesterId,
-				DepartmentId = vm.DepartmentId,
-				Capacity = vm.MaxCapacity,
-				IsDepositRequired = vm.IsDepositRequired,
-				DepositAmount = vm.DepositAmount,
-				Mode = vm.Mode,
-				Type = vm.Type,
-				Status = vm.Status,
-				BannerUrl = vm.ThumbnailUrl,
-				MeetingUrl = vm.MeetingUrl,
-				Agendas = vm.Agendas?.Select(a => new BusinessLogic.DTOs.Role.Organizer.CreateAgendaItemDto
-				{
-					SessionName = a.SessionName,
-					Description = a.Description,
-					SpeakerName = a.SpeakerName,
-					StartTime = a.StartTime,
-					EndTime = a.EndTime,
-					Location = a.Location
-				}).ToList() ?? new List<BusinessLogic.DTOs.Role.Organizer.CreateAgendaItemDto>()
-				,
-				// Provide reasonable default registration window derived from event start
-				RegistrationOpenTime = vm.StartTime.AddDays(-7),
-				RegistrationCloseTime = vm.StartTime.AddDays(-1)
-			};
+			
+			// Map VM -> DTO via AutoMapper
+			var dto = _mapper.Map<BusinessLogic.DTOs.Role.Organizer.CreateEventRequestDto>(vm);
+			// Provide reasonable default registration window derived from event start
+			dto.RegistrationOpenTime = vm.StartTime.AddDays(-7);
+			dto.RegistrationCloseTime = vm.StartTime.AddDays(-1);
 
 			try
 			{
