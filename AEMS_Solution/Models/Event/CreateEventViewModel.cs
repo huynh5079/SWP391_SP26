@@ -6,12 +6,22 @@ namespace AEMS_Solution.Models.Event
 {
 	public class CreateEventViewModel
 	{
-		[Required, StringLength(500)]
+		// ===== 1. Basic Info =====
+		[Required, StringLength(200)]
 		public string Title { get; set; } = "";
 
 		public string? Description { get; set; }
-		public string? ThumbnailUrl { get; set; }
 
+		public string? ThumbnailUrl { get; set; } //*
+
+		// ===== 2. Time =====
+		[Required]
+		public DateTime StartTime { get; set; } = DateTime.Now.AddDays(1);
+
+		[Required]
+		public DateTime EndTime { get; set; } = DateTime.Now.AddDays(1).AddHours(2);
+
+		// ===== 3. Relations =====
 		[Required(ErrorMessage = "Vui lòng chọn Semester")]
 		public string SemesterId { get; set; } = "";
 
@@ -22,12 +32,7 @@ namespace AEMS_Solution.Models.Event
 
 		public string? TopicId { get; set; }
 
-		[Required]
-		public DateTime StartTime { get; set; } = DateTime.Now.AddDays(1);
-
-		[Required]
-		public DateTime EndTime { get; set; } = DateTime.Now.AddDays(1).AddHours(2);
-
+		// ===== 4. Capacity & Deposit =====
 		[Range(1, 200000)]
 		public int MaxCapacity { get; set; } = 100;
 
@@ -36,21 +41,25 @@ namespace AEMS_Solution.Models.Event
 		[Range(0, 999999999)]
 		public decimal DepositAmount { get; set; } = 0;
 
+		// ===== 5. Type / Status / Mode =====
 		public EventTypeEnum Type { get; set; } = EventTypeEnum.Workshop;
+
 		public EventStatusEnum Status { get; set; } = EventStatusEnum.Draft;
+
 		public EventModeEnum Mode { get; set; } = EventModeEnum.Hybrid;
+
 		public string? MeetingUrl { get; set; }
-		// dropdown sources
+
+		// ===== 6. Child Collections =====
+		public List<CreateAgendaItemVm> Agendas { get; set; } = new();
+
+		public List<CreateDocumentVm> Documents { get; set; } = new();
+
+		// ===== 7. Dropdown sources (UI only) =====
 		public List<SelectListItem> Semesters { get; set; } = new();
 		public List<SelectListItem> Departments { get; set; } = new();
 		public List<SelectListItem> Locations { get; set; } = new();
 		public List<SelectListItem> Topics { get; set; } = new();
-
-		// agendas
-		public List<CreateAgendaItemVm> Agendas { get; set; } = new();
-
-		// documents (simple: name + url)
-		public List<CreateDocumentVm> Documents { get; set; } = new();
 	}
 
 	public class CreateAgendaItemVm

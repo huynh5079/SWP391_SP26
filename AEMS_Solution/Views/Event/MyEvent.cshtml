@@ -3,6 +3,20 @@
 @{
     ViewData["Title"] = "My Events";
     Layout = "_Organizerlayout";
+
+    string StatusClass(EventStatusEnum status) => status switch
+    {
+        EventStatusEnum.Draft => "bg-secondary",
+        EventStatusEnum.Pending => "bg-warning text-dark",
+        EventStatusEnum.Approved => "bg-success",
+        EventStatusEnum.Rejected => "bg-danger",
+        EventStatusEnum.Published => "bg-info text-dark",
+        EventStatusEnum.Upcoming => "bg-primary",
+        EventStatusEnum.Happening => "bg-info text-dark",
+        EventStatusEnum.Completed => "bg-success",
+        EventStatusEnum.Cancelled => "bg-dark",
+        _ => "bg-secondary"
+    };
 }
 
 <div class="container mt-4">
@@ -23,7 +37,7 @@
 
 
         <div class="col-auto">
-            @{ var statuses = new[] { "Draft", "Pending", "Upcoming", "Happening", "Completed" }; }
+            @{ var statuses = new[] { "Draft", "Pending", "Upcoming", "Happening", "Completed", "Cancelled" }; }
             <select name="status" class="form-select">
                 <option value="">All Status</option>
                 @foreach (var s in statuses)
@@ -161,7 +175,7 @@
                     </td>
 
                     <td>
-                        <span class="workflow-badge badge bg-secondary">@e.Status</span>
+                        <span class="workflow-badge badge @StatusClass(e.Status)">@e.Status</span>
                     </td>
                     <td>
                         @e.Mode
@@ -193,9 +207,9 @@
                         {
                             <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="operation" value="sendforapproval" />
+                                <input type="hidden" name="operation" value="softdelete" />
                                 <input type="hidden" name="id" value="@e.EventId" />
-                                <button type="submit" class="btn btn-sm btn-primary">Send</button>
+                                <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
                             </form>
                         }
                         <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
