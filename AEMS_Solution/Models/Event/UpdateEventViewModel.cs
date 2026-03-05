@@ -42,6 +42,9 @@ namespace AEMS_Solution.Models.Event
 
         public EventTypeEnum Type { get; set; }
 
+        public EventModeEnum Mode { get; set; }
+        public string? MeetingUrl { get; set; }
+
         // Trạng thái hiện tại của Event (Upcoming, Draft, Cancelled...)
         public EventStatusEnum Status { get; set; }
 

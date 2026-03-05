@@ -23,6 +23,83 @@ public class EventService : IEventService
 		_validator = validator;
 	}
 
+	public async Task CancelEventAsync(string userId, string eventId)
+	{
+		if (string.IsNullOrEmpty(eventId))
+			throw new InvalidOperationException("Event id không hợp lệ.");
+
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null)
+			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null)
+			throw new InvalidOperationException("Event không tồn tại.");
+
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền hủy event này.");
+
+		if (ev.Status == EventStatusEnum.Cancelled)
+			throw new InvalidOperationException("Event đã bị hủy.");
+
+		// không cho hủy nếu đã kết thúc
+		var now = DateTimeHelper.GetVietnamTime();
+		if (ev.EndTime <= now)
+			throw new InvalidOperationException("Sự kiện đã kết thúc, không thể hủy.");
+
+		ev.Status = EventStatusEnum.Cancelled;
+		ev.UpdatedAt = now;
+
+		using var tx = await _uow.BeginTransactionAsync();
+		try
+		{
+			await _uow.Events.UpdateAsync(ev);
+			await _uow.SaveChangesAsync();
+			await tx.CommitAsync();
+		}
+		catch
+		{
+			await tx.RollbackAsync();
+			throw;
+		}
+	}
+
+	public async Task PublishEventAsync(string userId, string eventId)
+	{
+		if (string.IsNullOrEmpty(eventId))
+			throw new InvalidOperationException("Event id không hợp lệ.");
+
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null)
+			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null)
+			throw new InvalidOperationException("Event không tồn tại.");
+
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền thực hiện hành động này.");
+
+		if (ev.Status != EventStatusEnum.Approved)
+			throw new InvalidOperationException("Chỉ event đã Approved mới được Public.");
+
+		ev.Status = EventStatusEnum.Published;
+		ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+		using var tx = await _uow.BeginTransactionAsync();
+		try
+		{
+			await _uow.Events.UpdateAsync(ev);
+			await _uow.SaveChangesAsync();
+			await tx.CommitAsync();
+		}
+		catch
+		{
+			await tx.RollbackAsync();
+			throw;
+		}
+	}
+
 	public async Task<List<EventListDto>> GetMyEventsAsync(string userId)
 	{
 		if (string.IsNullOrEmpty(userId))
@@ -212,7 +289,7 @@ public class EventService : IEventService
 		};
 	}
 
-	public async Task CreateEventAsync(string userId, CreateEventRequestDto dto)
+	public async Task<string> CreateEventAsync(string userId, CreateEventRequestDto dto)
 	{
 		_validator.ValidateCreate(dto);
 		// Validate deposit rules
@@ -310,6 +387,7 @@ public class EventService : IEventService
 
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
+			return entity.Id;
 		}
 		catch
 		{
@@ -439,7 +517,7 @@ public class EventService : IEventService
 			throw new InvalidOperationException("Event đã ở trạng thái Pending.");
 
 		if (ev.Status != EventStatusEnum.Draft && ev.Status != EventStatusEnum.Rejected)
-			throw new InvalidOperationException("Chỉ event ở trạng thái Draft hoặc Rejected mới có thể gửi duyệt lại.");
+			throw new InvalidOperationException("Chỉ event ở trạng thái Draft hoặc Rejected mới có thể gửi duyệt.");
 
 		var now = DateTimeHelper.GetVietnamTime();
 		if (ev.StartTime <= now)
