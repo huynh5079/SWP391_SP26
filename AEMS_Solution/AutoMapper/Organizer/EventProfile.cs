@@ -23,7 +23,7 @@ namespace AEMS_Solution.AutoMapper.Organizer
 			CreateMap<EventDetailsDto, EventDetailsViewModel>();
 			CreateMap<EventAgendaDto, EventAgendaVm>();
 			CreateMap<EventDocumentDto, EventDocumentVm>();
-
+			  
 			// List card mappings
 			CreateMap<EventListDto, OrganizerEventCardVm>();
 			CreateMap<EventItemDto, OrganizerEventCardVm>()
@@ -33,5 +33,6 @@ namespace AEMS_Solution.AutoMapper.Organizer
 			CreateMap<OrganizerDto, OrganizerDashboardViewModel>();
 			CreateMap<EventFeedbackSummaryDto, EventFeedbackSummaryVm>();
 	}
+
 	}
 }
