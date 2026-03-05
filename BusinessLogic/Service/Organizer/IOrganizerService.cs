@@ -23,11 +23,11 @@ namespace BusinessLogic.Service.Organizer
 		// Paged deleted events (soft-deleted)
 		Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
 
-        // List events for organizer (paged)
-        Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, string? location, string? department, string? timeState, DateTime? dateFrom, DateTime? dateTo, int page = 1, int pageSize = 10);
+		// List events for organizer (paged)
+		Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
 
-        // List events for organizer (simple list)
-        Task<List<EventListDto>> GetMyEventsAsync(string userId);
+		// List events for organizer (simple list)
+		Task<List<EventListDto>> GetMyEventsAsync(string userId);
 
 		// Additional helpers used by controller/service
 		Task SendForApprovalAsync(string userId, string eventId);

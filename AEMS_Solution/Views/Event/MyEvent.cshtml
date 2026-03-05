@@ -51,96 +51,22 @@
         </div>
     </form>
 
-    <table class="table table-bordered table-hover shadow" style="width:100%;">
+    <table class="table table-bordered table-hover shadow">
         <thead class="table-dark">
             <tr>
-                <th style="white-space:nowrap;">Thumbnail</th>
-                <th style="white-space:nowrap;">Title</th>
-                <th style="cursor:pointer; position:relative; white-space:nowrap;" id="semester-header">
-                    Semester <span style="font-size:0.75em;">▼</span>
-                    <div id="semester-filter-popup" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; min-width:180px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        <input type="text" id="popup-semester" class="form-control form-control-sm mb-2" placeholder="Search semester..." />
-                        <div class="d-flex gap-1">
-                            <button id="semester-apply" class="btn btn-sm btn-primary w-50">Apply</button>
-                            <button id="semester-clear" class="btn btn-sm btn-outline-secondary w-50">Clear</button>
-                        </div>
-                    </div>
-                </th>
-                <th style="cursor:pointer; position:relative; white-space:nowrap;" id="department-header">
-                    Department <span style="font-size:0.75em;">▼</span>
-                    <div id="department-filter-popup" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; min-width:180px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        <input type="text" id="popup-department" class="form-control form-control-sm mb-2" placeholder="Search department..." />
-                        <div class="d-flex gap-1">
-                            <button id="department-apply" class="btn btn-sm btn-primary w-50">Apply</button>
-                            <button id="department-clear" class="btn btn-sm btn-outline-secondary w-50">Clear</button>
-                        </div>
-                    </div>
-                </th>
-                <th style="cursor:pointer; position:relative; white-space:nowrap;" id="location-header">
-                    Location <span style="font-size:0.75em;">▼</span>
-                    <div id="location-filter-popup" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; min-width:180px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        <input type="text" id="popup-location" class="form-control form-control-sm mb-2" placeholder="Search location..." />
-                        <div class="d-flex gap-1">
-                            <button id="location-apply" class="btn btn-sm btn-primary w-50">Apply</button>
-                            <button id="location-clear" class="btn btn-sm btn-outline-secondary w-50">Clear</button>
-                        </div>
-                    </div>
-                </th>
-                @*chỉnh sửa header time*@
-                <th style="cursor:pointer; position:relative; white-space:nowrap;" id="time-header">
-                    Time
-                    <span style="font-size:0.75em;">▼</span>
-                    <div id="date-filter-popup" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; min-width:220px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        <div class="mb-2">
-                            <label style="color:#333; font-size:0.85em;">From</label>
-                            <input type="date" id="popup-date-from" class="form-control form-control-sm" />
-                        </div>
-                        <div class="mb-2">
-                            <label style="color:#333; font-size:0.85em;">To</label>
-                            <input type="date" id="popup-date-to" class="form-control form-control-sm" />
-                        </div>
-                        <div class="d-flex gap-1">
-                            <button id="popup-apply" class="btn btn-sm btn-primary w-50">Apply</button>
-                            <button id="popup-clear" class="btn btn-sm btn-outline-secondary w-50">Clear</button>
-                        </div>
-                    </div>
-                </th>
-                <th style="white-space:nowrap;">Capacity</th>
-                <th style="cursor:pointer; position:relative; white-space:nowrap;" id="status-header">
-                    Status <span style="font-size:0.75em;">▼</span>
-                    <div id="status-filter-popup" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        <select id="popup-status" class="form-select form-select-sm mb-2">
-                            <option value="">All</option>
-                            <option value="Draft">Draft</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Approved">Approved</option>
-                            <option value="Rejected">Rejected</option>
-                        </select>
-                        <div class="d-flex gap-1">
-                            <button id="status-apply" class="btn btn-sm btn-primary w-50">Apply</button>
-                            <button id="status-clear" class="btn btn-sm btn-outline-secondary w-50">Clear</button>
-                        </div>
-                    </div>
-                </th>
-                <th style="white-space:nowrap;">Mode</th>
-                <th style="white-space:nowrap;">Meeting Url</th>
-                <th class="filter-th" style="cursor:pointer; position:relative; white-space:nowrap;" id="timestate-header">
-                    Time State <span style="font-size:0.75em;">▼</span>
-                    <div id="timestate-filter-popup" style="display:none; position:absolute; top:100%; left:0; z-index:999; background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                        <select id="popup-timestate" class="form-select form-select-sm mb-2">
-                            <option value="">All</option>
-                            <option value="Upcoming">Upcoming</option>
-                            <option value="Happening">Happening</option>
-                            <option value="Completed">Completed</option>
-                        </select>
-                        <div class="d-flex gap-1">
-                            <button id="timestate-apply" class="btn btn-sm btn-primary w-50">Apply</button>
-                            <button id="timestate-clear" class="btn btn-sm btn-outline-secondary w-50">Clear</button>
-                        </div>
-                    </div>
-                </th>
-                <th style="white-space:nowrap;">Stats</th>
-                <th style="white-space:nowrap;">Action</th>
+                <th>Thumbnail</th>
+                <th>Title</th>
+                <th>Semester</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Time</th>
+                <th>Capacity</th>
+                <th>Status</th>
+                <th>Mode</th>
+                <th>Meeting Url</th>
+                <th>Time State</th>
+                <th>Stats</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
@@ -199,26 +125,50 @@
                     </td>
 
                     <td>
-                        <a href="#" data-url="@Url.Action("Manage", "Organizer", new { operation = "detailevent", id = e.EventId })" class="btn btn-sm btn-info view-detail">View</a>
-                        <a class="btn btn-sm btn-secondary ms-1" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId"> Waitlist </a>
-                        <a asp-action="Edit" asp-route-id="@e.EventId"
-                           class="btn btn-sm btn-warning">Edit</a>
-                        @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Pending || e.Status == EventStatusEnum.Rejected)
-                        {
-                            <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
+                        <div class="d-flex flex-wrap gap-1 align-items-center" style="max-width: 320px;">
+                            <style>
+                                .action-pill {
+                                    min-width: 90px;
+                                    text-align: center;
+                                }
+                            </style>
+                            <a class="btn btn-sm btn-info fw-semibold" asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId">View</a>
+                            <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
+                            @if (e.Status == EventStatusEnum.Approved)
+                            {
+                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="operation" value="publish" />
+                                    <input type="hidden" name="id" value="@e.EventId" />
+                                    <button type="submit" class="btn btn-sm btn-success fw-semibold action-pill">Public</button>
+                                </form>
+                            }
+                            @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Rejected)
+                            {
+                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="operation" value="sendforapproval" />
+                                    <input type="hidden" name="id" value="@e.EventId" />
+                                    <button type="submit" class="btn btn-sm btn-primary fw-semibold action-pill">Send</button>
+                                </form>
+                            }
+                            <a class="btn btn-sm btn-secondary fw-semibold action-pill" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId">Waitlist</a>
+                            @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
+                            {
+                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="operation" value="cancel" />
+                                    <input type="hidden" name="id" value="@e.EventId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold action-pill">Cancel</button>
+                                </form>
+                            }
+                            <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="operation" value="softdelete" />
                                 <input type="hidden" name="id" value="@e.EventId" />
                                 <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
                             </form>
-                        }
-                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline ms-1">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="operation" value="softdelete" />
-                            <input type="hidden" name="id" value="@e.EventId" />
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
-                        </form>
-
+                        </div>
                     </td>
                 </tr>
             }
@@ -236,12 +186,7 @@
                 @for (int i = 1; i <= Model.TotalPages; i++)
                 {
                     <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="MyEvents" asp-controller="Organizer"
-                           asp-route-page="@i"
-                           asp-route-search="@Model.Search"
-                           asp-route-status="@Model.Status"
-                           asp-route-dateFrom="@(Model.DateFrom.HasValue ? Model.DateFrom.Value.ToString("yyyy-MM-dd") : "")"
-                           asp-route-dateTo="@(Model.DateTo.HasValue? Model.DateTo.Value.ToString("yyyy-MM-dd") : "")">@i</a>
+                        <a class="page-link" asp-action="MyEvents" asp-controller="Organizer" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-status="@Model.Status">@i</a>
                     </li>
                 }
 
@@ -302,226 +247,6 @@
                     });
                 });
             })();
-        </script>
-        <script>
-            (function () {
-                const header = document.getElementById('time-header');
-                const popup = document.getElementById('date-filter-popup');
-                const applyBtn = document.getElementById('popup-apply');
-                const clearBtn = document.getElementById('popup-clear');
-                const inputFrom = document.getElementById('popup-date-from');
-                const inputTo = document.getElementById('popup-date-to');
-
-                const params = new URLSearchParams(window.location.search);
-                if (params.get('dateFrom')) inputFrom.value = params.get('dateFrom');
-                if (params.get('dateTo')) inputTo.value = params.get('dateTo');
-
-                header.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-                });
-
-                document.addEventListener('click', function () {
-                    popup.style.display = 'none';
-                });
-
-                popup.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                });
-
-                applyBtn.addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    if (inputFrom.value) url.searchParams.set('dateFrom', inputFrom.value);
-                    else url.searchParams.delete('dateFrom');
-                    if (inputTo.value) url.searchParams.set('dateTo', inputTo.value);
-                    else url.searchParams.delete('dateTo');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-
-                clearBtn.addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('dateFrom');
-                    url.searchParams.delete('dateTo');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-            })();
-        </script>
-        <script>
-            // ===== FILTER: LOCATION =====
-            (function () {
-                const params = new URLSearchParams(window.location.search);
-                const header = document.getElementById('location-header');
-                const popup = document.getElementById('location-filter-popup');
-                const input = document.getElementById('popup-location');
-
-                if (params.get('location')) input.value = params.get('location');
-
-                header.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    document.querySelectorAll('[id$="-filter-popup"]').forEach(p => {
-                        if (p !== popup) p.style.display = 'none';
-                    });
-                    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-                });
-                popup.addEventListener('click', e => e.stopPropagation());
-                document.getElementById('location-apply').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    if (input.value) url.searchParams.set('location', input.value);
-                    else url.searchParams.delete('location');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-                document.getElementById('location-clear').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('location');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-            })();
-        </script>
-        <script>
-            // ===== FILTER: STATUS =====
-            (function () {
-                const params = new URLSearchParams(window.location.search);
-                const header = document.getElementById('status-header');
-                const popup = document.getElementById('status-filter-popup');
-                const input = document.getElementById('popup-status');
-
-                if (params.get('status')) input.value = params.get('status');
-
-                header.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    document.querySelectorAll('[id$="-filter-popup"]').forEach(p => {
-                        if (p !== popup) p.style.display = 'none';
-                    });
-                    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-                });
-                popup.addEventListener('click', e => e.stopPropagation());
-                document.getElementById('status-apply').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    if (input.value) url.searchParams.set('status', input.value);
-                    else url.searchParams.delete('status');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-                document.getElementById('status-clear').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('status');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-            })();
-        </script>
-        <script>
-            // ===== FILTER: SEMESTER =====
-            (function () {
-                const params = new URLSearchParams(window.location.search);
-                const header = document.getElementById('semester-header');
-                const popup = document.getElementById('semester-filter-popup');
-                const input = document.getElementById('popup-semester');
-
-                if (params.get('semesterId')) input.value = params.get('semesterId');
-
-                header.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    document.querySelectorAll('[id$="-filter-popup"]').forEach(p => {
-                        if (p !== popup) p.style.display = 'none';
-                    });
-                    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-                });
-                popup.addEventListener('click', e => e.stopPropagation());
-                document.getElementById('semester-apply').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    if (input.value) url.searchParams.set('semesterId', input.value);
-                    else url.searchParams.delete('semesterId');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-                document.getElementById('semester-clear').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('semesterId');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-            })();
-        </script>
-        <script>
-            // ===== FILTER: DEPARTMENT =====
-            (function () {
-                const params = new URLSearchParams(window.location.search);
-                const header = document.getElementById('department-header');
-                const popup = document.getElementById('department-filter-popup');
-                const input = document.getElementById('popup-department');
-
-                if (params.get('department')) input.value = params.get('department');
-
-                header.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    document.querySelectorAll('[id$="-filter-popup"]').forEach(p => {
-                        if (p !== popup) p.style.display = 'none';
-                    });
-                    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-                });
-                popup.addEventListener('click', e => e.stopPropagation());
-                document.getElementById('department-apply').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    if (input.value) url.searchParams.set('department', input.value);
-                    else url.searchParams.delete('department');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-                document.getElementById('department-clear').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('department');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-            })();
-        </script>
-        <script>
-                        // ===== FILTER: TIME STATE =====
-            (function () {
-                const params = new URLSearchParams(window.location.search);
-                const header = document.getElementById('timestate-header');
-                const popup = document.getElementById('timestate-filter-popup');
-                const input = document.getElementById('popup-timestate');
-
-                if (params.get('timeState')) input.value = params.get('timeState');
-
-                header.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    document.querySelectorAll('[id$="-filter-popup"]').forEach(p => {
-                        if (p !== popup) p.style.display = 'none';
-                    });
-                    popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-                });
-
-                popup.addEventListener('click', e => e.stopPropagation());
-
-                document.getElementById('timestate-apply').addEventListener('click', function () {
-                    // ✅ Giữ nguyên path + operation hiện tại, chỉ set thêm timeState
-                    const url = new URL(window.location.origin + window.location.pathname);
-                    url.searchParams.set('operation', 'myevents'); // ✅ giữ operation
-                    if (input.value) url.searchParams.set('timeState', input.value);
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-
-                document.getElementById('timestate-clear').addEventListener('click', function () {
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('timeState');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                });
-            })();
-        </script>
-        <script>
-            // ===== ĐÓNG TẤT CẢ POPUP KHI CLICK RA NGOÀI =====
-            document.addEventListener('click', function () {
-                document.querySelectorAll('[id$="-filter-popup"]').forEach(p => p.style.display = 'none');
-            });
         </script>
     }
 </div>

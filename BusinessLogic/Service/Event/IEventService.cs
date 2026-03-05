@@ -20,8 +20,8 @@ namespace BusinessLogic.Service.Event
         Task<List<EventListDto>> GetMyEventsAsync(string userId);
 
         // Paged + filtered variant used by UI
-        Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, string? location, string? department, string? timeState, DateTime? dateFrom, DateTime? dateTo, int page = 1, int pageSize = 10);
-        Task SoftDeleteEventAsync(string userId, string eventId);
+        Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
+		Task SoftDeleteEventAsync(string userId, string eventId);
 		Task RestoreEventAsync(string userId, string eventId);
 
 		// Paged deleted events (soft-deleted)
