@@ -15,12 +15,14 @@ namespace BusinessLogic.Service.Student
         private readonly IUnitOfWork _uow;
         private readonly IEmailService _emailService;
         private readonly ISystemErrorLogService _errorLogService;
+        private readonly INotificationService _notificationService;
 
-        public StudentEventService(IUnitOfWork uow, IEmailService emailService, ISystemErrorLogService errorLogService)
+        public StudentEventService(IUnitOfWork uow, IEmailService emailService, ISystemErrorLogService errorLogService, INotificationService notificationService)
         {
             _uow = uow;
             _emailService = emailService;
             _errorLogService = errorLogService;
+            _notificationService = notificationService;
         }
 
         // ─── Helper: resolve StudentProfile.Id from User.Id ───────────────────
@@ -241,6 +243,15 @@ namespace BusinessLogic.Service.Student
                         if (user != null)
                         {
                             string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+                            
+                            // Send Generic in-app notification
+                            await _notificationService.SendNotificationAsync(
+                                user.Id, 
+                                "Đăng ký thành công", 
+                                $"Bạn đã đăng ký lại thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR.", 
+                                "StudentRegistration"
+                            );
+
                             await _emailService.SendEventRegistrationEmailAsync(
                                 user.Email,
                                 user.FullName ?? user.Email ?? "Sinh viên",
@@ -304,6 +315,15 @@ namespace BusinessLogic.Service.Student
                     if (user != null)
                     {
                         string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+
+                        // Send Generic in-app notification
+                        await _notificationService.SendNotificationAsync(
+                            user.Id, 
+                            "Đăng ký thành công", 
+                            $"Bạn đã đăng ký thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR check-in.", 
+                            "StudentRegistration"
+                        );
+
                         await _emailService.SendEventRegistrationEmailAsync(
                             user.Email,
                             user.FullName ?? user.Email ?? "Sinh viên",
@@ -350,6 +370,14 @@ namespace BusinessLogic.Service.Student
             ticket.DeletedAt = now;
             await _uow.Tickets.UpdateAsync(ticket);
             await _uow.SaveChangesAsync();
+
+            // Send Generic in-app notification
+            await _notificationService.SendNotificationAsync(
+                profile.UserId, 
+                "Hủy đăng ký", 
+                $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
+                "EventCancel"
+            );
         }
 
         // ─── 5. My registered events ──────────────────────────────────────────
@@ -415,6 +443,18 @@ namespace BusinessLogic.Service.Student
 
             await _uow.Feedbacks.CreateAsync(feedback);
             await _uow.SaveChangesAsync();
+
+            // Send notification to Organizer
+            var organizerProfile = await _uow.StaffProfiles.GetAsync(sp => sp.Id == ev.OrganizerId);
+            if (organizerProfile?.UserId != null)
+            {
+                await _notificationService.SendNotificationAsync(
+                    organizerProfile.UserId,
+                    "Có đánh giá mới",
+                    $"Một sinh viên vừa gửi đánh giá cho sự kiện '{ev.Title}'. Rating: {dto.Rating}/5",
+                    "EventFeedback"
+                );
+            }
         }
 
         // ─── Waitlist stub (future phase) ─────────────────────────────────────

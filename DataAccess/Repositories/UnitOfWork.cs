@@ -17,6 +17,7 @@ namespace DataAccess.Repositories
         public IGenericRepository<StaffProfile> StaffProfiles { get; }
         public IGenericRepository<Role> Roles { get; }
         public IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
+        public IGenericRepository<Notification> Notifications { get; }
         public IGenericRepository<Event> Events { get; }
         public IGenericRepository<EventAgenda> EventAgenda { get; }
         public IGenericRepository<Topic> Topics { get; }
@@ -38,6 +39,7 @@ namespace DataAccess.Repositories
             StaffProfiles = new GenericRepository<StaffProfile>(_ctx);
             Roles = new GenericRepository<Role>(_ctx);
             SystemErrorLogs = new GenericRepository<SystemErrorLog>(_ctx);
+            Notifications = new GenericRepository<Notification>(_ctx);
 			// ✅ Update
 			Events = new GenericRepository<Event>(_ctx);
 		    EventAgenda = new GenericRepository<EventAgenda>(_ctx);

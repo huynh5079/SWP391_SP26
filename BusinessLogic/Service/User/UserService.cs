@@ -1,4 +1,5 @@
 using BusinessLogic.DTOs.User;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
@@ -11,10 +12,12 @@ namespace BusinessLogic.Service.User
     public class UserService : IUserService
     {
         private readonly IUnitOfWork _uow;
+        private readonly INotificationService _notificationService;
 
-        public UserService(IUnitOfWork uow)
+        public UserService(IUnitOfWork uow, INotificationService notificationService)
         {
             _uow = uow;
+            _notificationService = notificationService;
         }
 
         public async Task<PaginationResult<UserListDto>> GetUsersAsync(
@@ -132,6 +135,16 @@ namespace BusinessLogic.Service.User
             }
 
             await _uow.Users.UpdateAsync(user);
+
+            // Send Realtime Notification
+            string notifyTitle = user.IsBanned == true ? "Tài khoản bị cấm" : "Tài khoản được mở khóa";
+            string notifyMsg = user.IsBanned == true 
+                ? "Tài khoản của bạn đã bị quản trị viên khóa vô thời hạn." 
+                : "Tài khoản của bạn đã được quản trị viên mở khóa trở lại.";
+            string notifyType = user.IsBanned == true ? "AccountBan" : "AccountUnban";
+
+            await _notificationService.SendNotificationAsync(id, notifyTitle, notifyMsg, notifyType);
+
             return true;
         }
 
