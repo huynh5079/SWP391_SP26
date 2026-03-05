@@ -231,36 +231,52 @@ public class EventService : IEventService
 		return list;
 	}
 
-	public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
-	{
-		var items = await GetMyEventsAsync(userId);
+    public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, string? location, string? department, string? timeState, DateTime? dateFrom, DateTime? dateTo, int page = 1, int pageSize = 10)
+    {
+        var items = await GetMyEventsAsync(userId);
 
-		if (!string.IsNullOrWhiteSpace(search))
-		{
-			items = items.Where(x => x.Title != null && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
-		}
-		if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
-		{
-			items = items.Where(x => x.Status == parsedStatus).ToList();
-		}
-		if (!string.IsNullOrWhiteSpace(semesterId))
-		{
-			items = items.Where(x => x.SemesterId == semesterId).ToList();
-		}
+        if (!string.IsNullOrWhiteSpace(search))
+            items = items.Where(x => x.Title != null && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
 
-		var total = items.Count;
-		var paged = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
+            items = items.Where(x => x.Status == parsedStatus).ToList();
 
-		return new PagedResult<EventListDto>
-		{
-			Items = paged,
-			Total = total,
-			Page = page,
-			PageSize = pageSize
-		};
-	}
+        if (!string.IsNullOrWhiteSpace(semesterId))
+            items = items.Where(x => x.SemesterName != null &&
+                x.SemesterName.Contains(semesterId, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (!string.IsNullOrWhiteSpace(location))
+            items = items.Where(x => x.Location != null && x.Location.Contains(location, StringComparison.OrdinalIgnoreCase)).ToList();
 
-	public async Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+        if (!string.IsNullOrWhiteSpace(department))
+            items = items.Where(x => x.DepartmentName != null &&
+                x.DepartmentName.Contains(department, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (!string.IsNullOrWhiteSpace(timeState))
+        {
+            var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+            items = timeState.ToLower() switch
+            {
+                "upcoming" => items.Where(x => now < x.StartTime).ToList(),
+                "happening" => items.Where(x => now >= x.StartTime && now <= x.EndTime).ToList(),
+                "completed" => items.Where(x => now > x.EndTime).ToList(),
+                _ => items
+            };
+        }
+
+        // ✅ Filter date range: lấy event có khoảng thời gian overlap với [dateFrom, dateTo]
+        if (dateFrom.HasValue)
+            items = items.Where(x => x.EndTime.Date >= dateFrom.Value.Date).ToList();
+
+        if (dateTo.HasValue)
+            items = items.Where(x => x.StartTime.Date <= dateTo.Value.Date).ToList();
+
+        var total = items.Count;
+        var paged = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+        return new PagedResult<EventListDto> { Items = paged, Total = total, Page = page, PageSize = pageSize };
+    }
+
+    public async Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 	{
 		var items = await GetMyDeletedEventsAsync(userId);
 
