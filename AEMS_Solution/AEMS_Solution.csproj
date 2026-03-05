@@ -34,7 +34,10 @@
 
   <ItemGroup>
     <Folder Include="AutoMapper\Admin\" />
-    <Folder Include="Controllers\BaseAction%28ValidateInController%29\" />
+    <Folder Include="Controllers\BaseAction%28ValidateInController%29\Admin\" />
+    <Folder Include="Controllers\BaseAction%28ValidateInController%29\Event\" />
+    <Folder Include="Controllers\BaseAction%28ValidateInController%29\User\" />
+    <Folder Include="Controllers\BaseAction%28ValidateInController%29\Organizer\" />
   </ItemGroup>
 
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.schemastore.org/azure-iot-edgeagent-deployment-1.1.json" /></VisualStudio></ProjectExtensions>
