@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 
@@ -15,11 +15,8 @@ namespace AEMS_Solution.Models.Organizer
         public EventStatusEnum? Status { get; set; } // Ensure nullable status is retained
         public ApprovalActionEnum StatusActionApprover { get; set; }
 		public string? SemesterId { get; set; }
-        
-        public DateTime? DateFrom { get; set; }// thêm vào để làm filter tìm kiếm theo ngày
-        public DateTime? DateTo { get; set; }
-        public string? Location { get; set; }
-        public string? Department { get; set; }
+
+
         public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling((double)TotalItems / PageSize);
     }
 
