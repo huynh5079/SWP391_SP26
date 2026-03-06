@@ -2,8 +2,6 @@ using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
-using BusinessLogic.Hubs;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BusinessLogic.Service.System
@@ -11,12 +9,12 @@ namespace BusinessLogic.Service.System
     public class SystemErrorLogService : ISystemErrorLogService
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ISignalRNotifier _signalRNotifier;
 
-        public SystemErrorLogService(IServiceProvider serviceProvider, IHubContext<NotificationHub> hubContext)
+        public SystemErrorLogService(IServiceProvider serviceProvider, ISignalRNotifier signalRNotifier)
         {
             _serviceProvider = serviceProvider;
-            _hubContext = hubContext;
+            _signalRNotifier = signalRNotifier;
         }
 
         public async Task LogErrorAsync(Exception ex, string? userId, string source, DataAccess.Enum.SystemLogStatusEnum? statusCode = DataAccess.Enum.SystemLogStatusEnum.ServerError)
@@ -94,7 +92,7 @@ namespace BusinessLogic.Service.System
                     await uow.Notifications.CreateAsync(notification);
 
                     // 2. Fire real-time SignalR push to the admin's group
-                    await _hubContext.Clients.Group(admin.Id).SendAsync("ReceiveNotification", title, message);
+                    await _signalRNotifier.SendNotificationToUserAsync(admin.Id, title, message);
                 }
 
                 await uow.SaveChangesAsync();
