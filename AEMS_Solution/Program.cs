@@ -45,7 +45,6 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
 
 // RAG/Chatbot Services
-builder.Services.AddScoped<AEMS_Solution.Services.RagApiClient>();
 builder.Services.AddScoped<BusinessLogic.Service.IChatbotService, BusinessLogic.Service.ChatbotService>();
 
 // Register refactored services

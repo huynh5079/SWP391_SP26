@@ -249,7 +249,7 @@
                     else if (item.Type == "SystemError")
                     { iconClass = "type-critical"; iconName = "bx-bug"; }
 
-                    <a href="javascript:;" onclick="markAsReadDropdown('@item.Id', this)" class="notif-item @(item.IsRead == true ? "" : "unread")">
+                    <a href="/Notification/ClickAndRoute?notiId=@item.Id" class="notif-item @(item.IsRead == true ? "" : "unread")">
                         <div class="notif-icon @iconClass">
                             <i class='bx @iconName'></i>
                         </div>
