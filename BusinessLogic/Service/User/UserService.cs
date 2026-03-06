@@ -141,9 +141,18 @@ namespace BusinessLogic.Service.User
             string notifyMsg = user.IsBanned == true 
                 ? "Tài khoản của bạn đã bị quản trị viên khóa vô thời hạn." 
                 : "Tài khoản của bạn đã được quản trị viên mở khóa trở lại.";
-            string notifyType = user.IsBanned == true ? "AccountBan" : "AccountUnban";
+            DataAccess.Enum.NotificationType typeEnum = user.IsBanned == true 
+                ? DataAccess.Enum.NotificationType.AccountBan 
+                : DataAccess.Enum.NotificationType.AccountUnban;
 
-            await _notificationService.SendNotificationAsync(id, notifyTitle, notifyMsg, notifyType);
+            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+            {
+                ReceiverId = id,
+                Title = notifyTitle,
+                Message = notifyMsg,
+                Type = typeEnum,
+                RelatedEntityId = id // User ID
+            });
 
             return true;
         }
