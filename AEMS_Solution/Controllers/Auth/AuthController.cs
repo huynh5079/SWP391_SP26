@@ -216,6 +216,47 @@ namespace AEMS_Solution.Controllers.Authentication
             }
         }
 
+        [HttpGet]
+        public IActionResult RegisterOrganizer()
+        {
+            return View(new RegisterOrganizerViewModel());
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RegisterOrganizer(RegisterOrganizerViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                var dto = new BusinessLogic.DTOs.Authentication.Register.RegisterStaffRequestDto
+                {
+                    Email = model.Email,
+                    Password = model.Password,
+                    FullName = model.FullName,
+                    StaffCode = model.StaffCode,
+                    Phone = model.Phone,
+                    Position = model.Position,
+                    RoleName = "Organizer" // Explicitly explicitly set for RegisterOrganizer
+                };
+
+                await _authService.RegisterStaffAsync(dto);
+                SetSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
+                return RedirectToAction(nameof(Login));
+            }
+            catch (Exception ex)
+            {
+                await _systemErrorLogService.LogErrorAsync(
+                    ex, 
+                    CurrentUserId, 
+                    $"{nameof(AuthController)}.{nameof(RegisterOrganizer)}"
+                );
+                
+                SetError(ex.Message);
+                return View(model);
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
