@@ -70,12 +70,14 @@ public class EventService : IEventService
 					var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
 					if (studentProfile?.UserId != null)
 					{
-						await _notificationService.SendNotificationAsync(
-							studentProfile.UserId,
-							"Sự kiện đã bị hủy",
-							$"Sự kiện '{ev.Title}' mà bạn đăng ký tham gia đã bị hủy bởi Ban Tổ Chức.",
-							"EventOrganizeCancel"
-						);
+						await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+						{
+							ReceiverId = studentProfile.UserId,
+							Title = "Sự kiện đã bị hủy",
+							Message = $"Sự kiện '{ev.Title}' mà bạn đăng ký tham gia đã bị hủy bởi Ban Tổ Chức.",
+							Type = DataAccess.Enum.NotificationType.EventOrganizeCancel,
+							RelatedEntityId = ev.Id
+						});
 					}
 				}
 			}
@@ -119,12 +121,14 @@ public class EventService : IEventService
 			// Notify Organizer that their event is live
 			if (staff.UserId != null)
 			{
-				await _notificationService.SendNotificationAsync(
-					staff.UserId,
-					"Sự kiện đã được xuất bản",
-					$"Sự kiện '{ev.Title}' của bạn đã chính thức được công khai trên hệ thống.",
-					"EventPublished"
-				);
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = staff.UserId,
+					Title = "Sự kiện đã được xuất bản",
+					Message = $"Sự kiện '{ev.Title}' của bạn đã chính thức được công khai trên hệ thống.",
+					Type = DataAccess.Enum.NotificationType.EventPublished,
+					RelatedEntityId = ev.Id
+				});
 			}
 		}
 		catch
@@ -510,12 +514,14 @@ public class EventService : IEventService
 						var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
 						if (studentProfile?.UserId != null)
 						{
-							await _notificationService.SendNotificationAsync(
-								studentProfile.UserId,
-								"Sự kiện đã thay đổi thông tin",
-								$"Sự kiện '{ev.Title}' mà bạn đã đăng ký vừa được Ban Tổ Chức cập nhật lại thông tin.",
-								"EventUpdated"
-							);
+							await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+							{
+								ReceiverId = studentProfile.UserId,
+								Title = "Sự kiện đã thay đổi thông tin",
+								Message = $"Sự kiện '{ev.Title}' mà bạn đã đăng ký vừa được Ban Tổ Chức cập nhật lại thông tin.",
+								Type = DataAccess.Enum.NotificationType.EventUpdated,
+								RelatedEntityId = ev.Id
+							});
 						}
 					}
 				}

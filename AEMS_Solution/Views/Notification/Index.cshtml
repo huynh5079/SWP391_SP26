@@ -240,8 +240,7 @@
                 else if (item.Type == "SystemError")
                 { iconClass = "type-critical"; iconName = "bx-bug"; }
 
-                <a href="javascript:;"
-                   onclick="pageMarkOne('@item.Id', this)"
+                <a href="/Notification/ClickAndRoute?notiId=@item.Id"
                    class="notif-row @(item.IsRead == true ? "" : "unread")"
                    data-status="@(item.IsRead == true ? "read" : "unread")">
                     <div class="notif-icon-lg @iconClass">

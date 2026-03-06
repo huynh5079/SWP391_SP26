@@ -245,12 +245,14 @@ namespace BusinessLogic.Service.Student
                             string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
                             
                             // Send Generic in-app notification
-                            await _notificationService.SendNotificationAsync(
-                                user.Id, 
-                                "Đăng ký thành công", 
-                                $"Bạn đã đăng ký lại thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR.", 
-                                "StudentRegistration"
-                            );
+                            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                            {
+                                ReceiverId = user.Id, 
+                                Title = "Đăng ký thành công", 
+                                Message = $"Bạn đã đăng ký lại thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR.", 
+                                Type = DataAccess.Enum.NotificationType.TicketCreated,
+                                RelatedEntityId = existing.Id
+                            });
 
                             await _emailService.SendEventRegistrationEmailAsync(
                                 user.Email,
@@ -317,12 +319,14 @@ namespace BusinessLogic.Service.Student
                         string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
 
                         // Send Generic in-app notification
-                        await _notificationService.SendNotificationAsync(
-                            user.Id, 
-                            "Đăng ký thành công", 
-                            $"Bạn đã đăng ký thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR check-in.", 
-                            "StudentRegistration"
-                        );
+                        await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                        {
+                            ReceiverId = user.Id, 
+                            Title = "Đăng ký thành công", 
+                            Message = $"Bạn đã đăng ký thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR check-in.", 
+                            Type = DataAccess.Enum.NotificationType.TicketCreated,
+                            RelatedEntityId = ticket.Id
+                        });
 
                         await _emailService.SendEventRegistrationEmailAsync(
                             user.Email,
@@ -372,12 +376,14 @@ namespace BusinessLogic.Service.Student
             await _uow.SaveChangesAsync();
 
             // Send Generic in-app notification
-            await _notificationService.SendNotificationAsync(
-                profile.UserId, 
-                "Hủy đăng ký", 
-                $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
-                "EventCancel"
-            );
+            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+            {
+                ReceiverId = profile.UserId, 
+                Title = "Hủy đăng ký", 
+                Message = $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
+                Type = DataAccess.Enum.NotificationType.EventCancel,
+                RelatedEntityId = ticket.EventId
+            });
         }
 
         // ─── 5. My registered events ──────────────────────────────────────────
@@ -448,12 +454,14 @@ namespace BusinessLogic.Service.Student
             var organizerProfile = await _uow.StaffProfiles.GetAsync(sp => sp.Id == ev.OrganizerId);
             if (organizerProfile?.UserId != null)
             {
-                await _notificationService.SendNotificationAsync(
-                    organizerProfile.UserId,
-                    "Có đánh giá mới",
-                    $"Một sinh viên vừa gửi đánh giá cho sự kiện '{ev.Title}'. Rating: {dto.Rating}/5",
-                    "EventFeedback"
-                );
+                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                {
+                    ReceiverId = organizerProfile.UserId,
+                    Title = "Có đánh giá mới",
+                    Message = $"Một sinh viên vừa gửi đánh giá cho sự kiện '{ev.Title}'. Rating: {dto.Rating}/5",
+                    Type = DataAccess.Enum.NotificationType.EventFeedback,
+                    RelatedEntityId = ev.Id
+                });
             }
         }
 

@@ -89,12 +89,13 @@ namespace AEMS_Solution.Controllers.Features.Notification
                 foreach (var userId in targetUserIds)
                 {
                     // Optionally we could offload this to a background job if targetUserIds is massive.
-                    await _notificationService.SendNotificationAsync(
-                        userId,
-                        $"[SYSTEM] {model.Title}",
-                        model.Message,
-                        "SystemBroadcast"
-                    );
+                    await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                    {
+                        ReceiverId = userId,
+                        Title = $"[SYSTEM] {model.Title}",
+                        Message = model.Message,
+                        Type = DataAccess.Enum.NotificationType.SystemBroadcast
+                    });
                 }
 
                 TempData["SuccessMessage"] = $"Notification sent successfully to {targetUserIds.Count} user(s).";

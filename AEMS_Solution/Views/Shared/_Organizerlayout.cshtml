@@ -39,10 +39,10 @@
                             <a class="nav-link text-dark" asp-controller="Organizer" asp-action="MyEvents">My Events</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete">Event delete</a>
+                            <a class="nav-link text-dark" asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete">Deleted Events</a>
                         </li>
 
-                    <ul class="navbar-nav d-flex flex-row align-items-center">
+                    <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
                         @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer")))
                         {
                                     @await Component.InvokeAsync("Notification")

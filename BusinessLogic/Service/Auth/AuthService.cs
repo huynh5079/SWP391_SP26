@@ -25,10 +25,21 @@ namespace BusinessLogic.Service.Auth
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto dto)
         {
             var user = await _uow.Users.FindByEmailAsync(dto.Email);
-            // Check if user exists, is banned via boolean flag, or has Banned/Inactive status
-            if (user == null || user.IsBanned == true || user.Status == UserStatusEnum.Banned || user.Status == UserStatusEnum.Inactive)
+            if (user == null)
             {
-                throw new Exception("Email hoặc mật khẩu không chính xác hoặc tài khoản bị khóa.");
+                throw new Exception("Email không tồn tại trong hệ thống (user == null).");
+            }
+            if (user.IsBanned == true)
+            {
+                throw new Exception("Tài khoản bị cấm (IsBanned == true).");
+            }
+            if (user.Status == UserStatusEnum.Banned)
+            {
+                throw new Exception("Tài khoản bị cấm (Status == Banned).");
+            }
+            if (user.Status == UserStatusEnum.Inactive)
+            {
+                throw new Exception("Tài khoản chưa kích hoạt hoặc bị khóa (Status == Inactive).");
             }
 
             if (!HashPasswordHelper.VerifyPassword(dto.Password, user.PasswordHash!))
@@ -96,6 +107,7 @@ namespace BusinessLogic.Service.Auth
                 
                 await _uow.StudentProfiles.CreateAsync(profile);
                 
+                await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
             catch
@@ -145,6 +157,7 @@ namespace BusinessLogic.Service.Auth
 
                 await _uow.StaffProfiles.CreateAsync(profile);
 
+                await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
             catch
@@ -311,6 +324,8 @@ namespace BusinessLogic.Service.Auth
                 };
 
                 await _uow.StudentProfiles.CreateAsync(studentProfile);
+
+                await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 return newUser;

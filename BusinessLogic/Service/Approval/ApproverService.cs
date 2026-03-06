@@ -133,12 +133,14 @@ namespace BusinessLogic.Service.Approval
 			// Notify Organizer
 			if (ev.Organizer?.UserId != null)
 			{
-				await _notificationService.SendNotificationAsync(
-					ev.Organizer.UserId, 
-					"Sự kiện được duyệt", 
-					$"Sự kiện '{ev.Title}' của bạn đã được kiểm duyệt viên chấp thuận.", 
-					"EventApproved"
-				);
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = ev.Organizer.UserId, 
+					Title = "Sự kiện được duyệt", 
+					Message = $"Sự kiện '{ev.Title}' của bạn đã được kiểm duyệt viên chấp thuận.", 
+					Type = DataAccess.Enum.NotificationType.EventApproved,
+					RelatedEntityId = ev.Id
+				});
 			}
 		}
 
@@ -183,12 +185,14 @@ namespace BusinessLogic.Service.Approval
 			// Notify Organizer
 			if (ev.Organizer?.UserId != null)
 			{
-				await _notificationService.SendNotificationAsync(
-					ev.Organizer.UserId, 
-					"Sự kiện bị từ chối", 
-					$"Sự kiện '{ev.Title}' của bạn đã bị từ chối với lý do: {comment}", 
-					"EventRejected"
-				);
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = ev.Organizer.UserId, 
+					Title = "Sự kiện bị từ chối", 
+					Message = $"Sự kiện '{ev.Title}' của bạn đã bị từ chối với lý do: {comment}", 
+					Type = DataAccess.Enum.NotificationType.EventRejected,
+					RelatedEntityId = ev.Id
+				});
 			}
 		}
 
@@ -236,12 +240,14 @@ namespace BusinessLogic.Service.Approval
 			// Notify Organizer
 			if (ev.Organizer?.UserId != null)
 			{
-				await _notificationService.SendNotificationAsync(
-					ev.Organizer.UserId, 
-					"Yêu cầu chỉnh sửa sự kiện", 
-					$"Sự kiện '{ev.Title}' cần được chỉnh sửa: {comment}", 
-					"EventChangeRequested"
-				);
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = ev.Organizer.UserId, 
+					Title = "Yêu cầu chỉnh sửa sự kiện", 
+					Message = $"Sự kiện '{ev.Title}' cần được chỉnh sửa: {comment}", 
+					Type = DataAccess.Enum.NotificationType.EventChangeRequested,
+					RelatedEntityId = ev.Id
+				});
 			}
 		}
 

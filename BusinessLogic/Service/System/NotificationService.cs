@@ -20,29 +20,31 @@ namespace BusinessLogic.Service.System
             _hubContext = hubContext;
         }
 
-        public async Task SendNotificationAsync(string userId, string title, string message, string type)
+
+
+        public async Task SendNotificationAsync(BusinessLogic.DTOs.SendNotificationRequest request)
         {
             try
             {
                 var notification = new Notification
                 {
-                    UserId = userId,
-                    Title = title,
-                    Message = message,
-                    Type = type,
+                    UserId = request.ReceiverId,
+                    Title = request.Title,
+                    Message = request.Message,
+                    Type = request.Type.ToString(),
+                    RelatedEntityId = request.RelatedEntityId,
                     IsRead = false
                 };
 
                 await _uow.Notifications.CreateAsync(notification);
                 await _uow.SaveChangesAsync();
 
-                // 2. Fire Real-Time SignalR Event
-                await _hubContext.Clients.Group(userId).SendAsync("ReceiveNotification", title, message);
+                // Fire Real-Time SignalR Event
+                await _hubContext.Clients.Group(request.ReceiverId).SendAsync("ReceiveNotification", request.Title, request.Message);
             }
             catch (Exception ex)
             {
-                // We log the error but don't throw it. A failed notification should not break the main business flow.
-                await _errorLogService.LogErrorAsync(ex, userId, $"NotificationService.SendNotificationAsync (Type: {type})");
+                await _errorLogService.LogErrorAsync(ex, request.ReceiverId, $"NotificationService.SendNotificationAsync (Type: {request.Type})");
             }
         }
     }

@@ -43,7 +43,7 @@
 
                     
 
-                    <ul class="navbar-nav d-flex flex-row align-items-center">
+                    <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
                         @if (User.Identity?.IsAuthenticated == true && (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Organizer") || User.IsInRole("Approver")))
                         {
                                     @await Component.InvokeAsync("Notification")
