@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 
-namespace BusinessLogic.Utilities
+namespace BusinessLogic.Helper
 {
     public static class QRCodeGeneratorHelper
     {

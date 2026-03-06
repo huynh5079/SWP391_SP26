@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace AEMS_Solution.Extensions
+namespace AEMS_Solution.Middlewares.Extensions
 {
     public static class ClaimsExtensions
     {

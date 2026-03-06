@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BusinessLogic.Utils
+namespace BusinessLogic.Helper
 {
     public static class AgeUtil
     {

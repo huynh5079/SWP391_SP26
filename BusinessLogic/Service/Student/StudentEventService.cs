@@ -5,7 +5,7 @@ using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 
-using BusinessLogic.Utilities;
+using BusinessLogic.Helper;
 using BusinessLogic.Service.System;
 
 namespace BusinessLogic.Service.Student
