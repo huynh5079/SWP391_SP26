@@ -43,6 +43,11 @@ builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
+
+// RAG/Chatbot Services
+builder.Services.AddScoped<AEMS_Solution.Services.RagApiClient>();
+builder.Services.AddScoped<BusinessLogic.Service.IChatbotService, BusinessLogic.Service.ChatbotService>();
+
 // Register refactored services
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
@@ -114,6 +119,8 @@ builder.Services.AddControllersWithViews()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         // Ignore Cycles
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        // Allow case-insensitive property names (camelCase to PascalCase mapping)
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
 var app = builder.Build();

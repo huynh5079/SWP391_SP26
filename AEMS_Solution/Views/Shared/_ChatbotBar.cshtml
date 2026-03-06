@@ -1,0 +1,46 @@
+@{
+    var displayName = User?.Identity?.Name ?? "Người dùng";
+    var initials = string.IsNullOrWhiteSpace(displayName) ? "U" : displayName.Trim()[0].ToString().ToUpper();
+}
+
+<div class="chatbot-launcher" id="chatbotLauncher">
+    <button type="button" class="chatbot-fab" id="chatbotToggle" aria-label="Mở chatbot">
+        <i class="bi bi-pencil-square"></i>
+    </button>
+
+    <div class="chatbot-panel shadow-lg" id="chatbotPanel" aria-hidden="true">
+        <div class="chatbot-header">
+            <div class="chatbot-avatar">
+                <span>@initials</span>
+                <span class="status-dot"></span>
+            </div>
+            <div class="chatbot-meta">
+                <div class="title">Chatbot AEMS</div>
+                <div class="subtitle">Sẵn sàng hỗ trợ</div>
+            </div>
+            <div class="chatbot-header-actions ms-auto">
+                <button type="button" class="chatbot-icon-btn ghost" id="chatbotStartBtn" title="Bắt đầu chat" aria-label="Bắt đầu chat">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <button type="button" class="chatbot-icon-btn ghost" id="chatbotClose" aria-label="Đóng chatbot">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="chatbot-body">
+            <div class="chatbot-log" id="chatbotLog" aria-live="polite">
+                <div class="chatbot-msg bot">
+                    <div class="msg-author">Chatbot AEMS</div>
+                    <div class="msg-text">Sẵn sàng hỗ trợ bạn tra cứu lịch sự kiện, vé và thông tin chung.</div>
+                </div>
+            </div>
+            <form class="chatbot-input" onsubmit="return false;">
+                <input id="chatbotInput" type="text" placeholder="Aa" autocomplete="off" />
+                <button type="button" id="chatbotSend" aria-label="Gửi câu hỏi">
+                    <i class="bi bi-send"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
