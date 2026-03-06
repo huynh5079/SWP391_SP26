@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
 </head>
 <body>
     <header>
@@ -120,6 +121,11 @@
             @RenderBody()
         </main>
     </div>
+	@* Conditionally include the chatbot bar only for users in the "Student" role. This ensures that the chatbot is only rendered for students, while other users will not see it. *@
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <partial name="_ChatbotBar" />
+    }
 
     <footer class="border-top footer text-muted">
         <div class="container">
@@ -132,6 +138,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/site.js?v=4" asp-append-version="true"></script>
+    <script src="~/js/chatbot.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
