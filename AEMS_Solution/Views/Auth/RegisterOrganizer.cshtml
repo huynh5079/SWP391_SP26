@@ -1,0 +1,85 @@
+@model AEMS_Solution.Models.Authentication.RegisterOrganizerViewModel
+@{
+    ViewData["Title"] = "Đăng ký Tổ chức";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-9">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white text-center">
+                <h4 class="mb-0">Đăng ký tài khoản Tổ chức (Organizer)</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="RegisterOrganizer" asp-controller="Auth" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row">
+                        <!-- Section 1: Account Information -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">Thông tin tài khoản</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input asp-for="Email" class="form-control" placeholder="example@domain.com" />
+                                <span asp-validation-for="Email" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Password" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                                <input asp-for="Password" type="password" class="form-control" placeholder="Nhập mật khẩu" />
+                                <span asp-validation-for="Password" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="ConfirmPassword" class="form-label">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                                <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Nhập lại mật khẩu" />
+                                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Profile Information -->
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">Thông tin cá nhân / Đơn vị</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="FullName" class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                                <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" />
+                                <span asp-validation-for="FullName" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="StaffCode" class="form-label">Mã số Nhân viên/Ban tổ chức <span class="text-danger">*</span></label>
+                                <input asp-for="StaffCode" class="form-control" placeholder="STF12345" />
+                                <span asp-validation-for="StaffCode" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Phone" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+                                <input asp-for="Phone" class="form-control" placeholder="0123456789" />
+                                <span asp-validation-for="Phone" class="text-danger"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Position" class="form-label">Chức vụ <span class="text-danger">*</span></label>
+                                <input asp-for="Position" class="form-control" placeholder="Ví dụ: Chủ nhiệm CLB, Cán bộ phòng công tác sinh viên" />
+                                <span asp-validation-for="Position" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a asp-action="Login" asp-controller="Auth" class="btn btn-secondary me-md-2">Hủy</a>
+                                <button type="submit" class="btn btn-success">Đăng ký Tổ chức</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
