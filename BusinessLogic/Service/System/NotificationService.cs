@@ -1,7 +1,5 @@
-using BusinessLogic.Hubs;
 using DataAccess.Entities;
 using DataAccess.Repositories.Abstraction;
-using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Threading.Tasks;
 
@@ -11,13 +9,13 @@ namespace BusinessLogic.Service.System
     {
         private readonly IUnitOfWork _uow;
         private readonly ISystemErrorLogService _errorLogService;
-        private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ISignalRNotifier _signalRNotifier;
 
-        public NotificationService(IUnitOfWork uow, ISystemErrorLogService errorLogService, IHubContext<NotificationHub> hubContext)
+        public NotificationService(IUnitOfWork uow, ISystemErrorLogService errorLogService, ISignalRNotifier signalRNotifier)
         {
             _uow = uow;
             _errorLogService = errorLogService;
-            _hubContext = hubContext;
+            _signalRNotifier = signalRNotifier;
         }
 
 
@@ -40,7 +38,7 @@ namespace BusinessLogic.Service.System
                 await _uow.SaveChangesAsync();
 
                 // Fire Real-Time SignalR Event
-                await _hubContext.Clients.Group(request.ReceiverId).SendAsync("ReceiveNotification", request.Title, request.Message);
+                await _signalRNotifier.SendNotificationToUserAsync(request.ReceiverId, request.Title, request.Message);
             }
             catch (Exception ex)
             {

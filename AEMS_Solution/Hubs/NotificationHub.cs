@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace BusinessLogic.Hubs
+namespace AEMS_Solution.Hubs
 {
     [Authorize]
     public class NotificationHub : Hub
@@ -20,7 +20,7 @@ namespace BusinessLogic.Hubs
             await base.OnConnectedAsync();
         }
 
-        public override async Task OnDisconnectedAsync(Exception? exception)
+        public override async Task OnDisconnectedAsync(System.Exception? exception)
         {
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))

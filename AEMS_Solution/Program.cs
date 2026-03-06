@@ -41,6 +41,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ISignalRNotifier, AEMS_Solution.Services.SignalRNotifier>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
 
@@ -233,7 +234,7 @@ app.UseAuthorization();
 // ==========================================
 
 // SignalR Hubs
-app.MapHub<BusinessLogic.Hubs.NotificationHub>("/hub/v1/notification");
+app.MapHub<AEMS_Solution.Hubs.NotificationHub>("/hub/v1/notification");
 // app.MapHub<ChatHub>("/hub/v1/chat");
 
 // MVC Default Route
