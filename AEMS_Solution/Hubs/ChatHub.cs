@@ -74,12 +74,37 @@ namespace AEMS_Solution.Hubs
             }
         }
 
+        public async Task RecallPrivateMessage(string messageId)
+        {
+            var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                throw new HubException("Không xác định được người dùng.");
+            }
+
+            try
+            {
+                var message = await _chatUserService.RecallMessageAsync(userId, messageId);
+                await Clients.Group(message.SenderId).SendAsync("MessageRecalled", message);
+                await Clients.Group(message.ReceiverId).SendAsync("MessageRecalled", message);
+            }
+            catch (Exception ex) when (ex is KeyNotFoundException || ex is UnauthorizedAccessException || ex is InvalidOperationException || ex is ArgumentException)
+            {
+                throw new HubException(ex.Message);
+            }
+        }
+
         public async Task MarkConversationRead(string otherUserId)
         {
             var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!string.IsNullOrWhiteSpace(userId) && !string.IsNullOrWhiteSpace(otherUserId))
             {
                 await _chatUserService.MarkConversationReadAsync(userId, otherUserId);
+                await Clients.Group(otherUserId).SendAsync("ConversationRead", new
+                {
+                    ReaderUserId = userId,
+                    OtherUserId = otherUserId
+                });
             }
         }
     }

@@ -40,6 +40,12 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="AutoMapper\Chat\Chatbot\" />
+    <Folder Include="AutoMapper\Chat\ChatwithUser\" />
+    <Folder Include="AutoMapper\User\" />
+  </ItemGroup>
+
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.schemastore.org/azure-iot-edgeagent-deployment-1.1.json" /></VisualStudio></ProjectExtensions>
 
 </Project>

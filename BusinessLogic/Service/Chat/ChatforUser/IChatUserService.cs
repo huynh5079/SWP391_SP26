@@ -12,6 +12,7 @@ namespace BusinessLogic.Service.Chat.ChatforUser
         Task<IReadOnlyList<ChatContactDto>> GetContactsAsync(string currentUserId, string currentRole);
         Task<IReadOnlyList<ChatMessageDto>> GetConversationAsync(string currentUserId, string currentRole, string otherUserId);
         Task<ChatMessageDto> SendPrivateMessageAsync(string senderUserId, string senderRole, string receiverUserId, string content);
+        Task<ChatMessageDto> RecallMessageAsync(string userId, string messageId);
         Task MarkConversationReadAsync(string userId, string otherUserId);
     }
 }

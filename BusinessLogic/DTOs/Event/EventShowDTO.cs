@@ -29,14 +29,22 @@ public class EventDetailsDto
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? ThumbnailUrl { get; set; }
+    public string? SemesterId { get; set; }
     public string? SemesterName { get; set; }
+    public string? DepartmentId { get; set; }
     public string? DepartmentName { get; set; }
+    public string? LocationId { get; set; }
     public string? Location { get; set; }
+    public string? TopicId { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     public int MaxCapacity { get; set; }
     public bool IsDepositRequired { get; set; }
     public decimal DepositAmount { get; set; }
+    public EventTypeEnum? Type { get; set; }
+    public EventStatusEnum Status { get; set; }
+    public EventModeEnum? Mode { get; set; }
+    public string? MeetingUrl { get; set; }
     public int RegisteredCount { get; set; }
     public int CheckedInCount { get; set; }
     public int WaitlistCount { get; set; }

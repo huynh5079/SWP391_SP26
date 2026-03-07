@@ -97,6 +97,33 @@ namespace DataAccess.Repositories
 			return message;
 		}
 
+		public async Task<ChatMessage> RecallMessageAsync(string messageId, string userId)
+		{
+			var message = await _context.ChatMessages.FirstOrDefaultAsync(x => x.Id == messageId && !x.IsDeleted);
+			if (message == null)
+			{
+				throw new KeyNotFoundException("Không tìm thấy tin nhắn.");
+			}
+
+			var senderId = ExtractSenderId(message.ErrorMessage);
+			if (!string.Equals(senderId, userId, StringComparison.Ordinal))
+			{
+				throw new UnauthorizedAccessException("Bạn chỉ có thể thu hồi tin nhắn của chính mình.");
+			}
+
+			if (IsRecalled(message.ErrorMessage))
+			{
+				return message;
+			}
+
+			var receiverId = ExtractReceiverId(message.ErrorMessage);
+			var readBy = ExtractReadBy(message.ErrorMessage);
+			message.Content = "Tin nhắn đã được thu hồi.";
+			message.ErrorMessage = BuildMetadata(senderId, receiverId, readBy, true);
+			await _context.SaveChangesAsync();
+			return message;
+		}
+
 		public async Task<List<ChatMessage>> GetConversationMessagesAsync(string firstUserId, string secondUserId)
 		{
 			var session = await FindDirectSessionAsync(firstUserId, secondUserId);
@@ -142,8 +169,8 @@ namespace DataAccess.Repositories
 					.ToListAsync();
 
 				var lastMessage = messages.LastOrDefault();
-				var unreadCount = messages.Count(x => ExtractSenderId(x.ErrorMessage) != userId && !HasBeenReadBy(x.ErrorMessage, userId));
-				result[otherUserId] = (lastMessage?.Content, lastMessage?.CreatedAt, unreadCount);
+				var unreadCount = messages.Count(x => ExtractSenderId(x.ErrorMessage) != userId && !HasBeenReadBy(x.ErrorMessage, userId) && !IsRecalled(x.ErrorMessage));
+				result[otherUserId] = (FormatMessageContent(lastMessage), lastMessage?.CreatedAt, unreadCount);
 			}
 
 			return result;
@@ -214,9 +241,27 @@ namespace DataAccess.Repositories
 			return parts.Length == 2 ? parts : Array.Empty<string>();
 		}
 
-		private static string BuildMetadata(string senderId, string receiverId, IEnumerable<string> readBy)
+		private static string BuildMetadata(string senderId, string receiverId, IEnumerable<string> readBy, bool isRecalled = false)
 		{
-			return $"sender:{senderId};receiver:{receiverId};readBy:{string.Join(',', readBy.Distinct())}";
+			return $"sender:{senderId};receiver:{receiverId};readBy:{string.Join(',', readBy.Distinct())};recalled:{isRecalled.ToString().ToLowerInvariant()}";
+		}
+
+		private static bool IsRecalled(string? metadata)
+		{
+			if (string.IsNullOrWhiteSpace(metadata))
+			{
+				return false;
+			}
+
+			foreach (var part in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries))
+			{
+				if (part.Equals("recalled:true", StringComparison.OrdinalIgnoreCase))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private static string ExtractSenderId(string? metadata)
@@ -281,5 +326,16 @@ namespace DataAccess.Repositories
 		{
 			return ExtractReadBy(metadata).Contains(userId);
 		}
+
+		private static string? FormatMessageContent(ChatMessage? message)
+		{
+			if (message == null)
+			{
+				return null;
+			}
+
+			return IsRecalled(message.ErrorMessage) ? "Tin nhắn đã được thu hồi." : message.Content;
+		}
+		
 	}
 }

@@ -63,7 +63,29 @@ class AemsMessengerLayout {
             }
         });
 
+        this.messages?.addEventListener('click', async (event) => {
+            const toggle = event.target.closest('.messenger-message-menu-toggle');
+            if (toggle) {
+                event.stopPropagation();
+                const container = toggle.closest('.messenger-message-actions');
+                const menu = container?.querySelector('.messenger-message-menu');
+                this.closeMessageMenus(container);
+                menu?.classList.toggle('open');
+                return;
+            }
+
+            const recall = event.target.closest('[data-action="recall-message"]');
+            if (recall) {
+                event.stopPropagation();
+                await this.recallMessage(recall.dataset.messageId);
+            }
+        });
+
         document.addEventListener('click', (event) => {
+            if (!event.target.closest('.messenger-message-actions')) {
+                this.closeMessageMenus();
+            }
+
             if (!this.panel.classList.contains('open')) {
                 return;
             }
@@ -90,6 +112,14 @@ class AemsMessengerLayout {
 
         this.connection.on('ReceivePrivateMessage', async (message) => {
             await this.handleIncomingMessage(message);
+        });
+
+        this.connection.on('MessageRecalled', async (message) => {
+            await this.handleRecalledMessage(message);
+        });
+
+        this.connection.on('ConversationRead', async (payload) => {
+            this.handleConversationRead(payload);
         });
 
         try {
@@ -198,7 +228,7 @@ class AemsMessengerLayout {
             const status = contact.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến';
             return `
                 <div class="messenger-contact ${contact.userId === this.activeContactId ? 'active' : ''}" data-contact-id="${contact.userId}">
-                    <div class="messenger-avatar" style="background:${this.getAccent(contact.roleName)}">${this.getInitials(contact.fullName)}</div>
+                    <div class="messenger-avatar messenger-avatar-presence ${contact.isOnline ? 'online' : ''}" style="background:${this.getAccent(contact.roleName)}">${this.getInitials(contact.fullName)}</div>
                     <div class="messenger-contact-body">
                         <div class="messenger-contact-top">
                             <div class="messenger-contact-name">${this.escapeHtml(contact.fullName)}</div>
@@ -238,6 +268,8 @@ class AemsMessengerLayout {
         this.activeStatus.textContent = `${contact.roleName} • ${contact.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}`;
         this.activeAvatar.textContent = this.getInitials(contact.fullName);
         this.activeAvatar.style.background = this.getAccent(contact.roleName);
+        this.activeAvatar.classList.toggle('online', !!contact.isOnline);
+        this.activeAvatar.classList.add('messenger-avatar-presence');
         this.emptyState.classList.add('d-none');
         this.thread.classList.remove('d-none');
         this.input.disabled = false;
@@ -275,18 +307,35 @@ class AemsMessengerLayout {
     renderMessages() {
         const conversation = this.conversations[this.activeContactId] || [];
         const contact = this.contacts.find(x => x.userId === this.activeContactId);
+        const lastReadMineMessageId = [...conversation]
+            .reverse()
+            .find(message => message.senderId === this.currentUserId && message.isReadByReceiver === true)?.messageId;
 
         this.messages.innerHTML = conversation.length === 0
             ? '<div class="messenger-empty-list">Chưa có tin nhắn. Hãy gửi tin nhắn đầu tiên.</div>'
             : conversation.map(message => {
                 const mine = message.senderId === this.currentUserId;
+                const recalled = message.isRecalled === true;
+                const showReadReceipt = mine && lastReadMineMessageId === message.messageId && message.isReadByReceiver === true;
                 return `
                     <div class="messenger-message-row ${mine ? 'mine' : 'theirs'}">
-                        ${mine ? '' : `<div class="messenger-avatar" style="background:${this.getAccent(contact?.roleName || 'User')}">${this.getInitials(contact?.fullName || 'U')}</div>`}
-                        <div class="messenger-bubble">
-                            <div class="messenger-message-author">${mine ? 'Bạn' : this.escapeHtml(contact?.fullName || 'Người dùng')}</div>
-                            <div class="messenger-message-text">${this.escapeHtml(message.content)}</div>
-                            <div class="messenger-message-time">${this.formatMessageTime(message.sentAt)}</div>
+                        ${mine ? '' : `<div class="messenger-avatar messenger-avatar-presence ${contact?.isOnline ? 'online' : ''}" style="background:${this.getAccent(contact?.roleName || 'User')}">${this.getInitials(contact?.fullName || 'U')}</div>`}
+                        <div class="messenger-message-content ${recalled ? 'recalled' : ''}">
+                            ${mine && !recalled ? `
+                                <div class="messenger-message-actions">
+                                    <button type="button" class="messenger-message-menu-toggle" aria-label="Tùy chọn tin nhắn">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <div class="messenger-message-menu">
+                                        <button type="button" data-action="recall-message" data-message-id="${message.messageId}">Thu hồi</button>
+                                    </div>
+                                </div>` : ''}
+                            <div class="messenger-bubble ${recalled ? 'recalled' : ''}">
+                                <div class="messenger-message-author">${mine ? 'Bạn' : this.escapeHtml(contact?.fullName || 'Người dùng')}</div>
+                                <div class="messenger-message-text">${this.escapeHtml(message.content)}</div>
+                                <div class="messenger-message-time">${this.formatMessageTime(message.sentAt)}</div>
+                            </div>
+                            ${showReadReceipt ? '<div class="messenger-read-receipt">Đã đọc</div>' : ''}
                         </div>
                     </div>
                 `;
@@ -318,6 +367,20 @@ class AemsMessengerLayout {
         } catch (error) {
             console.error(error);
             alert(error?.message || 'Không gửi được tin nhắn.');
+        }
+    }
+
+    async recallMessage(messageId) {
+        if (!messageId || !this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+            return;
+        }
+
+        try {
+            await this.connection.invoke('RecallPrivateMessage', messageId);
+            this.closeMessageMenus();
+        } catch (error) {
+            console.error(error);
+            alert(error?.message || 'Không thu hồi được tin nhắn.');
         }
     }
 
@@ -355,6 +418,64 @@ class AemsMessengerLayout {
 
         this.renderContacts();
         this.updateFabBadge();
+    }
+
+    async handleRecalledMessage(message) {
+        const contactId = message.senderId === this.currentUserId ? message.receiverId : message.senderId;
+        if (!this.conversations[contactId]) {
+            this.conversations[contactId] = [];
+        }
+
+        const index = this.conversations[contactId].findIndex(x => x.messageId === message.messageId);
+        if (index >= 0) {
+            this.conversations[contactId][index] = message;
+        } else {
+            this.conversations[contactId].push(message);
+        }
+
+        const contact = this.contacts.find(x => x.userId === contactId);
+        if (contact) {
+            const lastMessage = this.conversations[contactId][this.conversations[contactId].length - 1];
+            if (lastMessage) {
+                contact.lastMessage = lastMessage.content;
+                contact.lastMessageAt = lastMessage.sentAt;
+            }
+        }
+
+        if (this.activeContactId === contactId) {
+            this.renderMessages();
+        }
+
+        this.renderContacts();
+    }
+
+    handleConversationRead(payload) {
+        const readerUserId = payload?.readerUserId || payload?.ReaderUserId;
+        const otherUserId = payload?.otherUserId || payload?.OtherUserId;
+        if (!readerUserId || otherUserId !== this.currentUserId) {
+            return;
+        }
+
+        const conversation = this.conversations[readerUserId] || [];
+        conversation.forEach(message => {
+            if (message.senderId === this.currentUserId && message.receiverId === readerUserId) {
+                message.isReadByReceiver = true;
+            }
+        });
+
+        if (this.activeContactId === readerUserId) {
+            this.renderMessages();
+        }
+    }
+
+    closeMessageMenus(exceptContainer = null) {
+        this.messages?.querySelectorAll('.messenger-message-menu.open').forEach(menu => {
+            if (exceptContainer && exceptContainer.contains(menu)) {
+                return;
+            }
+
+            menu.classList.remove('open');
+        });
     }
 
     updateFabBadge() {

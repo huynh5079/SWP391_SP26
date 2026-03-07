@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
 </head>
 <body>
@@ -137,6 +138,10 @@
             @RenderBody()
         </main>
     </div>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <partial name="_ChatbotBar" />
+    }
 
     <footer class="border-top footer text-muted">
         <div class="container">
@@ -149,6 +154,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/site.js?v=3" asp-append-version="true"></script>
+    <script src="~/js/chatbot.js" asp-append-version="true"></script>
     <script src="~/js/messenger-layout.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
