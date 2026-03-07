@@ -13,6 +13,7 @@ namespace DataAccess.Repositories
     {
         private readonly AEMSContext _ctx;
         public IUserRepository Users { get; }
+        public IChatRepository ChatRepository { get; }
         public IGenericRepository<StudentProfile> StudentProfiles { get; }
         public IGenericRepository<StaffProfile> StaffProfiles { get; }
         public IGenericRepository<Role> Roles { get; }
@@ -31,10 +32,11 @@ namespace DataAccess.Repositories
 		public IGenericRepository<Ticket> Tickets { get; }
 		public IGenericRepository<Feedback> Feedbacks { get; }
         public IGenericRepository<CheckInHistory> CheckInHistories { get; }
-		public UnitOfWork(AEMSContext ctx, IUserRepository users)
+		public UnitOfWork(AEMSContext ctx, IUserRepository users, IChatRepository chatRepository)
         {
             _ctx = ctx;
             Users = users;
+            ChatRepository = chatRepository;
             StudentProfiles = new GenericRepository<StudentProfile>(_ctx);
             StaffProfiles = new GenericRepository<StaffProfile>(_ctx);
             Roles = new GenericRepository<Role>(_ctx);

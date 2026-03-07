@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
 </head>
 <body>
     <header>
@@ -39,6 +40,7 @@
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             @await Component.InvokeAsync("Notification")
+                            <partial name="_ChatCustomerServiceLayout" />
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle text-dark" href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-person-circle"></i> @(User.Identity.Name ?? "User")
@@ -122,7 +124,6 @@
             @RenderBody()
         </main>
     </div>
-	@* Conditionally include the chatbot bar only for users in the "Student" role. This ensures that the chatbot is only rendered for students, while other users will not see it. *@
     @if (User.Identity?.IsAuthenticated == true)
     {
         <partial name="_ChatbotBar" />
@@ -140,6 +141,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/site.js?v=4" asp-append-version="true"></script>
     <script src="~/js/chatbot.js" asp-append-version="true"></script>
+    <script src="~/js/messenger-layout.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

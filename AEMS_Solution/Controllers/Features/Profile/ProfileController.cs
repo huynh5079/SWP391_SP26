@@ -24,7 +24,20 @@ namespace AEMS_Solution.Controllers.Features.Profile
             var profile = await _userService.GetMyProfileAsync(CurrentUserId);
             if (profile == null) return NotFound();
 
+            ViewBag.IsReadOnly = false;
             return View(profile);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewUser(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return NotFound();
+
+            var profile = await _userService.GetUserDetailAsync(id);
+            if (profile == null) return NotFound();
+
+            ViewBag.IsReadOnly = true;
+            return View("Index", profile);
         }
 
         [HttpPost]
