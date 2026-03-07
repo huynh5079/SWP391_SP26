@@ -121,6 +121,22 @@ class AemsMessengerLayout {
         }
     }
 
+    async openChatWith(contactId) {
+        if (!contactId) {
+            return;
+        }
+
+        await this.openPanel();
+
+        if (!this.contacts.some(x => x.userId === contactId)) {
+            await this.loadContacts(false);
+        }
+
+        if (this.contacts.some(x => x.userId === contactId)) {
+            await this.selectContact(contactId);
+        }
+    }
+
     closePanel() {
         this.panel.classList.remove('open');
         this.panel.setAttribute('aria-hidden', 'true');
@@ -395,5 +411,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     for (const root of document.querySelectorAll('#messengerLauncher')) {
         const manager = new AemsMessengerLayout(root);
         await manager.init();
+        window.aemsMessengerLayout = manager;
     }
+
+    document.addEventListener('aems:open-chat', async (event) => {
+        const userId = event.detail?.userId;
+        if (!userId || !window.aemsMessengerLayout) {
+            return;
+        }
+
+        await window.aemsMessengerLayout.openChatWith(userId);
+    });
 });
