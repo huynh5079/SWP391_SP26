@@ -25,6 +25,7 @@ namespace DataAccess.Repositories.Abstraction
 		// ✅ Update for OrganizerService
 		IGenericRepository<Event> Events { get; }
         IGenericRepository<EventAgenda> EventAgenda { get; }
+        IGenericRepository<EventDocument> EventDocuments { get; }
 		IGenericRepository<Topic> Topics { get; }
 		IGenericRepository<Location> Locations { get; }
 		IGenericRepository<Semester> Semesters { get; }

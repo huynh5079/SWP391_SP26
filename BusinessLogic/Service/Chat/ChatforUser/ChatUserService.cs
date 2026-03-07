@@ -66,10 +66,13 @@ namespace BusinessLogic.Service.Chat.ChatforUser
 			return messages
 				.Select(message => new ChatMessageDto
 				{
+					MessageId = message.Id,
 					SenderId = ExtractSenderId(message.ErrorMessage),
 					ReceiverId = ExtractReceiverId(message.ErrorMessage),
-					Content = message.Content,
-					SentAt = message.CreatedAt
+					Content = FormatContent(message.Content, message.ErrorMessage),
+					SentAt = message.CreatedAt,
+					IsRecalled = IsRecalled(message.ErrorMessage),
+					IsReadByReceiver = HasBeenReadBy(message.ErrorMessage, ExtractReceiverId(message.ErrorMessage))
 				})
 				.ToList();
 		}
@@ -107,10 +110,39 @@ namespace BusinessLogic.Service.Chat.ChatforUser
 
 			return new ChatMessageDto
 			{
+				MessageId = message.Id,
 				SenderId = ExtractSenderId(message.ErrorMessage),
 				ReceiverId = ExtractReceiverId(message.ErrorMessage),
-				Content = message.Content,
-				SentAt = message.CreatedAt
+				Content = FormatContent(message.Content, message.ErrorMessage),
+				SentAt = message.CreatedAt,
+				IsRecalled = IsRecalled(message.ErrorMessage),
+				IsReadByReceiver = HasBeenReadBy(message.ErrorMessage, ExtractReceiverId(message.ErrorMessage))
+			};
+		}
+
+		public async Task<ChatMessageDto> RecallMessageAsync(string userId, string messageId)
+		{
+			if (string.IsNullOrWhiteSpace(userId))
+			{
+				throw new UnauthorizedAccessException("Không xác định được người dùng.");
+			}
+
+			if (string.IsNullOrWhiteSpace(messageId))
+			{
+				throw new ArgumentException("Thiếu messageId.");
+			}
+
+			var message = await _unitOfWork.ChatRepository.RecallMessageAsync(messageId, userId);
+
+			return new ChatMessageDto
+			{
+				MessageId = message.Id,
+				SenderId = ExtractSenderId(message.ErrorMessage),
+				ReceiverId = ExtractReceiverId(message.ErrorMessage),
+				Content = FormatContent(message.Content, message.ErrorMessage),
+				SentAt = message.CreatedAt,
+				IsRecalled = IsRecalled(message.ErrorMessage),
+				IsReadByReceiver = HasBeenReadBy(message.ErrorMessage, ExtractReceiverId(message.ErrorMessage))
 			};
 		}
 
@@ -153,6 +185,51 @@ namespace BusinessLogic.Service.Chat.ChatforUser
 			}
 
 			return string.Empty;
+		}
+
+		private static bool IsRecalled(string? metadata)
+		{
+			if (string.IsNullOrWhiteSpace(metadata))
+			{
+				return false;
+			}
+
+			foreach (var part in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries))
+			{
+				if (part.Equals("recalled:true", StringComparison.OrdinalIgnoreCase))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static string FormatContent(string content, string? metadata)
+		{
+			return IsRecalled(metadata) ? "Tin nhắn đã được thu hồi." : content;
+		}
+
+		private static bool HasBeenReadBy(string? metadata, string userId)
+		{
+			if (string.IsNullOrWhiteSpace(metadata) || string.IsNullOrWhiteSpace(userId))
+			{
+				return false;
+			}
+
+			foreach (var part in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries))
+			{
+				if (!part.StartsWith("readBy:", StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+
+				return part.Substring("readBy:".Length)
+					.Split(',', StringSplitOptions.RemoveEmptyEntries)
+					.Contains(userId, StringComparer.Ordinal);
+			}
+
+			return false;
 		}
 	}
 }

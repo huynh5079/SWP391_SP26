@@ -15,9 +15,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-
-
-
 [Authorize(Roles = "Organizer")] 
 	public class OrganizerController : BaseController
 	{
@@ -261,13 +258,8 @@ using Microsoft.EntityFrameworkCore;
 		//load drop down for event
 		private async Task LoadDropdowns(CreateEventViewModel vm)
 		{
-			// Use service to get dropdowns (keeps controller free from direct DB queries)
 			var dto = await _organizerService.GetCreateEventDropdownsAsync();
-
-			vm.Semesters = dto.Semesters.Select(s => new SelectListItem { Value = s.Id, Text = s.Text }).ToList();
-			vm.Departments = dto.Departments.Select(d => new SelectListItem { Value = d.Id, Text = d.Text }).ToList();
-			vm.Locations = dto.Locations.Select(l => new SelectListItem { Value = l.Id, Text = l.Text }).ToList();
-			vm.Topics = dto.Topics.Select(t => new SelectListItem { Value = t.Id, Text = t.Text }).ToList();
+			_mapper.Map(dto, vm);
 		}
 
 		
@@ -350,61 +342,7 @@ using Microsoft.EntityFrameworkCore;
 			try
 			{
 				var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
-				var vm = new AEMS_Solution.Models.Event.EventDetailsViewModel
-				{
-					EventId = dto.EventId,
-					Title = dto.Title,
-					Description = dto.Description,
-					ThumbnailUrl = dto.ThumbnailUrl,
-					SemesterName = dto.SemesterName,
-					DepartmentName = dto.DepartmentName,
-					Location = dto.Location,
-					StartTime = dto.StartTime,
-					EndTime = dto.EndTime,
-					MaxCapacity = dto.MaxCapacity,
-					IsDepositRequired = dto.IsDepositRequired,
-					DepositAmount = dto.DepositAmount,
-					RegisteredCount = dto.RegisteredCount,
-					CheckedInCount = dto.CheckedInCount,
-					WaitlistCount = dto.WaitlistCount,
-					AvgRating = dto.AvgRating,
-					LastApprovalAction = dto.LastApprovalAction,
-					LastApprovalComment = dto.LastApprovalComment,
-					LastApprovalAt = dto.LastApprovalAt
-				};
-
-				foreach (var a in dto.Agendas)
-				{
-					vm.Agendas.Add(new AEMS_Solution.Models.Event.EventAgendaVm
-					{
-						Id = a.Id,
-						EventId = a.EventId,
-						SessionName = a.SessionName,
-						Description = a.Description,
-						SpeakerName = a.SpeakerName,
-						StartTime = a.StartTime,
-						EndTime = a.EndTime,
-						Location = a.Location
-					});
-				}
-
-			if (dto.Documents != null)
-			{
-				foreach (var d in dto.Documents)
-				{
-					vm.Documents.Add(new AEMS_Solution.Models.Event.EventDocumentVm
-					{
-						Id = d.Id,
-						EventId = d.EventId,
-						FileName = d.FileName ?? d.Url ?? "",
-						Url = d.Url ?? "",
-						Type = d.Type
-					});
-				}
-			}
-
-				vm.CanEdit = dto.CanEdit;
-				vm.CanSendForApproval = dto.CanSendForApproval;
+				var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
 
 				return View("~/Views/Event/DetailEvent.cshtml", vm);
 			}
@@ -424,52 +362,16 @@ using Microsoft.EntityFrameworkCore;
 			{
 				var paged = await _organizerService.GetMyEventsAsync(userId, search, status, semesterId, page, pageSize);
 
-				var vm = new MyEventsViewModel();
-				var now = DateTimeHelper.GetVietnamTime();
-				foreach (var e in paged.Items)
+				var vm = new MyEventsViewModel
 				{
-					string displayStatus = e.Status.ToString();
-					if (string.Equals(displayStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Cancelled";
-					else if (string.Equals(displayStatus, "Pending", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Pending";
-					else if (string.Equals(displayStatus, "Draft", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now > e.EndTime ? "Completed" : "Draft";
-					else if (string.Equals(displayStatus, "Published", StringComparison.OrdinalIgnoreCase) || string.Equals(displayStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-					else
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-
-					vm.Events.Add(new OrganizerEventCardVm
-					{
-						EventId = e.EventId,
-						Title = e.Title,
-						ThumbnailUrl = e.ThumbnailUrl,
-						SemesterId = e.SemesterId,
-						SemesterName = e.SemesterName,
-						DepartmentId = e.DepartmentId,
-						DepartmentName = e.DepartmentName,
-						Location = e.Location,
-						StartTime = e.StartTime,
-						EndTime = e.EndTime,
-						MaxCapacity = e.MaxCapacity,
-						Status = e.Status,
-						RegisteredCount = e.RegisteredCount,
-						CheckedInCount = e.CheckedInCount,
-						WaitlistCount = e.WaitlistCount,
-						AvgRating = e.AvgRating,
-						Mode = e.Mode,
-					    MeetingUrl = e.MeetingUrl,
-					
-					});
-				}
-
-				vm.Page = paged.Page;
-				vm.PageSize = paged.PageSize;
-				vm.TotalItems = paged.Total;
-				vm.Search = search;
-				vm.Status = status;
-				vm.SemesterId = semesterId;
+					Events = _mapper.Map<List<OrganizerEventCardVm>>(paged.Items),
+					Page = paged.Page,
+					PageSize = paged.PageSize,
+					TotalItems = paged.Total,
+					Search = search,
+					Status = status,
+					SemesterId = semesterId
+				};
 
 				return View("~/Views/Event/MyEvent.cshtml", vm);
 			}
@@ -493,52 +395,16 @@ using Microsoft.EntityFrameworkCore;
 			{
 				var paged = await _organizerService.GetMyDeletedEventsAsync(userId, search, status, semesterId, page, pageSize);
 
-				var vm = new MyEventsViewModel();
-				var now = DateTimeHelper.GetVietnamTime();
-				foreach (var e in paged.Items)
+				var vm = new MyEventsViewModel
 				{
-					string displayStatus = e.Status.ToString();
-					if (string.Equals(displayStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Cancelled";
-					else if (string.Equals(displayStatus, "Pending", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Pending";
-					else if (string.Equals(displayStatus, "Draft", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now > e.EndTime ? "Completed" : "Draft";
-					else if (string.Equals(displayStatus, "Published", StringComparison.OrdinalIgnoreCase) || string.Equals(displayStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-					else
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-
-					vm.Events.Add(new OrganizerEventCardVm
-					{
-						EventId = e.EventId,
-						Title = e.Title,
-						ThumbnailUrl = e.ThumbnailUrl,
-						SemesterId = e.SemesterId,
-						SemesterName = e.SemesterName,
-						DepartmentId = e.DepartmentId,
-						DepartmentName = e.DepartmentName,
-						Location = e.Location,
-						StartTime = e.StartTime,
-						EndTime = e.EndTime,
-						MaxCapacity = e.MaxCapacity,
-						Status = e.Status,
-						RegisteredCount = e.RegisteredCount,
-						CheckedInCount = e.CheckedInCount,
-						WaitlistCount = e.WaitlistCount,
-						AvgRating = e.AvgRating,
-						Mode = e.Mode,
-						MeetingUrl = e.MeetingUrl,
-
-					});
-				}
-
-				vm.Page = paged.Page;
-				vm.PageSize = paged.PageSize;
-				vm.TotalItems = paged.Total;
-				vm.Search = search;
-				vm.Status = status;
-				vm.SemesterId = semesterId;
+					Events = _mapper.Map<List<OrganizerEventCardVm>>(paged.Items),
+					Page = paged.Page,
+					PageSize = paged.PageSize,
+					TotalItems = paged.Total,
+					Search = search,
+					Status = status,
+					SemesterId = semesterId
+				};
 
 				return View("~/Views/Event/MyEventDelete.cshtml", vm);
 			}
@@ -568,41 +434,7 @@ using Microsoft.EntityFrameworkCore;
 				
 				var dto = await _organizerService.GetDashboardAsync(userId);
 
-				var vm = new OrganizerDashboardViewModel();
-				vm.Stats.TotalEvents = dto.TotalEvents;
-				vm.Stats.UpcomingEvents = dto.UpcomingEvents;
-				vm.Stats.DraftEvents = dto.DraftEvents;
-
-                // Extensions for charts and cards
-                vm.RegistrationsToday = dto.RegistrationsToday;
-                vm.DepositCollectedThisMonth = dto.DepositCollectedThisMonth;
-                vm.RegistrationTrendLabels = dto.RegistrationTrendLabels;
-                vm.RegistrationTrendData = dto.RegistrationTrendData;
-                vm.EventStatusDistribution = dto.EventStatusDistribution;
-                
-                if (dto.RecentFeedbacks != null && dto.RecentFeedbacks.Any())
-                {
-                    vm.RecentFeedbacks = dto.RecentFeedbacks.Select(f => new EventFeedbackSummaryVm
-                    {
-                        EventId = f.EventId,
-                        EventTitle = f.EventTitle,
-                        Rating = f.Rating,
-                        Comment = f.Comment,
-                        CreatedAt = f.CreatedAt,
-                        StudentId = f.StudentId,
-                        StudentCode = f.StudentCode
-                    }).ToList();
-                }
-
-				vm.RecentEvents = dto.UpcomingList
-					.Select(x => new OrganizerEventCardVm
-					{
-						EventId = x.Id,
-						Title = x.Title,
-						StartTime = x.StartTime,
-					    Status = x.Status,
-					})
-					.ToList();
+				var vm = _mapper.Map<OrganizerDashboardViewModel>(dto);
 
 				return View(vm);
 			}
