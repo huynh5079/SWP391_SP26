@@ -1,4 +1,4 @@
-﻿namespace AEMS_Solution.BaseAction_ValidforController_.Orrganizer
+﻿namespace AEMS_Solution.BaseAction.Orrganizer
 {
 	public class ManageEvent
 	{

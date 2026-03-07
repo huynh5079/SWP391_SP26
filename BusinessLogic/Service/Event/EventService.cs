@@ -423,6 +423,28 @@ public class EventService : IEventService
 				}
 			}
 
+			if (dto.Documents != null && dto.Documents.Count > 0)
+			{
+				foreach (var d in dto.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
+					{
+						continue;
+					}
+
+					await _uow.EventDocuments.CreateAsync(new EventDocument
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = entity.Id,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
 			return entity.Id;
@@ -482,8 +504,37 @@ public class EventService : IEventService
 		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
 		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
 
+		if (!string.IsNullOrWhiteSpace(dto.SemesterId))
+		{
+			var semester = await _uow.Semesters.GetByIdAsync(dto.SemesterId);
+			if (semester == null) throw new InvalidOperationException("Semester không tồn tại.");
+		}
+
+		if (!string.IsNullOrWhiteSpace(dto.DepartmentId))
+		{
+			var department = await _uow.Departments.GetByIdAsync(dto.DepartmentId);
+			if (department == null) throw new InvalidOperationException("Department không tồn tại.");
+		}
+
 		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
 			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
+
+		if (dto.Agendas != null)
+		{
+			foreach (var a in dto.Agendas)
+			{
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+				if (isEmpty) continue;
+
+				if (!a.StartTime.HasValue || !a.EndTime.HasValue)
+					throw new InvalidOperationException("Agenda phải có thời gian bắt đầu và kết thúc.");
+				if (a.StartTime > a.EndTime)
+					throw new InvalidOperationException("Thời gian bắt đầu Agenda phải bé hơn thời gian kết thúc");
+				if (a.StartTime < dto.StartTime || a.EndTime > dto.EndTime)
+					throw new InvalidOperationException("Thời gian agenda phải nằm trong khoảng thời gian của sự kiện.");
+			}
+		}
 
 		using var transaction = await _uow.BeginTransactionAsync();
 		try
@@ -493,11 +544,77 @@ public class EventService : IEventService
 			ev.Description = dto.Description;
 			ev.StartTime = dto.StartTime;
 			ev.EndTime = dto.EndTime;
+			ev.SemesterId = dto.SemesterId;
+			ev.DepartmentId = dto.DepartmentId;
 			ev.TopicId = dto.TopicId;
 			ev.LocationId = dto.LocationId;
+			ev.MaxCapacity = dto.Capacity ?? ev.MaxCapacity;
+			ev.Type = dto.Type;
+			ev.Status = dto.Status ?? ev.Status;
+			ev.IsDepositRequired = dto.IsDepositRequired;
+			ev.DepositAmount = dto.DepositAmount;
+			ev.ThumbnailUrl = dto.BannerUrl;
 			ev.Mode = dto.Mode;
 			ev.MeetingUrl = dto.MeetingUrl?.Trim();
 			ev.UpdatedAt = now;
+
+			var existingAgendas = await _uow.EventAgenda.GetAllAsync(x => x.EventId == eventId);
+			foreach (var agenda in existingAgendas)
+			{
+				await _uow.EventAgenda.RemoveAsync(agenda);
+			}
+
+			var existingDocuments = await _uow.EventDocuments.GetAllAsync(x => x.EventId == eventId);
+			foreach (var document in existingDocuments)
+			{
+				await _uow.EventDocuments.RemoveAsync(document);
+			}
+
+			if (dto.Agendas != null)
+			{
+				foreach (var a in dto.Agendas)
+				{
+					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+					if (isEmpty) continue;
+
+					await _uow.EventAgenda.CreateAsync(new EventAgenda
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = ev.Id,
+						SessionName = a.SessionName,
+						Description = a.Description,
+						SpeakerName = a.SpeakerName,
+						StartTime = a.StartTime,
+						EndTime = a.EndTime,
+						Location = a.Location,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
+			if (dto.Documents != null)
+			{
+				foreach (var d in dto.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
+					{
+						continue;
+					}
+
+					await _uow.EventDocuments.CreateAsync(new EventDocument
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = ev.Id,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
 
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
@@ -633,14 +750,22 @@ public class EventService : IEventService
 			Title = ev.Title,
 			Description = ev.Description,
 			ThumbnailUrl = ev.ThumbnailUrl,
+			SemesterId = ev.SemesterId,
 			SemesterName = ev.Semester?.Name,
+			DepartmentId = ev.DepartmentId,
 			DepartmentName = ev.Department?.Name,
+			LocationId = ev.LocationId,
 			Location = ev.Location?.Name ?? ev.LocationId,
+			TopicId = ev.TopicId,
 			StartTime = ev.StartTime,
 			EndTime = ev.EndTime,
 			MaxCapacity = ev.MaxCapacity,
 			IsDepositRequired = ev.IsDepositRequired ?? false,
 			DepositAmount = ev.DepositAmount ?? 0,
+			Type = ev.Type,
+			Status = ev.Status,
+			Mode = ev.Mode,
+			MeetingUrl = ev.MeetingUrl,
 			RegisteredCount = ev.Tickets?.Count ?? 0,
 			CheckedInCount = ev.Tickets?.Count(t => t.CheckInTime != null) ?? 0,
 			WaitlistCount = ev.EventWaitlists?.Count ?? 0,

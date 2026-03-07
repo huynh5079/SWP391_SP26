@@ -21,6 +21,7 @@ namespace DataAccess.Repositories
         public IGenericRepository<Notification> Notifications { get; }
         public IGenericRepository<Event> Events { get; }
         public IGenericRepository<EventAgenda> EventAgenda { get; }
+        public IGenericRepository<EventDocument> EventDocuments { get; }
         public IGenericRepository<Topic> Topics { get; }
         public IGenericRepository<Location> Locations { get; }
         public IGenericRepository<Semester> Semesters { get; }
@@ -45,6 +46,7 @@ namespace DataAccess.Repositories
 			// ✅ Update
 			Events = new GenericRepository<Event>(_ctx);
 		    EventAgenda = new GenericRepository<EventAgenda>(_ctx);
+			EventDocuments = new GenericRepository<EventDocument>(_ctx);
 			Topics = new GenericRepository<Topic>(_ctx);
 			Locations = new GenericRepository<Location>(_ctx);
 			Semesters = new GenericRepository<Semester>(_ctx);

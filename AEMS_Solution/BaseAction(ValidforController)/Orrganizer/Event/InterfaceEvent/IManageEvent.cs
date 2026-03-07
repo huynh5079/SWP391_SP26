@@ -1,6 +1,7 @@
-﻿namespace AEMS_Solution.BaseAction_ValidforController_.Orrganizer.Event.InterfaceEvent
+﻿namespace AEMS_Solution.BaseAction.Orrganizer.Event.InterfaceEvent
 {
 	public class IManageEvent
 	{
+
 	}
 }
