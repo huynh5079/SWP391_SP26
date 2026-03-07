@@ -33,16 +33,19 @@ namespace DataAccess.Repositories
 		{
 			var allowedRoleSet = allowedRoles.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-			return await _context.Users
+			var users = await _context.Users
 				.AsNoTracking()
 				.Include(x => x.Role)
 				.Where(x => x.Id != currentUserId
 					&& x.DeletedAt == null
 					&& x.IsBanned != true
-					&& x.Role.RoleName != null
-					&& allowedRoleSet.Contains(x.Role.RoleName.ToString()!))
+					&& x.Role.RoleName != null)
 				.OrderBy(x => x.FullName)
 				.ToListAsync();
+
+			return users
+				.Where(x => x.Role.RoleName != null && allowedRoleSet.Contains(x.Role.RoleName.ToString()!))
+				.ToList();
 		}
 
 		public async Task<ChatSession?> FindDirectSessionAsync(string firstUserId, string secondUserId)
@@ -83,8 +86,8 @@ namespace DataAccess.Repositories
 				SessionId = session.Id,
 				Sender = "user",
 				Content = content.Trim(),
-				ReplyToMessageId = senderId,
-				ErrorMessage = BuildMetadata(receiverId, new[] { senderId }),
+				ReplyToMessageId = null,
+				ErrorMessage = BuildMetadata(senderId, receiverId, new[] { senderId }),
 				Status = ChatMessageStatus.Final,
 				IsDeleted = false
 			};
@@ -139,7 +142,7 @@ namespace DataAccess.Repositories
 					.ToListAsync();
 
 				var lastMessage = messages.LastOrDefault();
-				var unreadCount = messages.Count(x => (x.ReplyToMessageId ?? string.Empty) != userId && !HasBeenReadBy(x.ErrorMessage, userId));
+				var unreadCount = messages.Count(x => ExtractSenderId(x.ErrorMessage) != userId && !HasBeenReadBy(x.ErrorMessage, userId));
 				result[otherUserId] = (lastMessage?.Content, lastMessage?.CreatedAt, unreadCount);
 			}
 
@@ -155,21 +158,27 @@ namespace DataAccess.Repositories
 			}
 
 			var messages = await _context.ChatMessages
-				.Where(x => x.SessionId == session.Id && !x.IsDeleted && (x.ReplyToMessageId ?? string.Empty) != userId)
+				.Where(x => x.SessionId == session.Id && !x.IsDeleted)
 				.ToListAsync();
 
 			var changed = false;
 			foreach (var message in messages)
 			{
+				if (ExtractSenderId(message.ErrorMessage) == userId)
+				{
+					continue;
+				}
+
 				if (HasBeenReadBy(message.ErrorMessage, userId))
 				{
 					continue;
 				}
 
+				var senderId = ExtractSenderId(message.ErrorMessage);
 				var receiverId = ExtractReceiverId(message.ErrorMessage);
 				var readBy = ExtractReadBy(message.ErrorMessage);
 				readBy.Add(userId);
-				message.ErrorMessage = BuildMetadata(receiverId, readBy);
+				message.ErrorMessage = BuildMetadata(senderId, receiverId, readBy);
 				changed = true;
 			}
 
@@ -205,9 +214,27 @@ namespace DataAccess.Repositories
 			return parts.Length == 2 ? parts : Array.Empty<string>();
 		}
 
-		private static string BuildMetadata(string receiverId, IEnumerable<string> readBy)
+		private static string BuildMetadata(string senderId, string receiverId, IEnumerable<string> readBy)
 		{
-			return $"receiver:{receiverId};readBy:{string.Join(',', readBy.Distinct())}";
+			return $"sender:{senderId};receiver:{receiverId};readBy:{string.Join(',', readBy.Distinct())}";
+		}
+
+		private static string ExtractSenderId(string? metadata)
+		{
+			if (string.IsNullOrWhiteSpace(metadata))
+			{
+				return string.Empty;
+			}
+
+			foreach (var part in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries))
+			{
+				if (part.StartsWith("sender:", StringComparison.OrdinalIgnoreCase))
+				{
+					return part.Substring("sender:".Length);
+				}
+			}
+
+			return string.Empty;
 		}
 
 		private static string ExtractReceiverId(string? metadata)

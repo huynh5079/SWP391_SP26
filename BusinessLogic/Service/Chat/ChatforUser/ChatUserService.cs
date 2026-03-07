@@ -66,7 +66,7 @@ namespace BusinessLogic.Service.Chat.ChatforUser
 			return messages
 				.Select(message => new ChatMessageDto
 				{
-					SenderId = message.ReplyToMessageId ?? string.Empty,
+					SenderId = ExtractSenderId(message.ErrorMessage),
 					ReceiverId = ExtractReceiverId(message.ErrorMessage),
 					Content = message.Content,
 					SentAt = message.CreatedAt
@@ -107,7 +107,7 @@ namespace BusinessLogic.Service.Chat.ChatforUser
 
 			return new ChatMessageDto
 			{
-				SenderId = message.ReplyToMessageId ?? string.Empty,
+				SenderId = ExtractSenderId(message.ErrorMessage),
 				ReceiverId = ExtractReceiverId(message.ErrorMessage),
 				Content = message.Content,
 				SentAt = message.CreatedAt
@@ -117,6 +117,24 @@ namespace BusinessLogic.Service.Chat.ChatforUser
 		public async Task MarkConversationReadAsync(string userId, string otherUserId)
 		{
 			await _unitOfWork.ChatRepository.MarkConversationReadAsync(userId, otherUserId);
+		}
+
+		private static string ExtractSenderId(string? metadata)
+		{
+			if (string.IsNullOrWhiteSpace(metadata))
+			{
+				return string.Empty;
+			}
+
+			foreach (var part in metadata.Split(';', StringSplitOptions.RemoveEmptyEntries))
+			{
+				if (part.StartsWith("sender:", StringComparison.OrdinalIgnoreCase))
+				{
+					return part.Substring("sender:".Length);
+				}
+			}
+
+			return string.Empty;
 		}
 
 		private static string ExtractReceiverId(string? metadata)
