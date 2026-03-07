@@ -30,5 +30,9 @@ namespace AEMS_Solution.Hubs
 
             await base.OnDisconnectedAsync(exception);
         }
-    }
+		public async Task SendNotification(string message)
+		{
+			await Clients.All.SendAsync("ReceiveNotification", message);
+		}
+	}
 }

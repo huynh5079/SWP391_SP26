@@ -195,14 +195,12 @@ Python/RAG_SWP.ipynb
 # Python Dependencies
 Python/requirements.txt
 Python/.env.example
-Python/db_service.py
 Python/kb/chunks.json
 Python/kb/meta.json
 Python/README_RAG.md
 Python/STREAMING_INTEGRATION.md
 Python/_pycache_
 Python/.env
-Python/db_service.py
 Python/kb
 Python/find_can_access.py
 Python/find_func.py

@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <Folder Include="DTOs\Event\" />
+    <Folder Include="Service\Chat\Chatbot\" />
   </ItemGroup>
 
 </Project>

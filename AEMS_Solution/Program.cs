@@ -1,23 +1,28 @@
+using System.Text.Json.Serialization;
 using AEMS_Solution.Configurations;
+using AEMS_Solution.Hubs;
+using AEMS_Solution.Services;
+using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
+using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
+using BusinessLogic.Service.Dashboard;
+using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.User;
+using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Text.Json.Serialization;
 using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
 using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
-using BusinessLogic.Service.Event;
-using BusinessLogic.Service.Organizer;
-using BusinessLogic.Service.Approval;
-using BusinessLogic.Service.Dashboard;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
-using BusinessLogic.Service.Student;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
@@ -33,6 +38,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
 
 // UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -41,9 +47,12 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<ISignalRNotifier, AEMS_Solution.Services.SignalRNotifier>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
+builder.Services.AddScoped<BusinessLogic.Service.System.ISignalRNotifier, AEMS_Solution.Services.SignalRNotifier>();
+builder.Services.AddSingleton<IChatPresenceTracker, ChatPresenceTracker>();
+builder.Services.AddScoped<IChatPermissionService, ChatPermissionService>();
+builder.Services.AddScoped<IChatUserService, ChatUserService>();
 
 // RAG/Chatbot Services
 builder.Services.AddScoped<BusinessLogic.Service.IChatbotService, BusinessLogic.Service.ChatbotService>();
@@ -124,7 +133,6 @@ builder.Services.AddControllersWithViews()
     });
 
 var app = builder.Build();
-
 // ==========================================
 // 1.5. Seed Initial Data (Roles)
 // ==========================================
@@ -235,7 +243,7 @@ app.UseAuthorization();
 
 // SignalR Hubs
 app.MapHub<AEMS_Solution.Hubs.NotificationHub>("/hub/v1/notification");
-// app.MapHub<ChatHub>("/hub/v1/chat");
+app.MapHub<ChatHub>("/hub/v1/chat");
 
 // MVC Default Route
 app.MapControllerRoute(
