@@ -1,5 +1,5 @@
 using BusinessLogic.DTOs.Ticket;
-using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Organizer.CheckIn;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;

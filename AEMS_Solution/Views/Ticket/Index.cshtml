@@ -1,0 +1,61 @@
+@model AEMS_Solution.Models.Organizer.TicketIndexViewModel
+@{
+    ViewData["Title"] = "Manage Tickets";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Manage Tickets</h2>
+        <a asp-controller="Ticket" asp-action="Create" class="btn btn-primary">Create Ticket</a>
+    </div>
+
+    <form method="get" asp-controller="Ticket" asp-action="Index" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="eventId" value="@Model.EventId" class="form-control" placeholder="Filter by EventId" />
+        </div>
+        <div class="col-md-3">
+            <input type="text" name="studentId" value="@Model.StudentId" class="form-control" placeholder="Filter by StudentId" />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">Search</button>
+        </div>
+    </form>
+
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Ticket Code</th>
+                <th>Event</th>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Check-In Time</th>
+                <th style="width:120px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Tickets.Count == 0)
+            {
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No tickets found.</td>
+                </tr>
+            }
+            else
+            {
+                foreach (var ticket in Model.Tickets)
+                {
+                    <tr>
+                        <td>@ticket.TicketCode</td>
+                        <td>@ticket.EventName</td>
+                        <td>@ticket.StudentName</td>
+                        <td>@ticket.Status</td>
+                        <td>@(ticket.CheckInTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                        <td>
+                            <a asp-controller="Ticket" asp-action="Edit" asp-route-id="@ticket.TicketId" class="btn btn-sm btn-warning">Edit</a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

@@ -3,7 +3,7 @@ using AEMS_Solution.Models.Event;
 using AutoMapper;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.Organizer;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
