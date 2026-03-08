@@ -1,6 +1,6 @@
 using BusinessLogic.DTOs.Ticket;
 
-namespace BusinessLogic.Service.Organizer
+namespace BusinessLogic.Service.Organizer.CheckIn
 {
     public interface ICheckInService
     {

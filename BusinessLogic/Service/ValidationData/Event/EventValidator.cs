@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
 using DataAccess.Enum;
 
-namespace BusinessLogic.Service.ValidationData
+namespace BusinessLogic.Service.ValidationData.Event
 {
 	public class EventValidator : IEventValidator
 	{
@@ -60,6 +60,26 @@ namespace BusinessLogic.Service.ValidationData
 			// Update thì có thể reuse rule create nếu bạn muốn
 			if (dto.StartTime >= dto.EndTime)
 				throw new BusinessValidationException("StartTime phải nhỏ hơn EndTime.");
+		}
+
+		public void ValidateAgendas(List<CreateAgendaItemDto>? agendas)
+		{
+			if (agendas == null) return;
+			foreach (var a in agendas)
+			{
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+				if (isEmpty) continue;
+
+				if (a.StartTime != null && a.EndTime != null && a.EndTime <= a.StartTime)
+					throw new BusinessValidationException("Agenda EndTime phải lớn hơn StartTime");
+			}
+		}
+
+		public void ValidateDeposit(CreateEventRequestDto dto)
+		{
+			if (dto.IsDepositRequired && dto.DepositAmount <= 0)
+				throw new BusinessValidationException("DepositAmount phải lớn hơn 0 khi deposit được yêu cầu.");
 		}
 		public class BusinessValidationException : Exception
 		{

@@ -2,17 +2,23 @@ using System.Text.Json.Serialization;
 using AEMS_Solution.Configurations;
 using AEMS_Solution.Hubs;
 using AEMS_Solution.Services;
-using BusinessLogic.Service.Chat.ChatforUser;
-using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
+using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Event.Sub_Service.Ticket;
+using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Organizer.CheckIn;
 using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.User;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
+using BusinessLogic.Service.ValidationData.Event;
+using BusinessLogic.Service.ValidationData.Ticket;
+using BusinessLogic.Service.ValidationData.Topic;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories;
@@ -65,14 +71,20 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IEventWaitlistService, EventWaitlistService>();
 // keep facade for backward compatibility
 builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.OrganizerService>();
+builder.Services.AddScoped<ITicketService, TicketService>();
+builder.Services.AddScoped<ITopicService, TopicService>();
 builder.Services.AddScoped<IEventValidator, EventValidator>();
+builder.Services.AddScoped<ITicketValidator, TicketValidator>();
+builder.Services.AddScoped<ITopicValidator, TopicValidator>();
 // Approver services (query + command)
 builder.Services.AddScoped<IApproverQueryService, ApproverService>();
 builder.Services.AddScoped<IApproverCommandService, ApproverService>();
+builder.Services.AddScoped<ICheckInService, CheckInService>();
 // Student services
 builder.Services.AddScoped<IStudentEventService, StudentEventService>();
 // Organizer CheckIn service
 builder.Services.AddScoped<ICheckInService, CheckInService>();
+builder.Services.AddScoped<IOrganizerValidator, OrganizerValidator>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));

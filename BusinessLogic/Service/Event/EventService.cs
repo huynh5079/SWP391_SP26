@@ -9,7 +9,7 @@ using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using Microsoft.EntityFrameworkCore;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 
 namespace BusinessLogic.Service.Event;
 

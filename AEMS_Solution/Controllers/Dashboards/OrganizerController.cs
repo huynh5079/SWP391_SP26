@@ -6,7 +6,7 @@ using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
 using AutoMapper;
 using BusinessLogic.Service.Organizer;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
