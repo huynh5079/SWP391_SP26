@@ -145,26 +145,26 @@ class ChatbotManager {
                 <div class="msg-text">${this.escapeHtml(content)}</div>
             `;
         } else {
-            let sourcesHtml = '';
-            if (sources && sources.length > 0) {
-                sourcesHtml = `
-                    <div class="msg-sources">
-                        <small><strong>Nguồn:</strong></small>
-                        <ul>
-                            ${sources.map(s => {
-                        const score = (s.score * 100).toFixed(1);
-                        const title = s.meta?.title || s.meta?.source || 'Không rõ';
-                        return `<li><small>${this.escapeHtml(title)} (${score}%)</small></li>`;
-                    }).join('')}
-                        </ul>
-                    </div>
-                `;
-            }
+            // Sources display hidden per user request
+            // let sourcesHtml = '';
+            // if (sources && sources.length > 0) {
+            //     sourcesHtml = `
+            //         <div class="msg-sources">
+            //             <small><strong>Nguồn:</strong></small>
+            //             <ul>
+            //                 ${sources.map(s => {
+            //             const score = (s.score * 100).toFixed(1);
+            //             const title = s.meta?.title || s.meta?.source || 'Không rõ';
+            //             return `<li><small>${this.escapeHtml(title)} (${score}%)</small></li>`;
+            //         }).join('')}
+            //             </ul>
+            //         </div>
+            //     `;
+            // }
 
             messageDiv.innerHTML = `
                 <div class="msg-author">Chatbot AEMS</div>
                 <div class="msg-text">${this.escapeHtml(content)}</div>
-                ${sourcesHtml}
             `;
         }
 

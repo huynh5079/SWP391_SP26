@@ -913,7 +913,12 @@ class RagEngine:
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
             
-            "CHẾ ĐỘ HOẠT ĐỘNG:\n"
+            "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
+            "0. 🎯 ƯU TIÊN CAO NHẤT - NẾU người dùng CHÀO HỎI (xin chào, hi, hello, chào bạn, hey, v.v.):\n"
+            "   → Chào lại thân thiện như bạn bè\n"
+            "   → Giới thiệu: 'Mình là trợ lý AI của hệ thống AEMS, chuyên hỗ trợ thông tin về các sự kiện, phản hồi và phân tích liên quan đến AEMS'\n"
+            "   → Hỏi người dùng cần giúp gì\n"
+            "   → KHÔNG cần tìm kiếm hoặc đề cập sự kiện cụ thể trong lời chào\n\n"
             "1. NẾU câu hỏi liên quan đến SỰ KIỆN:\n"
             "   → Ưu tiên sử dụng dữ liệu liên quan được cung cấp\n"
             "   → Khuyến nghị sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
@@ -1046,7 +1051,12 @@ class RagEngine:
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
             
-            "CHẾ ĐỘ HOẠT ĐỘNG:\n"
+            "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
+            "0. 🎯 ƯU TIÊN CAO NHẤT - NẾU người dùng CHÀO HỎI (xin chào, hi, hello, chào bạn, hey, v.v.):\n"
+            "   → Chào lại thân thiện như bạn bè\n"
+            "   → Giới thiệu: 'Mình là trợ lý AI của hệ thống AEMS, chuyên hỗ trợ thông tin về các sự kiện, phản hồi và phân tích liên quan đến AEMS'\n"
+            "   → Hỏi người dùng cần giúp gì\n"
+            "   → KHÔNG cần tìm kiếm hoặc đề cập sự kiện cụ thể trong lời chào\n\n"
             "1. NẾU câu hỏi liên quan đến SỰ KIỆN:\n"
             "   → Ưu tiên sử dụng dữ liệu liên quan được cung cấp\n"
             "   → Khuyến nghị sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
