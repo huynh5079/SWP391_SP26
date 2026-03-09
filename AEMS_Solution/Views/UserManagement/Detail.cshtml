@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Chi tiết Người dùng";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string ToDateTimeLocalValue(DateTime? value) => value?.ToString("yyyy-MM-ddTHH:mm:ss") ?? string.Empty;
 }
 
 <div class="container py-4">
@@ -35,20 +37,68 @@
                         }
                     </div>
 
-                    <form asp-action="Ban" asp-route-id="@Model.Id" method="post" onsubmit="return confirmAction(event, 'Xác nhận thay đổi trạng thái?');">
-                        @if (Model.IsBanned == true)
-                        {
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="bi bi-unlock me-2"></i> Mở khóa tài khoản
-                            </button>
-                        }
-                        else
-                        {
-                            <button type="submit" class="btn btn-danger w-100">
-                                <i class="bi bi-lock me-2"></i> Cấm tài khoản
-                            </button>
-                        }
-                    </form>
+                     @if (Model.ReactivateAt.HasValue && Model.Status == DataAccess.Enum.UserStatusEnum.Inactive)
+                     {
+                         <div class="alert alert-warning text-start small">
+                             <div><strong>Mở khóa lúc:</strong> @Model.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                             <div class="text-primary fw-semibold lock-countdown" data-reactivate-at="@Model.ReactivateAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></div>
+                         </div>
+                     }
+
+                     @if (Model.IsBanned == true)
+                     {
+                         <form asp-action="Unban" asp-route-id="@Model.Id" method="post" onsubmit="return confirmAction(event, 'Xác nhận mở khóa tài khoản?');">
+                             <button type="submit" class="btn btn-success w-100">
+                                 <i class="bi bi-unlock me-2"></i> Mở khóa tài khoản
+                             </button>
+                         </form>
+                     }
+                     else
+                     {
+                         <form id="detailLockForm" asp-action="Ban" method="post" onsubmit="return confirmAction(event, 'Xác nhận khóa tài khoản?');">
+                             <input type="hidden" name="Id" value="@Model.Id" />
+                             <input type="hidden" name="Status" value="Inactive" />
+
+                              <div class="mb-3 text-start">
+                                  <label for="detailLockType" class="form-label fw-bold">Loại khóa</label>
+                                  <select id="detailLockType" class="form-select">
+                                      <option value="manual">Khóa thủ công</option>
+                                      <option value="timed">Khóa theo thời gian</option>
+                                  </select>
+                              </div>
+
+                              <div class="mb-3 text-start d-none" id="detailReactivateAtWrapper">
+                                  <label class="form-label fw-bold">Mở khóa tự động lúc</label>
+                                  <div class="row g-2">
+                                      <div class="col-4">
+                                          <input type="number" id="detailLockYear" class="form-control" min="0" placeholder="Năm" />
+                                      </div>
+                                      <div class="col-4">
+                                          <input type="number" id="detailLockMonth" class="form-control" min="0" placeholder="Tháng" />
+                                      </div>
+                                      <div class="col-4">
+                                          <input type="number" id="detailLockDay" class="form-control" min="0" placeholder="Ngày" />
+                                      </div>
+                                      <div class="col-4">
+                                          <input type="number" id="detailLockHour" class="form-control" min="0" placeholder="Giờ" />
+                                      </div>
+                                      <div class="col-4">
+                                          <input type="number" id="detailLockMinute" class="form-control" min="0" placeholder="Phút" />
+                                      </div>
+                                      <div class="col-4">
+                                          <input type="number" id="detailLockSecond" class="form-control" min="0" placeholder="Giây" />
+                                      </div>
+                                  </div>
+                                  <input type="hidden" id="detailReactivateAt" name="ReactivateAt" value="@ToDateTimeLocalValue(Model.ReactivateAt)" />
+                              </div>
+
+                              <small class="text-muted d-block mb-3" id="detailLockPreview">Khóa thủ công sẽ chỉ mở khi admin mở khóa.</small>
+
+                             <button type="submit" class="btn btn-danger w-100">
+                                 <i class="bi bi-lock me-2"></i> Khóa tài khoản
+                             </button>
+                         </form>
+                     }
                 </div>
             </div>
         </div>
@@ -117,6 +167,152 @@
                         }
                     </div>
                 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const countdownElements = document.querySelectorAll('.lock-countdown');
+            const detailLockForm = document.getElementById('detailLockForm');
+            const detailLockType = document.getElementById('detailLockType');
+            const detailReactivateAtWrapper = document.getElementById('detailReactivateAtWrapper');
+            const detailLockYear = document.getElementById('detailLockYear');
+            const detailLockMonth = document.getElementById('detailLockMonth');
+            const detailLockDay = document.getElementById('detailLockDay');
+            const detailLockHour = document.getElementById('detailLockHour');
+            const detailLockMinute = document.getElementById('detailLockMinute');
+            const detailLockSecond = document.getElementById('detailLockSecond');
+            const detailReactivateAt = document.getElementById('detailReactivateAt');
+            const detailLockPreview = document.getElementById('detailLockPreview');
+            const pad = value => value.toString().padStart(2, '0');
+            const formatDateTimeLocal = value => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+            const formatDateTimeDisplay = value => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+            let currentDetailLockMode = 'manual';
+
+            const setDetailTimedInputs = value => {
+                if (!detailLockYear || !detailLockMonth || !detailLockDay || !detailLockHour || !detailLockMinute || !detailLockSecond) {
+                    return;
+                }
+
+                detailLockYear.value = '';
+                detailLockMonth.value = '';
+                detailLockDay.value = '';
+                detailLockHour.value = '';
+                detailLockMinute.value = '';
+                detailLockSecond.value = '';
+            };
+
+            const updateDetailLockSchedule = () => {
+                if (!detailLockType || !detailReactivateAtWrapper || !detailReactivateAt || !detailLockPreview
+                    || !detailLockYear || !detailLockMonth || !detailLockDay || !detailLockHour || !detailLockMinute || !detailLockSecond) {
+                    return;
+                }
+
+                if (detailLockType.value === 'timed') {
+                    const years = Number.parseInt(detailLockYear.value || '0', 10);
+                    const months = Number.parseInt(detailLockMonth.value || '0', 10);
+                    const days = Number.parseInt(detailLockDay.value || '0', 10);
+                    const hours = Number.parseInt(detailLockHour.value || '0', 10);
+                    const minutes = Number.parseInt(detailLockMinute.value || '0', 10);
+                    const seconds = Number.parseInt(detailLockSecond.value || '0', 10);
+
+                    if ([years, months, days, hours, minutes, seconds].some(value => Number.isNaN(value) || value < 0)) {
+                        detailReactivateAt.value = '';
+                        detailLockPreview.textContent = 'Các giá trị phải lớn hơn hoặc bằng 0.';
+                        return;
+                    }
+
+                    if (![years, months, days, hours, minutes, seconds].some(value => value > 0)) {
+                        detailReactivateAt.value = '';
+                        detailLockPreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                        return;
+                    }
+
+                    const unlockAt = new Date();
+                    unlockAt.setFullYear(unlockAt.getFullYear() + years);
+                    unlockAt.setMonth(unlockAt.getMonth() + months);
+                    unlockAt.setDate(unlockAt.getDate() + days);
+                    unlockAt.setHours(unlockAt.getHours() + hours);
+                    unlockAt.setMinutes(unlockAt.getMinutes() + minutes);
+                    unlockAt.setSeconds(unlockAt.getSeconds() + seconds);
+
+                    detailReactivateAt.value = formatDateTimeLocal(unlockAt);
+                    detailLockPreview.textContent = `Tài khoản sẽ tự mở khóa lúc ${formatDateTimeDisplay(unlockAt)}.`;
+                    return;
+                }
+
+                detailReactivateAtWrapper.classList.add('d-none');
+                setDetailTimedInputs('');
+                detailReactivateAt.value = '';
+                detailLockPreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
+            };
+
+            const applyDetailLockMode = mode => {
+                if (!detailReactivateAtWrapper || !detailReactivateAt || !detailLockPreview) {
+                    return;
+                }
+
+                currentDetailLockMode = mode;
+
+                if (mode === 'timed') {
+                    detailReactivateAtWrapper.classList.remove('d-none');
+                    detailReactivateAt.required = true;
+                    setDetailTimedInputs('');
+                    detailReactivateAt.value = '';
+                    detailLockPreview.textContent = 'Nhập theo thứ tự năm, tháng, ngày, giờ, phút, giây. Có thể để trống hoặc 0, nhưng ít nhất 1 trường phải lớn hơn 0.';
+                    return;
+                }
+
+                detailReactivateAtWrapper.classList.add('d-none');
+                detailReactivateAt.required = false;
+                setDetailTimedInputs('');
+                detailReactivateAt.value = '';
+                detailLockPreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
+            };
+
+            const updateCountdown = element => {
+                const unlockAt = new Date(element.dataset.reactivateAt);
+                const remaining = unlockAt.getTime() - Date.now();
+
+                if (Number.isNaN(unlockAt.getTime())) {
+                    element.textContent = '';
+                    return;
+                }
+
+                if (remaining <= 0) {
+                    element.textContent = 'Đang chờ tự mở khóa...';
+                    return;
+                }
+
+                const totalSeconds = Math.floor(remaining / 1000);
+                const days = Math.floor(totalSeconds / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                const dayText = days > 0 ? `${days}d ` : '';
+                element.textContent = `Còn lại: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            };
+
+            countdownElements.forEach(element => {
+                updateCountdown(element);
+                window.setInterval(() => updateCountdown(element), 1000);
+            });
+
+            detailLockType?.addEventListener('change', event => applyDetailLockMode(event.target.value));
+            [detailLockYear, detailLockMonth, detailLockDay, detailLockHour, detailLockMinute, detailLockSecond].forEach(input => {
+                input?.addEventListener('input', updateDetailLockSchedule);
+            });
+
+            detailLockForm?.addEventListener('submit', event => {
+                if (currentDetailLockMode === 'timed' && !detailReactivateAt.value) {
+                    event.preventDefault();
+                    detailLockPreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                }
+            });
+
+            applyDetailLockMode('manual');
+        })();
+    </script>
+}
             </div>
         </div>
     </div>

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BusinessLogic.Service.ValiDateRole.ValiDateforStudent
+namespace BusinessLogic.Service.ValiDateRole.ValiDateforStudent.QuizScore
 {
 	internal class StudentQuizScore
 	{

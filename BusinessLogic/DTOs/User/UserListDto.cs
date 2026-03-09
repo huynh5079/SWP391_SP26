@@ -11,6 +11,7 @@ namespace BusinessLogic.DTOs.User
         public UserStatusEnum? Status { get; set; }
         public string? AvatarUrl { get; set; }
         public bool? IsBanned { get; set; }
+        public DateTime? ReactivateAt { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
 }
