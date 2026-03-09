@@ -7,15 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <Compile Remove="AutoMapper\Admin\**" />
     <Compile Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <Compile Remove="Views\EventforOrganizer\**" />
+    <Content Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <Content Remove="AutoMapper\Admin\**" />
     <Content Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <Content Remove="Views\EventforOrganizer\**" />
+    <EmbeddedResource Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <EmbeddedResource Remove="AutoMapper\Admin\**" />
     <EmbeddedResource Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <EmbeddedResource Remove="Views\EventforOrganizer\**" />
+    <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <None Remove="AutoMapper\Admin\**" />
     <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <None Remove="Views\EventforOrganizer\**" />
@@ -41,6 +45,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="AutoMapper\Admin\" />
+    <Folder Include="Controllers\BaseAction%28ValidInController%29\Admin\" />
+    <Folder Include="Controllers\BaseAction%28ValidInController%29\Event\" />
+    <Folder Include="Controllers\BaseAction%28ValidInController%29\Approval\" />
+    <Folder Include="Controllers\BaseAction%28ValidInController%29\Organizer\" />
     <Folder Include="AutoMapper\Chat\Chatbot\" />
     <Folder Include="AutoMapper\Chat\ChatwithUser\" />
     <Folder Include="AutoMapper\User\" />
