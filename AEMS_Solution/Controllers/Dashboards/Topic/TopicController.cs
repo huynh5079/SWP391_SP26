@@ -6,7 +6,7 @@ using BusinessLogic.Service.ValidationData.Topic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Dashboards
+namespace AEMS_Solution.Controllers.Dashboards.Topic
 {
     [Authorize(Roles = "Approver")]
     public class TopicController : BaseController

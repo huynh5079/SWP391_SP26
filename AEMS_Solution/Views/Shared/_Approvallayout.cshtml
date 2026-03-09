@@ -33,8 +33,18 @@
                         </li>
 
 
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Topic" asp-action="Index">Topics</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="approverManageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Manage
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="approverManageDropdown">
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Topic" asp-action="Index">Topics</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Topic" asp-action="Create">Create Topic</a>
+                                </li>
+                            </ul>
                         </li>
                         
                     </ul>
