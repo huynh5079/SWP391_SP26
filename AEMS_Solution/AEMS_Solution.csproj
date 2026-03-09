@@ -44,8 +44,6 @@
     <Folder Include="AutoMapper\Chat\Chatbot\" />
     <Folder Include="AutoMapper\Chat\ChatwithUser\" />
     <Folder Include="AutoMapper\User\" />
-    <Folder Include="BaseAction%28ValidforController%29\Approver\" />
-    <Folder Include="BaseAction%28ValidforController%29\Approver\Topic\" />
     <Folder Include="BaseAction%28ValidforController%29\Organizer\Event\Ticket\" />
   </ItemGroup>
 

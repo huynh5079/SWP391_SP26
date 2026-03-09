@@ -1,0 +1,73 @@
+﻿@model AEMS_Solution.Models.Event.EventAgenda.EditAgendaViewModel
+@{
+    ViewData["Title"] = "Edit Agenda";
+    Layout = "_OrganizerLayout";
+}
+
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="mb-1">Edit Agenda</h2>
+            <p class="text-muted mb-0">Sự kiện: @Model.EventTitle</p>
+        </div>
+        <a asp-action="MyAgenda" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Quay lại
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form asp-action="EditAgenda" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <input asp-for="Id" type="hidden" />
+                <input asp-for="EventId" type="hidden" />
+                <input asp-for="EventTitle" type="hidden" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="col-md-6">
+                    <label asp-for="SessionName" class="form-label fw-semibold"></label>
+                    <input asp-for="SessionName" class="form-control" />
+                    <span asp-validation-for="SessionName" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="SpeakerName" class="form-label fw-semibold"></label>
+                    <input asp-for="SpeakerName" class="form-control" />
+                    <span asp-validation-for="SpeakerName" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label fw-semibold"></label>
+                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="StartTime" class="form-label fw-semibold"></label>
+                    <input asp-for="StartTime" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="StartTime" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="EndTime" class="form-label fw-semibold"></label>
+                    <input asp-for="EndTime" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="EndTime" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Location" class="form-label fw-semibold"></label>
+                    <input asp-for="Location" class="form-control" placeholder="Building A - Floor 2 - Room 101" />
+                </div>
+
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                    <a asp-action="MyAgenda" class="btn btn-outline-secondary">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

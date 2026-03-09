@@ -113,6 +113,10 @@
             margin-top: 12px;
         }
 
+        .agenda-location-box {
+            margin-top: 12px;
+        }
+
         .agenda-head {
             display: flex;
             justify-content: space-between;
@@ -341,8 +345,12 @@
 
             <div class="row" style="align-items:center; justify-content:space-between;">
                 <h3 style="margin:0;">Event Agendas</h3>
-                <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-secondary" id="btnSuggestAgenda">+ Agenda by event type</button>
+                    <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
+                </div>
             </div>
+            <div class="hint" id="agendaSuggestionHint">Chọn `Event Type`, sau đó bấm `Agenda by event type` để áp dụng agenda mẫu phù hợp.</div>
 
             <div id="agendaContainer">
                 @for (int i = 0; i < (Model.Agendas?.Count ?? 0); i++)
@@ -356,11 +364,13 @@
                         <div class="row">
                             <div class="col">
                                 <label>Session Name</label>
-                                <input asp-for="Agendas[@i].SessionName" />
+                                <input asp-for="Agendas[@i].SessionName" required />
+                                <span asp-validation-for="Agendas[@i].SessionName" class="error"></span>
                             </div>
                             <div class="col">
                                 <label>Speaker</label>
-                                <input asp-for="Agendas[@i].SpeakerName" />
+                                <input asp-for="Agendas[@i].SpeakerName" required />
+                                <span asp-validation-for="Agendas[@i].SpeakerName" class="error"></span>
                             </div>
                         </div>
 
@@ -378,14 +388,57 @@
                             </div>
                         </div>
 
-                        <label>Location (agenda)</label>
-                        <select asp-for="Agendas[@i].Location">
-                            <option value="">-- Select agenda room --</option>
-                            @foreach (var location in Model.Locations)
-                            {
-                                <option value="@location.Text">@location.Text</option>
-                            }
-                        </select>
+                        <input asp-for="Agendas[@i].Location" type="hidden" class="agenda-location-value" />
+
+                        <div class="section-box agenda-location-box">
+                            <h4 class="section-title">Room Information</h4>
+
+                            <div class="row">
+                                <div class="col">
+                                    <label>University *</label>
+                                    <select class="agenda-university">
+                                        <option value="">-- Select University --</option>
+                                    </select>
+                                </div>
+
+                                <div class="col">
+                                    <label>Building *</label>
+                                    <select class="agenda-building">
+                                        <option value="">-- Select Building --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col">
+                                    <label>Floor *</label>
+                                    <select class="agenda-floor">
+                                        <option value="">-- Select Floor --</option>
+                                    </select>
+                                </div>
+
+                                <div class="col">
+                                    <label>Room *</label>
+                                    <select class="agenda-room">
+                                        <option value="">-- Select Room --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col">
+                                    <label>Location Type</label>
+                                    <input type="text" class="agenda-location-type" readonly placeholder="Auto from approver" />
+                                </div>
+
+                                <div class="col">
+                                    <label>Room Capacity</label>
+                                    <input type="text" class="agenda-room-capacity" readonly placeholder="Auto from approver" />
+                                </div>
+                            </div>
+
+                            <div class="hint agenda-location-hint">Nếu chưa nhập thời gian agenda, hệ thống sẽ dùng thời gian của event để lọc phòng còn trống.</div>
+                        </div>
                     </div>
                 }
             </div>
@@ -408,11 +461,11 @@
             <div class="row">
                 <div class="col">
                     <label>Session Name</label>
-                    <input name="Agendas[__i__].SessionName" />
+                    <input name="Agendas[__i__].SessionName" required />
                 </div>
                 <div class="col">
                     <label>Speaker</label>
-                    <input name="Agendas[__i__].SpeakerName" />
+                    <input name="Agendas[__i__].SpeakerName" required />
                 </div>
             </div>
 
@@ -430,14 +483,57 @@
                 </div>
             </div>
 
-            <label>Location (agenda)</label>
-            <select name="Agendas[__i__].Location">
-                <option value="">-- Select agenda room --</option>
-                @foreach (var location in Model.Locations)
-                {
-                    <option value="@location.Text">@location.Text</option>
-                }
-            </select>
+            <input name="Agendas[__i__].Location" type="hidden" class="agenda-location-value" />
+
+            <div class="section-box agenda-location-box">
+                <h4 class="section-title">Room Information</h4>
+
+                <div class="row">
+                    <div class="col">
+                        <label>University *</label>
+                        <select class="agenda-university">
+                            <option value="">-- Select University --</option>
+                        </select>
+                    </div>
+
+                    <div class="col">
+                        <label>Building *</label>
+                        <select class="agenda-building">
+                            <option value="">-- Select Building --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label>Floor *</label>
+                        <select class="agenda-floor">
+                            <option value="">-- Select Floor --</option>
+                        </select>
+                    </div>
+
+                    <div class="col">
+                        <label>Room *</label>
+                        <select class="agenda-room">
+                            <option value="">-- Select Room --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label>Location Type</label>
+                        <input type="text" class="agenda-location-type" readonly placeholder="Auto from approver" />
+                    </div>
+
+                    <div class="col">
+                        <label>Room Capacity</label>
+                        <input type="text" class="agenda-room-capacity" readonly placeholder="Auto from approver" />
+                    </div>
+                </div>
+
+                <div class="hint agenda-location-hint">Nếu chưa nhập thời gian agenda, hệ thống sẽ dùng thời gian của event để lọc phòng còn trống.</div>
+            </div>
         </div>
     </template>
 
@@ -469,6 +565,8 @@
             const agendaContainer = document.getElementById("agendaContainer");
             const tpl = document.getElementById("agendaTemplate");
             const btnAdd = document.getElementById("btnAddAgenda");
+            const btnSuggestAgenda = document.getElementById("btnSuggestAgenda");
+            const agendaSuggestionHint = document.getElementById("agendaSuggestionHint");
 
             const isDeposit = document.getElementById("IsDepositRequired");
             const depositRow = document.getElementById("depositRow");
@@ -498,6 +596,7 @@
             const locationHint = document.getElementById("locationAvailabilityHint");
             const maxCapacityInput = document.getElementById("MaxCapacity");
             const locationCapacityHint = document.getElementById("locationCapacityHint");
+            const agendaSuggestionsByType = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AgendaSuggestionsByType));
             let availableLocations = [];
 
             function setOptions(select, placeholder, values, selectedValue) {
@@ -522,6 +621,11 @@
 
             function getDistinctValues(items, selector) {
                 return [...new Set(items.map(selector).filter(Boolean))];
+            }
+
+            function getLocationValue(location) {
+                return location?.address
+                    || [location?.name, location?.building, location?.floor, location?.room].filter(Boolean).join(' - ');
             }
 
             function syncSelectedLocation() {
@@ -580,6 +684,110 @@
                 syncSelectedLocation();
             }
 
+            function syncAgendaLocation(item) {
+                if (!item) return;
+
+                const selectedLocation = (item._availableLocations || []).find(x =>
+                    x.name === item._refs.university.value &&
+                    x.building === item._refs.building.value &&
+                    x.floor === item._refs.floor.value &&
+                    x.room === item._refs.room.value);
+
+                item._refs.locationValue.value = selectedLocation ? getLocationValue(selectedLocation) : '';
+                item._refs.locationType.value = selectedLocation?.type ?? '';
+                item._refs.roomCapacity.value = selectedLocation?.capacity ?? '';
+            }
+
+            function populateAgendaRoomHierarchy(item, preferredLocationValue) {
+                if (!item?._refs) return;
+
+                const locations = item._availableLocations || [];
+                const selectedLocation = locations.find(x => getLocationValue(x) === preferredLocationValue);
+
+                const selectedUniversity = selectedLocation?.name || item._refs.university.value;
+                const universities = getDistinctValues(locations, x => x.name);
+                setOptions(item._refs.university, '-- Select University --', universities, selectedUniversity);
+
+                const filteredByUniversity = locations.filter(x => x.name === item._refs.university.value);
+                const selectedBuilding = selectedLocation?.building || item._refs.building.value;
+                const buildings = getDistinctValues(filteredByUniversity, x => x.building);
+                setOptions(item._refs.building, '-- Select Building --', buildings, selectedBuilding);
+
+                const filteredByBuilding = filteredByUniversity.filter(x => x.building === item._refs.building.value);
+                const selectedFloor = selectedLocation?.floor || item._refs.floor.value;
+                const floors = getDistinctValues(filteredByBuilding, x => x.floor);
+                setOptions(item._refs.floor, '-- Select Floor --', floors, selectedFloor);
+
+                const filteredByFloor = filteredByBuilding.filter(x => x.floor === item._refs.floor.value);
+                const selectedRoom = selectedLocation?.room || item._refs.room.value;
+                const rooms = getDistinctValues(filteredByFloor, x => x.room);
+                setOptions(item._refs.room, '-- Select Room --', rooms, selectedRoom);
+
+                syncAgendaLocation(item);
+            }
+
+            async function refreshAgendaAvailableLocations(item) {
+                if (!item?._refs) return;
+
+                const startValue = item._refs.startTime.value || startTimeInput?.value || '';
+                const endValue = item._refs.endTime.value || endTimeInput?.value || '';
+
+                if (!startValue || !endValue) {
+                    item._availableLocations = [];
+                    populateAgendaRoomHierarchy(item, item._refs.locationValue.value);
+                    item._refs.hint.textContent = 'Hãy nhập thời gian cho event hoặc agenda để lọc phòng còn trống.';
+                    return;
+                }
+
+                try {
+                    const url = `/Organizer/GetAvailableLocations?startTime=${encodeURIComponent(startValue)}&endTime=${encodeURIComponent(endValue)}`;
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) {
+                        item._refs.hint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                        return;
+                    }
+
+                    item._availableLocations = await response.json();
+                    populateAgendaRoomHierarchy(item, item._refs.locationValue.value);
+                    const usingAgendaTime = Boolean(item._refs.startTime.value && item._refs.endTime.value);
+                    const timeScopeLabel = usingAgendaTime ? 'agenda đã chọn' : 'event hiện tại';
+                    item._refs.hint.textContent = item._availableLocations.length > 0
+                        ? `Có ${item._availableLocations.length} phòng đang khả dụng trong khoảng thời gian ${timeScopeLabel}.`
+                        : `Không có phòng khả dụng trong khoảng thời gian ${timeScopeLabel}.`;
+                } catch {
+                    item._refs.hint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                }
+            }
+
+            function initializeAgendaLocationPicker(item) {
+                if (!item || item.dataset.locationInitialized === 'true') return;
+
+                item._refs = {
+                    startTime: item.querySelector("input[name$='.StartTime']"),
+                    endTime: item.querySelector("input[name$='.EndTime']"),
+                    locationValue: item.querySelector('.agenda-location-value'),
+                    university: item.querySelector('.agenda-university'),
+                    building: item.querySelector('.agenda-building'),
+                    floor: item.querySelector('.agenda-floor'),
+                    room: item.querySelector('.agenda-room'),
+                    locationType: item.querySelector('.agenda-location-type'),
+                    roomCapacity: item.querySelector('.agenda-room-capacity'),
+                    hint: item.querySelector('.agenda-location-hint')
+                };
+
+                item._availableLocations = [];
+
+                item._refs.startTime?.addEventListener('change', () => refreshAgendaAvailableLocations(item));
+                item._refs.endTime?.addEventListener('change', () => refreshAgendaAvailableLocations(item));
+                item._refs.university?.addEventListener('change', () => populateAgendaRoomHierarchy(item, ''));
+                item._refs.building?.addEventListener('change', () => populateAgendaRoomHierarchy(item, ''));
+                item._refs.floor?.addEventListener('change', () => populateAgendaRoomHierarchy(item, ''));
+                item._refs.room?.addEventListener('change', () => syncAgendaLocation(item));
+
+                item.dataset.locationInitialized = 'true';
+                refreshAgendaAvailableLocations(item);
+            }
+
             async function refreshAvailableLocations() {
                 if (!startTimeInput || !endTimeInput || !locationIdInput) return;
 
@@ -615,6 +823,12 @@
 
             if (startTimeInput) startTimeInput.addEventListener('change', refreshAvailableLocations);
             if (endTimeInput) endTimeInput.addEventListener('change', refreshAvailableLocations);
+            if (startTimeInput) startTimeInput.addEventListener('change', () => {
+                agendaContainer.querySelectorAll('.agenda-item').forEach(refreshAgendaAvailableLocations);
+            });
+            if (endTimeInput) endTimeInput.addEventListener('change', () => {
+                agendaContainer.querySelectorAll('.agenda-item').forEach(refreshAgendaAvailableLocations);
+            });
             if (universitySelect) universitySelect.addEventListener('change', () => populateRoomHierarchy(''));
             if (buildingSelect) buildingSelect.addEventListener('change', () => populateRoomHierarchy(''));
             if (floorSelect) floorSelect.addEventListener('change', () => populateRoomHierarchy(''));
@@ -654,12 +868,63 @@
                 });
             }
 
-            function addAgenda() {
+            function addAgenda(agendaData) {
                 const i = getNextIndex();
                 const html = tpl.innerHTML.replaceAll("__i__", i).replaceAll("__n__", i + 1);
                 const wrapper = document.createElement("div");
                 wrapper.innerHTML = html.trim();
-                agendaContainer.appendChild(wrapper.firstElementChild);
+                const agendaItem = wrapper.firstElementChild;
+                agendaContainer.appendChild(agendaItem);
+
+                if (agendaData) {
+                    const sessionNameInput = agendaItem.querySelector("input[name$='.SessionName']");
+                    const speakerNameInput = agendaItem.querySelector("input[name$='.SpeakerName']");
+                    const descriptionInput = agendaItem.querySelector("textarea[name$='.Description']");
+
+                    if (sessionNameInput) sessionNameInput.value = agendaData.sessionName ?? '';
+                    if (speakerNameInput) speakerNameInput.value = agendaData.speakerName ?? '';
+                    if (descriptionInput) descriptionInput.value = agendaData.description ?? '';
+                }
+
+                initializeAgendaLocationPicker(agendaItem);
+            }
+
+            function hasAgendaContent() {
+                return [...agendaContainer.querySelectorAll('.agenda-item')].some(item =>
+                    [...item.querySelectorAll('input[type="text"], input[type="datetime-local"], textarea, input[type="hidden"]')]
+                        .some(input => input.value?.trim()));
+            }
+
+            function updateAgendaSuggestionHint() {
+                const typeSelect = document.querySelector("select[name='Type']");
+                const suggestions = agendaSuggestionsByType?.[typeSelect?.value] || [];
+
+                if (!agendaSuggestionHint) return;
+
+                agendaSuggestionHint.textContent = suggestions.length > 0
+                    ? `Agenda gợi ý: ${suggestions.join(', ')}.`
+                    : 'Chọn Event Type, sau đó bấm Agenda by event type để áp dụng agenda mẫu phù hợp.';
+            }
+
+            function applySuggestedAgendas() {
+                const typeSelect = document.querySelector("select[name='Type']");
+                const suggestions = agendaSuggestionsByType?.[typeSelect?.value] || [];
+
+                if (suggestions.length === 0) {
+                    if (agendaSuggestionHint) {
+                        agendaSuggestionHint.textContent = 'Chưa có agenda mẫu cho Event Type hiện tại.';
+                    }
+                    return;
+                }
+
+                if (hasAgendaContent() && !window.confirm('Agenda hiện tại sẽ được thay bằng agenda mẫu theo loại sự kiện. Tiếp tục?')) {
+                    return;
+                }
+
+                agendaContainer.innerHTML = '';
+                suggestions.forEach(sessionName => addAgenda({ sessionName }));
+                renumber();
+                updateAgendaSuggestionHint();
             }
 
             function removeAgenda(btn) {
@@ -668,13 +933,22 @@
                 renumber();
             }
 
-            btnAdd.addEventListener("click", addAgenda);
+            btnAdd.addEventListener("click", () => addAgenda());
+            btnSuggestAgenda?.addEventListener("click", applySuggestedAgendas);
             agendaContainer.addEventListener("click", function (e) {
                 const btn = e.target.closest(".btnRemoveAgenda");
                 if (btn) removeAgenda(btn);
             });
 
-            if (agendaContainer.querySelectorAll(".agenda-item").length === 0) addAgenda();
+            const existingAgendaItems = agendaContainer.querySelectorAll(".agenda-item");
+            if (existingAgendaItems.length === 0) {
+                addAgenda();
+            } else {
+                existingAgendaItems.forEach(initializeAgendaLocationPicker);
+            }
+            const typeSelect = document.querySelector("select[name='Type']");
+            typeSelect?.addEventListener('change', updateAgendaSuggestionHint);
+            updateAgendaSuggestionHint();
             
             // Documents UI
             const docsContainer = document.getElementById("documentsContainer");

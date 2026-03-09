@@ -23,6 +23,9 @@ using BusinessLogic.Service.ValidationData.Event;
 using BusinessLogic.Service.ValidationData.Loction;
 using BusinessLogic.Service.ValidationData.Ticket;
 using BusinessLogic.Service.ValidationData.Topic;
+using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event;
+using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
+using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories;
@@ -93,6 +96,8 @@ builder.Services.AddScoped<IStudentEventService, StudentEventService>();
 // Organizer CheckIn service
 builder.Services.AddScoped<ICheckInService, CheckInService>();
 builder.Services.AddScoped<IOrganizerValidator, OrganizerValidator>();
+builder.Services.AddScoped<IEventAgendaAction, EventAgendaAction>();
+builder.Services.AddScoped<IApproverEventAgendaAction, ApproverEventAgendaAction>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));

@@ -1,0 +1,113 @@
+﻿@model AEMS_Solution.Models.Event.EventAgenda.MyAgendaViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    Layout = Model.IsReadOnly ? "_Approvallayout" : "_OrganizerLayout";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">@Model.PageTitle</h2>
+            <p class="text-muted mb-0">@Model.PageDescription</p>
+        </div>
+        @if (!Model.IsReadOnly)
+        {
+            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" asp-fragment="agendaContainer" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Thêm agenda từ Create Event
+            </a>
+        }
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="get" action="@(Model.IsReadOnly ? Url.Action("Agenda", "Approver") : Url.Action("MyAgenda", "EventAgenda"))" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Tìm kiếm</label>
+                    <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Session name, speaker, event..." />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Sự kiện</label>
+                    <select name="eventId" class="form-select" asp-items="Model.EventOptions">
+                        <option value="">-- Tất cả sự kiện --</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-outline-primary">Lọc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            @if (Model.Agendas.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Session</th>
+                                <th>Speaker</th>
+                                @if (Model.IsReadOnly)
+                                {
+                                    <th>Organizer</th>
+                                }
+                                <th>Event</th>
+                                <th>Time</th>
+                                <th>Location</th>
+                                @if (!Model.IsReadOnly)
+                                {
+                                    <th class="text-end">Action</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var agenda in Model.Agendas)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@(string.IsNullOrWhiteSpace(agenda.SessionName) ? "-" : agenda.SessionName)</div>
+                                        @if (!string.IsNullOrWhiteSpace(agenda.Description))
+                                        {
+                                            <div class="small text-muted text-truncate" style="max-width: 260px;">@agenda.Description</div>
+                                        }
+                                    </td>
+                                    <td>@(string.IsNullOrWhiteSpace(agenda.SpeakerName) ? "-" : agenda.SpeakerName)</td>
+                                    @if (Model.IsReadOnly)
+                                    {
+                                        <td>@(string.IsNullOrWhiteSpace(agenda.OrganizerName) ? "-" : agenda.OrganizerName)</td>
+                                    }
+                                    <td>
+                                        <div class="fw-semibold">@agenda.EventTitle</div>
+                                        <div class="small text-muted">@(agenda.EventType?.ToString() ?? "-") - @agenda.EventStatus</div>
+                                    </td>
+                                    <td>
+                                        <div>@(agenda.StartTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                                        <div class="small text-muted">đến @(agenda.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                                    </td>
+                                    <td>@(string.IsNullOrWhiteSpace(agenda.Location) ? "-" : agenda.Location)</td>
+                                    @if (!Model.IsReadOnly)
+                                    {
+                                        <td class="text-end">
+                                            <div class="d-inline-flex gap-2">
+                                                <a asp-action="EditAgenda" asp-route-id="@agenda.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                                <form asp-action="DeleteAgenda" asp-route-id="@agenda.Id" method="post" onsubmit="return confirm('Xác nhận xóa agenda này?');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">Chưa có agenda nào phù hợp với bộ lọc hiện tại.</div>
+            }
+        </div>
+    </div>
+</div>
