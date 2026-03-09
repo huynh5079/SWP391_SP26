@@ -2,12 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BusinessLogic.DTOs;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
+using EventAgendaEntity = DataAccess.Entities.EventAgenda;
+using EventDocumentEntity = DataAccess.Entities.EventDocument;
 using Microsoft.EntityFrameworkCore;
 using BusinessLogic.Service.ValidationData.Event;
 
@@ -70,7 +73,7 @@ public class EventService : IEventService
 					var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
 					if (studentProfile?.UserId != null)
 					{
-						await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+						await _notificationService.SendNotificationAsync(new SendNotificationRequest
 						{
 							ReceiverId = studentProfile.UserId,
 							Title = "Sự kiện đã bị hủy",
@@ -121,7 +124,7 @@ public class EventService : IEventService
 			// Notify Organizer that their event is live
 			if (staff.UserId != null)
 			{
-				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				await _notificationService.SendNotificationAsync(new SendNotificationRequest
 				{
 					ReceiverId = staff.UserId,
 					Title = "Sự kiện đã được xuất bản",
@@ -407,7 +410,7 @@ public class EventService : IEventService
 						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 					if (isEmpty) continue;
 
-					await _uow.EventAgenda.CreateAsync(new EventAgenda
+					await _uow.EventAgenda.CreateAsync(new EventAgendaEntity
 					{
 						Id = Guid.NewGuid().ToString(),
 						EventId = entity.Id,
@@ -432,7 +435,7 @@ public class EventService : IEventService
 						continue;
 					}
 
-					await _uow.EventDocuments.CreateAsync(new EventDocument
+					await _uow.EventDocuments.CreateAsync(new EventDocumentEntity
 					{
 						Id = Guid.NewGuid().ToString(),
 						EventId = entity.Id,
@@ -578,7 +581,7 @@ public class EventService : IEventService
 						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 					if (isEmpty) continue;
 
-					await _uow.EventAgenda.CreateAsync(new EventAgenda
+					await _uow.EventAgenda.CreateAsync(new EventAgendaEntity
 					{
 						Id = Guid.NewGuid().ToString(),
 						EventId = ev.Id,
@@ -603,7 +606,7 @@ public class EventService : IEventService
 						continue;
 					}
 
-					await _uow.EventDocuments.CreateAsync(new EventDocument
+					await _uow.EventDocuments.CreateAsync(new EventDocumentEntity
 					{
 						Id = Guid.NewGuid().ToString(),
 						EventId = ev.Id,
@@ -631,7 +634,7 @@ public class EventService : IEventService
 						var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
 						if (studentProfile?.UserId != null)
 						{
-							await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+							await _notificationService.SendNotificationAsync(new SendNotificationRequest
 							{
 								ReceiverId = studentProfile.UserId,
 								Title = "Sự kiện đã thay đổi thông tin",

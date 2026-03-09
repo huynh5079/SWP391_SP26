@@ -296,7 +296,13 @@
                         </div>
 
                         <label>Location (agenda)</label>
-                        <input asp-for="Agendas[i].Location" placeholder="VD: Room 201" />
+                        <select asp-for="Agendas[i].Location">
+                            <option value="">-- Select agenda room --</option>
+                            @foreach (var location in Model.Locations)
+                            {
+                                <option value="@location.Text">@location.Text</option>
+                            }
+                        </select>
                     </div>
                 }
             </div>
@@ -344,7 +350,13 @@
             </div>
 
             <label>Location (agenda)</label>
-            <input name="Agendas[__i__].Location" placeholder="VD: Room 201" />
+            <select name="Agendas[__i__].Location">
+                <option value="">-- Select agenda room --</option>
+                @foreach (var location in Model.Locations)
+                {
+                    <option value="@location.Text">@location.Text</option>
+                }
+            </select>
         </div>
     </template>
 

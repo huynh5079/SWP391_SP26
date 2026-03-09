@@ -1,12 +1,12 @@
 using AEMS_Solution.Controllers.Common;
-using AEMS_Solution.Models.Approver;
+using AEMS_Solution.Models.Approver.Manage;
 using BusinessLogic.DTOs.Event.Topic;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.ValidationData.Topic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Dashboards.Topic
+namespace AEMS_Solution.Controllers.Event.Topic
 {
     [Authorize(Roles = "Approver")]
     public class TopicController : BaseController

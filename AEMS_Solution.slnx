@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="AEMS.Test/AEMS.Test.csproj" Id="4512d0ad-72d5-4fcf-a111-3147f427e667" />
   <Project Path="AEMS_Solution/AEMS_Solution.csproj" />
   <Project Path="BusinessLogic/BusinessLogic.csproj" Id="fe65d879-fabb-4fd6-9e15-cd3226e50d7f" />
   <Project Path="DataAccess/DataAccess.csproj" Id="afce57a1-2736-43d8-8654-78600cf509a0" />

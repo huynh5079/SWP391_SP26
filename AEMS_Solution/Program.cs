@@ -8,6 +8,7 @@ using BusinessLogic.Service.Chat.ChatforUser;
 using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Ticket;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.Organizer;
@@ -17,6 +18,7 @@ using BusinessLogic.Service.System;
 using BusinessLogic.Service.User;
 using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.ValidationData.Event;
+using BusinessLogic.Service.ValidationData.Loction;
 using BusinessLogic.Service.ValidationData.Ticket;
 using BusinessLogic.Service.ValidationData.Topic;
 using DataAccess.Entities;
@@ -71,9 +73,11 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IEventWaitlistService, EventWaitlistService>();
 // keep facade for backward compatibility
 builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.OrganizerService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ITopicService, TopicService>();
 builder.Services.AddScoped<IEventValidator, EventValidator>();
+builder.Services.AddScoped<ILocationValidator, LocationValidator>();
 builder.Services.AddScoped<ITicketValidator, TicketValidator>();
 builder.Services.AddScoped<ITopicValidator, TopicValidator>();
 // Approver services (query + command)
