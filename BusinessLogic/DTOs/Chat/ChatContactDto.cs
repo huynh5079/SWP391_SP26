@@ -1,0 +1,14 @@
+namespace BusinessLogic.DTOs.Chat
+{
+    public class ChatContactDto
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+        public string? LastMessage { get; set; }
+        public DateTime? LastMessageAt { get; set; }
+        public int UnreadCount { get; set; }
+        public bool IsOnline { get; set; }
+    }
+}

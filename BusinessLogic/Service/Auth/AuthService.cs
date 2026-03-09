@@ -25,10 +25,21 @@ namespace BusinessLogic.Service.Auth
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto dto)
         {
             var user = await _uow.Users.FindByEmailAsync(dto.Email);
-            // Check if user exists, is banned via boolean flag, or has Banned/Inactive status
-            if (user == null || user.IsBanned == true || user.Status == UserStatusEnum.Banned || user.Status == UserStatusEnum.Inactive)
+            if (user == null)
             {
-                throw new Exception("Email hoặc mật khẩu không chính xác hoặc tài khoản bị khóa.");
+                throw new Exception("Email không tồn tại trong hệ thống (user == null).");
+            }
+            if (user.IsBanned == true)
+            {
+                throw new Exception("Tài khoản bị cấm (IsBanned == true).");
+            }
+            if (user.Status == UserStatusEnum.Banned)
+            {
+                throw new Exception("Tài khoản bị cấm (Status == Banned).");
+            }
+            if (user.Status == UserStatusEnum.Inactive)
+            {
+                throw new Exception("Tài khoản chưa kích hoạt hoặc bị khóa (Status == Inactive).");
             }
 
             if (!HashPasswordHelper.VerifyPassword(dto.Password, user.PasswordHash!))
@@ -96,6 +107,7 @@ namespace BusinessLogic.Service.Auth
                 
                 await _uow.StudentProfiles.CreateAsync(profile);
                 
+                await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
             catch
@@ -115,9 +127,10 @@ namespace BusinessLogic.Service.Auth
             using var transaction = await _uow.BeginTransactionAsync();
             try
             {
-                // 1. Get Role (Organizer/Approver share Staff Role logic, defaulting to Organizer for now)
-                var role = await _uow.Roles.GetAsync(r => r.RoleName == RoleEnum.Organizer);
-                if (role == null) throw new Exception("System Error: Organizer Role not found in Database. Please check Seeding.");
+                // Parse the role from the DTO, default to Organizer if not provided
+                var roleEnum = Enum.TryParse<RoleEnum>(dto.RoleName, out var parsedRole) ? parsedRole : RoleEnum.Organizer;
+                var role = await _uow.Roles.GetAsync(r => r.RoleName == roleEnum);
+                if (role == null) throw new Exception($"System Error: {roleEnum} Role not found in Database. Please check Seeding.");
 
                 // 2. Create User
                 var user = new UserEntity
@@ -134,7 +147,7 @@ namespace BusinessLogic.Service.Auth
 
                 await _uow.Users.CreateAsync(user);
 
-                // 3. Create Staff Profile (Note: Entity name is still StaffProfile, consider renaming in future phase)
+                // 3. Create Staff Profile
                 var profile = new StaffProfile
                 {
                     UserId = user.Id,
@@ -144,6 +157,7 @@ namespace BusinessLogic.Service.Auth
 
                 await _uow.StaffProfiles.CreateAsync(profile);
 
+                await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
             catch
@@ -287,6 +301,7 @@ namespace BusinessLogic.Service.Auth
                     // UserName = email, // Removed: User entity does not have UserName property
                     AvatarUrl = avatarUrl,
                     RoleId = role.Id,
+                    Role = role, // Assure Role navigation property is populated so AuthController won't crash
                     Status = UserStatusEnum.Active,
                     CreatedAt = DateTimeHelper.GetVietnamTime(),
                     UpdatedAt = DateTimeHelper.GetVietnamTime(),
@@ -309,6 +324,8 @@ namespace BusinessLogic.Service.Auth
                 };
 
                 await _uow.StudentProfiles.CreateAsync(studentProfile);
+
+                await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 return newUser;

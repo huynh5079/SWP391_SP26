@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.Role.Organizer;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
@@ -14,13 +15,13 @@ namespace BusinessLogic.Service.Approval
 {
 	public class ApproverService : IApproverCommandService, IApproverQueryService
 	{
-		private readonly IApproverCommandService _approvercommandservice;
-		private readonly IApproverQueryService _approverqueryservice;
 		private readonly IUnitOfWork _uow;
-		public ApproverService(IUnitOfWork uow)
+		private readonly INotificationService _notificationService;
+
+		public ApproverService(IUnitOfWork uow, INotificationService notificationService)
 		{
 			_uow = uow;
-			
+			_notificationService = notificationService;
 		}
 		public async Task<List<EventItemDto>> GetPendingEventsAsync(string? search, string? status, int page = 1, int pageSize = 10)
 		{
@@ -128,6 +129,19 @@ namespace BusinessLogic.Service.Approval
 			});
 
 			await _uow.SaveChangesAsync();
+
+			// Notify Organizer
+			if (ev.Organizer?.UserId != null)
+			{
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = ev.Organizer.UserId, 
+					Title = "Sự kiện được duyệt", 
+					Message = $"Sự kiện '{ev.Title}' của bạn đã được kiểm duyệt viên chấp thuận.", 
+					Type = DataAccess.Enum.NotificationType.EventApproved,
+					RelatedEntityId = ev.Id
+				});
+			}
 		}
 
 		// =========================
@@ -135,7 +149,7 @@ namespace BusinessLogic.Service.Approval
 		// =========================
 		public async Task RejectAsync(string eventId, string approverId, string? comment)
 		{
-			var ev = await _uow.Events.GetAsync(e => e.Id == eventId);
+			var ev = await _uow.Events.GetAsync(e => e.Id == eventId, q => q.Include(e => e.Organizer));
 
 			if (ev == null) throw new Exception("Event not found.");
 
@@ -167,6 +181,19 @@ namespace BusinessLogic.Service.Approval
 			});
 
 			await _uow.SaveChangesAsync();
+
+			// Notify Organizer
+			if (ev.Organizer?.UserId != null)
+			{
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = ev.Organizer.UserId, 
+					Title = "Sự kiện bị từ chối", 
+					Message = $"Sự kiện '{ev.Title}' của bạn đã bị từ chối với lý do: {comment}", 
+					Type = DataAccess.Enum.NotificationType.EventRejected,
+					RelatedEntityId = ev.Id
+				});
+			}
 		}
 
 		// =========================
@@ -174,7 +201,7 @@ namespace BusinessLogic.Service.Approval
 		// =========================
 		public async Task RequestChangeAsync(string eventId, string approverId, string? comment)
 		{
-			var ev = await _uow.Events.GetAsync(e => e.Id == eventId);
+			var ev = await _uow.Events.GetAsync(e => e.Id == eventId, q => q.Include(e => e.Organizer));
 
 			if (ev == null) throw new Exception("Event not found.");
 
@@ -209,6 +236,19 @@ namespace BusinessLogic.Service.Approval
 			});
 
 			await _uow.SaveChangesAsync();
+
+			// Notify Organizer
+			if (ev.Organizer?.UserId != null)
+			{
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = ev.Organizer.UserId, 
+					Title = "Yêu cầu chỉnh sửa sự kiện", 
+					Message = $"Sự kiện '{ev.Title}' cần được chỉnh sửa: {comment}", 
+					Type = DataAccess.Enum.NotificationType.EventChangeRequested,
+					RelatedEntityId = ev.Id
+				});
+			}
 		}
 
 		// =========================

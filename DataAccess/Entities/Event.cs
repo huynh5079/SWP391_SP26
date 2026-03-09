@@ -14,7 +14,7 @@ public partial class Event : BaseEntity
 	public string? Description { get; set; }
 
     public string? ThumbnailUrl { get; set; }
-
+   
     public string? OrganizerId { get; set; }
 
     public string? SemesterId { get; set; }

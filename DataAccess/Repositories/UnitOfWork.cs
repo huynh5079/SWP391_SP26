@@ -13,12 +13,15 @@ namespace DataAccess.Repositories
     {
         private readonly AEMSContext _ctx;
         public IUserRepository Users { get; }
+        public IChatRepository ChatRepository { get; }
         public IGenericRepository<StudentProfile> StudentProfiles { get; }
         public IGenericRepository<StaffProfile> StaffProfiles { get; }
         public IGenericRepository<Role> Roles { get; }
         public IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
+        public IGenericRepository<Notification> Notifications { get; }
         public IGenericRepository<Event> Events { get; }
         public IGenericRepository<EventAgenda> EventAgenda { get; }
+        public IGenericRepository<EventDocument> EventDocuments { get; }
         public IGenericRepository<Topic> Topics { get; }
         public IGenericRepository<Location> Locations { get; }
         public IGenericRepository<Semester> Semesters { get; }
@@ -30,17 +33,20 @@ namespace DataAccess.Repositories
 		public IGenericRepository<Ticket> Tickets { get; }
 		public IGenericRepository<Feedback> Feedbacks { get; }
         public IGenericRepository<CheckInHistory> CheckInHistories { get; }
-		public UnitOfWork(AEMSContext ctx, IUserRepository users)
+		public UnitOfWork(AEMSContext ctx, IUserRepository users, IChatRepository chatRepository)
         {
             _ctx = ctx;
             Users = users;
+            ChatRepository = chatRepository;
             StudentProfiles = new GenericRepository<StudentProfile>(_ctx);
             StaffProfiles = new GenericRepository<StaffProfile>(_ctx);
             Roles = new GenericRepository<Role>(_ctx);
             SystemErrorLogs = new GenericRepository<SystemErrorLog>(_ctx);
+            Notifications = new GenericRepository<Notification>(_ctx);
 			// ✅ Update
 			Events = new GenericRepository<Event>(_ctx);
 		    EventAgenda = new GenericRepository<EventAgenda>(_ctx);
+			EventDocuments = new GenericRepository<EventDocument>(_ctx);
 			Topics = new GenericRepository<Topic>(_ctx);
 			Locations = new GenericRepository<Location>(_ctx);
 			Semesters = new GenericRepository<Semester>(_ctx);

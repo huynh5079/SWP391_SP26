@@ -1,0 +1,28 @@
+@model AEMS_Solution.Models.Approver.UpdateTopicViewModel
+@{
+    ViewData["Title"] = "Edit Topic";
+    Layout = "_Approvallayout";
+}
+
+<div class="container mt-4">
+    <h2>Edit Topic</h2>
+    <form asp-controller="Topic" asp-action="Edit" method="post" class="mt-3">
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+        <input asp-for="TopicId" type="hidden" />
+
+        <div class="mb-3">
+            <label asp-for="TopicName" class="form-label"></label>
+            <input asp-for="TopicName" class="form-control" />
+            <span asp-validation-for="TopicName" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a asp-controller="Topic" asp-action="Index" class="btn btn-secondary">Back</a>
+    </form>
+</div>

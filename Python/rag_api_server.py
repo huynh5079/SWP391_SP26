@@ -250,7 +250,7 @@ class RagEngine:
             LEFT JOIN [Locations] loc ON loc.Id = e.LocationId
             LEFT JOIN [StaffProfile] sp ON sp.Id = e.OrganizerId
             LEFT JOIN [User] organizerUser ON organizerUser.Id = sp.UserId
-            LEFT JOIN [Topic] t ON t.Id = e.TopicId
+            LEFT JOIN [Topics] t ON t.Id = e.TopicId
             WHERE e.Status != 'Deleted' AND e.PublishedAt IS NOT NULL
             ORDER BY e.UpdatedAt DESC
             """,
@@ -295,7 +295,7 @@ class RagEngine:
                 ea.Id AS AgendaId,
                 ea.EventId,
                 e.Title AS EventTitle,
-                ea.Title AS AgendaTitle,
+                ea.SessionName AS AgendaTitle,
                 ea.Description AS AgendaDescription,
                 ea.StartTime,
                 ea.EndTime,
@@ -310,7 +310,7 @@ class RagEngine:
                 ea.Id AS AgendaId,
                 ea.EventId,
                 CAST(NULL AS NVARCHAR(500)) AS EventTitle,
-                ea.Title AS AgendaTitle,
+                ea.SessionName AS AgendaTitle,
                 ea.Description AS AgendaDescription,
                 ea.StartTime,
                 ea.EndTime,
@@ -322,33 +322,34 @@ class RagEngine:
             query_name="agenda_rows",
         )
 
-        # 3. Event team members (organizers and speakers)
+        # 3. Event team members (competing teams in competitions)
         team_rows = self._fetch_rows_with_fallback(
             primary_query=f"""
             SELECT TOP ({top_n})
                 et.Id AS TeamId,
                 et.EventId,
                 e.Title AS EventTitle,
-                u.FullName AS MemberName,
-                u.Email,
-                et.Role,
+                et.TeamName AS MemberName,
+                et.Description,
+                et.Score,
+                et.PlaceRank,
                 et.CreatedAt
             FROM [EventTeam] et
             LEFT JOIN [Event] e ON e.Id = et.EventId
-            LEFT JOIN [User] u ON u.Id = et.UserId
-            ORDER BY et.CreatedAt DESC
+            ORDER BY et.Score DESC, et.PlaceRank ASC
             """,
             fallback_query=f"""
             SELECT TOP ({top_n})
                 et.Id AS TeamId,
                 et.EventId,
                 CAST(NULL AS NVARCHAR(500)) AS EventTitle,
-                CAST(NULL AS NVARCHAR(255)) AS MemberName,
-                CAST(NULL AS NVARCHAR(255)) AS Email,
-                CAST(NULL AS NVARCHAR(100)) AS Role,
+                et.TeamName AS MemberName,
+                et.Description,
+                et.Score,
+                et.PlaceRank,
                 et.CreatedAt
             FROM [EventTeam] et
-            ORDER BY et.CreatedAt DESC
+            ORDER BY et.Score DESC, et.PlaceRank ASC
             """,
             query_name="team_rows",
         )
@@ -552,8 +553,9 @@ class RagEngine:
             text = (
                 f"[THÀNH VIÊN SỰ KIỆN] Sự kiện: {row.get('EventTitle')} | "
                 f"Tên: {row.get('MemberName')} | "
-                f"Email: {row.get('Email')} | "
-                f"Vai trò: {row.get('Role')}"
+                f"Mô tả: {row.get('Description')} | "
+                f"Điểm số: {row.get('Score')} | "
+                f"Xếp hạng: {row.get('PlaceRank')}"
             )
             chunks.append(
                 Chunk(
@@ -564,7 +566,8 @@ class RagEngine:
                         "event_id": row.get("EventId"),
                         "event_title": row.get("EventTitle"),
                         "member_name": row.get("MemberName"),
-                        "role": row.get("Role"),
+                        "score": row.get("Score"),
+                        "place_rank": row.get("PlaceRank"),
                     },
                 )
             )
@@ -908,34 +911,34 @@ class RagEngine:
         conversation_history = self._get_session_context(session_id)
 
         system_prompt = (
-            "Bạn là cố vấn sự kiện thân thiện và chuyên nghiệp cho sinh viên tại hệ thống AEMS.\n\n"
+            "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
             
-            "NHIỆM VỤ:\n"
-            "- Gợi ý sự kiện phù hợp nhất với câu hỏi của người dùng\n"
-            "- Ưu tiên sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
-            "- Giải thích rõ ràng về thời gian, địa điểm, cách tham gia\n"
-            "- Cảnh báo nếu sự kiện gần hết chỗ hoặc cần chú ý gì đặc biệt\n\n"
+            "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
+            "0. 🎯 ƯU TIÊN CAO NHẤT - NẾU người dùng CHÀO HỎI (xin chào, hi, hello, chào bạn, hey, v.v.):\n"
+            "   → Chào lại thân thiện như bạn bè\n"
+            "   → Giới thiệu: 'Mình là trợ lý AI của hệ thống AEMS, chuyên hỗ trợ thông tin về các sự kiện, phản hồi và phân tích liên quan đến AEMS'\n"
+            "   → Hỏi người dùng cần giúp gì\n"
+            "   → KHÔNG cần tìm kiếm hoặc đề cập sự kiện cụ thể trong lời chào\n\n"
+            "1. NẾU câu hỏi liên quan đến SỰ KIỆN:\n"
+            "   → Ưu tiên sử dụng dữ liệu liên quan được cung cấp\n"
+            "   → Khuyến nghị sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
+            "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
+            "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
+            "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
+            "   → Trả lời bình thường dựa trên kiến thức chung\n"
+            "   → Có thể đề cập đến sự kiện AEMS nếu phù hợp\n\n"
             
             "PHONG CÁCH TRẢ LỜI:\n"
-            "- Ngắn gọn, dễ hiểu, thân thiện\n"
-            "- Chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
-            "- KHÔNG dump toàn bộ data, chỉ trích xuất thông tin quan trọng\n"
-            "- Sử dụng emoji phù hợp để dễ đọc: ⭐📅📍💡\n"
+            "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
+            "- Khi nói về sự kiện: chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
+            "- KHÔNG dump data, trích xuất thông tin cần thiết\n"
+            "- Sử dụng emoji phù hợp: ⭐📅📍💡❓\n"
             "- Tránh lặp lại thông tin không cần thiết\n\n"
             
-            "CẤU TRÚC:\n"
-            "1. Câu mở đầu ngắn gọn (1-2 câu)\n"
-            "2. Giới thiệu 2-3 sự kiện phù hợp nhất:\n"
-            "   - Tên sự kiện\n"
-            "   - Thời gian & Địa điểm\n"
-            "   - Điểm nổi bật (đánh giá, nội dung)\n"
-            "   - Cách đăng ký/tham gia\n"
-            "3. Lời khuyên ngắn (nếu cần)\n\n"
-            
-            "LƯU Ý:\n"
-            "- Không hiển thị ID, timestamp chi tiết, hay metadata kỹ thuật\n"
-            "- Chỉ nói về sự kiện còn mở đăng ký hoặc sắp diễn ra\n"
-            "- Nếu không có sự kiện phù hợp, gợi ý thay thế hoặc hướng dẫn tìm kiếm\n"
+            "QUY TẮC DỮ LIỆU:\n"
+            "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
+            "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
         if normalized_role == "admin":
@@ -1046,34 +1049,34 @@ class RagEngine:
         conversation_history = self._get_session_context(session_id)
 
         system_prompt = (
-            "Bạn là cố vấn sự kiện thân thiện và chuyên nghiệp cho sinh viên tại hệ thống AEMS.\n\n"
+            "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
             
-            "NHIỆM VỤ:\n"
-            "- Gợi ý sự kiện phù hợp nhất với câu hỏi của người dùng\n"
-            "- Ưu tiên sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
-            "- Giải thích rõ ràng về thời gian, địa điểm, cách tham gia\n"
-            "- Cảnh báo nếu sự kiện gần hết chỗ hoặc cần chú ý gì đặc biệt\n\n"
+            "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
+            "0. 🎯 ƯU TIÊN CAO NHẤT - NẾU người dùng CHÀO HỎI (xin chào, hi, hello, chào bạn, hey, v.v.):\n"
+            "   → Chào lại thân thiện như bạn bè\n"
+            "   → Giới thiệu: 'Mình là trợ lý AI của hệ thống AEMS, chuyên hỗ trợ thông tin về các sự kiện, phản hồi và phân tích liên quan đến AEMS'\n"
+            "   → Hỏi người dùng cần giúp gì\n"
+            "   → KHÔNG cần tìm kiếm hoặc đề cập sự kiện cụ thể trong lời chào\n\n"
+            "1. NẾU câu hỏi liên quan đến SỰ KIỆN:\n"
+            "   → Ưu tiên sử dụng dữ liệu liên quan được cung cấp\n"
+            "   → Khuyến nghị sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
+            "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
+            "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
+            "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
+            "   → Trả lời bình thường dựa trên kiến thức chung\n"
+            "   → Có thể đề cập đến sự kiện AEMS nếu phù hợp\n\n"
             
             "PHONG CÁCH TRẢ LỜI:\n"
-            "- Ngắn gọn, dễ hiểu, thân thiện\n"
-            "- Chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
-            "- KHÔNG dump toàn bộ data, chỉ trích xuất thông tin quan trọng\n"
-            "- Sử dụng emoji phù hợp để dễ đọc: ⭐📅📍💡\n"
+            "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
+            "- Khi nói về sự kiện: chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
+            "- KHÔNG dump data, trích xuất thông tin cần thiết\n"
+            "- Sử dụng emoji phù hợp: ⭐📅📍💡❓\n"
             "- Tránh lặp lại thông tin không cần thiết\n\n"
             
-            "CẤU TRÚC:\n"
-            "1. Câu mở đầu ngắn gọn (1-2 câu)\n"
-            "2. Giới thiệu 2-3 sự kiện phù hợp nhất:\n"
-            "   - Tên sự kiện\n"
-            "   - Thời gian & Địa điểm\n"
-            "   - Điểm nổi bật (đánh giá, nội dung)\n"
-            "   - Cách đăng ký/tham gia\n"
-            "3. Lời khuyên ngắn (nếu cần)\n\n"
-            
-            "LƯU Ý:\n"
-            "- Không hiển thị ID, timestamp chi tiết, hay metadata kỹ thuật\n"
-            "- Chỉ nói về sự kiện còn mở đăng ký hoặc sắp diễn ra\n"
-            "- Nếu không có sự kiện phù hợp, gợi ý thay thế hoặc hướng dẫn tìm kiếm\n"
+            "QUY TẮC DỮ LIỆU:\n"
+            "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
+            "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
         if normalized_role == "admin":

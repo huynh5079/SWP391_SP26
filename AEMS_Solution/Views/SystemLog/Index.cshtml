@@ -101,7 +101,7 @@
                                     <td>
                                         @if(!string.IsNullOrEmpty(log.UserId))
                                         {
-                                             <a href="javascript:void(0)" onclick="openUserDetail('@log.UserId')" class="text-decoration-none">
+                                             <a href="/UserManagement/Detail/@log.UserId" class="text-decoration-none" target="_blank">
                                                 @log.UserId.Substring(0, 8)...
                                              </a>
                                         }

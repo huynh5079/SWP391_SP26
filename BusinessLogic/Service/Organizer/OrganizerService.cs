@@ -1,6 +1,6 @@
 ﻿using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
@@ -26,12 +26,12 @@ namespace BusinessLogic.Service.Organizer
 			_eventwaitlist = eventwaitlist;
         }
 
-        public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, string? location, string? department, string? timeState, DateTime? dateFrom, DateTime? dateTo, int page = 1, int pageSize = 10)
-        {
-            return await _eventService.GetMyEventsAsync(userId, search, status, semesterId, location, department, timeState, dateFrom, dateTo, page, pageSize);
-        }
-        //my events: lấy tất cả event của organizer, kèm theo các thông tin cần thiết để hiển thị ở list (thumbnail, time, location, status, registered count, checked-in count, waitlist count, avg rating)
-        public async Task<List<EventListDto>> GetMyEventsAsync(string userId)
+		public async Task<BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+		{
+			return await _eventService.GetMyEventsAsync(userId, search, status, semesterId, page, pageSize);
+		}
+		//my events: lấy tất cả event của organizer, kèm theo các thông tin cần thiết để hiển thị ở list (thumbnail, time, location, status, registered count, checked-in count, waitlist count, avg rating)
+		public async Task<List<EventListDto>> GetMyEventsAsync(string userId)
 		{
 			return await _eventService.GetMyEventsAsync(userId);
 		}

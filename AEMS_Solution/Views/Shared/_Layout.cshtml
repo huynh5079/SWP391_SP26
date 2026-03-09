@@ -8,8 +8,11 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/AEMS_Solution.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
 </head>
 <body>
     <header>
@@ -33,9 +36,11 @@
 
                     
 
-                    <ul class="navbar-nav">
+                    <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
+                            @await Component.InvokeAsync("Notification")
+                            <partial name="_ChatCustomerServiceLayout" />
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle text-dark" href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-person-circle"></i> @(User.Identity.Name ?? "User")
@@ -61,6 +66,7 @@
                                         <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index">Admin Dashboard</a></li>
                                         <li><a class="dropdown-item" asp-controller="UserManagement" asp-action="Index">User Management</a></li>
                                         <li><a class="dropdown-item" asp-controller="SystemLog" asp-action="Index">System Logs</a></li>
+                                        <li><a class="dropdown-item" asp-controller="AdminNotification" asp-action="Create">System Notification</a></li>
                                     }
                                     else if (User.IsInRole("Staff"))
                                     {
@@ -118,6 +124,10 @@
             @RenderBody()
         </main>
     </div>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <partial name="_ChatbotBar" />
+    }
 
     <footer class="border-top footer text-muted">
         <div class="container">
@@ -128,7 +138,10 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="~/js/site.js?v=2" asp-append-version="true"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/site.js?v=4" asp-append-version="true"></script>
+    <script src="~/js/chatbot.js" asp-append-version="true"></script>
+    <script src="~/js/messenger-layout.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -1,4 +1,4 @@
-using AEMS_Solution.Extensions;
+using AEMS_Solution.Middlewares.Extensions;
 using BusinessLogic.Service.System;
 
 namespace AEMS_Solution.Middlewares

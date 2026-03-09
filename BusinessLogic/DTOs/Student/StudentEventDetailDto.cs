@@ -27,6 +27,9 @@ namespace BusinessLogic.DTOs.Student
         public string? SemesterName { get; set; }
         public string? DepartmentName { get; set; }
         public string? OrganizerName { get; set; }
+        public string? OrganizerUserId { get; set; }
+        public string? OrganizerAvatarUrl { get; set; }
+        public string? OrganizerPosition { get; set; }
 
         // Computed for the action button
         public bool IsRegistered { get; set; }

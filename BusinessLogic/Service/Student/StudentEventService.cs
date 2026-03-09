@@ -5,7 +5,7 @@ using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 
-using BusinessLogic.Utilities;
+using BusinessLogic.Helper;
 using BusinessLogic.Service.System;
 
 namespace BusinessLogic.Service.Student
@@ -15,12 +15,14 @@ namespace BusinessLogic.Service.Student
         private readonly IUnitOfWork _uow;
         private readonly IEmailService _emailService;
         private readonly ISystemErrorLogService _errorLogService;
+        private readonly INotificationService _notificationService;
 
-        public StudentEventService(IUnitOfWork uow, IEmailService emailService, ISystemErrorLogService errorLogService)
+        public StudentEventService(IUnitOfWork uow, IEmailService emailService, ISystemErrorLogService errorLogService, INotificationService notificationService)
         {
             _uow = uow;
             _emailService = emailService;
             _errorLogService = errorLogService;
+            _notificationService = notificationService;
         }
 
         // ─── Helper: resolve StudentProfile.Id from User.Id ───────────────────
@@ -185,6 +187,9 @@ namespace BusinessLogic.Service.Student
                 SemesterName = ev.Semester?.Name,
                 DepartmentName = ev.Department?.Name,
                 OrganizerName = ev.Organizer?.User?.FullName,
+                OrganizerUserId = ev.Organizer?.UserId,
+                OrganizerAvatarUrl = ev.Organizer?.User?.AvatarUrl,
+                OrganizerPosition = ev.Organizer?.Position,
                 IsRegistered = isRegistered,
                 CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity,
                 CanCancel = isRegistered && isFuture,
@@ -241,6 +246,17 @@ namespace BusinessLogic.Service.Student
                         if (user != null)
                         {
                             string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+                            
+                            // Send Generic in-app notification
+                            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                            {
+                                ReceiverId = user.Id, 
+                                Title = "Đăng ký thành công", 
+                                Message = $"Bạn đã đăng ký lại thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR.", 
+                                Type = DataAccess.Enum.NotificationType.TicketCreated,
+                                RelatedEntityId = existing.Id
+                            });
+
                             await _emailService.SendEventRegistrationEmailAsync(
                                 user.Email,
                                 user.FullName ?? user.Email ?? "Sinh viên",
@@ -304,6 +320,17 @@ namespace BusinessLogic.Service.Student
                     if (user != null)
                     {
                         string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+
+                        // Send Generic in-app notification
+                        await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                        {
+                            ReceiverId = user.Id, 
+                            Title = "Đăng ký thành công", 
+                            Message = $"Bạn đã đăng ký thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR check-in.", 
+                            Type = DataAccess.Enum.NotificationType.TicketCreated,
+                            RelatedEntityId = ticket.Id
+                        });
+
                         await _emailService.SendEventRegistrationEmailAsync(
                             user.Email,
                             user.FullName ?? user.Email ?? "Sinh viên",
@@ -350,6 +377,16 @@ namespace BusinessLogic.Service.Student
             ticket.DeletedAt = now;
             await _uow.Tickets.UpdateAsync(ticket);
             await _uow.SaveChangesAsync();
+
+            // Send Generic in-app notification
+            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+            {
+                ReceiverId = profile.UserId, 
+                Title = "Hủy đăng ký", 
+                Message = $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
+                Type = DataAccess.Enum.NotificationType.EventCancel,
+                RelatedEntityId = ticket.EventId
+            });
         }
 
         // ─── 5. My registered events ──────────────────────────────────────────
@@ -415,6 +452,20 @@ namespace BusinessLogic.Service.Student
 
             await _uow.Feedbacks.CreateAsync(feedback);
             await _uow.SaveChangesAsync();
+
+            // Send notification to Organizer
+            var organizerProfile = await _uow.StaffProfiles.GetAsync(sp => sp.Id == ev.OrganizerId);
+            if (organizerProfile?.UserId != null)
+            {
+                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                {
+                    ReceiverId = organizerProfile.UserId,
+                    Title = "Có đánh giá mới",
+                    Message = $"Một sinh viên vừa gửi đánh giá cho sự kiện '{ev.Title}'. Rating: {dto.Rating}/5",
+                    Type = DataAccess.Enum.NotificationType.EventFeedback,
+                    RelatedEntityId = ev.Id
+                });
+            }
         }
 
         // ─── Waitlist stub (future phase) ─────────────────────────────────────

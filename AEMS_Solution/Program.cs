@@ -1,23 +1,34 @@
+using System.Text.Json.Serialization;
 using AEMS_Solution.Configurations;
+using AEMS_Solution.Hubs;
+using AEMS_Solution.Services;
+using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
+using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
+using BusinessLogic.Service.Dashboard;
+using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Event.Sub_Service.Ticket;
+using BusinessLogic.Service.Event.Sub_Service.Topic;
+using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Organizer.CheckIn;
+using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.User;
+using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
+using BusinessLogic.Service.ValidationData.Event;
+using BusinessLogic.Service.ValidationData.Ticket;
+using BusinessLogic.Service.ValidationData.Topic;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Text.Json.Serialization;
 using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
 using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
-using BusinessLogic.Service.Event;
-using BusinessLogic.Service.Organizer;
-using BusinessLogic.Service.Approval;
-using BusinessLogic.Service.Dashboard;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
-using BusinessLogic.Service.Student;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
@@ -33,6 +44,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
 
 // UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -40,8 +52,17 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Services (Business Logic)
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
+builder.Services.AddScoped<BusinessLogic.Service.System.ISignalRNotifier, AEMS_Solution.Services.SignalRNotifier>();
+builder.Services.AddSingleton<IChatPresenceTracker, ChatPresenceTracker>();
+builder.Services.AddScoped<IChatPermissionService, ChatPermissionService>();
+builder.Services.AddScoped<IChatUserService, ChatUserService>();
+
+// RAG/Chatbot Services
+builder.Services.AddScoped<BusinessLogic.Service.IChatbotService, BusinessLogic.Service.ChatbotService>();
+
 // Register refactored services
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
@@ -50,14 +71,20 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IEventWaitlistService, EventWaitlistService>();
 // keep facade for backward compatibility
 builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.OrganizerService>();
+builder.Services.AddScoped<ITicketService, TicketService>();
+builder.Services.AddScoped<ITopicService, TopicService>();
 builder.Services.AddScoped<IEventValidator, EventValidator>();
+builder.Services.AddScoped<ITicketValidator, TicketValidator>();
+builder.Services.AddScoped<ITopicValidator, TopicValidator>();
 // Approver services (query + command)
 builder.Services.AddScoped<IApproverQueryService, ApproverService>();
 builder.Services.AddScoped<IApproverCommandService, ApproverService>();
+builder.Services.AddScoped<ICheckInService, CheckInService>();
 // Student services
 builder.Services.AddScoped<IStudentEventService, StudentEventService>();
 // Organizer CheckIn service
 builder.Services.AddScoped<ICheckInService, CheckInService>();
+builder.Services.AddScoped<IOrganizerValidator, OrganizerValidator>();
 // Storage Services
 builder.Services.Configure<BusinessLogic.Options.CloudinaryOptions>(builder.Configuration.GetSection("Cloudinary"));
 builder.Services.Configure<BusinessLogic.Options.StorageOptions>(builder.Configuration.GetSection("Storage"));
@@ -113,10 +140,11 @@ builder.Services.AddControllersWithViews()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         // Ignore Cycles
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        // Allow case-insensitive property names (camelCase to PascalCase mapping)
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
 var app = builder.Build();
-
 // ==========================================
 // 1.5. Seed Initial Data (Roles)
 // ==========================================
@@ -226,8 +254,8 @@ app.UseAuthorization();
 // ==========================================
 
 // SignalR Hubs
-// app.MapHub<NotificationHub>("/hub/v1/notification");
-// app.MapHub<ChatHub>("/hub/v1/chat");
+app.MapHub<AEMS_Solution.Hubs.NotificationHub>("/hub/v1/notification");
+app.MapHub<ChatHub>("/hub/v1/chat");
 
 // MVC Default Route
 app.MapControllerRoute(

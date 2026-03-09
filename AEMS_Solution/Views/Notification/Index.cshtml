@@ -1,0 +1,325 @@
+@model IEnumerable<DataAccess.Entities.Notification>
+@{
+    ViewData["Title"] = "Notifications";
+    var notifs = Model?.ToList() ?? new List<DataAccess.Entities.Notification>();
+    int unreadCount = notifs.Count(n => n.IsRead == false);
+}
+
+<style>
+/* ─── Page Layout ─── */
+.notif-page { max-width: 760px; margin: 0 auto; padding: 24px 0; }
+
+/* ─── Page Header ─── */
+.notif-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.notif-page-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.notif-page-title i { color: #6366f1; font-size: 26px; }
+.notif-page-badge {
+    background: linear-gradient(135deg, #f43f5e, #e11d48);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(244,63,94,.3);
+}
+
+/* ─── Filter Tabs ─── */
+.notif-tabs {
+    display: flex;
+    gap: 6px;
+    background: #f3f4f6;
+    padding: 5px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+.notif-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #6b7280;
+    border: none;
+    background: transparent;
+}
+.notif-tab.active {
+    background: white;
+    color: #6366f1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* ─── Card ─── */
+.notif-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    overflow: hidden;
+    border: 1px solid #f0f0f5;
+}
+
+/* ─── Notification Row ─── */
+.notif-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.15s;
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+.notif-row:last-child { border-bottom: none; }
+.notif-row:hover { background: #fbfbff; }
+.notif-row.unread { background: #f5f4ff; }
+.notif-row.unread::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(to bottom, #6366f1, #8b5cf6);
+    border-radius: 0 4px 4px 0;
+}
+
+.notif-icon-lg {
+    width: 46px; height: 46px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.notif-icon-lg.type-default  { background: #ede9fe; color: #7c3aed; }
+.notif-icon-lg.type-success   { background: #d1fae5; color: #059669; }
+.notif-icon-lg.type-warning   { background: #fef3c7; color: #d97706; }
+.notif-icon-lg.type-danger    { background: #fee2e2; color: #dc2626; }
+.notif-icon-lg.type-info      { background: #dbeafe; color: #2563eb; }
+.notif-icon-lg.type-critical  { background: #fce7f3; color: #be185d; }
+
+.notif-content { flex: 1; min-width: 0; }
+.notif-row-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 4px;
+}
+.notif-row-msg {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+}
+.notif-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+}
+.notif-row-time {
+    font-size: 11px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.notif-unread-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #6366f1;
+    display: inline-block;
+}
+
+/* ─── Empty State ─── */
+.notif-page-empty {
+    padding: 60px 20px;
+    text-align: center;
+}
+.notif-page-empty .empty-icon {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, #ede9fe, #dbeafe);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 36px;
+    color: #6366f1;
+}
+.notif-page-empty h5 { color: #374151; font-weight: 700; margin-bottom: 6px; }
+.notif-page-empty p  { color: #9ca3af; font-size: 14px; margin: 0; }
+
+/* ─── Mark All Button ─── */
+.btn-mark-all {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(99,102,241,.3);
+}
+.btn-mark-all:hover { opacity: 0.9; transform: translateY(-1px); }
+</style>
+
+<div class="notif-page">
+    <!-- Page Header -->
+    <div class="notif-page-header">
+        <h1 class="notif-page-title">
+            <i class='bx bx-bell'></i>
+            Notifications
+            @if (unreadCount > 0)
+            {
+                <span class="notif-page-badge">@unreadCount unread</span>
+            }
+        </h1>
+        @if (notifs.Any())
+        {
+            <button class="btn-mark-all" onclick="pageMarkAllRead()">
+                <i class='bx bx-check-double'></i> Mark all as read
+            </button>
+        }
+    </div>
+
+    <!-- Filter Tabs -->
+    @if (notifs.Any())
+    {
+        <div class="notif-tabs">
+            <button class="notif-tab active" onclick="filterTab('all', this)">All (@notifs.Count)</button>
+            <button class="notif-tab" onclick="filterTab('unread', this)">Unread (@unreadCount)</button>
+            <button class="notif-tab" onclick="filterTab('read', this)">Read (@notifs.Count(n => n.IsRead == true))</button>
+        </div>
+    }
+
+    <!-- Notification List Card -->
+    <div class="notif-card">
+        @if (notifs.Any())
+        {
+            foreach (var item in notifs)
+            {
+                // Resolve icon style & name based on notification type
+                string iconClass = "type-default";
+                string iconName  = "bx-info-circle";
+
+                if (item.Type == "EventApproved" || item.Type == "EventPublished")
+                { iconClass = "type-success"; iconName = "bx-check-circle"; }
+                else if (item.Type == "EventRejected" || item.Type == "AccountBan")
+                { iconClass = "type-danger"; iconName = "bx-x-circle"; }
+                else if (item.Type == "EventChangeRequested" || item.Type == "EventOrganizeCancel")
+                { iconClass = "type-warning"; iconName = "bxs-error"; }
+                else if (item.Type == "AccountUnban" || item.Type == "StudentRegistration")
+                { iconClass = "type-success"; iconName = "bx-user-check"; }
+                else if (item.Type == "SystemBroadcast")
+                { iconClass = "type-info"; iconName = "bx-broadcast"; }
+                else if (item.Type == "EventUpdated")
+                { iconClass = "type-info"; iconName = "bx-edit"; }
+                else if (item.Type == "EventFeedback")
+                { iconClass = "type-warning"; iconName = "bx-star"; }
+                else if (item.Type == "SystemError")
+                { iconClass = "type-critical"; iconName = "bx-bug"; }
+
+                <a href="/Notification/ClickAndRoute?notiId=@item.Id"
+                   class="notif-row @(item.IsRead == true ? "" : "unread")"
+                   data-status="@(item.IsRead == true ? "read" : "unread")">
+                    <div class="notif-icon-lg @iconClass">
+                        <i class='bx @iconName'></i>
+                    </div>
+                    <div class="notif-content">
+                        <p class="notif-row-title">@item.Title</p>
+                        <p class="notif-row-msg">@item.Message</p>
+                        <div class="notif-row-meta">
+                            <span class="notif-row-time">
+                                <i class='bx bx-time-five'></i>
+                                @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                            </span>
+                            @if (item.IsRead == false)
+                            {
+                                <span class="notif-unread-dot"></span>
+                                <span style="font-size:11px; color:#6366f1; font-weight:600;">Unread</span>
+                            }
+                        </div>
+                    </div>
+                </a>
+            }
+        }
+        else
+        {
+            <div class="notif-page-empty">
+                <div class="empty-icon">
+                    <i class='bx bx-bell-off'></i>
+                </div>
+                <h5>No notifications yet</h5>
+                <p>Event, account, and system notifications will appear here.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// Mark a single notification as read
+function pageMarkOne(id, el) {
+    var row = el.closest('.notif-row');
+    if (!row || !row.classList.contains('unread')) return;
+    $.post('/Notification/MarkAsRead', { id: id }, function () {
+        row.classList.remove('unread');
+        row.setAttribute('data-status', 'read');
+        var dot   = row.querySelector('.notif-unread-dot');
+        var label = row.querySelector('.notif-row-meta span[style]');
+        if (dot)   dot.remove();
+        if (label) label.remove();
+    });
+}
+
+// Mark all notifications as read
+function pageMarkAllRead() {
+    $.post('/Notification/MarkAllAsRead', function () {
+        document.querySelectorAll('.notif-row.unread').forEach(r => {
+            r.classList.remove('unread');
+            r.setAttribute('data-status', 'read');
+            var dot   = r.querySelector('.notif-unread-dot');
+            var label = r.querySelector('.notif-row-meta span[style]');
+            if (dot)   dot.remove();
+            if (label) label.remove();
+        });
+        document.querySelector('.notif-page-badge')?.remove();
+        toastr.success('All notifications marked as read');
+    });
+}
+
+// Client-side filter tabs (no reload required)
+function filterTab(type, btn) {
+    document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.notif-row').forEach(r => {
+        var status = r.getAttribute('data-status');
+        if      (type === 'all')    r.style.display = '';
+        else if (type === 'unread') r.style.display = (status === 'unread') ? '' : 'none';
+        else if (type === 'read')   r.style.display = (status === 'read')   ? '' : 'none';
+    });
+}
+</script>
+}

@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Role.Organizer;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using Microsoft.EntityFrameworkCore;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 
 namespace BusinessLogic.Service.Event;
 
@@ -16,11 +17,13 @@ public class EventService : IEventService
 {
 	private readonly IUnitOfWork _uow;
 	private readonly IEventValidator _validator;
+	private readonly INotificationService _notificationService;
 
-	public EventService(IUnitOfWork uow, IEventValidator validator)
+	public EventService(IUnitOfWork uow, IEventValidator validator, INotificationService notificationService)
 	{
 		_uow = uow;
 		_validator = validator;
+		_notificationService = notificationService;
 	}
 
 	public async Task CancelEventAsync(string userId, string eventId)
@@ -56,6 +59,28 @@ public class EventService : IEventService
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await tx.CommitAsync();
+
+			// Notify all ticket holders
+			var tickets = await _uow.Tickets.GetAllAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+			foreach (var ticket in tickets)
+			{
+				if (!string.IsNullOrEmpty(ticket.StudentId))
+				{
+					// Convert StudentId to UserId
+					var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
+					if (studentProfile?.UserId != null)
+					{
+						await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+						{
+							ReceiverId = studentProfile.UserId,
+							Title = "Sự kiện đã bị hủy",
+							Message = $"Sự kiện '{ev.Title}' mà bạn đăng ký tham gia đã bị hủy bởi Ban Tổ Chức.",
+							Type = DataAccess.Enum.NotificationType.EventOrganizeCancel,
+							RelatedEntityId = ev.Id
+						});
+					}
+				}
+			}
 		}
 		catch
 		{
@@ -92,6 +117,19 @@ public class EventService : IEventService
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await tx.CommitAsync();
+
+			// Notify Organizer that their event is live
+			if (staff.UserId != null)
+			{
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = staff.UserId,
+					Title = "Sự kiện đã được xuất bản",
+					Message = $"Sự kiện '{ev.Title}' của bạn đã chính thức được công khai trên hệ thống.",
+					Type = DataAccess.Enum.NotificationType.EventPublished,
+					RelatedEntityId = ev.Id
+				});
+			}
 		}
 		catch
 		{
@@ -231,52 +269,36 @@ public class EventService : IEventService
 		return list;
 	}
 
-    public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, string? location, string? department, string? timeState, DateTime? dateFrom, DateTime? dateTo, int page = 1, int pageSize = 10)
-    {
-        var items = await GetMyEventsAsync(userId);
+	public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+	{
+		var items = await GetMyEventsAsync(userId);
 
-        if (!string.IsNullOrWhiteSpace(search))
-            items = items.Where(x => x.Title != null && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+		if (!string.IsNullOrWhiteSpace(search))
+		{
+			items = items.Where(x => x.Title != null && x.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+		}
+		if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
+		{
+			items = items.Where(x => x.Status == parsedStatus).ToList();
+		}
+		if (!string.IsNullOrWhiteSpace(semesterId))
+		{
+			items = items.Where(x => x.SemesterId == semesterId).ToList();
+		}
 
-        if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
-            items = items.Where(x => x.Status == parsedStatus).ToList();
+		var total = items.Count;
+		var paged = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
-        if (!string.IsNullOrWhiteSpace(semesterId))
-            items = items.Where(x => x.SemesterName != null &&
-                x.SemesterName.Contains(semesterId, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (!string.IsNullOrWhiteSpace(location))
-            items = items.Where(x => x.Location != null && x.Location.Contains(location, StringComparison.OrdinalIgnoreCase)).ToList();
+		return new PagedResult<EventListDto>
+		{
+			Items = paged,
+			Total = total,
+			Page = page,
+			PageSize = pageSize
+		};
+	}
 
-        if (!string.IsNullOrWhiteSpace(department))
-            items = items.Where(x => x.DepartmentName != null &&
-                x.DepartmentName.Contains(department, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        if (!string.IsNullOrWhiteSpace(timeState))
-        {
-            var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
-            items = timeState.ToLower() switch
-            {
-                "upcoming" => items.Where(x => now < x.StartTime).ToList(),
-                "happening" => items.Where(x => now >= x.StartTime && now <= x.EndTime).ToList(),
-                "completed" => items.Where(x => now > x.EndTime).ToList(),
-                _ => items
-            };
-        }
-
-        // ✅ Filter date range: lấy event có khoảng thời gian overlap với [dateFrom, dateTo]
-        if (dateFrom.HasValue)
-            items = items.Where(x => x.EndTime.Date >= dateFrom.Value.Date).ToList();
-
-        if (dateTo.HasValue)
-            items = items.Where(x => x.StartTime.Date <= dateTo.Value.Date).ToList();
-
-        var total = items.Count;
-        var paged = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-
-        return new PagedResult<EventListDto> { Items = paged, Total = total, Page = page, PageSize = pageSize };
-    }
-
-    public async Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
+	public async Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 	{
 		var items = await GetMyDeletedEventsAsync(userId);
 
@@ -401,6 +423,28 @@ public class EventService : IEventService
 				}
 			}
 
+			if (dto.Documents != null && dto.Documents.Count > 0)
+			{
+				foreach (var d in dto.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
+					{
+						continue;
+					}
+
+					await _uow.EventDocuments.CreateAsync(new EventDocument
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = entity.Id,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
 			return entity.Id;
@@ -460,8 +504,37 @@ public class EventService : IEventService
 		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
 		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
 
+		if (!string.IsNullOrWhiteSpace(dto.SemesterId))
+		{
+			var semester = await _uow.Semesters.GetByIdAsync(dto.SemesterId);
+			if (semester == null) throw new InvalidOperationException("Semester không tồn tại.");
+		}
+
+		if (!string.IsNullOrWhiteSpace(dto.DepartmentId))
+		{
+			var department = await _uow.Departments.GetByIdAsync(dto.DepartmentId);
+			if (department == null) throw new InvalidOperationException("Department không tồn tại.");
+		}
+
 		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
 			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
+
+		if (dto.Agendas != null)
+		{
+			foreach (var a in dto.Agendas)
+			{
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+				if (isEmpty) continue;
+
+				if (!a.StartTime.HasValue || !a.EndTime.HasValue)
+					throw new InvalidOperationException("Agenda phải có thời gian bắt đầu và kết thúc.");
+				if (a.StartTime > a.EndTime)
+					throw new InvalidOperationException("Thời gian bắt đầu Agenda phải bé hơn thời gian kết thúc");
+				if (a.StartTime < dto.StartTime || a.EndTime > dto.EndTime)
+					throw new InvalidOperationException("Thời gian agenda phải nằm trong khoảng thời gian của sự kiện.");
+			}
+		}
 
 		using var transaction = await _uow.BeginTransactionAsync();
 		try
@@ -471,15 +544,105 @@ public class EventService : IEventService
 			ev.Description = dto.Description;
 			ev.StartTime = dto.StartTime;
 			ev.EndTime = dto.EndTime;
+			ev.SemesterId = dto.SemesterId;
+			ev.DepartmentId = dto.DepartmentId;
 			ev.TopicId = dto.TopicId;
 			ev.LocationId = dto.LocationId;
+			ev.MaxCapacity = dto.Capacity ?? ev.MaxCapacity;
+			ev.Type = dto.Type;
+			ev.Status = dto.Status ?? ev.Status;
+			ev.IsDepositRequired = dto.IsDepositRequired;
+			ev.DepositAmount = dto.DepositAmount;
+			ev.ThumbnailUrl = dto.BannerUrl;
 			ev.Mode = dto.Mode;
 			ev.MeetingUrl = dto.MeetingUrl?.Trim();
 			ev.UpdatedAt = now;
 
+			var existingAgendas = await _uow.EventAgenda.GetAllAsync(x => x.EventId == eventId);
+			foreach (var agenda in existingAgendas)
+			{
+				await _uow.EventAgenda.RemoveAsync(agenda);
+			}
+
+			var existingDocuments = await _uow.EventDocuments.GetAllAsync(x => x.EventId == eventId);
+			foreach (var document in existingDocuments)
+			{
+				await _uow.EventDocuments.RemoveAsync(document);
+			}
+
+			if (dto.Agendas != null)
+			{
+				foreach (var a in dto.Agendas)
+				{
+					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+					if (isEmpty) continue;
+
+					await _uow.EventAgenda.CreateAsync(new EventAgenda
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = ev.Id,
+						SessionName = a.SessionName,
+						Description = a.Description,
+						SpeakerName = a.SpeakerName,
+						StartTime = a.StartTime,
+						EndTime = a.EndTime,
+						Location = a.Location,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
+			if (dto.Documents != null)
+			{
+				foreach (var d in dto.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
+					{
+						continue;
+					}
+
+					await _uow.EventDocuments.CreateAsync(new EventDocument
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = ev.Id,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
+
+			// Notify all valid ticket holders
+			if (ev.Status == EventStatusEnum.Published || ev.Status == EventStatusEnum.Happening)
+			{
+				var tickets = await _uow.Tickets.GetAllAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+				foreach (var ticket in tickets)
+				{
+					if (!string.IsNullOrEmpty(ticket.StudentId))
+					{
+						var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
+						if (studentProfile?.UserId != null)
+						{
+							await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+							{
+								ReceiverId = studentProfile.UserId,
+								Title = "Sự kiện đã thay đổi thông tin",
+								Message = $"Sự kiện '{ev.Title}' mà bạn đã đăng ký vừa được Ban Tổ Chức cập nhật lại thông tin.",
+								Type = DataAccess.Enum.NotificationType.EventUpdated,
+								RelatedEntityId = ev.Id
+							});
+						}
+					}
+				}
+			}
 		}
 		catch
 		{
@@ -587,14 +750,22 @@ public class EventService : IEventService
 			Title = ev.Title,
 			Description = ev.Description,
 			ThumbnailUrl = ev.ThumbnailUrl,
+			SemesterId = ev.SemesterId,
 			SemesterName = ev.Semester?.Name,
+			DepartmentId = ev.DepartmentId,
 			DepartmentName = ev.Department?.Name,
+			LocationId = ev.LocationId,
 			Location = ev.Location?.Name ?? ev.LocationId,
+			TopicId = ev.TopicId,
 			StartTime = ev.StartTime,
 			EndTime = ev.EndTime,
 			MaxCapacity = ev.MaxCapacity,
 			IsDepositRequired = ev.IsDepositRequired ?? false,
 			DepositAmount = ev.DepositAmount ?? 0,
+			Type = ev.Type,
+			Status = ev.Status,
+			Mode = ev.Mode,
+			MeetingUrl = ev.MeetingUrl,
 			RegisteredCount = ev.Tickets?.Count ?? 0,
 			CheckedInCount = ev.Tickets?.Count(t => t.CheckInTime != null) ?? 0,
 			WaitlistCount = ev.EventWaitlists?.Count ?? 0,
