@@ -4,7 +4,9 @@ using System.Net.NetworkInformation;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
+using AEMS_Solution.Models.Organizer.Manage;
 using AutoMapper;
+using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.ValidationData.Event;
 using CloudinaryDotNet;
@@ -20,10 +22,12 @@ using Microsoft.EntityFrameworkCore;
 	{
 	private readonly IOrganizerService _organizerService;
 	    private readonly IMapper _mapper;
-		public OrganizerController(IOrganizerService organizerService, IMapper mapper)
+	    private readonly ILocationService _locationService;
+		public OrganizerController(IOrganizerService organizerService, IMapper mapper, ILocationService locationService)
 		{
 			_organizerService = organizerService;
 			_mapper = mapper;
+			_locationService = locationService;
 		}
         [HttpGet]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, int page = 1, int pageSize = 10)
@@ -262,6 +266,47 @@ using Microsoft.EntityFrameworkCore;
 			_mapper.Map(dto, vm);
 		}
 
+		[HttpGet]
+		public async Task<IActionResult> GetAvailableLocations(DateTime startTime, DateTime endTime)
+		{
+			if (endTime <= startTime)
+			{
+				return Json(new List<object>());
+			}
+
+			var locations = await _locationService.GetAvailableLocationsAsync(startTime, endTime);
+			return Json(locations.Select(x => new
+			{
+				id = x.LocationId,
+				name = x.Name,
+				address = x.Address,
+				building = ExtractAddressPart(x.Address, "Building"),
+				floor = ExtractAddressPart(x.Address, "Floor"),
+				room = ExtractAddressPart(x.Address, "Room"),
+				capacity = x.Capacity,
+				type = x.Type?.ToString()
+			}));
+		}
+
+		private static string ExtractAddressPart(string? address, string label)
+		{
+			if (string.IsNullOrWhiteSpace(address))
+			{
+				return string.Empty;
+			}
+
+			var segment = address
+				.Split(" - ", StringSplitOptions.RemoveEmptyEntries)
+				.FirstOrDefault(x => x.StartsWith(label + " ", StringComparison.OrdinalIgnoreCase));
+
+			if (string.IsNullOrWhiteSpace(segment))
+			{
+				return string.Empty;
+			}
+
+			return segment.Substring(label.Length).Trim();
+		}
+
 		
 		// Event/Create
 		[HttpGet]
@@ -291,6 +336,35 @@ using Microsoft.EntityFrameworkCore;
 
 			if (!vm.IsDepositRequired)
 				vm.DepositAmount = 0;
+
+			if (string.IsNullOrWhiteSpace(vm.LocationId))
+			{
+				ModelState.AddModelError(nameof(vm.LocationId), "Vui lòng chọn phòng hợp lệ.");
+			}
+			else
+			{
+				var selectedLocation = await _locationService.GetLocationByIdAsync(vm.LocationId);
+				if (selectedLocation == null)
+				{
+					ModelState.AddModelError(nameof(vm.LocationId), "Phòng đã chọn không tồn tại.");
+				}
+				else
+				{
+					if (vm.MaxCapacity > selectedLocation.Capacity)
+					{
+						ModelState.AddModelError(nameof(vm.MaxCapacity), $"Sức chứa sự kiện phải nhỏ hơn hoặc bằng sức chứa phòng ({selectedLocation.Capacity}).");
+					}
+
+					if (vm.EndTime > vm.StartTime)
+					{
+						var availableLocations = await _locationService.GetAvailableLocationsAsync(vm.StartTime, vm.EndTime);
+						if (!availableLocations.Any(x => x.LocationId == vm.LocationId))
+						{
+							ModelState.AddModelError(nameof(vm.LocationId), "Phòng đã chọn không còn khả dụng trong khoảng thời gian này.");
+						}
+					}
+				}
+			}
 
 			if (!ModelState.IsValid)
 			{

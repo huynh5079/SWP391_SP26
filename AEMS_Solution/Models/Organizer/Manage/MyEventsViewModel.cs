@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 
-namespace AEMS_Solution.Models.Organizer
+namespace AEMS_Solution.Models.Organizer.Manage
 {
     public class MyEventsViewModel
     {

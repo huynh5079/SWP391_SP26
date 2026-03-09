@@ -19,8 +19,4 @@
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Service\Chat\Chatbot\" />
-  </ItemGroup>
-
 </Project>

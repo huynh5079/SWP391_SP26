@@ -2,8 +2,12 @@ using System.Threading.Tasks;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Approver;
 using BusinessLogic.Service.Approval;
+using BusinessLogic.DTOs.Event.Location;
+using BusinessLogic.Service.Event.Sub_Service.Location;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AEMS_Solution.Models.Approver.Manage;
 
 namespace AEMS_Solution.Controllers.Dashboards
 {
@@ -12,11 +16,147 @@ namespace AEMS_Solution.Controllers.Dashboards
     {
         private readonly IApproverQueryService _queryService;
         private readonly IApproverCommandService _commandService;
+        private readonly ILocationService _locationService;
 
-        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService)
+        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService)
         {
             _queryService = queryService;
             _commandService = commandService;
+            _locationService = locationService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ManageRoom()
+        {
+            var locations = await _locationService.GetAllLocationsAsync();
+            var vm = new ManageRoomViewModel
+            {
+                Rooms = locations.Select(x => new RoomListItemVm
+                {
+                    LocationId = x.LocationId,
+                    Name = x.Name,
+                    Address = x.Address,
+                    Capacity = x.Capacity,
+                    Status = x.Status,
+                    Type = x.Type,
+                    Description = x.Description
+                }).ToList(),
+                NewRoom = new CreateRoomViewModel()
+            };
+
+            return View("~/Views/Approval/ManageLocation.cshtml", vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateRoom(ManageRoomViewModel vm)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View("~/Views/Approval/ManageLocation.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
+            }
+
+            try
+            {
+                vm.NewRoom.Address = BuildAddress(vm.NewRoom);
+
+                await _locationService.CreateLocationAsync(new CreateLocationDTO
+                {
+                    Name = vm.NewRoom.Name,
+                    Address = vm.NewRoom.Address,
+                    Capacity = vm.NewRoom.Capacity,
+                    Status = vm.NewRoom.Status,
+                    Type = vm.NewRoom.Type,
+                    Description = vm.NewRoom.Description
+                });
+                SetSuccess("Tạo phòng thành công.");
+                return RedirectToAction(nameof(ManageRoom));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return View("~/Views/Approval/ManageLocation.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
+            }
+        }
+
+        private static string BuildAddress(CreateRoomViewModel room)
+        {
+            var parts = new[]
+            {
+                FormatAddressPart(room.Building, "Building"),
+                FormatAddressPart(room.Floor, "Floor"),
+                FormatAddressPart(room.Room, "Room")
+            }
+                .Where(x => !string.IsNullOrWhiteSpace(x));
+
+            return string.Join(" - ", parts!);
+        }
+
+        private static string? FormatAddressPart(string? value, string prefix)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var normalized = value.Trim();
+            if (normalized.StartsWith(prefix + " ", StringComparison.OrdinalIgnoreCase))
+            {
+                return normalized;
+            }
+
+            return $"{prefix} {normalized}";
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateRoomStatus(UpdateRoomStatusViewModel vm)
+        {
+            var location = await _locationService.GetLocationByIdAsync(vm.LocationId);
+            if (location == null)
+            {
+                SetError("Không tìm thấy phòng.");
+                return RedirectToAction(nameof(ManageRoom));
+            }
+
+            try
+            {
+                await _locationService.UpdateLocationAsync(vm.LocationId, new UpdateLocationDTO
+                {
+                    Name = location.Name,
+                    Address = location.Address,
+                    Capacity = location.Capacity,
+                    Status = vm.Status,
+                    Type = location.Type,
+                    Description = location.Description
+                });
+                SetSuccess("Cập nhật trạng thái phòng thành công.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(ManageRoom));
+        }
+
+        private async Task<ManageRoomViewModel> BuildManageRoomViewModelAsync(CreateRoomViewModel? createRoom = null)
+        {
+            var locations = await _locationService.GetAllLocationsAsync();
+            return new ManageRoomViewModel
+            {
+                Rooms = locations.Select(x => new RoomListItemVm
+                {
+                    LocationId = x.LocationId,
+                    Name = x.Name,
+                    Address = x.Address,
+                    Capacity = x.Capacity,
+                    Status = x.Status,
+                    Type = x.Type,
+                    Description = x.Description
+                }).ToList(),
+                NewRoom = createRoom ?? new CreateRoomViewModel()
+            };
         }
 
         [HttpGet]

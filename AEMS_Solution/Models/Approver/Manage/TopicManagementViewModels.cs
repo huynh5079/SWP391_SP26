@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace AEMS_Solution.Models.Approver
+namespace AEMS_Solution.Models.Approver.Manage
 {
     public class TopicListItemVm
     {
