@@ -20,3 +20,7 @@
 
 ## User Management
 - Implement 'soft delete' for users by changing the user's status rather than relying solely on DeletedAt; admin deletions may have a time limit for automatic reactivation.
+
+## Testing Guidelines
+- Use minimal test implementations that only cover the explicitly requested scenario, instead of full mock-heavy setups.
+- Load test data from JSON files when writing tests for this project.
