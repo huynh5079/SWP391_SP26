@@ -186,56 +186,14 @@
                 </div>
             </div>
 
-            <div class="section-box">
-                <h3 class="section-title">Room Information</h3>
-
-                <div class="row">
-                    <div class="col">
-                        <label>University *</label>
-                        <select id="universitySelect">
-                            <option value="">-- Select University --</option>
-                        </select>
-                    </div>
-
-                    <div class="col">
-                        <label>Building *</label>
-                        <select id="buildingSelect">
-                            <option value="">-- Select Building --</option>
-                        </select>
-                    </div>
+            <div class="row">
+                <div class="col">
+                    <label asp-for="LocationId">Location *</label>
+                    <select asp-for="LocationId" asp-items="Model.Locations">
+                        <option value="">-- Select Location --</option>
+                    </select>
+                    <span asp-validation-for="LocationId" class="error"></span>
                 </div>
-
-                <div class="row">
-                    <div class="col">
-                        <label>Floor *</label>
-                        <select id="floorSelect">
-                            <option value="">-- Select Floor --</option>
-                        </select>
-                    </div>
-
-                    <div class="col">
-                        <label>Room *</label>
-                        <select id="roomSelect">
-                            <option value="">-- Select Room --</option>
-                        </select>
-                        <input asp-for="LocationId" type="hidden" />
-                        <span asp-validation-for="LocationId" class="error"></span>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col">
-                        <label>Location Type</label>
-                        <input id="locationTypeDisplay" type="text" readonly placeholder="Auto from approver" />
-                    </div>
-
-                    <div class="col">
-                        <label>Room Capacity</label>
-                        <input id="roomCapacityDisplay" type="text" readonly placeholder="Auto from approver" />
-                    </div>
-                </div>
-
-                <div class="hint" id="locationAvailabilityHint">Chọn thời gian bắt đầu và kết thúc để lọc phòng còn trống.</div>
             </div>
 
             <div class="row">
@@ -388,56 +346,16 @@
                             </div>
                         </div>
 
-                        <input asp-for="Agendas[@i].Location" type="hidden" class="agenda-location-value" />
-
-                        <div class="section-box agenda-location-box">
-                            <h4 class="section-title">Room Information</h4>
-
-                            <div class="row">
-                                <div class="col">
-                                    <label>University *</label>
-                                    <select class="agenda-university">
-                                        <option value="">-- Select University --</option>
-                                    </select>
-                                </div>
-
-                                <div class="col">
-                                    <label>Building *</label>
-                                    <select class="agenda-building">
-                                        <option value="">-- Select Building --</option>
-                                    </select>
-                                </div>
+                        <div class="row pt-2 pb-2">
+                            <div class="col">
+                                <label>Location</label>
+                                <select asp-for="Agendas[@i].Location">
+                                    <option value="">-- Same as Event Location --</option>
+                                    @foreach(var loc in Model.Locations) {
+                                        <option value="@loc.Text">@loc.Text</option>
+                                    }
+                                </select>
                             </div>
-
-                            <div class="row">
-                                <div class="col">
-                                    <label>Floor *</label>
-                                    <select class="agenda-floor">
-                                        <option value="">-- Select Floor --</option>
-                                    </select>
-                                </div>
-
-                                <div class="col">
-                                    <label>Room *</label>
-                                    <select class="agenda-room">
-                                        <option value="">-- Select Room --</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col">
-                                    <label>Location Type</label>
-                                    <input type="text" class="agenda-location-type" readonly placeholder="Auto from approver" />
-                                </div>
-
-                                <div class="col">
-                                    <label>Room Capacity</label>
-                                    <input type="text" class="agenda-room-capacity" readonly placeholder="Auto from approver" />
-                                </div>
-                            </div>
-
-                            <div class="hint agenda-location-hint">Nếu chưa nhập thời gian agenda, hệ thống sẽ dùng thời gian của event để lọc phòng còn trống.</div>
                         </div>
                     </div>
                 }
@@ -483,56 +401,16 @@
                 </div>
             </div>
 
-            <input name="Agendas[__i__].Location" type="hidden" class="agenda-location-value" />
-
-            <div class="section-box agenda-location-box">
-                <h4 class="section-title">Room Information</h4>
-
-                <div class="row">
-                    <div class="col">
-                        <label>University *</label>
-                        <select class="agenda-university">
-                            <option value="">-- Select University --</option>
-                        </select>
-                    </div>
-
-                    <div class="col">
-                        <label>Building *</label>
-                        <select class="agenda-building">
-                            <option value="">-- Select Building --</option>
-                        </select>
-                    </div>
+            <div class="row pt-2 pb-2">
+                <div class="col">
+                    <label>Location</label>
+                    <select name="Agendas[__i__].Location">
+                        <option value="">-- Same as Event Location --</option>
+                        @foreach(var loc in Model.Locations) {
+                            <option value="@loc.Text">@loc.Text</option>
+                        }
+                    </select>
                 </div>
-
-                <div class="row">
-                    <div class="col">
-                        <label>Floor *</label>
-                        <select class="agenda-floor">
-                            <option value="">-- Select Floor --</option>
-                        </select>
-                    </div>
-
-                    <div class="col">
-                        <label>Room *</label>
-                        <select class="agenda-room">
-                            <option value="">-- Select Room --</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col">
-                        <label>Location Type</label>
-                        <input type="text" class="agenda-location-type" readonly placeholder="Auto from approver" />
-                    </div>
-
-                    <div class="col">
-                        <label>Room Capacity</label>
-                        <input type="text" class="agenda-room-capacity" readonly placeholder="Auto from approver" />
-                    </div>
-                </div>
-
-                <div class="hint agenda-location-hint">Nếu chưa nhập thời gian agenda, hệ thống sẽ dùng thời gian của event để lọc phòng còn trống.</div>
             </div>
         </div>
     </template>
@@ -584,256 +462,7 @@
             // Show/Hide meeting url when Mode is Online/Hybrid
             const modeSelect = document.querySelector("select[name='Mode']");
             const meetingRow = document.getElementById("meetingRow");
-            const startTimeInput = document.getElementById("StartTime");
-            const endTimeInput = document.getElementById("EndTime");
-            const locationIdInput = document.getElementById("LocationId");
-            const universitySelect = document.getElementById("universitySelect");
-            const buildingSelect = document.getElementById("buildingSelect");
-            const floorSelect = document.getElementById("floorSelect");
-            const roomSelect = document.getElementById("roomSelect");
-            const locationTypeDisplay = document.getElementById("locationTypeDisplay");
-            const roomCapacityDisplay = document.getElementById("roomCapacityDisplay");
-            const locationHint = document.getElementById("locationAvailabilityHint");
-            const maxCapacityInput = document.getElementById("MaxCapacity");
-            const locationCapacityHint = document.getElementById("locationCapacityHint");
             const agendaSuggestionsByType = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AgendaSuggestionsByType));
-            let availableLocations = [];
-
-            function setOptions(select, placeholder, values, selectedValue) {
-                if (!select) return;
-
-                select.innerHTML = '';
-                const placeholderOption = document.createElement('option');
-                placeholderOption.value = '';
-                placeholderOption.textContent = placeholder;
-                select.appendChild(placeholderOption);
-
-                values.forEach(value => {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = value;
-                    if (value === selectedValue) {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
-                });
-            }
-
-            function getDistinctValues(items, selector) {
-                return [...new Set(items.map(selector).filter(Boolean))];
-            }
-
-            function getLocationValue(location) {
-                return location?.address
-                    || [location?.name, location?.building, location?.floor, location?.room].filter(Boolean).join(' - ');
-            }
-
-            function syncSelectedLocation() {
-                const selectedUniversity = universitySelect.value;
-                const selectedBuilding = buildingSelect.value;
-                const selectedFloor = floorSelect.value;
-                const selectedRoom = roomSelect.value;
-
-                const selectedLocation = availableLocations.find(x =>
-                    x.name === selectedUniversity &&
-                    x.building === selectedBuilding &&
-                    x.floor === selectedFloor &&
-                    x.room === selectedRoom);
-
-                locationIdInput.value = selectedLocation ? selectedLocation.id : '';
-                locationTypeDisplay.value = selectedLocation?.type ?? '';
-                if (roomCapacityDisplay) {
-                    roomCapacityDisplay.value = selectedLocation ? selectedLocation.capacity : '';
-                }
-
-                if (selectedLocation && maxCapacityInput) {
-                    maxCapacityInput.max = selectedLocation.capacity;
-                    if (locationCapacityHint) {
-                        locationCapacityHint.textContent = `Sức chứa tối đa theo phòng đã chọn: ${selectedLocation.capacity}.`;
-                    }
-                } else if (maxCapacityInput) {
-                    maxCapacityInput.removeAttribute('max');
-                    if (locationCapacityHint) {
-                        locationCapacityHint.textContent = 'Sức chứa phải nhỏ hơn hoặc bằng sức chứa phòng do approver cấu hình.';
-                    }
-                }
-            }
-
-            function populateRoomHierarchy(preferredLocationId) {
-                const selectedLocation = availableLocations.find(x => x.id === preferredLocationId);
-
-                const selectedUniversity = selectedLocation?.name || universitySelect.value;
-                const universities = getDistinctValues(availableLocations, x => x.name);
-                setOptions(universitySelect, '-- Select University --', universities, selectedUniversity);
-
-                const filteredByUniversity = availableLocations.filter(x => x.name === universitySelect.value);
-                const selectedBuilding = selectedLocation?.building || buildingSelect.value;
-                const buildings = getDistinctValues(filteredByUniversity, x => x.building);
-                setOptions(buildingSelect, '-- Select Building --', buildings, selectedBuilding);
-
-                const filteredByBuilding = filteredByUniversity.filter(x => x.building === buildingSelect.value);
-                const selectedFloor = selectedLocation?.floor || floorSelect.value;
-                const floors = getDistinctValues(filteredByBuilding, x => x.floor);
-                setOptions(floorSelect, '-- Select Floor --', floors, selectedFloor);
-
-                const filteredByFloor = filteredByBuilding.filter(x => x.floor === floorSelect.value);
-                const selectedRoom = selectedLocation?.room || roomSelect.value;
-                const rooms = getDistinctValues(filteredByFloor, x => x.room);
-                setOptions(roomSelect, '-- Select Room --', rooms, selectedRoom);
-
-                syncSelectedLocation();
-            }
-
-            function syncAgendaLocation(item) {
-                if (!item) return;
-
-                const selectedLocation = (item._availableLocations || []).find(x =>
-                    x.name === item._refs.university.value &&
-                    x.building === item._refs.building.value &&
-                    x.floor === item._refs.floor.value &&
-                    x.room === item._refs.room.value);
-
-                item._refs.locationValue.value = selectedLocation ? getLocationValue(selectedLocation) : '';
-                item._refs.locationType.value = selectedLocation?.type ?? '';
-                item._refs.roomCapacity.value = selectedLocation?.capacity ?? '';
-            }
-
-            function populateAgendaRoomHierarchy(item, preferredLocationValue) {
-                if (!item?._refs) return;
-
-                const locations = item._availableLocations || [];
-                const selectedLocation = locations.find(x => getLocationValue(x) === preferredLocationValue);
-
-                const selectedUniversity = selectedLocation?.name || item._refs.university.value;
-                const universities = getDistinctValues(locations, x => x.name);
-                setOptions(item._refs.university, '-- Select University --', universities, selectedUniversity);
-
-                const filteredByUniversity = locations.filter(x => x.name === item._refs.university.value);
-                const selectedBuilding = selectedLocation?.building || item._refs.building.value;
-                const buildings = getDistinctValues(filteredByUniversity, x => x.building);
-                setOptions(item._refs.building, '-- Select Building --', buildings, selectedBuilding);
-
-                const filteredByBuilding = filteredByUniversity.filter(x => x.building === item._refs.building.value);
-                const selectedFloor = selectedLocation?.floor || item._refs.floor.value;
-                const floors = getDistinctValues(filteredByBuilding, x => x.floor);
-                setOptions(item._refs.floor, '-- Select Floor --', floors, selectedFloor);
-
-                const filteredByFloor = filteredByBuilding.filter(x => x.floor === item._refs.floor.value);
-                const selectedRoom = selectedLocation?.room || item._refs.room.value;
-                const rooms = getDistinctValues(filteredByFloor, x => x.room);
-                setOptions(item._refs.room, '-- Select Room --', rooms, selectedRoom);
-
-                syncAgendaLocation(item);
-            }
-
-            async function refreshAgendaAvailableLocations(item) {
-                if (!item?._refs) return;
-
-                const startValue = item._refs.startTime.value || startTimeInput?.value || '';
-                const endValue = item._refs.endTime.value || endTimeInput?.value || '';
-
-                if (!startValue || !endValue) {
-                    item._availableLocations = [];
-                    populateAgendaRoomHierarchy(item, item._refs.locationValue.value);
-                    item._refs.hint.textContent = 'Hãy nhập thời gian cho event hoặc agenda để lọc phòng còn trống.';
-                    return;
-                }
-
-                try {
-                    const url = `/Organizer/GetAvailableLocations?startTime=${encodeURIComponent(startValue)}&endTime=${encodeURIComponent(endValue)}`;
-                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                    if (!response.ok) {
-                        item._refs.hint.textContent = 'Không thể tải danh sách phòng khả dụng.';
-                        return;
-                    }
-
-                    item._availableLocations = await response.json();
-                    populateAgendaRoomHierarchy(item, item._refs.locationValue.value);
-                    const usingAgendaTime = Boolean(item._refs.startTime.value && item._refs.endTime.value);
-                    const timeScopeLabel = usingAgendaTime ? 'agenda đã chọn' : 'event hiện tại';
-                    item._refs.hint.textContent = item._availableLocations.length > 0
-                        ? `Có ${item._availableLocations.length} phòng đang khả dụng trong khoảng thời gian ${timeScopeLabel}.`
-                        : `Không có phòng khả dụng trong khoảng thời gian ${timeScopeLabel}.`;
-                } catch {
-                    item._refs.hint.textContent = 'Không thể tải danh sách phòng khả dụng.';
-                }
-            }
-
-            function initializeAgendaLocationPicker(item) {
-                if (!item || item.dataset.locationInitialized === 'true') return;
-
-                item._refs = {
-                    startTime: item.querySelector("input[name$='.StartTime']"),
-                    endTime: item.querySelector("input[name$='.EndTime']"),
-                    locationValue: item.querySelector('.agenda-location-value'),
-                    university: item.querySelector('.agenda-university'),
-                    building: item.querySelector('.agenda-building'),
-                    floor: item.querySelector('.agenda-floor'),
-                    room: item.querySelector('.agenda-room'),
-                    locationType: item.querySelector('.agenda-location-type'),
-                    roomCapacity: item.querySelector('.agenda-room-capacity'),
-                    hint: item.querySelector('.agenda-location-hint')
-                };
-
-                item._availableLocations = [];
-
-                item._refs.startTime?.addEventListener('change', () => refreshAgendaAvailableLocations(item));
-                item._refs.endTime?.addEventListener('change', () => refreshAgendaAvailableLocations(item));
-                item._refs.university?.addEventListener('change', () => populateAgendaRoomHierarchy(item, ''));
-                item._refs.building?.addEventListener('change', () => populateAgendaRoomHierarchy(item, ''));
-                item._refs.floor?.addEventListener('change', () => populateAgendaRoomHierarchy(item, ''));
-                item._refs.room?.addEventListener('change', () => syncAgendaLocation(item));
-
-                item.dataset.locationInitialized = 'true';
-                refreshAgendaAvailableLocations(item);
-            }
-
-            async function refreshAvailableLocations() {
-                if (!startTimeInput || !endTimeInput || !locationIdInput) return;
-
-                const startValue = startTimeInput.value;
-                const endValue = endTimeInput.value;
-                if (!startValue || !endValue) {
-                    availableLocations = [];
-                    populateRoomHierarchy('');
-                    return;
-                }
-
-                const selectedValue = locationIdInput.value;
-
-                try {
-                    const url = `/Organizer/GetAvailableLocations?startTime=${encodeURIComponent(startValue)}&endTime=${encodeURIComponent(endValue)}`;
-                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                    if (!response.ok) return;
-
-                    availableLocations = await response.json();
-                    populateRoomHierarchy(selectedValue);
-
-                    if (locationHint) {
-                        locationHint.textContent = availableLocations.length > 0
-                            ? `Có ${availableLocations.length} phòng đang khả dụng trong khoảng thời gian đã chọn.`
-                            : 'Không có phòng khả dụng trong khoảng thời gian đã chọn.';
-                    }
-                } catch {
-                    if (locationHint) {
-                        locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
-                    }
-                }
-            }
-
-            if (startTimeInput) startTimeInput.addEventListener('change', refreshAvailableLocations);
-            if (endTimeInput) endTimeInput.addEventListener('change', refreshAvailableLocations);
-            if (startTimeInput) startTimeInput.addEventListener('change', () => {
-                agendaContainer.querySelectorAll('.agenda-item').forEach(refreshAgendaAvailableLocations);
-            });
-            if (endTimeInput) endTimeInput.addEventListener('change', () => {
-                agendaContainer.querySelectorAll('.agenda-item').forEach(refreshAgendaAvailableLocations);
-            });
-            if (universitySelect) universitySelect.addEventListener('change', () => populateRoomHierarchy(''));
-            if (buildingSelect) buildingSelect.addEventListener('change', () => populateRoomHierarchy(''));
-            if (floorSelect) floorSelect.addEventListener('change', () => populateRoomHierarchy(''));
-            if (roomSelect) roomSelect.addEventListener('change', syncSelectedLocation);
-            refreshAvailableLocations();
 
             function updateMeetingUI() {
                 const val = modeSelect ? modeSelect.value : '';
@@ -885,11 +514,6 @@
                     if (speakerNameInput) speakerNameInput.value = agendaData.speakerName ?? '';
                     if (descriptionInput) descriptionInput.value = agendaData.description ?? '';
                 }
-
-                initializeAgendaLocationPicker(agendaItem);
-            }
-
-            function hasAgendaContent() {
                 return [...agendaContainer.querySelectorAll('.agenda-item')].some(item =>
                     [...item.querySelectorAll('input[type="text"], input[type="datetime-local"], textarea, input[type="hidden"]')]
                         .some(input => input.value?.trim()));
@@ -940,12 +564,9 @@
                 if (btn) removeAgenda(btn);
             });
 
-            const existingAgendaItems = agendaContainer.querySelectorAll(".agenda-item");
             if (existingAgendaItems.length === 0) {
                 addAgenda();
-            } else {
-                existingAgendaItems.forEach(initializeAgendaLocationPicker);
-            }
+            } 
             const typeSelect = document.querySelector("select[name='Type']");
             typeSelect?.addEventListener('change', updateAgendaSuggestionHint);
             updateAgendaSuggestionHint();

@@ -10,11 +10,28 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 	{
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly ILocationValidator _locationValidator;
+		private readonly BusinessLogic.Service.System.INotificationService _notificationService;
 
-		public LocationService(IUnitOfWork unitOfWork, ILocationValidator locationValidator)
+		public LocationService(IUnitOfWork unitOfWork, ILocationValidator locationValidator, BusinessLogic.Service.System.INotificationService notificationService)
 		{
 			_unitOfWork = unitOfWork;
 			_locationValidator = locationValidator;
+			_notificationService = notificationService;
+		}
+
+		private async Task NotifyOrganizersAndApproversAsync(string title, string message)
+		{
+			var targetUsers = await _unitOfWork.Users.GetAllAsync(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver) && u.DeletedAt == null && u.Status == DataAccess.Enum.UserStatusEnum.Active);
+			foreach (var user in targetUsers)
+			{
+				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+				{
+					ReceiverId = user.Id,
+					Title = title,
+					Message = message,
+					Type = DataAccess.Enum.NotificationType.SystemBroadcast
+				});
+			}
 		}
 
 		public async Task<List<LocationDTO>> GetAllLocationsAsync()
@@ -89,6 +106,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 
 			await _unitOfWork.Locations.CreateAsync(location);
 			await _unitOfWork.SaveChangesAsync();
+
+			await NotifyOrganizersAndApproversAsync("Phòng mới được tạo", $"Phòng/Địa điểm mới: '{location.Name} - {location.Address}' đã được thêm vào hệ thống.");
+
 			return MapLocation(location);
 		}
 
@@ -122,6 +142,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 					&& x.DeletedAt == null);
 			_locationValidator.ValidateDuplicateLocation(duplicateLocation);
 
+			var oldStatus = location!.Status;
+
 			location!.Name = normalizedName;
 			location.Address = string.IsNullOrWhiteSpace(normalizedAddress) ? null : normalizedAddress;
 			location.Capacity = dto.Capacity;
@@ -132,6 +154,10 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 
 			await _unitOfWork.Locations.UpdateAsync(location);
 			await _unitOfWork.SaveChangesAsync();
+
+			var statusMsg = oldStatus != location.Status ? $" Trạng thái hiện tại: {location.Status}." : "";
+			await NotifyOrganizersAndApproversAsync("Thông tin phòng được cập nhật", $"Phòng '{location.Name} - {location.Address}' đã được cập nhật thông tin.{statusMsg}");
+
 			return true;
 		}
 
@@ -162,6 +188,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 			location!.DeletedAt = DateTimeHelper.GetVietnamTime();
 			await _unitOfWork.Locations.UpdateAsync(location);
 			await _unitOfWork.SaveChangesAsync();
+
+			await NotifyOrganizersAndApproversAsync("Phòng bị vô hiệu hóa", $"Phòng '{location.Name} - {location.Address}' đã bị vô hiệu hóa khỏi hệ thống.");
+
 			return true;
 		}
 	}

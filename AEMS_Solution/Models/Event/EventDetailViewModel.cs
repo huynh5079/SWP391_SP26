@@ -38,6 +38,9 @@ namespace AEMS_Solution.Models.Event
 		// Type / Status đang lưu dạng string trong DB (theo ERD)
 		public string? Type { get; set; }      // EventTypeEnum.ToString()
 		public EventStatusEnum Status { get; set; }  // EventStatusEnum
+		
+		public EventModeEnum? Mode { get; set; }
+		public string? MeetingUrl { get; set; }
 
 		public bool IsDepositRequired { get; set; }
 		public decimal DepositAmount { get; set; }

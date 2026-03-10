@@ -4,12 +4,22 @@ using DataAccess.Enum;
 
 namespace AEMS_Solution.Models.Approver
 {
-    public class ApproverDashboardViewModel
+    public class PendingApprovalsViewModel
     {
         public List<ApproverEventCardVm> Events { get; set; } = new();
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
         public string? Search { get; set; }
+    }
+
+    public class ApproverDashboardStatsViewModel
+    {
+        public int TotalEventsPending { get; set; }
+        public int TotalEventsApproved { get; set; }
+        public int TotalEventsRejected { get; set; }
+        public int EventsAwaitingAction { get; set; } // Ví dụ: Cùng = Pending
+        
+        public List<ApproverEventCardVm> RecentPendingEvents { get; set; } = new();
     }
 
     public class ApproverEventCardVm

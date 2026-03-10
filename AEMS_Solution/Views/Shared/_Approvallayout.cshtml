@@ -39,6 +39,9 @@
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="approverManageDropdown">
                                 <li>
+                                    <a class="dropdown-item" asp-controller="Approver" asp-action="Index">Pending Approvals</a>
+                                </li>
+                                <li>
                                     <a class="dropdown-item" asp-controller="Topic" asp-action="Index">Topics</a>
                                 </li>
                                 <li>
@@ -109,7 +112,10 @@
                                     }
                                     else if (User.IsInRole("Approver"))
                                     {
-                                                        <li><a class="dropdown-item" asp-controller="Approver" asp-action="Index">Approver Dashboard</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="Approver" asp-action="Index">Pending Approvals</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="Topic" asp-action="Index">Topics</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="Location" asp-action="Index">Locations</a></li>
+                                                        <li><a class="dropdown-item" asp-controller="Approver" asp-action="Agenda">Agenda</a></li>
                                     }
                                     else if (User.IsInRole("Student"))
                                     {

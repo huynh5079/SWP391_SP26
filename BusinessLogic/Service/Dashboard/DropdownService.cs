@@ -23,7 +23,7 @@ public class DropdownService : IDropdownService
         dto.Departments = departments.Select(d => new SelectItemDto { Id = d.Id, Text = d.Name }).ToList();
 
         var locations = await _uow.Locations.GetAllAsync(null, q => q.OrderBy(x => x.Name));
-        dto.Locations = locations.Select(l => new SelectItemDto { Id = l.Id, Text = l.Name }).ToList();
+        dto.Locations = locations.Select(l => new SelectItemDto { Id = l.Id, Text = !string.IsNullOrWhiteSpace(l.Address) ? l.Address : l.Name }).ToList();
 
         var topics = await _uow.Topics.GetAllAsync(null, q => q.OrderBy(x => x.Name));
         dto.Topics = topics.Select(t => new SelectItemDto { Id = t.Id, Text = t.Name }).ToList();
