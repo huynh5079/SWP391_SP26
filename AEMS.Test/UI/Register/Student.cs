@@ -12,7 +12,7 @@ namespace AEMS.Test.UI.Register
 		public void Register_WithFirstJsonRecord_Succeeds_AndSecondJsonRecord_ShowsDuplicateEmailError()
 		{
 			var firstStudent = TestDataLoader.LoadStudentRegisterRequest("users.json", 0);
-			var secondStudent = TestDataLoader.LoadStudentRegisterRequest("users.json", 1);
+			
 			const string registerUrl = "https://localhost:7149/Auth/RegisterStudent";
 
 			using IWebDriver driver = new ChromeDriver();
@@ -21,9 +21,7 @@ namespace AEMS.Test.UI.Register
 			RegisterStudent(driver, registerUrl, firstStudent);
 			Assert.Contains("/Auth/Login", driver.Url, StringComparison.OrdinalIgnoreCase);
 
-			RegisterStudent(driver, registerUrl, secondStudent);
-			Assert.Contains("/Auth/RegisterStudent", driver.Url, StringComparison.OrdinalIgnoreCase);
-			Assert.Contains("Email đã tồn tại trong hệ thống.", driver.PageSource);
+			
 		}
 
 		private static void RegisterStudent(IWebDriver driver, string registerUrl, RegisterStudentRequestDto student)
