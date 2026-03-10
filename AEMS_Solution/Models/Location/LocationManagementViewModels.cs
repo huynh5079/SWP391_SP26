@@ -20,6 +20,8 @@ namespace AEMS_Solution.Models.Location
     {
         public string? Search { get; set; }
         public string? FilterStatus { get; set; }
+        public int PageNumber { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
         public List<LocationListItemVm> Locations { get; set; } = new();
     }
 
