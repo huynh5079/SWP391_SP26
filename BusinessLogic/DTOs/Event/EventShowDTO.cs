@@ -23,6 +23,30 @@ public class EventDocumentDto
     public string? Type { get; set; }
 }
 
+public class TeamMemberDto
+{
+    public string Id { get; set; } = "";
+    public string TeamId { get; set; } = "";
+    public string? StudentId { get; set; }
+    public string? StaffId { get; set; }
+    public string MemberName { get; set; } = "";
+    public string MemberEmail { get; set; } = "";
+    public string RoleName { get; set; } = "";
+    public string TeamRole { get; set; } = "";
+}
+
+public class EventTeamDto
+{
+    public string Id { get; set; } = "";
+    public string EventId { get; set; } = "";
+    public string TeamName { get; set; } = "";
+    public string? Description { get; set; }
+    public decimal Score { get; set; }
+    public int? PlaceRank { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<TeamMemberDto> TeamMembers { get; set; } = new();
+}
+
 public class EventDetailsDto
 {
     public string EventId { get; set; } = "";
@@ -51,6 +75,7 @@ public class EventDetailsDto
     public double AvgRating { get; set; }
     public List<EventAgendaDto> Agendas { get; set; } = new();
     public List<EventDocumentDto> Documents { get; set; } = new();
+    public List<EventTeamDto> Teams { get; set; } = new();
 
     // Permission flags
     public bool CanEdit { get; set; }

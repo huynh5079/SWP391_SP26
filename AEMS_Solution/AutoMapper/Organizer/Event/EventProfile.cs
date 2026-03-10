@@ -1,4 +1,4 @@
-﻿using AEMS_Solution.Models.Event;
+using AEMS_Solution.Models.Event;
 using AutoMapper;
 using BusinessLogic.DTOs.Role.Organizer;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -54,6 +54,9 @@ namespace AEMS_Solution.AutoMapper.Organizer.Event
 			CreateMap<EventDocumentDto, UpdateDocumentVm>()
 				.ForMember(dest => dest.FileName, opt => opt.MapFrom(src => src.FileName ?? src.Url ?? string.Empty))
 				.ForMember(dest => dest.Url, opt => opt.MapFrom(src => src.Url ?? string.Empty));
+			
+			CreateMap<EventTeamDto, EventTeamVm>();
+			CreateMap<TeamMemberDto, TeamMemberVm>();
 			  
 			// List card mappings
 			CreateMap<EventListDto, OrganizerEventCardVm>();

@@ -24,6 +24,13 @@ namespace BusinessLogic.Service.Event
 		Task SoftDeleteEventAsync(string userId, string eventId);
 		Task RestoreEventAsync(string userId, string eventId);
 
+		// Team Management
+		Task<bool> CreateEventTeamAsync(string eventId, string teamName, string? description);
+		Task<bool> DeleteEventTeamAsync(string teamId);
+		Task<bool> AddMemberToTeamAsync(string teamId, string? studentUserId, string? staffUserId, string roleName);
+		Task<bool> RemoveMemberFromTeamAsync(string memberId);
+		Task<List<EventTeamDto>> GetEventTeamsAsync(string eventId);
+
 		// Paged deleted events (soft-deleted)
 		Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
 	}

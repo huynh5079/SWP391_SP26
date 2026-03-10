@@ -19,10 +19,8 @@ namespace DataAccess.Repositories.Abstraction
         IGenericRepository<Role> Roles { get; }
         IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
 		IGenericRepository<Notification> Notifications { get; }
-		
-		
 
-		// ✅ Update for OrganizerService
+		// OrganizerService
 		IGenericRepository<Event> Events { get; }
         IGenericRepository<EventAgenda> EventAgenda { get; }
         IGenericRepository<EventDocument> EventDocuments { get; }
@@ -31,17 +29,20 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<Semester> Semesters { get; }
 		IGenericRepository<Department> Departments { get; }
         IGenericRepository<EventWaitlist> EventWaitlist { get; }
-		//Update for ApprovalService
+		// ApprovalService
         IGenericRepository<ApprovalLog> EventApprovalLogs { get; }
 
-		// ✅ Update for StudentFeature
+		// StudentFeature
 		IGenericRepository<Ticket> Tickets { get; }
 		IGenericRepository<Feedback> Feedbacks { get; }
         IGenericRepository<CheckInHistory> CheckInHistories { get; }
-        //Quiz
+        // Quiz
         IGenericRepository<QuizQuestion> QuizQuestion { get; }
         IGenericRepository<EventQuiz> EventQuiz { get; }
 
+		// Teams
+		IGenericRepository<EventTeam> EventTeams { get; }
+		IGenericRepository<TeamMember> TeamMembers { get; }
 	}
 
 }

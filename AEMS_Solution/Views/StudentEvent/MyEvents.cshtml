@@ -1,6 +1,6 @@
 @model List<BusinessLogic.DTOs.Student.StudentEventBrowseDto>
 @{
-    ViewData["Title"] = "Vé của tôi";
+    ViewData["Title"] = "Sự kiện tham gia";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var now = DateTime.Now;
 }
@@ -8,8 +8,8 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="fw-bold mb-0"><i class="bi bi-ticket-detailed me-2 text-primary"></i>Vé của tôi</h4>
-            <small class="text-muted">Danh sách sự kiện bạn đã đăng ký</small>
+            <h4 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2 text-primary"></i>Sự kiện tham gia</h4>
+            <small class="text-muted">Danh sách sư kiện bạn đã đăng ký vé, làm ban tổ chức hoặc diễn giả</small>
         </div>
         <a asp-action="Index" class="btn btn-outline-primary">
             <i class="bi bi-calendar-week me-1"></i> Xem tất cả sự kiện
@@ -19,8 +19,8 @@
     @if (!Model.Any())
     {
         <div class="text-center py-5 text-muted">
-            <i class="bi bi-ticket-detailed" style="font-size: 3rem;"></i>
-            <p class="mt-2 fs-6">Bạn chưa đăng ký sự kiện nào.</p>
+            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+            <p class="mt-2 fs-6">Bạn chưa tham gia vào sự kiện nào.</p>
             <a asp-action="Index" class="btn btn-primary mt-1">
                 <i class="bi bi-search me-1"></i> Khám phá sự kiện
             </a>
