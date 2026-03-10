@@ -29,17 +29,20 @@ namespace BusinessLogic.Service.Auth
             {
                 throw new Exception("Email không tồn tại trong hệ thống (user == null).");
             }
+
+            await TryReactivateUserAsync(user);
+
             if (user.IsBanned == true)
             {
-                throw new Exception("Tài khoản bị cấm (IsBanned == true).");
+                throw new Exception(BuildLockedAccountMessage(user));
             }
             if (user.Status == UserStatusEnum.Banned)
             {
-                throw new Exception("Tài khoản bị cấm (Status == Banned).");
+                throw new Exception(BuildLockedAccountMessage(user));
             }
             if (user.Status == UserStatusEnum.Inactive)
             {
-                throw new Exception("Tài khoản chưa kích hoạt hoặc bị khóa (Status == Inactive).");
+                throw new Exception(BuildLockedAccountMessage(user));
             }
 
             if (!HashPasswordHelper.VerifyPassword(dto.Password, user.PasswordHash!))
@@ -269,9 +272,11 @@ namespace BusinessLogic.Service.Auth
             // Case A: User Exists
             if (user != null)
             {
+                await TryReactivateUserAsync(user);
+
                 if (user.IsBanned == true || user.Status == UserStatusEnum.Banned || user.Status == UserStatusEnum.Inactive)
                 {
-                    throw new Exception("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+                    throw new Exception(BuildLockedAccountMessage(user));
                 }
 
                 if (string.IsNullOrEmpty(user.GoogleId))
@@ -335,6 +340,64 @@ namespace BusinessLogic.Service.Auth
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private async Task TryReactivateUserAsync(UserEntity user)
+        {
+            var now = DateTimeHelper.GetVietnamTime();
+            if (user.Status != UserStatusEnum.Inactive || !user.ReactivateAt.HasValue || user.ReactivateAt > now)
+            {
+                return;
+            }
+
+            user.Status = UserStatusEnum.Active;
+            user.IsBanned = false;
+            user.ReactivateAt = null;
+            await _uow.SaveChangesAsync();
+        }
+
+        private static string BuildLockedAccountMessage(UserEntity user)
+        {
+            if (!user.ReactivateAt.HasValue)
+            {
+                return "Tài khoản của bạn đang bị khóa thủ công. Vui lòng liên hệ quản trị viên để được mở khóa.";
+            }
+
+            var now = DateTimeHelper.GetVietnamTime();
+            var remaining = user.ReactivateAt.Value - now;
+            if (remaining <= TimeSpan.Zero)
+            {
+                return "Tài khoản của bạn đang chờ tự động mở khóa. Vui lòng thử đăng nhập lại sau ít phút.";
+            }
+
+            return $"Tài khoản của bạn đang bị khóa tạm thời và sẽ tự mở khóa sau {FormatRemainingTime(remaining)} (lúc {user.ReactivateAt.Value:dd/MM/yyyy HH:mm}).";
+        }
+
+        private static string FormatRemainingTime(TimeSpan remaining)
+        {
+            var parts = new List<string>();
+
+            if (remaining.Days > 0)
+            {
+                parts.Add($"{remaining.Days} ngày");
+            }
+
+            if (remaining.Hours > 0)
+            {
+                parts.Add($"{remaining.Hours} giờ");
+            }
+
+            if (remaining.Minutes > 0)
+            {
+                parts.Add($"{remaining.Minutes} phút");
+            }
+
+            if (parts.Count == 0)
+            {
+                parts.Add("dưới 1 phút");
+            }
+
+            return string.Join(" ", parts.Take(3));
         }
     }
 }

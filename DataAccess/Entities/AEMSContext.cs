@@ -587,11 +587,13 @@ public partial class AEMSContext : DbContext
 			entity.ToTable("User");
 
 			entity.HasIndex(e => e.Email, "UQ__User__A9D10534CD0FD16E").IsUnique();
+			entity.HasIndex(e => new { e.Status, e.ReactivateAt }, "IX_User_Status_ReactivateAt");
 
 			entity.Property(e => e.Email).HasMaxLength(255);
 			entity.Property(e => e.FullName).HasMaxLength(255);
 			entity.Property(e => e.IsBanned).HasDefaultValue(false);
 			entity.Property(e => e.Phone).HasMaxLength(50);
+			entity.Property(e => e.ReactivateAt).HasColumnType("datetime2");
 			entity.Property(e => e.RoleId).HasMaxLength(450);
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)

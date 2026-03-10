@@ -17,3 +17,6 @@
 ## Room Addressing
 - Display and store room addresses with explicit labels, including Building, Floor, and Room, instead of bare values.
 - Normalize room addresses to avoid duplicate labels, such as 'Building Building B'; preserve a single explicit label for Building, Floor, and Room.
+
+## User Management
+- Implement 'soft delete' for users by changing the user's status rather than relying solely on DeletedAt; admin deletions may have a time limit for automatic reactivation.
