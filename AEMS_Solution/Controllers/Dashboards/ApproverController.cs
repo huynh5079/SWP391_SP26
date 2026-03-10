@@ -1,13 +1,19 @@
 using System.Threading.Tasks;
+using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Models.Event.EventAgenda;
+using AutoMapper;
 using AEMS_Solution.Models.Approver;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.DTOs.Event.Location;
 using BusinessLogic.Service.Event.Sub_Service.Location;
+using DataAccess.Repositories.Abstraction;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AEMS_Solution.Models.Approver.Manage;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 
 namespace AEMS_Solution.Controllers.Dashboards
 {
@@ -17,12 +23,76 @@ namespace AEMS_Solution.Controllers.Dashboards
         private readonly IApproverQueryService _queryService;
         private readonly IApproverCommandService _commandService;
         private readonly ILocationService _locationService;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
+        private readonly IApproverEventAgendaAction _eventAgendaAction;
 
-        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService)
+        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction)
         {
             _queryService = queryService;
             _commandService = commandService;
             _locationService = locationService;
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
+            _eventAgendaAction = eventAgendaAction;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Agenda(string? search = null, string? eventId = null)
+        {
+            try
+            {
+                _eventAgendaAction.EnsureApproverId(CurrentUserId);
+
+                var events = (await _unitOfWork.Events.GetAllAsync(x => x.DeletedAt == null))
+                    .OrderBy(x => x.Title)
+                    .ToList();
+
+                var agendas = (await _unitOfWork.EventAgenda.GetAllAsync(
+                    x => x.DeletedAt == null,
+                    q => q
+                        .Include(x => x.Event)
+                            .ThenInclude(x => x.Organizer)
+                                .ThenInclude(x => x.User)))
+                    .Where(x => x.Event != null && x.Event.DeletedAt == null);
+
+                if (!string.IsNullOrWhiteSpace(eventId))
+                {
+                    agendas = agendas.Where(x => x.EventId == eventId);
+                }
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var keyword = search.Trim();
+                    agendas = agendas.Where(x =>
+                        (x.SessionName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                        || (x.SpeakerName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                        || (x.Event?.Title?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                        || (x.Event?.Organizer?.User?.FullName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false));
+                }
+
+                var model = new MyAgendaViewModel
+                {
+                    PageTitle = "All Agenda",
+                    PageDescription = "Approver có thể xem toàn bộ agenda của các organizer.",
+                    IsReadOnly = true,
+                    Search = search,
+                    SelectedEventId = eventId,
+                    EventOptions = events.Select(x => new SelectListItem
+                    {
+                        Value = x.Id,
+                        Text = x.Title,
+                        Selected = x.Id == eventId
+                    }).ToList(),
+                    Agendas = _mapper.Map<List<AgendaItemViewModel>>(agendas.OrderBy(x => x.StartTime ?? DateTime.MaxValue).ThenBy(x => x.SessionName).ToList())
+                };
+
+                return View("~/Views/Event/Agenda/MyAgenda.cshtml", model);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("Login", "Auth");
+            }
         }
 
         [HttpGet]

@@ -1,0 +1,34 @@
+﻿[
+    //test is email and email is duplicate
+    {
+        "email": "sv001@university.edu.vn",
+        "password": "ValidPass@123",
+        "Name": "Nguyễn Văn An",
+        "mssv": "DE191038",
+        "sdt": "0836130605"
+    },
+    {
+        "email": "sv001@university.edu.vn",
+        "password": "WrongPass123",
+        "Name": "Nguyễn Văn B",
+        "mssv": "DE191111",
+        "sdt": "02553825954"
+    },
+
+    //test student code is duplicate student ID
+    {
+        "email": "sv001@university.edu.vn",
+        "password": "ValidPass@123",
+        "Name": "Nguyễn Văn An",
+        "mssv": "DE191038",
+        "sdt": "0836130605"
+    },
+    {
+        "email": "sv002@university.edu.vn",
+        "password": "WrongPass123",
+        "Name": "Nguyễn Văn B",
+        "mssv": "DE191038",
+        "sdt": "02553825954"
+    }
+
+]

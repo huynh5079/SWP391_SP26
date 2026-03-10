@@ -91,6 +91,7 @@
                                     else if (User.IsInRole("Organizer"))
                                     {
                                         <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Index">Organizer Dashboard</a></li>
+                                        <li><a class="dropdown-item" asp-controller="EventAgenda" asp-action="MyAgenda">Agenda</a></li>
                                     }
                                     else if (User.IsInRole("Approval"))
                                     {

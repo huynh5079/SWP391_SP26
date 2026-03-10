@@ -60,12 +60,23 @@ namespace AEMS_Solution.Models.Event
 		public List<SelectListItem> Departments { get; set; } = new();
 		public List<SelectListItem> Locations { get; set; } = new();
 		public List<SelectListItem> Topics { get; set; } = new();
+		public Dictionary<int, List<string>> AgendaSuggestionsByType { get; set; } = new()
+		{
+			[(int)EventTypeEnum.Workshop] = new() { "Check-in", "Opening", "Main Session", "Q&A", "Closing" },
+			[(int)EventTypeEnum.Seminar] = new() { "Welcome", "Keynote", "Panel Discussion", "Q&A", "Closing" },
+			[(int)EventTypeEnum.Competition] = new() { "Check-in", "Opening", "Round 1", "Final Round", "Award Ceremony" },
+			[(int)EventTypeEnum.Training] = new() { "Introduction", "Training Session", "Practice", "Review", "Closing" },
+			[(int)EventTypeEnum.Social] = new() { "Gathering", "Warm-up", "Main Activity", "Sharing", "Wrap-up" },
+			[(int)EventTypeEnum.Bootcamp] = new() { "Check-in", "Orientation", "Training Block", "Group Activity", "Closing" }
+		};
 	}
 
 	public class CreateAgendaItemVm
 	{
+		[Required(ErrorMessage = "Vui lòng nhập Session Name")]
 		public string? SessionName { get; set; }
 		public string? Description { get; set; }
+		[Required(ErrorMessage = "Vui lòng nhập Speaker")]
 		public string? SpeakerName { get; set; }
 		public DateTime? StartTime { get; set; }
 		public DateTime? EndTime { get; set; }

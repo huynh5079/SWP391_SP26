@@ -13,6 +13,7 @@ using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Helper;
+using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -23,11 +24,13 @@ using Microsoft.EntityFrameworkCore;
 	private readonly IOrganizerService _organizerService;
 	    private readonly IMapper _mapper;
 	    private readonly ILocationService _locationService;
-		public OrganizerController(IOrganizerService organizerService, IMapper mapper, ILocationService locationService)
+	    private readonly IUnitOfWork _unitOfWork;
+		public OrganizerController(IOrganizerService organizerService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork)
 		{
 			_organizerService = organizerService;
 			_mapper = mapper;
 			_locationService = locationService;
+			_unitOfWork = unitOfWork;
 		}
         [HttpGet]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, int page = 1, int pageSize = 10)
@@ -426,6 +429,109 @@ using Microsoft.EntityFrameworkCore;
 			}
 		}
 		// POST detail handler removed — use Manage POST if needed
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateAgendaFromDetail(CreateDetailAgendaViewModel model)
+		{
+			if (string.IsNullOrWhiteSpace(model.EventId))
+			{
+				SetError("Event id không hợp lệ.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (string.IsNullOrWhiteSpace(CurrentUserId))
+			{
+				return RedirectToAction("Login", "Auth");
+			}
+
+			if (!ModelState.IsValid)
+			{
+				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu agenda không hợp lệ.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
+			if (eventEntity == null)
+			{
+				SetError("Không tìm thấy sự kiện để thêm agenda.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (model.StartTime >= model.EndTime)
+			{
+				SetError("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			if (model.StartTime < eventEntity.StartTime || model.EndTime > eventEntity.EndTime)
+			{
+				SetError("Thời gian agenda phải nằm trong thời gian của event.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var agenda = new DataAccess.Entities.EventAgenda
+			{
+				EventId = model.EventId,
+				SessionName = model.SessionName.Trim(),
+				SpeakerName = model.SpeakerName.Trim(),
+				Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
+				StartTime = model.StartTime,
+				EndTime = model.EndTime,
+				Location = string.IsNullOrWhiteSpace(model.Location) ? null : model.Location.Trim(),
+				UpdatedAt = DateTimeHelper.GetVietnamTime()
+			};
+
+			await _unitOfWork.EventAgenda.CreateAsync(agenda);
+			await _unitOfWork.SaveChangesAsync();
+
+			SetSuccess("Tạo agenda thành công.");
+			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateDocumentFromDetail(CreateDetailDocumentViewModel model)
+		{
+			if (string.IsNullOrWhiteSpace(model.EventId))
+			{
+				SetError("Event id không hợp lệ.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (string.IsNullOrWhiteSpace(CurrentUserId))
+			{
+				return RedirectToAction("Login", "Auth");
+			}
+
+			if (!ModelState.IsValid)
+			{
+				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu tài liệu không hợp lệ.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
+			if (eventEntity == null)
+			{
+				SetError("Không tìm thấy sự kiện để thêm tài liệu.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			var document = new DataAccess.Entities.EventDocument
+			{
+				EventId = model.EventId,
+				Name = model.Name.Trim(),
+				Url = model.Url.Trim(),
+				Type = string.IsNullOrWhiteSpace(model.Type) ? null : model.Type.Trim(),
+				UpdatedAt = DateTimeHelper.GetVietnamTime()
+			};
+
+			await _unitOfWork.EventDocuments.CreateAsync(document);
+			await _unitOfWork.SaveChangesAsync();
+
+			SetSuccess("Tạo document thành công.");
+			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+		}
+
 		[HttpGet]
 		public async Task<IActionResult> MyEvents(string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 		{
