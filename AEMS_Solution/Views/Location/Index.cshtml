@@ -1,0 +1,125 @@
+@model AEMS_Solution.Models.Location.LocationIndexViewModel
+@using DataAccess.Enum
+@{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_Layout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
+    ViewData["Title"] = "Manage Locations";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="bi bi-geo-alt me-2"></i>Manage Locations</h2>
+        <a asp-controller="Location" asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Add Location
+        </a>
+    </div>
+
+    <form method="get" asp-controller="Location" asp-action="Index" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search by name, address..." />
+        </div>
+        <div class="col-md-3">
+            <select name="filterStatus" class="form-select">
+                <option value="">-- All Statuses --</option>
+                @foreach (var status in System.Enum.GetValues<LocationStatusEnum>())
+                {
+                    if (Model.FilterStatus == status.ToString())
+                    {
+                        <option value="@status" selected="selected">@status</option>
+                    }
+                    else
+                    {
+                        <option value="@status">@status</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-search me-1"></i>Search
+            </button>
+            <a asp-controller="Location" asp-action="Index" class="btn btn-outline-secondary ms-1">Clear</a>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Capacity</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th style="width:150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Locations.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-3">
+                                <i class="bi bi-inbox me-1"></i>No locations found.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var loc in Model.Locations)
+                        {
+                            <tr>
+                                <td><strong>@loc.Name</strong></td>
+                                <td>@(string.IsNullOrWhiteSpace(loc.Address) ? "-" : loc.Address)</td>
+                                <td class="text-center">@loc.Capacity</td>
+                                <td>
+                                    @(loc.Type.HasValue ? loc.Type.Value.ToString() : "-")
+                                </td>
+                                <td>
+                                    @{
+                                        var badgeClass = loc.Status switch
+                                        {
+                                            LocationStatusEnum.Available => "bg-success",
+                                            LocationStatusEnum.Occupied => "bg-warning text-dark",
+                                            LocationStatusEnum.Maintenance => "bg-info text-dark",
+                                            LocationStatusEnum.Closed => "bg-secondary",
+                                            _ => "bg-secondary"
+                                        };
+                                    }
+                                    <span class="badge @badgeClass">@loc.Status</span>
+                                </td>
+                                <td>@loc.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a asp-controller="Location" asp-action="Edit" asp-route-id="@loc.LocationId"
+                                           class="btn btn-sm btn-warning">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @{
+                                            var deleteUrl = Url.Action("Delete", "Location", new { id = loc.LocationId });
+                                            var confirmMsg = $"Bạn có chắc chắn muốn xoá địa điểm \"{loc.Name}\"?";
+                                        }
+                                        <form action="@deleteUrl" method="post"
+                                              onsubmit="return confirm('@Html.Raw(confirmMsg.Replace("'", "\\'"))');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-2 text-muted small">
+        Total: <strong>@Model.Locations.Count</strong> location(s)
+    </div>
+</div>
