@@ -140,6 +140,53 @@ namespace AEMS_Solution.Controllers.Dashboards
             return RedirectToAction(nameof(ManageRoom));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateRoom(UpdateRoomViewModel vm)
+        {
+            if (!ModelState.IsValid)
+            {
+                SetError("Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
+                return RedirectToAction(nameof(ManageRoom));
+            }
+
+            var location = await _locationService.GetLocationByIdAsync(vm.LocationId);
+            if (location == null)
+            {
+                SetError("Không tìm thấy phòng.");
+                return RedirectToAction(nameof(ManageRoom));
+            }
+
+            try
+            {
+                // Build address from parts (same logic as CreateRoom)
+                var addressParts = new[] {
+                    FormatAddressPart(vm.Building, "Building"),
+                    FormatAddressPart(vm.Floor, "Floor"),
+                    FormatAddressPart(vm.Room, "Room")
+                }.Where(x => !string.IsNullOrWhiteSpace(x));
+                var builtAddress = string.Join(" - ", addressParts!);
+                var finalAddress = string.IsNullOrWhiteSpace(builtAddress) ? vm.Building ?? location.Address : builtAddress;
+
+                await _locationService.UpdateLocationAsync(vm.LocationId, new UpdateLocationDTO
+                {
+                    Name = vm.Name.Trim(),
+                    Address = finalAddress,
+                    Capacity = vm.Capacity,
+                    Status = vm.Status,
+                    Type = vm.Type,
+                    Description = vm.Description ?? string.Empty
+                });
+                SetSuccess("Cập nhật phòng thành công.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(ManageRoom));
+        }
+
         private async Task<ManageRoomViewModel> BuildManageRoomViewModelAsync(CreateRoomViewModel? createRoom = null)
         {
             var locations = await _locationService.GetAllLocationsAsync();

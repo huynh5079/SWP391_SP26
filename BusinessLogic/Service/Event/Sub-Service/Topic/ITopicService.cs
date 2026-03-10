@@ -14,5 +14,6 @@ namespace BusinessLogic.Service.Event.Sub_Service.Topic
 		Task<List<TopicDTO>> GetTopicsByEventAsync(string eventId);
 		Task<TopicDTO> CreateTopicAsync(CreateTopicDTO dto);
 		Task<bool> UpdateTopicAsync(string topicId, UpdateTopicDTO dto);
+		Task<bool> DeleteTopicAsync(string topicId);
 	}
 }

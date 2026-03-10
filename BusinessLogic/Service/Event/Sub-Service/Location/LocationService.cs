@@ -151,5 +151,18 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 				DeletedAt = location.DeletedAt ?? DateTime.MinValue
 			};
 		}
+
+		public async Task<bool> DeleteLocationAsync(string locationId)
+		{
+			if (string.IsNullOrWhiteSpace(locationId)) return false;
+
+			var location = await _unitOfWork.Locations.GetAsync(x => x.Id == locationId && x.DeletedAt == null);
+			_locationValidator.ValidateLocationExists(location);
+
+			location!.DeletedAt = DateTimeHelper.GetVietnamTime();
+			await _unitOfWork.Locations.UpdateAsync(location);
+			await _unitOfWork.SaveChangesAsync();
+			return true;
+		}
 	}
 }

@@ -1,7 +1,10 @@
 @model AEMS_Solution.Models.Approver.Manage.TopicIndexViewModel
 @{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_Layout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
     ViewData["Title"] = "Manage Topics";
-    Layout = "_Approvallayout";
 }
 
 <div class="container mt-4">
@@ -46,7 +49,12 @@
                         <td>@topic.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                         <td>@topic.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                         <td>
-                            <a asp-controller="Topic" asp-action="Edit" asp-route-id="@topic.TopicId" class="btn btn-sm btn-warning">Edit</a>
+                            <div class="d-flex gap-2">
+                                <a asp-controller="Topic" asp-action="Edit" asp-route-id="@topic.TopicId" class="btn btn-sm btn-warning">Edit</a>
+                                <form asp-controller="Topic" asp-action="Delete" asp-route-id="@topic.TopicId" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xoá Topic này?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 }

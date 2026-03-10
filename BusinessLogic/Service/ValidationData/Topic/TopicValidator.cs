@@ -37,6 +37,14 @@ namespace BusinessLogic.Service.ValidationData.Topic
 			}
 		}
 
+		public void ValidateTopicNotUsed(bool isUsed)
+		{
+			if (isUsed)
+			{
+				throw new BusinessValidationException("Không thể xoá Topic này vì đang có Event sử dụng nó.");
+			}
+		}
+
 		public class BusinessValidationException : Exception
 		{
 			public BusinessValidationException(string message) : base(message)
