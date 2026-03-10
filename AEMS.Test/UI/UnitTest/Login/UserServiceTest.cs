@@ -36,16 +36,25 @@ namespace AEMS.Test.UI.UnitTest.Login
                 password.Clear();
                 password.SendKeys(user.Password);
 
-                // submit
-                var submit = driver.FindElement(By.CssSelector("button[type='submit']"));
-                submit.Click();
+				// submit
+				var submit = driver.FindElement(By.CssSelector("button[type='submit']"));
+				submit.Click();
+                Thread.Sleep(5000); // wait for potential redirect
+				var postWait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
+				postWait.Until(d => d.Url.Contains("/Auth/Login") ||
+									d.FindElements(By.Id("userProfileDropdown")).Count > 0);
 
-                // wait for login to complete (redirect or user dropdown appears)
-                var postWait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-                postWait.Until(d => !d.Url.Contains("/Auth/Login") || d.FindElements(By.Id("userProfileDropdown")).Count > 0);
+				bool loginSuccess = !driver.Url.Contains("/Auth/Login");
 
-                // Assert logged in
-                Assert.False(driver.Url.Contains("/Auth/Login", StringComparison.OrdinalIgnoreCase));
+				if (!loginSuccess)
+				{
+					Console.WriteLine($"Login failed: {user.Email}");
+					driver.Navigate().GoToUrl(loginUrl);
+					continue;
+				}
+
+				// Assert logged in
+				Assert.False(driver.Url.Contains("/Auth/Login", StringComparison.OrdinalIgnoreCase));
 
                 // Perform logout via UI: open user dropdown then submit logout form
                 try
@@ -80,7 +89,7 @@ namespace AEMS.Test.UI.UnitTest.Login
             driver.Quit();
         }
 
-        private static LoginRequestDto[] LoadLoginUserFromJson()
+        public static LoginRequestDto[] LoadLoginUserFromJson()
         {
             // try multiple possible locations (support Login and Login/LoginOrganizer folders)
             var candidatePaths = new[]

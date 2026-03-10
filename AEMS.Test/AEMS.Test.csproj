@@ -10,7 +10,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="TestData\Approvercomment\comment.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="TestData\Approvercomment\comment.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="DotNetSeleniumExtras.WaitHelpers" Version="3.11.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Selenium.Support" Version="4.41.0" />
@@ -27,7 +38,7 @@
   <ItemGroup>
     <Folder Include="Services\IntegrationTest\" />
     <Folder Include="Services\SystemTest\" />
-    <Folder Include="Services\UnitTest\User\" />
+    <Folder Include="Services\UnitTest\User\UnitTest\Login\" />
   </ItemGroup>
 
   <ItemGroup>

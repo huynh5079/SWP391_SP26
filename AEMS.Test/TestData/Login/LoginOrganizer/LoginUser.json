@@ -6,5 +6,14 @@
 	{
 		"Email": "kpham1234@gmail.com",
 		"Password": "11111111"
+	},
+	{
+		"Email": "approval@gmail.com",
+		"Password": "11111111"
+	},
+	{
+		"Email": "admin@gmail.com",
+		"Password": "11111111"
 	}
+
 ]
