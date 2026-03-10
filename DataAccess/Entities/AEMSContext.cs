@@ -303,6 +303,17 @@ public partial class AEMSContext : DbContext
 				.HasMaxLength(50)
 				.HasConversion<string>();
 
+			// Map QuestionSetStatus enum to string (nvarchar(50)) with default 'Available'
+			entity.Property(e => e.QuestionSetStatus)
+				.IsRequired()
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(QuestionSetEnum.Available);
+
+		// File for quiz (nullable)
+		entity.Property(e => e.FileQuiz)
+			.HasColumnType("nvarchar(max)");
+
 			entity.HasOne(d => d.Event).WithMany(p => p.EventQuizzes)
 				.HasForeignKey(d => d.EventId)
 				.OnDelete(DeleteBehavior.ClientSetNull)

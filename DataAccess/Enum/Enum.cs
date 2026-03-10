@@ -167,5 +167,9 @@ namespace DataAccess.Enum
 		Available,
 		NA //not available
 	}
-	
+	public enum QuestionSetEnum
+	{
+		Available,
+		NA //not available
+	}
 }
