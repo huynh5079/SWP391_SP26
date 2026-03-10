@@ -3,20 +3,13 @@
     {
         "email": "sv001@university.edu.vn",
         "password": "ValidPass@123",
-        "fullName": "Nguyễn Văn An",
-        "studentCode": "DE191038",
-        "phone": "0836130605",
-        "major": "Software Engineering",
-        "gender": "Female"
-    },
-    {
-        "email": "sv001@university.edu.vn",
-        "password": "WrongPass123",
-        "fullName": "Nguyễn Văn B",
-        "studentCode": "DE191111",
-        "phone": "02553825954",
-        "major": "Software Engineering",
-        "gender": "Female"
+        "FullName": "Nguyễn Văn An",
+        "StudentCode": "DE191038",
+        "Phone": "0836130605"
+		"Major": "Software Engineering",
+		"Gender":  "Female"
     }
-]
+   
+
+    
 
