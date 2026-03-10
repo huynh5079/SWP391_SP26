@@ -64,7 +64,7 @@ namespace AEMS_Solution.BaseAction_ValidforController_.Organizer.Event
 				throw new InvalidOperationException("Vui lòng nhập Session Name.");
 			}
 
-			if (string.IsNullOrWhiteSpace(model.SpeakerName))
+			if (string.IsNullOrWhiteSpace(model.SpeakerInfo))
 			{
 				throw new InvalidOperationException("Vui lòng nhập Speaker.");
 			}

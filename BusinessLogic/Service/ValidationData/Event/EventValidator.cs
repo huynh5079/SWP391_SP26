@@ -67,7 +67,7 @@ namespace BusinessLogic.Service.ValidationData.Event
 			if (agendas == null) return;
 			foreach (var a in agendas)
 			{
-				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 				if (isEmpty) continue;
 

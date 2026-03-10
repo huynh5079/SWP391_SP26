@@ -77,7 +77,7 @@ namespace AEMS_Solution.Models.Event
 		public string? SessionName { get; set; }
 		public string? Description { get; set; }
 		[Required(ErrorMessage = "Vui lòng nhập Speaker")]
-		public string? SpeakerName { get; set; }
+		public string? SpeakerInfo { get; set; }
 		public DateTime? StartTime { get; set; }
 		public DateTime? EndTime { get; set; }
 		public string? Location { get; set; } // agenda location text (bảng agenda của bạn là nvarchar)

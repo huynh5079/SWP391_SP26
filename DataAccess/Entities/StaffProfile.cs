@@ -27,5 +27,9 @@ public partial class StaffProfile: BaseEntity
 
     public virtual ICollection<Event> Events { get; set; } = new List<Event>();
 
+    public virtual ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
+
+    public virtual ICollection<EventAgenda> AgendasAsStaffSpeaker { get; set; } = new List<EventAgenda>();
+
     public virtual User? User { get; set; }
 }

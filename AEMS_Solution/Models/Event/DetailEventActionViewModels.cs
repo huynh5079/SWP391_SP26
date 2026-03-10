@@ -11,7 +11,7 @@ namespace AEMS_Solution.Models.Event
         public string SessionName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Vui lòng nhập speaker")]
-        public string SpeakerName { get; set; } = string.Empty;
+        public string SpeakerInfo { get; set; } = string.Empty;
 
         public string? Description { get; set; }
 

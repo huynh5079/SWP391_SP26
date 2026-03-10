@@ -358,7 +358,7 @@ public class EventService : IEventService
 		{
 			foreach (var a in dto.Agendas)
 			{
-				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 				if (isEmpty) continue;
 
@@ -406,7 +406,7 @@ public class EventService : IEventService
 			{
 				foreach (var a in dto.Agendas)
 				{
-					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 					if (isEmpty) continue;
 
@@ -416,7 +416,7 @@ public class EventService : IEventService
 						EventId = entity.Id,
 						SessionName = a.SessionName,
 						Description = a.Description,
-						SpeakerName = a.SpeakerName,
+						SpeakerInfo = a.SpeakerInfo,
 						StartTime = a.StartTime,
 						EndTime = a.EndTime,
 						Location = a.Location,
@@ -526,7 +526,7 @@ public class EventService : IEventService
 		{
 			foreach (var a in dto.Agendas)
 			{
-				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 				if (isEmpty) continue;
 
@@ -577,7 +577,7 @@ public class EventService : IEventService
 			{
 				foreach (var a in dto.Agendas)
 				{
-					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 					if (isEmpty) continue;
 
@@ -587,7 +587,7 @@ public class EventService : IEventService
 						EventId = ev.Id,
 						SessionName = a.SessionName,
 						Description = a.Description,
-						SpeakerName = a.SpeakerName,
+						SpeakerInfo = a.SpeakerInfo,
 						StartTime = a.StartTime,
 						EndTime = a.EndTime,
 						Location = a.Location,
@@ -788,7 +788,7 @@ public class EventService : IEventService
 					EventId = a.EventId,
 					SessionName = a.SessionName ?? "",
 					Description = a.Description,
-					SpeakerName = a.SpeakerName,
+					SpeakerInfo = a.SpeakerInfo,
 					StartTime = a.StartTime ?? DateTime.MinValue,
 					EndTime = a.EndTime ?? DateTime.MinValue,
 					Location = a.Location

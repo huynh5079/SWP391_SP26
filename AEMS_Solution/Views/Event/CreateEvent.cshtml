@@ -327,8 +327,8 @@
                             </div>
                             <div class="col">
                                 <label>Speaker</label>
-                                <input asp-for="Agendas[@i].SpeakerName" required />
-                                <span asp-validation-for="Agendas[@i].SpeakerName" class="error"></span>
+                                <input asp-for="Agendas[@i].SpeakerInfo" required />
+                                <span asp-validation-for="Agendas[@i].SpeakerInfo" class="error"></span>
                             </div>
                         </div>
 
@@ -383,7 +383,7 @@
                 </div>
                 <div class="col">
                     <label>Speaker</label>
-                    <input name="Agendas[__i__].SpeakerName" required />
+                    <input name="Agendas[__i__].SpeakerInfo" required />
                 </div>
             </div>
 
@@ -507,7 +507,7 @@
 
                 if (agendaData) {
                     const sessionNameInput = agendaItem.querySelector("input[name$='.SessionName']");
-                    const speakerNameInput = agendaItem.querySelector("input[name$='.SpeakerName']");
+                    const speakerNameInput = agendaItem.querySelector("input[name$='.SpeakerInfo']");
                     const descriptionInput = agendaItem.querySelector("textarea[name$='.Description']");
 
                     if (sessionNameInput) sessionNameInput.value = agendaData.sessionName ?? '';

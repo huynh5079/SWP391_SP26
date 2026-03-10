@@ -13,7 +13,13 @@ public partial class EventAgenda : BaseEntity
 
     public string? Description { get; set; }
 
-    public string? SpeakerName { get; set; }
+    public string? SpeakerInfo { get; set; }
+
+    public string? StudentSpeakerId { get; set; }
+    public virtual StudentProfile? StudentSpeaker { get; set; }
+
+    public string? StaffSpeakerId { get; set; }
+    public virtual StaffProfile? StaffSpeaker { get; set; }
 
     public DateTime? StartTime { get; set; }
 

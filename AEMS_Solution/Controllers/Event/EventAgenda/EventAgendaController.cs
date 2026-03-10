@@ -52,7 +52,7 @@ namespace AEMS_Solution.Controllers.Event.EventAgenda
 					var keyword = search.Trim();
 					agendas = agendas.Where(x =>
 						(x.SessionName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
-						|| (x.SpeakerName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+						|| (x.SpeakerInfo?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
 						|| (x.Event?.Title?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false));
 				}
 
