@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 using UserEntity = DataAccess.Entities.User;
 
-namespace AEMS.Test.Services.UnitTest.User.Register
+namespace AEMS.Test.UI.UnitTest.Register
 {
 
 	public class UserServiceTest
