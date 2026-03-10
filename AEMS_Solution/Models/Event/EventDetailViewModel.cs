@@ -317,6 +317,19 @@ namespace AEMS_Solution.Models.Event
 		public decimal Score { get; set; }
 		public int? PlaceRank { get; set; }
 		public DateTime CreatedAt { get; set; }
+		public List<TeamMemberVm> TeamMembers { get; set; } = new();
+	}
+
+	public class TeamMemberVm
+	{
+		public string Id { get; set; } = "";
+		public string TeamId { get; set; } = "";
+		public string? StudentId { get; set; }
+		public string? StaffId { get; set; }
+		public string MemberName { get; set; } = "";
+		public string MemberEmail { get; set; } = "";
+		public string RoleName { get; set; } = "";
+		public string TeamRole { get; set; } = ""; // e.g. Leader, Member
 	}
 
 	// =========================

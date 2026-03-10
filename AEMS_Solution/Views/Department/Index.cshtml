@@ -1,0 +1,118 @@
+@model AEMS_Solution.Models.Admin.DepartmentIndexViewModel
+@{
+    ViewData["Title"] = "Quản lý Phòng Ban";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid px-4 mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0 text-primary fw-bold"><i class="bi bi-buildings me-2"></i>Quản lý Phòng Ban</h2>
+            <p class="text-muted mb-0">Hệ thống quản lý danh sách phòng ban trong trường</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary shadow-sm rounded-pill px-4">
+            <i class="bi bi-plus-circle me-2"></i>Thêm Phòng Ban Mới
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card shadow border-0 rounded-4 mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Tên Phòng Ban</th>
+                            <th>Mã Phòng Ban (Code)</th>
+                            <th class="text-center" style="width: 150px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Departments.Any())
+                        {
+                            @foreach (var dept in Model.Departments)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-semibold text-dark">@dept.Name</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary rounded-pill px-3 py-2">@dept.Code</span>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <a asp-action="Edit" asp-route-id="@dept.Id" class="btn btn-sm btn-outline-primary rounded-circle" title="Chỉnh sửa">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" onclick="confirmDelete('@dept.Id', '@dept.Name')" title="Xóa">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="3" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
+                                    Chưa có phòng ban nào trong hệ thống.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa phòng ban <strong id="deleteTargetName"></strong>?<br />
+                <span class="text-muted small">Lưu ý: Không thể xóa nếu có người dùng hoặc sự kiện đang thuộc phòng ban này.</span>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                <form asp-action="Delete" method="post" id="deleteForm">
+                    <input type="hidden" name="id" id="deleteTargetId" />
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Xóa ngay</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDelete(id, name) {
+            document.getElementById('deleteTargetId').value = id;
+            document.getElementById('deleteTargetName').innerText = name;
+            var myModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            myModal.show();
+        }
+    </script>
+}

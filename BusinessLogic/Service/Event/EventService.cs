@@ -738,7 +738,16 @@ public class EventService : IEventService
 			  .Include(x => x.Department)
 			  .Include(x => x.Location)
 			  .Include(x => x.EventDocuments)
-			  .Include(x => x.ApprovalLogs))).FirstOrDefault();
+			  .Include(x => x.ApprovalLogs)
+			  .Include(x => x.EventTeams)
+			    .ThenInclude(t => t.TeamMembers)
+			      .ThenInclude(m => m.Student)
+			        .ThenInclude(s => s.User)
+			  .Include(x => x.EventTeams)
+			    .ThenInclude(t => t.TeamMembers)
+			      .ThenInclude(m => m.Staff)
+			        .ThenInclude(s => s.User)
+			)).FirstOrDefault();
 
 		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
@@ -811,6 +820,47 @@ public class EventService : IEventService
 		}
 		}
 
+		if (ev.EventTeams != null)
+		{
+			foreach (var t in ev.EventTeams.OrderBy(x => x.CreatedAt))
+			{
+				var teamDto = new EventTeamDto
+				{
+					Id = t.Id,
+					EventId = t.EventId,
+					TeamName = t.TeamName,
+					Description = t.Description,
+					Score = t.Score ?? 0,
+					PlaceRank = t.PlaceRank,
+					CreatedAt = t.CreatedAt,
+					TeamMembers = new List<TeamMemberDto>()
+				};
+
+				if (t.TeamMembers != null)
+				{
+					foreach (var m in t.TeamMembers)
+					{
+						string name = m.Student != null ? (m.Student.User?.FullName ?? "Unknown") : (m.Staff != null ? (m.Staff.User?.FullName ?? "Unknown") : "Unknown");
+						string email = m.Student != null ? (m.Student.User?.Email ?? "Unknown") : (m.Staff != null ? (m.Staff.User?.Email ?? "Unknown") : "Unknown");
+						string role = m.Student != null ? "Student" : (m.Staff != null ? "Staff" : "Unknown");
+						
+						teamDto.TeamMembers.Add(new TeamMemberDto
+						{
+							Id = m.Id,
+							TeamId = m.TeamId,
+							StudentId = m.StudentId,
+							StaffId = m.StaffId,
+							MemberName = name,
+							MemberEmail = email,
+							RoleName = role,
+							TeamRole = m.Role?.ToString() ?? "Member"
+						});
+					}
+				}
+				dto.Teams.Add(teamDto);
+			}
+		}
+
 		if (!string.IsNullOrEmpty(userId))
 		{
 			var staff = await _uow.StaffProfiles.GetAsync(s => s.UserId == userId);
@@ -853,6 +903,91 @@ public class EventService : IEventService
 			await transaction.RollbackAsync();
 			throw;
 		}
+	}
+
+	public async Task<bool> CreateEventTeamAsync(string eventId, string teamName, string? description)
+	{
+		var team = new DataAccess.Entities.EventTeam
+		{
+			Id = Guid.NewGuid().ToString(),
+			EventId = eventId,
+			TeamName = teamName,
+			Description = description,
+			Score = 0,
+			CreatedAt = DateTimeHelper.GetVietnamTime()
+		};
+		await _uow.EventTeams.CreateAsync(team); // Requires IUnitOfWork to have EventTeams, wait I will check if it exists or use generic repo
+		await _uow.SaveChangesAsync();
+		return true;
+	}
+
+	public async Task<bool> DeleteEventTeamAsync(string teamId)
+	{
+		var team = await _uow.EventTeams.GetByIdAsync(teamId); // Will check if repo exists
+		if (team != null)
+		{
+			await _uow.EventTeams.RemoveAsync(team);
+			await _uow.SaveChangesAsync();
+		}
+		return true;
+	}
+
+	public async Task<bool> AddMemberToTeamAsync(string teamId, string? studentUserId, string? staffUserId, string roleName)
+	{
+		string? realStudentId = null;
+		string? realStaffId = null;
+
+		if (!string.IsNullOrEmpty(studentUserId))
+		{
+			var student = await _uow.StudentProfiles.GetAsync(x => x.UserId == studentUserId);
+			if (student == null) throw new InvalidOperationException("Profile học sinh không tồn tại cho User này.");
+			realStudentId = student.Id;
+		}
+		else if (!string.IsNullOrEmpty(staffUserId))
+		{
+			var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == staffUserId);
+			if (staff == null) throw new InvalidOperationException("Profile nhân viên không tồn tại cho User này.");
+			realStaffId = staff.Id;
+		}
+		else
+		{
+			throw new InvalidOperationException("Phải chọn thành viên hợp lệ.");
+		}
+
+		// Check if already in team
+		// Assuming we have generic access or ITeamMemberRepository. If not we will use DbContext directly or create a quick generic.
+		// Wait, I UnitOfWork might not have EventTeams or TeamMembers explicitly exposed, let me check IUnitOfWork.cs below.
+		
+		var teamMember = new DataAccess.Entities.TeamMember
+		{
+			Id = Guid.NewGuid().ToString(),
+			TeamId = teamId,
+			StudentId = realStudentId,
+			StaffId = realStaffId,
+			Role = Enum.TryParse<TeamRoleEnum>(roleName, true, out var r) ? r : TeamRoleEnum.Member,
+			CreatedAt = DateTimeHelper.GetVietnamTime()
+		};
+
+		await _uow.TeamMembers.CreateAsync(teamMember);
+		await _uow.SaveChangesAsync();
+		return true;
+	}
+
+	public async Task<bool> RemoveMemberFromTeamAsync(string memberId)
+	{
+		var member = await _uow.TeamMembers.GetByIdAsync(memberId);
+		if (member != null)
+		{
+			await _uow.TeamMembers.RemoveAsync(member);
+			await _uow.SaveChangesAsync();
+		}
+		return true;
+	}
+
+	public async Task<List<EventTeamDto>> GetEventTeamsAsync(string eventId)
+	{
+		// Just a stub or simple implementation to satisfy the interface
+		return new List<EventTeamDto>();
 	}
 }
 

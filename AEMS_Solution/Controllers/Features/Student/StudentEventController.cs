@@ -110,14 +110,14 @@ namespace AEMS_Solution.Controllers.Features.Student
             return RedirectToAction(nameof(Detail), new { id = eventId });
         }
 
-        // ─── My events ────────────────────────────────────────────────────────
+        // ─── My participations ────────────────────────────────────────────────
         [HttpGet]
-        public async Task<IActionResult> MyEvents()
+        public async Task<IActionResult> MyParticipatedEvents()
         {
             if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 
-            var events = await _service.GetMyRegisteredEventsAsync(CurrentUserId);
-            return View(events);
+            var events = await _service.GetMyParticipationsAsync(CurrentUserId);
+            return View("~/Views/StudentEvent/MyEvents.cshtml", events);
         }
 
         // ─── Submit feedback ──────────────────────────────────────────────────
