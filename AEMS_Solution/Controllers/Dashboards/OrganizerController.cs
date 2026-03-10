@@ -421,6 +421,9 @@ using Microsoft.EntityFrameworkCore;
 				var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
 				var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
 
+				var dropdowns = await _organizerService.GetCreateEventDropdownsAsync();
+				ViewBag.Locations = dropdowns.Locations;
+
 				return View("~/Views/Event/DetailEvent.cshtml", vm);
 			}
 			catch (InvalidOperationException)

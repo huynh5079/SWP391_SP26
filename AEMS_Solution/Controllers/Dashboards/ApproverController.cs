@@ -277,11 +277,11 @@ namespace AEMS_Solution.Controllers.Dashboards
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? search, int page = 1, int pageSize = 20)
+        public async Task<IActionResult> PendingApprovals(string? search, int page = 1, int pageSize = 20)
         {
             var list = await _queryService.GetPendingEventsAsync(search, null, page, pageSize);
 
-            var vm = new ApproverDashboardViewModel();
+            var vm = new PendingApprovalsViewModel();
             foreach (var e in list)
             {
                 vm.Events.Add(new ApproverEventCardVm
@@ -300,6 +300,43 @@ namespace AEMS_Solution.Controllers.Dashboards
             vm.Search = search;
             vm.Page = page;
             vm.PageSize = pageSize;
+
+            return View("~/Views/Approval/PendingApprovals.cshtml", vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Index()
+        {
+            var allEvents = await _unitOfWork.Events.GetAllAsync(includes: q => q.Include(e => e.Location));
+            var pendingEvents = allEvents.Where(x => x.Status == EventStatusEnum.Pending).ToList();
+
+            var vm = new ApproverDashboardStatsViewModel
+            {
+                TotalEventsPending = pendingEvents.Count,
+                TotalEventsApproved = allEvents.Count(x => x.Status == EventStatusEnum.Approved),
+                TotalEventsRejected = allEvents.Count(x => x.Status == EventStatusEnum.Rejected),
+                EventsAwaitingAction = pendingEvents.Count
+            };
+
+            var recentPending = pendingEvents
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            foreach(var e in recentPending)
+            {
+                vm.RecentPendingEvents.Add(new ApproverEventCardVm
+                {
+                    EventId = e.Id,
+                    Title = e.Title,
+                    StartTime = e.StartTime,
+                    EndTime = e.EndTime,
+                    Status = e.Status,
+                    ThumbnailUrl = e.ThumbnailUrl,
+                    Location = e.Location?.Address,
+                    LastApprovalComment = null
+                });
+            }
 
             return View("~/Views/Approval/Index.cshtml", vm);
         }

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AEMS_Solution.Controllers.Event.Location
 {
-    [Authorize(Roles = "Approver,Admin,Organizer")]
+    [Authorize(Roles = "Approver,Admin")]
     public class LocationController : BaseController
     {
         private readonly ILocationService _locationService;
@@ -19,16 +19,14 @@ namespace AEMS_Solution.Controllers.Event.Location
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? search, string? filterStatus)
+        public async Task<IActionResult> Index(string? search, string? filterStatus, int page = 1)
         {
             var locations = await _locationService.GetAllLocationsAsync();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 locations = locations
-                    .Where(x => x.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-                             || x.Address.Contains(search, StringComparison.OrdinalIgnoreCase)
-                             || x.Description.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    .Where(x => x.Address.Contains(search, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
 
@@ -38,10 +36,22 @@ namespace AEMS_Solution.Controllers.Event.Location
                 locations = locations.Where(x => x.Status == parsedStatus).ToList();
             }
 
+            int pageSize = 10;
+            int totalRecords = locations.Count;
+            int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+            if (totalPages == 0) totalPages = 1;
+
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+
+            locations = locations.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
             var vm = new LocationIndexViewModel
             {
                 Search = search,
                 FilterStatus = filterStatus,
+                PageNumber = page,
+                TotalPages = totalPages,
                 Locations = locations.Select(x => new LocationListItemVm
                 {
                     LocationId = x.LocationId,
