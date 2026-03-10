@@ -6,7 +6,7 @@ using OpenQA.Selenium.Support.UI;
 using System;
 using Xunit;
 
-namespace AEMS.Test.UI.Register
+namespace AEMS.Test.TestData.Register
 {
 	public class RegisterUITest
 	{
