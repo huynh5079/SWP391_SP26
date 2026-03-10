@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AEMS_Solution.Controllers.Event.Location
 {
-    [Authorize(Roles = "Approver,Admin,Organizer")]
+    [Authorize(Roles = "Approver,Admin")]
     public class LocationController : BaseController
     {
         private readonly ILocationService _locationService;

@@ -23,10 +23,10 @@ namespace BusinessLogic.Service.Event.Sub_Service.Topic
 			_notificationService = notificationService;
 		}
 
-		private async Task NotifyOrganizersAsync(string title, string message)
+		private async Task NotifyOrganizersAndApproversAsync(string title, string message)
 		{
-			var activeOrganizers = await _unitOfWork.Users.GetAllAsync(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer && u.DeletedAt == null && u.Status == DataAccess.Enum.UserStatusEnum.Active);
-			foreach (var user in activeOrganizers)
+			var targetUsers = await _unitOfWork.Users.GetAllAsync(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver) && u.DeletedAt == null && u.Status == DataAccess.Enum.UserStatusEnum.Active);
+			foreach (var user in targetUsers)
 			{
 				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
 				{
@@ -97,7 +97,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Topic
 			await _unitOfWork.Topics.CreateAsync(topic);
 			await _unitOfWork.SaveChangesAsync();
 
-			await NotifyOrganizersAsync("Chủ đề mới được thêm", $"Chủ đề mới: '{topic.Name}' đã được thêm vào hệ thống.");
+			await NotifyOrganizersAndApproversAsync("Chủ đề mới được thêm", $"Chủ đề mới: '{topic.Name}' đã được thêm vào hệ thống.");
 
 			return MapTopic(topic);
 		}
@@ -134,7 +134,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Topic
 			await _unitOfWork.Topics.UpdateAsync(topic);
 			await _unitOfWork.SaveChangesAsync();
 
-			await NotifyOrganizersAsync("Chủ đề được cập nhật", $"Chủ đề '{topic.Name}' đã được cập nhật nội dung.");
+			await NotifyOrganizersAndApproversAsync("Chủ đề được cập nhật", $"Chủ đề '{topic.Name}' đã được cập nhật nội dung.");
 
 			return true;
 		}
@@ -158,7 +158,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Topic
 			await _unitOfWork.Topics.UpdateAsync(topic);
 			await _unitOfWork.SaveChangesAsync();
 
-			await NotifyOrganizersAsync("Chủ đề bị xóa", $"Chủ đề '{topic.Name}' đã bị gỡ khỏi hệ thống.");
+			await NotifyOrganizersAndApproversAsync("Chủ đề bị xóa", $"Chủ đề '{topic.Name}' đã bị gỡ khỏi hệ thống.");
 
 			return true;
 		}

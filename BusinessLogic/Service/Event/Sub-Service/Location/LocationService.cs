@@ -19,10 +19,10 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 			_notificationService = notificationService;
 		}
 
-		private async Task NotifyOrganizersAsync(string title, string message)
+		private async Task NotifyOrganizersAndApproversAsync(string title, string message)
 		{
-			var activeOrganizers = await _unitOfWork.Users.GetAllAsync(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer && u.DeletedAt == null && u.Status == DataAccess.Enum.UserStatusEnum.Active);
-			foreach (var user in activeOrganizers)
+			var targetUsers = await _unitOfWork.Users.GetAllAsync(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver) && u.DeletedAt == null && u.Status == DataAccess.Enum.UserStatusEnum.Active);
+			foreach (var user in targetUsers)
 			{
 				await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
 				{
@@ -107,7 +107,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 			await _unitOfWork.Locations.CreateAsync(location);
 			await _unitOfWork.SaveChangesAsync();
 
-			await NotifyOrganizersAsync("Phòng mới được tạo", $"Phòng/Địa điểm mới: '{location.Name} - {location.Address}' đã được thêm vào hệ thống.");
+			await NotifyOrganizersAndApproversAsync("Phòng mới được tạo", $"Phòng/Địa điểm mới: '{location.Name} - {location.Address}' đã được thêm vào hệ thống.");
 
 			return MapLocation(location);
 		}
@@ -156,7 +156,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 			await _unitOfWork.SaveChangesAsync();
 
 			var statusMsg = oldStatus != location.Status ? $" Trạng thái hiện tại: {location.Status}." : "";
-			await NotifyOrganizersAsync("Thông tin phòng được cập nhật", $"Phòng '{location.Name} - {location.Address}' đã được cập nhật thông tin.{statusMsg}");
+			await NotifyOrganizersAndApproversAsync("Thông tin phòng được cập nhật", $"Phòng '{location.Name} - {location.Address}' đã được cập nhật thông tin.{statusMsg}");
 
 			return true;
 		}
@@ -189,7 +189,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Location
 			await _unitOfWork.Locations.UpdateAsync(location);
 			await _unitOfWork.SaveChangesAsync();
 
-			await NotifyOrganizersAsync("Phòng bị vô hiệu hóa", $"Phòng '{location.Name} - {location.Address}' đã bị vô hiệu hóa khỏi hệ thống.");
+			await NotifyOrganizersAndApproversAsync("Phòng bị vô hiệu hóa", $"Phòng '{location.Name} - {location.Address}' đã bị vô hiệu hóa khỏi hệ thống.");
 
 			return true;
 		}
