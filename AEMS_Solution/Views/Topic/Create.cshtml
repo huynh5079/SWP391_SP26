@@ -1,7 +1,10 @@
 @model AEMS_Solution.Models.Approver.Manage.CreateTopicViewModel
 @{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_Layout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
     ViewData["Title"] = "Create Topic";
-    Layout = "_Approvallayout";
 }
 
 <div class="container mt-4">

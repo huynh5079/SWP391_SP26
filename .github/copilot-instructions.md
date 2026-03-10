@@ -24,3 +24,6 @@
 ## Testing Guidelines
 - Use minimal test implementations that only cover the explicitly requested scenario, instead of full mock-heavy setups.
 - Load test data from JSON files when writing tests for this project.
+
+## Event Management
+- Apply the requested two-column layout and agenda management changes to `DetailEvent.cshtml`, not `CreateEvent.cshtml`.

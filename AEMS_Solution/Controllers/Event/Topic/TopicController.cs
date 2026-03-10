@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AEMS_Solution.Controllers.Event.Topic
 {
-    [Authorize(Roles = "Approver")]
+    [Authorize(Roles = "Approver,Admin,Organizer")]
     public class TopicController : BaseController
     {
         private readonly ITopicService _topicService;
@@ -140,6 +140,40 @@ namespace AEMS_Solution.Controllers.Event.Topic
             }
 
             return View("~/Views/Topic/Edit.cshtml", vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                SetError("Id không hợp lệ.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                var result = await _topicService.DeleteTopicAsync(id);
+                if (!result)
+                {
+                    SetError("Topic không tồn tại hoặc đã bị xoá.");
+                }
+                else
+                {
+                    SetSuccess("Xoá topic thành công.");
+                }
+            }
+            catch (TopicValidator.BusinessValidationException ex)
+            {
+                SetError(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                SetError($"Lỗi hệ thống: {ex.Message}");
+            }
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }
