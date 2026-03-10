@@ -309,8 +309,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+</div>
+</div>
 
     <div class="card detail-card mt-4">
         <div class="card-body p-4 p-lg-5">
@@ -448,135 +448,179 @@
                         </div>
 
 <script>
-    (function () {
-        const startInput = document.getElementById('createAgendaStartTime');
-        const endInput = document.getElementById('createAgendaEndTime');
-        const locationInput = document.getElementById('createAgendaLocation');
-        const universitySelect = document.getElementById('createAgendaUniversity');
-        const buildingSelect = document.getElementById('createAgendaBuilding');
-        const floorSelect = document.getElementById('createAgendaFloor');
-        const roomSelect = document.getElementById('createAgendaRoom');
-        const locationTypeDisplay = document.getElementById('createAgendaLocationType');
-        const roomCapacityDisplay = document.getElementById('createAgendaRoomCapacity');
-        const locationHint = document.getElementById('createAgendaLocationHint');
+    document.addEventListener('DOMContentLoaded', function () {
+        (function () {
+            const startInput = document.getElementById('createAgendaStartTime');
+            const endInput = document.getElementById('createAgendaEndTime');
+            const locationInput = document.getElementById('createAgendaLocation');
+            const universitySelect = document.getElementById('createAgendaUniversity');
+            const buildingSelect = document.getElementById('createAgendaBuilding');
+            const floorSelect = document.getElementById('createAgendaFloor');
+            const roomSelect = document.getElementById('createAgendaRoom');
+            const locationTypeDisplay = document.getElementById('createAgendaLocationType');
+            const roomCapacityDisplay = document.getElementById('createAgendaRoomCapacity');
+            const locationHint = document.getElementById('createAgendaLocationHint');
 
-        if (!startInput || !endInput || !locationInput || !universitySelect || !buildingSelect || !floorSelect || !roomSelect) {
-            return;
-        }
-
-        let availableLocations = [];
-
-        function setOptions(select, placeholder, values, selectedValue) {
-            select.innerHTML = '';
-
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = placeholder;
-            select.appendChild(placeholderOption);
-
-            values.forEach(value => {
-                const option = document.createElement('option');
-                option.value = value;
-                option.textContent = value;
-                if (value === selectedValue) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
-            });
-        }
-
-        function getDistinctValues(items, selector) {
-            return [...new Set(items.map(selector).filter(Boolean))];
-        }
-
-        function getFormattedLocation(location) {
-            if (location?.address) {
-                return location.address;
-            }
-
-            const parts = [];
-            if (location?.building) parts.push(`Building ${location.building}`);
-            if (location?.floor) parts.push(`Floor ${location.floor}`);
-            if (location?.room) parts.push(`Room ${location.room}`);
-
-            return parts.join(' - ');
-        }
-
-        function syncSelectedLocation() {
-            const selectedLocation = availableLocations.find(x =>
-                x.name === universitySelect.value &&
-                x.building === buildingSelect.value &&
-                x.floor === floorSelect.value &&
-                x.room === roomSelect.value);
-
-            locationInput.value = selectedLocation ? getFormattedLocation(selectedLocation) : '';
-            locationTypeDisplay.value = selectedLocation?.type ?? '';
-            roomCapacityDisplay.value = selectedLocation?.capacity ?? '';
-        }
-
-        function populateRoomHierarchy(preferredLocationValue) {
-            const selectedLocation = availableLocations.find(x => getFormattedLocation(x) === preferredLocationValue);
-
-            const selectedUniversity = selectedLocation?.name || universitySelect.value;
-            const universities = getDistinctValues(availableLocations, x => x.name);
-            setOptions(universitySelect, '-- Select University --', universities, selectedUniversity);
-
-            const filteredByUniversity = availableLocations.filter(x => x.name === universitySelect.value);
-            const selectedBuilding = selectedLocation?.building || buildingSelect.value;
-            const buildings = getDistinctValues(filteredByUniversity, x => x.building);
-            setOptions(buildingSelect, '-- Select Building --', buildings, selectedBuilding);
-
-            const filteredByBuilding = filteredByUniversity.filter(x => x.building === buildingSelect.value);
-            const selectedFloor = selectedLocation?.floor || floorSelect.value;
-            const floors = getDistinctValues(filteredByBuilding, x => x.floor);
-            setOptions(floorSelect, '-- Select Floor --', floors, selectedFloor);
-
-            const filteredByFloor = filteredByBuilding.filter(x => x.floor === floorSelect.value);
-            const selectedRoom = selectedLocation?.room || roomSelect.value;
-            const rooms = getDistinctValues(filteredByFloor, x => x.room);
-            setOptions(roomSelect, '-- Select Room --', rooms, selectedRoom);
-
-            syncSelectedLocation();
-        }
-
-        async function refreshAvailableLocations() {
-            const startValue = startInput.value;
-            const endValue = endInput.value;
-
-            if (!startValue || !endValue) {
-                availableLocations = [];
-                populateRoomHierarchy(locationInput.value);
-                locationHint.textContent = 'Hãy chọn đủ thời gian bắt đầu và kết thúc để lọc phòng còn trống.';
+            if (!startInput || !endInput || !locationInput || !universitySelect || !buildingSelect || !floorSelect || !roomSelect) {
                 return;
             }
 
-            try {
-                const url = `/Organizer/GetAvailableLocations?startTime=${encodeURIComponent(startValue)}&endTime=${encodeURIComponent(endValue)}`;
-                const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                if (!response.ok) {
-                    locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+            let availableLocations = [];
+
+            function setOptions(select, placeholder, values, selectedValue) {
+                select.innerHTML = '';
+
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = placeholder;
+                select.appendChild(placeholderOption);
+
+                values.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    if (value === selectedValue) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            }
+
+            function getDistinctValues(items, selector) {
+                return [...new Set(items.map(selector).filter(Boolean))];
+            }
+
+            function getFormattedLocation(location) {
+                if (location?.address) {
+                    return location.address;
+                }
+
+                const parts = [];
+                if (location?.building) parts.push(`Building ${location.building}`);
+                if (location?.floor) parts.push(`Floor ${location.floor}`);
+                if (location?.room) parts.push(`Room ${location.room}`);
+
+                return parts.join(' - ');
+            }
+
+            function syncSelectedLocation() {
+                const selectedLocation = availableLocations.find(x =>
+                    x.name === universitySelect.value &&
+                    x.building === buildingSelect.value &&
+                    x.floor === floorSelect.value &&
+                    x.room === roomSelect.value);
+
+                locationInput.value = selectedLocation ? getFormattedLocation(selectedLocation) : '';
+                locationTypeDisplay.value = selectedLocation?.type ?? '';
+                roomCapacityDisplay.value = selectedLocation?.capacity ?? '';
+            }
+
+            function populateRoomHierarchy(preferredLocationValue) {
+                const selectedLocation = availableLocations.find(x => getFormattedLocation(x) === preferredLocationValue);
+
+                const selectedUniversity = selectedLocation?.name || universitySelect.value;
+                const universities = getDistinctValues(availableLocations, x => x.name);
+                setOptions(universitySelect, '-- Select University --', universities, selectedUniversity);
+
+                const filteredByUniversity = availableLocations.filter(x => x.name === universitySelect.value);
+                const selectedBuilding = selectedLocation?.building || buildingSelect.value;
+                const buildings = getDistinctValues(filteredByUniversity, x => x.building);
+                setOptions(buildingSelect, '-- Select Building --', buildings, selectedBuilding);
+
+                const filteredByBuilding = filteredByUniversity.filter(x => x.building === buildingSelect.value);
+                const selectedFloor = selectedLocation?.floor || floorSelect.value;
+                const floors = getDistinctValues(filteredByBuilding, x => x.floor);
+                setOptions(floorSelect, '-- Select Floor --', floors, selectedFloor);
+
+                const filteredByFloor = filteredByBuilding.filter(x => x.floor === floorSelect.value);
+                const selectedRoom = selectedLocation?.room || roomSelect.value;
+                const rooms = getDistinctValues(filteredByFloor, x => x.room);
+                setOptions(roomSelect, '-- Select Room --', rooms, selectedRoom);
+
+                syncSelectedLocation();
+            }
+
+            async function refreshAvailableLocations() {
+                const startValue = startInput.value;
+                const endValue = endInput.value;
+
+                if (!startValue || !endValue) {
+                    availableLocations = [];
+                    populateRoomHierarchy(locationInput.value);
+                    locationHint.textContent = 'Hãy chọn đủ thời gian bắt đầu và kết thúc để lọc phòng còn trống.';
                     return;
                 }
 
-                availableLocations = await response.json();
-                populateRoomHierarchy(locationInput.value);
-                locationHint.textContent = availableLocations.length > 0
-                    ? `Có ${availableLocations.length} phòng đang khả dụng trong khoảng thời gian agenda đã chọn.`
-                    : 'Không có phòng khả dụng trong khoảng thời gian agenda đã chọn.';
-            } catch {
-                locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                try {
+                    const url = `/Organizer/GetAvailableLocations?startTime=${encodeURIComponent(startValue)}&endTime=${encodeURIComponent(endValue)}`;
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) {
+                        locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                        return;
+                    }
+
+                    let data = await response.json();
+                    console.log('GetAvailableLocations response raw:', data);
+
+                    // normalize: if API wraps result in an object like { data: [...] } or { items: [...] }
+                    if (!Array.isArray(data)) {
+                        if (Array.isArray(data.data)) data = data.data;
+                        else if (Array.isArray(data.items)) data = data.items;
+                        else {
+                            // try to find first array property
+                            const arrProp = Object.values(data).find(v => Array.isArray(v));
+                            if (Array.isArray(arrProp)) data = arrProp;
+                        }
+                    }
+
+                    // attempt to map different property names to our expected shape
+                    function normalizeLocation(item) {
+                        if (!item) return null;
+                        const get = (...keys) => {
+                            for (const k of keys) {
+                                if (item[k] !== undefined && item[k] !== null) return item[k];
+                            }
+                            return '';
+                        };
+
+                        return {
+                            name: get('name', 'university', 'universityName', 'school'),
+                            building: get('building', 'buildingName'),
+                            floor: get('floor', 'floorName'),
+                            room: get('room', 'roomName', 'roomNumber', 'name'),
+                            type: get('type', 'locationType'),
+                            capacity: get('capacity', 'roomCapacity')
+                        };
+                    }
+
+                    if (Array.isArray(data)) {
+                        availableLocations = data.map(normalizeLocation).filter(Boolean);
+                    } else {
+                        availableLocations = [];
+                    }
+
+                    console.log('GetAvailableLocations normalized:', availableLocations);
+
+                    populateRoomHierarchy(locationInput.value);
+                    locationHint.textContent = availableLocations.length > 0
+                        ? `Có ${availableLocations.length} phòng đang khả dụng trong khoảng thời gian agenda đã chọn.`
+                        : 'Không có phòng khả dụng trong khoảng thời gian agenda đã chọn.';
+                    locationHint.style.display = 'block';
+                } catch {
+                    locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                }
             }
-        }
 
-        startInput.addEventListener('change', refreshAvailableLocations);
-        endInput.addEventListener('change', refreshAvailableLocations);
-        universitySelect.addEventListener('change', () => populateRoomHierarchy(''));
-        buildingSelect.addEventListener('change', () => populateRoomHierarchy(''));
-        floorSelect.addEventListener('change', () => populateRoomHierarchy(''));
-        roomSelect.addEventListener('change', syncSelectedLocation);
+            startInput.addEventListener('change', refreshAvailableLocations);
+            endInput.addEventListener('change', refreshAvailableLocations);
+            universitySelect.addEventListener('change', () => populateRoomHierarchy(''));
+            buildingSelect.addEventListener('change', () => populateRoomHierarchy(''));
+            floorSelect.addEventListener('change', () => populateRoomHierarchy(''));
+            roomSelect.addEventListener('change', syncSelectedLocation);
 
-        refreshAvailableLocations();
-    })();
+            refreshAvailableLocations();
+        })();
+    });
 </script>
                     }
                 </div>
