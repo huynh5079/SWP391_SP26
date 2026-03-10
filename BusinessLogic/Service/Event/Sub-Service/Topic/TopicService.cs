@@ -116,6 +116,28 @@ namespace BusinessLogic.Service.Event.Sub_Service.Topic
 			return true;
 		}
 
+		public async Task<bool> DeleteTopicAsync(string topicId)
+		{
+			var topic = await _unitOfWork.Topics.GetAsync(x => x.Id == topicId && x.DeletedAt == null);
+			try
+			{
+				_topicValidator.ValidateTopicExists(topic);
+			}
+			catch (TopicValidator.BusinessValidationException)
+			{
+				return false;
+			}
+
+			var usedEvent = await _unitOfWork.Events.GetAsync(x => x.TopicId == topicId && x.DeletedAt == null);
+			_topicValidator.ValidateTopicNotUsed(usedEvent != null);
+
+			topic!.DeletedAt = DateTimeHelper.GetVietnamTime();
+			await _unitOfWork.Topics.UpdateAsync(topic);
+			await _unitOfWork.SaveChangesAsync();
+
+			return true;
+		}
+
 		private static TopicDTO MapTopic(DataAccess.Entities.Topic topic)
 		{
 			return new TopicDTO
