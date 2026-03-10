@@ -167,5 +167,21 @@ namespace DataAccess.Enum
 		Available,
 		NA //not available
 	}
-	
+	public enum QuestionSetEnum
+	{
+		Available,
+		NA //not available
+	}
+	public enum QuizTypeEnum
+	{
+		Practice,
+		Exam,
+		Survey
+	}
+	public enum QuizStatusEnum
+	{
+		Draft, //nháp
+		Published,//đang làm bài
+		Closed//đã xong
+	}
 }

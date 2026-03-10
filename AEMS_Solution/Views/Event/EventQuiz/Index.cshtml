@@ -1,0 +1,64 @@
+@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@{
+    ViewData["Title"] = "Manage Quizzes";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Quiz Management</h1>
+            <p class="text-muted small">Create and manage quiz sets for your events</p>
+        </div>
+        <div>
+            <a asp-controller="EventQuiz" asp-action="Create" class="btn btn-sm btn-primary">
+                <i class="bi bi-journal-plus"></i> Create Quiz
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            @if (Model.Quizzes == null || !Model.Quizzes.Any())
+            {
+                <div class="alert alert-info">No quizzes found.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title</th>
+                                <th>Event</th>
+                                <th>Type</th>
+                                <th>Passing Score</th>
+                                <th>Questions</th>
+                                <th>Attempts</th>
+                                <th>Passed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var q in Model.Quizzes)
+                            {
+                                <tr>
+                                    <td>@q.Title</td>
+                                    <td>@q.EventId</td>
+                                    <td>@q.Type</td>
+                                    <td>@(q.PassingScore?.ToString() ?? "-")</td>
+                                    <td>@(q.QuestionCount)</td>
+                                    <td>@q.AttemptCount</td>
+                                    <td>@q.PassedCount</td>
+                                    <td>
+                                        <a asp-controller="EventQuiz" asp-action="Index" asp-route-eventId="@q.EventId" class="btn btn-sm btn-outline-secondary">View</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

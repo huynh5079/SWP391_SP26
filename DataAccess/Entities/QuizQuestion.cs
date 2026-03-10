@@ -23,5 +23,7 @@ public partial class QuizQuestion : BaseEntity
 
     public int? ScorePoint { get; set; }
 
+    public string? FileQuiz { get; set; }
+
     public virtual EventQuiz Quiz { get; set; } = null!;
 }

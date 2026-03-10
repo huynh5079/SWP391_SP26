@@ -376,7 +376,7 @@ public class EventService : IEventService
 		{
 			var entity = new DataAccess.Entities.Event
 			{
-				Id = Guid.NewGuid().ToString(),
+				
 				Title = dto.Title?.Trim() ?? "",
 				Description = dto.Description,
 				ThumbnailUrl = dto.BannerUrl,
@@ -412,7 +412,7 @@ public class EventService : IEventService
 
 					await _uow.EventAgenda.CreateAsync(new EventAgendaEntity
 					{
-						Id = Guid.NewGuid().ToString(),
+						
 						EventId = entity.Id,
 						SessionName = a.SessionName,
 						Description = a.Description,

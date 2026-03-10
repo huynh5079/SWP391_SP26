@@ -34,6 +34,10 @@
 
 
 
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="EventQuiz" asp-action="Create">Create Quiz</a>
+                        </li>
+
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-dark" href="#" id="organizerManageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Manage
@@ -50,6 +54,9 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item" asp-controller="Ticket" asp-action="Index">Tickets</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="EventQuiz" asp-action="Index">Quiz</a>
                                 </li>
                             </ul>
                         </li>
