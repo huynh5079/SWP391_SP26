@@ -143,7 +143,7 @@ namespace AEMS_Solution.Models.Event
 
 		public string SessionName { get; set; } = "";
 		public string? Description { get; set; }
-		public string? SpeakerName { get; set; }
+		public string? SpeakerInfo { get; set; }
 
 		public DateTime StartTime { get; set; }
 		public DateTime EndTime { get; set; }

@@ -272,11 +272,21 @@ public partial class AEMSContext : DbContext
 		{
 			entity.Property(e => e.EventId).HasMaxLength(450);
 			entity.Property(e => e.SessionName).HasMaxLength(255);
-			entity.Property(e => e.SpeakerName).HasMaxLength(255);
+			entity.Property(e => e.SpeakerInfo).HasMaxLength(255);
 
 			entity.HasOne(d => d.Event).WithMany(p => p.EventAgenda)
 				.HasForeignKey(d => d.EventId)
 				.HasConstraintName("FK__EventAgen__Event__08B54D69");
+
+			entity.HasOne(d => d.StudentSpeaker)
+				.WithMany(p => p.AgendasAsStudentSpeaker)
+				.HasForeignKey(d => d.StudentSpeakerId)
+				.OnDelete(DeleteBehavior.ClientSetNull);
+
+			entity.HasOne(d => d.StaffSpeaker)
+				.WithMany(p => p.AgendasAsStaffSpeaker)
+				.HasForeignKey(d => d.StaffSpeakerId)
+				.OnDelete(DeleteBehavior.ClientSetNull);
 		});
 
 		modelBuilder.Entity<EventDocument>(entity =>
@@ -546,7 +556,7 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("TeamMember");
 
-			entity.HasIndex(e => new { e.TeamId, e.StudentId }, "UIX_TeamMember_Team_Student").IsUnique();
+			// entity.HasIndex(e => new { e.TeamId, e.StudentId }, "UIX_TeamMember_Team_Student").IsUnique();
 
 			entity.Property(e => e.Role)
 				.HasMaxLength(50)
@@ -556,6 +566,11 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.StudentId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__TeamMembe__Stude__7E37BEF6");
+
+			entity.HasOne(d => d.Staff).WithMany(p => p.TeamMembers)
+				.HasForeignKey(d => d.StaffId)
+				.OnDelete(DeleteBehavior.ClientSetNull)
+				.HasConstraintName("FK__TeamMembe_StaffId");
 
 			entity.HasOne(d => d.Team).WithMany(p => p.TeamMembers)
 				.HasForeignKey(d => d.TeamId)

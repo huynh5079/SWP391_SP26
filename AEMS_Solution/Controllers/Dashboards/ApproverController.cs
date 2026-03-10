@@ -66,7 +66,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                     var keyword = search.Trim();
                     agendas = agendas.Where(x =>
                         (x.SessionName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
-                        || (x.SpeakerName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                        || (x.SpeakerInfo?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
                         || (x.Event?.Title?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
                         || (x.Event?.Organizer?.User?.FullName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false));
                 }

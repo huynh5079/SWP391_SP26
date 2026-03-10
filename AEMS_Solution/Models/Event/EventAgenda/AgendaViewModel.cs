@@ -23,7 +23,7 @@ namespace AEMS_Solution.Models.Event.EventAgenda
 		public string OrganizerName { get; set; } = string.Empty;
 		public string? SessionName { get; set; }
 		public string? Description { get; set; }
-		public string? SpeakerName { get; set; }
+		public string? SpeakerInfo { get; set; }
 		public DateTime? StartTime { get; set; }
 		public DateTime? EndTime { get; set; }
 		public string? Location { get; set; }
@@ -41,7 +41,7 @@ namespace AEMS_Solution.Models.Event.EventAgenda
 		public string SessionName { get; set; } = string.Empty;
 
 		[Required(ErrorMessage = "Vui lòng nhập Speaker")]
-		public string SpeakerName { get; set; } = string.Empty;
+		public string SpeakerInfo { get; set; } = string.Empty;
 
 		public string? Description { get; set; }
 		public DateTime? StartTime { get; set; }

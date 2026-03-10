@@ -476,7 +476,7 @@ using Microsoft.EntityFrameworkCore;
 			{
 				EventId = model.EventId,
 				SessionName = model.SessionName.Trim(),
-				SpeakerName = model.SpeakerName.Trim(),
+				SpeakerInfo = model.SpeakerInfo?.Trim(),
 				Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
 				StartTime = model.StartTime,
 				EndTime = model.EndTime,

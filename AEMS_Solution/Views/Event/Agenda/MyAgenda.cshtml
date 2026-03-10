@@ -106,7 +106,7 @@
                                                                 <div class="small text-muted text-truncate" style="max-width: 260px;">@agenda.Description</div>
                                                             }
                                                         </td>
-                                                        <td>@(string.IsNullOrWhiteSpace(agenda.SpeakerName) ? "-" : agenda.SpeakerName)</td>
+                                                        <td>@(string.IsNullOrWhiteSpace(agenda.SpeakerInfo) ? "-" : agenda.SpeakerInfo)</td>
                                                         @if (Model.IsReadOnly)
                                                         {
                                                             <td>@(string.IsNullOrWhiteSpace(agenda.OrganizerName) ? "-" : agenda.OrganizerName)</td>

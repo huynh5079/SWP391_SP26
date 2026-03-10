@@ -369,7 +369,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Speaker</label>
-                            <input name="SpeakerName" class="form-control" required />
+                            <input name="SpeakerInfo" class="form-control" required />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Start Time</label>
@@ -422,9 +422,9 @@
                                         <div class="agenda-index mb-1">Agenda @(i + 1)</div>
                                         <h5 class="mb-0">@agenda.SessionName</h5>
                                     </div>
-                                    @if (!string.IsNullOrWhiteSpace(agenda.SpeakerName))
+                                    @if (!string.IsNullOrWhiteSpace(agenda.SpeakerInfo))
                                     {
-                                        <span class="badge rounded-pill bg-light text-dark border">@agenda.SpeakerName</span>
+                                        <span class="badge rounded-pill bg-light text-dark border">@agenda.SpeakerInfo</span>
                                     }
                                 </div>
 
