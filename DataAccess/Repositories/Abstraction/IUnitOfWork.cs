@@ -38,6 +38,9 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<Ticket> Tickets { get; }
 		IGenericRepository<Feedback> Feedbacks { get; }
         IGenericRepository<CheckInHistory> CheckInHistories { get; }
+        //Quiz
+        IGenericRepository<QuizQuestion> QuizQuestion { get; }
+        IGenericRepository<EventQuiz> EventQuiz { get; }
 
 	}
 

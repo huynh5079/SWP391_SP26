@@ -17,9 +17,15 @@
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-sm btn-primary shadow-sm">
                 <i class="bi bi-plus-circle"></i> Create Event
             </a>
+                <a asp-controller="EventQuiz" asp-action="Create" class="btn btn-sm btn-primary shadow-sm">
+                    <i class="bi bi-journal-plus"></i> Create Quiz
+                </a>
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="myevents" class="btn btn-sm btn-outline-primary shadow-sm">
                 <i class="bi bi-calendar-event"></i> My Events
             </a>
+                <a asp-controller="EventQuiz" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
+                    <i class="bi bi-list-check"></i> Quiz
+                </a>
             <a asp-controller="Topic" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
                 <i class="bi bi-tags"></i> Topics
             </a>

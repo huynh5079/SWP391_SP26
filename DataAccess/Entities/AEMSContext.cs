@@ -302,7 +302,9 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.Type)
 				.HasMaxLength(50)
 				.HasConversion<string>();
-
+			entity.Property(e=>e.Status).
+			HasMaxLength(50).
+			HasConversion<string>();
 			// Map QuestionSetStatus enum to string (nvarchar(50)) with default 'Available'
 			entity.Property(e => e.QuestionSetStatus)
 				.IsRequired()

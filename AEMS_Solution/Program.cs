@@ -12,6 +12,8 @@ using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Ticket;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
+using BusinessLogic.Service.Event.Sub_Service.Quiz;
+using BusinessLogic.Service.ValidationData.Quiz;
 using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.Organizer.CheckIn;
 using BusinessLogic.Service.Student;
@@ -83,6 +85,10 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ITopicService, TopicService>();
 builder.Services.AddScoped<IEventValidator, EventValidator>();
+
+// Quiz services
+builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IQuizValidator, QuizValidator>();
 builder.Services.AddScoped<ILockAndUnlockLimitValidator, LockAndUnlockLimitValidator>();
 builder.Services.AddScoped<ILocationValidator, LocationValidator>();
 builder.Services.AddScoped<ITicketValidator, TicketValidator>();

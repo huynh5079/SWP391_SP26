@@ -46,7 +46,26 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create">Create Event</a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="EventQuiz" asp-action="Create">Create Quiz</a>
+                        </li>
+
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="manageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Manage
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="manageDropdown">
+                                <li><a class="dropdown-item" asp-controller="Organizer" asp-action="MyEvents">My Events</a></li>
+                                <li><a class="dropdown-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete">Deleted Events</a></li>
+                                <li><a class="dropdown-item" asp-controller="EventAgenda" asp-action="MyAgenda">Agenda</a></li>
+                                <li><a class="dropdown-item" asp-controller="Ticket" asp-action="Index">Tickets</a></li>
+                                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Index">Quiz</a></li>
+                            </ul>
+                        </li>
                     </ul>
 
                     

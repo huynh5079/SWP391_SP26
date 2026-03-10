@@ -1,0 +1,57 @@
+@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@{
+    ViewData["Title"] = "Create Quiz";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Create Quiz</h1>
+        </div>
+        <div>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input asp-for="Quiz.Title" class="form-control" />
+                    <span asp-validation-for="Quiz.Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Event</label>
+                    <select asp-for="EventId" asp-items="Model.Events" class="form-select"></select>
+                    <span asp-validation-for="EventId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Type</label>
+                    <select asp-for="Quiz.Type" class="form-select">
+                        <option value="0">Standard</option>
+                        <option value="1">Timed</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Passing Score</label>
+                    <input asp-for="Quiz.PassingScore" class="form-control" type="number" min="0" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Attach PDF (optional)</label>
+                    <input asp-for="FileUpload" class="form-control" type="file" accept=".pdf" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Create</button>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts{
+    <partial name="_ValidationScriptsPartial" />
+}
