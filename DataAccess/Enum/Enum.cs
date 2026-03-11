@@ -150,8 +150,7 @@ namespace DataAccess.Enum
 		Offline,
 		Online,
 		Hybrid
-	}
-	public enum EventWaitlistStatusEnum
+	}public enum EventWaitlistStatusEnum
 	{
 		Waiting, //đang chờ
 
@@ -163,6 +162,7 @@ namespace DataAccess.Enum
 
 		Cancelled, //người dùng tự rời
 	}
+	
 	public enum EventStatusAvailableEnum { 
 		Available,
 		NA //not available

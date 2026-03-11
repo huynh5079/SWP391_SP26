@@ -96,7 +96,9 @@ namespace AEMS_Solution.Controllers.Common
                     case DataAccess.Enum.NotificationType.TicketCreated:
                     case DataAccess.Enum.NotificationType.EventCancel:
                         // Routing to MyEvents where students can see their registered/cancelled tickets
-                        return RedirectToAction("MyEvents", "StudentEvent"); 
+                        if (!string.IsNullOrEmpty(noti.RelatedEntityId))
+                            return RedirectToAction("Detail", "StudentEvent", new { id = noti.RelatedEntityId });
+                        return RedirectToAction("MyEvents", "StudentEvent");
 
                     case DataAccess.Enum.NotificationType.EventOrganizeCancel:
                     case DataAccess.Enum.NotificationType.EventUpdated:

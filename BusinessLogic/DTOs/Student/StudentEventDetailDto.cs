@@ -38,5 +38,12 @@ namespace BusinessLogic.DTOs.Student
 
         // Ticket id for cancel action
         public string? TicketId { get; set; }
+
+        // Waitlist state
+        public bool IsInWaitlist { get; set; }
+        public int? WaitlistPosition { get; set; }
+        public DataAccess.Enum.EventWaitlistStatusEnum? WaitlistStatus { get; set; }
+        public string? WaitlistStudentProfileId { get; set; }
     }
+
 }
