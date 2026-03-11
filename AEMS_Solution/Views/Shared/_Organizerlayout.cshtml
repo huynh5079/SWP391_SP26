@@ -34,8 +34,18 @@
 
 
 
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="EventQuiz" asp-action="Create">Create Quiz</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="createItemDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Create Item
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="createItemDropdown">
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Organizer" asp-action="Create">Create Event</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create">Create Quiz</a>
+                                </li>
+                            </ul>
                         </li>
 
                         <li class="nav-item dropdown">

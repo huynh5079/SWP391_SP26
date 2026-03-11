@@ -174,7 +174,7 @@ namespace DataAccess.Enum
 	}
 	public enum QuizTypeEnum
 	{
-		Practice,
+	    Practice,
 		Exam,
 		Survey
 	}
@@ -183,5 +183,10 @@ namespace DataAccess.Enum
 		Draft, //nháp
 		Published,//đang làm bài
 		Closed//đã xong
+	}
+	public enum QuizTimeTypeEvent { 
+		AfterEvent,
+		InEvent,
+		BeforeEvent
 	}
 }
