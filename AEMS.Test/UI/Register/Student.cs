@@ -12,16 +12,25 @@ namespace AEMS.Test.UI.Register
 		public void Register_WithFirstJsonRecord_Succeeds_AndSecondJsonRecord_ShowsDuplicateEmailError()
 		{
 			var firstStudent = TestDataLoader.LoadStudentRegisterRequest("users.json", 0);
-			
+			var secondStudent = TestDataLoader.LoadStudentRegisterRequest("users.json", 1);
 			const string registerUrl = "https://localhost:7149/Auth/RegisterStudent";
 
 			using IWebDriver driver = new ChromeDriver();
 			driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(5);
 
+			// Đăng ký sinh viên đầu tiên
 			RegisterStudent(driver, registerUrl, firstStudent);
+			// Kiểm tra chuyển hướng đến trang login
 			Assert.Contains("/Auth/Login", driver.Url, StringComparison.OrdinalIgnoreCase);
 
-			
+			// Quay lại trang đăng ký
+			driver.Navigate().GoToUrl(registerUrl);
+
+			// Đăng ký sinh viên thứ hai
+			RegisterStudent(driver, registerUrl, secondStudent);
+			// Kiểm tra thông báo lỗi trùng email (cần tìm element chứa thông báo lỗi, ví dụ: div.text-danger)
+			var errorElement = driver.FindElement(By.CssSelector(".text-danger"));
+			Assert.Contains("Email đã được sử dụng", errorElement.Text); // tùy theo thông báo thực tế
 		}
 
 		private static void RegisterStudent(IWebDriver driver, string registerUrl, RegisterStudentRequestDto student)
