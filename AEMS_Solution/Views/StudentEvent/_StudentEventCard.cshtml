@@ -24,14 +24,21 @@
     <div class="card-body pb-1">
         <div class="d-flex justify-content-between mb-1">
             <span class="badge @statusClass">@Model.Status</span>
-            @if (Model.IsRegistered)
-            {
-                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã đăng ký</span>
-            }
-            else if (Model.IsFull)
-            {
-                <span class="badge bg-danger">Hết chỗ</span>
-            }
+            <div>
+                @if (!string.IsNullOrEmpty(Model.ParticipationRole))
+                {
+                    <span class="badge bg-warning text-dark me-1" title="Vai trò tham gia">@Model.ParticipationRole</span>
+                }
+                
+                @if (Model.IsRegistered)
+                {
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã đăng ký</span>
+                }
+                else if (Model.IsFull)
+                {
+                    <span class="badge bg-danger">Hết chỗ</span>
+                }
+            </div>
         </div>
         <h6 class="card-title fw-bold mb-1 text-truncate" title="@Model.Title">@Model.Title</h6>
         <div class="small text-muted">

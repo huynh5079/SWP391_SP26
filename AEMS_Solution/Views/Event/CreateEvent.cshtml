@@ -71,6 +71,20 @@
             margin: 18px 0;
         }
 
+        .section-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 18px 0;
+            background: #fafafa;
+        }
+
+        .section-title {
+            margin: 0 0 12px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
         .btn {
             border: 0;
             border-radius: 10px;
@@ -96,6 +110,10 @@
             border: 1px dashed #cbd5e1;
             border-radius: 12px;
             padding: 12px;
+            margin-top: 12px;
+        }
+
+        .agenda-location-box {
             margin-top: 12px;
         }
 
@@ -161,18 +179,20 @@
 
             <div class="row">
                 <div class="col">
+                    <label asp-for="TopicId">Topic</label>
+                    <select asp-for="TopicId" asp-items="Model.Topics">
+                        <option value="">-- Select Topic --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
                     <label asp-for="LocationId">Location *</label>
                     <select asp-for="LocationId" asp-items="Model.Locations">
                         <option value="">-- Select Location --</option>
                     </select>
                     <span asp-validation-for="LocationId" class="error"></span>
-                </div>
-
-                <div class="col">
-                    <label asp-for="TopicId">Topic</label>
-                    <select asp-for="TopicId" asp-items="Model.Topics">
-                        <option value="">-- Select Topic --</option>
-                    </select>
                 </div>
             </div>
 
@@ -193,6 +213,8 @@
                 <div class="col">
                     <label asp-for="MaxCapacity">Max Capacity *</label>
                     <input asp-for="MaxCapacity" type="number" min="1" />
+                    <div class="hint" id="locationCapacityHint">Sức chứa phải nhỏ hơn hoặc bằng sức chứa phòng do approver cấu hình.</div>
+                    <span asp-validation-for="MaxCapacity" class="error"></span>
                 </div>
                 <div class="col">
                     <label asp-for="ThumbnailUrl">Thumbnail Url</label>
@@ -281,8 +303,12 @@
 
             <div class="row" style="align-items:center; justify-content:space-between;">
                 <h3 style="margin:0;">Event Agendas</h3>
-                <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-secondary" id="btnSuggestAgenda">+ Agenda by event type</button>
+                    <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
+                </div>
             </div>
+            <div class="hint" id="agendaSuggestionHint">Chọn `Event Type`, sau đó bấm `Agenda by event type` để áp dụng agenda mẫu phù hợp.</div>
 
             <div id="agendaContainer">
                 @for (int i = 0; i < (Model.Agendas?.Count ?? 0); i++)
@@ -296,11 +322,13 @@
                         <div class="row">
                             <div class="col">
                                 <label>Session Name</label>
-                                <input asp-for="Agendas[@i].SessionName" />
+                                <input asp-for="Agendas[@i].SessionName" required />
+                                <span asp-validation-for="Agendas[@i].SessionName" class="error"></span>
                             </div>
                             <div class="col">
                                 <label>Speaker</label>
-                                <input asp-for="Agendas[@i].SpeakerName" />
+                                <input asp-for="Agendas[@i].SpeakerInfo" required />
+                                <span asp-validation-for="Agendas[@i].SpeakerInfo" class="error"></span>
                             </div>
                         </div>
 
@@ -318,8 +346,17 @@
                             </div>
                         </div>
 
-                        <label>Location (agenda)</label>
-                        <input asp-for="Agendas[@i].Location" placeholder="VD: Room 201" />
+                        <div class="row pt-2 pb-2">
+                            <div class="col">
+                                <label>Location</label>
+                                <select asp-for="Agendas[@i].Location">
+                                    <option value="">-- Same as Event Location --</option>
+                                    @foreach(var loc in Model.Locations) {
+                                        <option value="@loc.Text">@loc.Text</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 }
             </div>
@@ -342,11 +379,11 @@
             <div class="row">
                 <div class="col">
                     <label>Session Name</label>
-                    <input name="Agendas[__i__].SessionName" />
+                    <input name="Agendas[__i__].SessionName" required />
                 </div>
                 <div class="col">
                     <label>Speaker</label>
-                    <input name="Agendas[__i__].SpeakerName" />
+                    <input name="Agendas[__i__].SpeakerInfo" required />
                 </div>
             </div>
 
@@ -364,8 +401,17 @@
                 </div>
             </div>
 
-            <label>Location (agenda)</label>
-            <input name="Agendas[__i__].Location" placeholder="VD: Room 201" />
+            <div class="row pt-2 pb-2">
+                <div class="col">
+                    <label>Location</label>
+                    <select name="Agendas[__i__].Location">
+                        <option value="">-- Same as Event Location --</option>
+                        @foreach(var loc in Model.Locations) {
+                            <option value="@loc.Text">@loc.Text</option>
+                        }
+                    </select>
+                </div>
+            </div>
         </div>
     </template>
 
@@ -397,6 +443,8 @@
             const agendaContainer = document.getElementById("agendaContainer");
             const tpl = document.getElementById("agendaTemplate");
             const btnAdd = document.getElementById("btnAddAgenda");
+            const btnSuggestAgenda = document.getElementById("btnSuggestAgenda");
+            const agendaSuggestionHint = document.getElementById("agendaSuggestionHint");
 
             const isDeposit = document.getElementById("IsDepositRequired");
             const depositRow = document.getElementById("depositRow");
@@ -414,6 +462,8 @@
             // Show/Hide meeting url when Mode is Online/Hybrid
             const modeSelect = document.querySelector("select[name='Mode']");
             const meetingRow = document.getElementById("meetingRow");
+            const agendaSuggestionsByType = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AgendaSuggestionsByType));
+
             function updateMeetingUI() {
                 const val = modeSelect ? modeSelect.value : '';
 
@@ -441,18 +491,64 @@
                     item.dataset.index = i;
                     const title = item.querySelector(".agenda-title");
                     if (title) title.textContent = `Agenda #${i + 1}`;
-                    item.querySelectorAll("input[name], textarea[name]").forEach(el => {
+                    item.querySelectorAll("input[name], textarea[name], select[name]").forEach(el => {
                         el.name = el.name.replace(/Agendas\[\d+\]/, `Agendas[${i}]`);
                     });
                 });
             }
 
-            function addAgenda() {
+            function addAgenda(agendaData) {
                 const i = getNextIndex();
                 const html = tpl.innerHTML.replaceAll("__i__", i).replaceAll("__n__", i + 1);
                 const wrapper = document.createElement("div");
                 wrapper.innerHTML = html.trim();
-                agendaContainer.appendChild(wrapper.firstElementChild);
+                const agendaItem = wrapper.firstElementChild;
+                agendaContainer.appendChild(agendaItem);
+
+                if (agendaData) {
+                    const sessionNameInput = agendaItem.querySelector("input[name$='.SessionName']");
+                    const speakerNameInput = agendaItem.querySelector("input[name$='.SpeakerInfo']");
+                    const descriptionInput = agendaItem.querySelector("textarea[name$='.Description']");
+
+                    if (sessionNameInput) sessionNameInput.value = agendaData.sessionName ?? '';
+                    if (speakerNameInput) speakerNameInput.value = agendaData.speakerName ?? '';
+                    if (descriptionInput) descriptionInput.value = agendaData.description ?? '';
+                }
+                return [...agendaContainer.querySelectorAll('.agenda-item')].some(item =>
+                    [...item.querySelectorAll('input[type="text"], input[type="datetime-local"], textarea, input[type="hidden"]')]
+                        .some(input => input.value?.trim()));
+            }
+
+            function updateAgendaSuggestionHint() {
+                const typeSelect = document.querySelector("select[name='Type']");
+                const suggestions = agendaSuggestionsByType?.[typeSelect?.value] || [];
+
+                if (!agendaSuggestionHint) return;
+
+                agendaSuggestionHint.textContent = suggestions.length > 0
+                    ? `Agenda gợi ý: ${suggestions.join(', ')}.`
+                    : 'Chọn Event Type, sau đó bấm Agenda by event type để áp dụng agenda mẫu phù hợp.';
+            }
+
+            function applySuggestedAgendas() {
+                const typeSelect = document.querySelector("select[name='Type']");
+                const suggestions = agendaSuggestionsByType?.[typeSelect?.value] || [];
+
+                if (suggestions.length === 0) {
+                    if (agendaSuggestionHint) {
+                        agendaSuggestionHint.textContent = 'Chưa có agenda mẫu cho Event Type hiện tại.';
+                    }
+                    return;
+                }
+
+                if (hasAgendaContent() && !window.confirm('Agenda hiện tại sẽ được thay bằng agenda mẫu theo loại sự kiện. Tiếp tục?')) {
+                    return;
+                }
+
+                agendaContainer.innerHTML = '';
+                suggestions.forEach(sessionName => addAgenda({ sessionName }));
+                renumber();
+                updateAgendaSuggestionHint();
             }
 
             function removeAgenda(btn) {
@@ -461,13 +557,19 @@
                 renumber();
             }
 
-            btnAdd.addEventListener("click", addAgenda);
+            btnAdd.addEventListener("click", () => addAgenda());
+            btnSuggestAgenda?.addEventListener("click", applySuggestedAgendas);
             agendaContainer.addEventListener("click", function (e) {
                 const btn = e.target.closest(".btnRemoveAgenda");
                 if (btn) removeAgenda(btn);
             });
 
-            if (agendaContainer.querySelectorAll(".agenda-item").length === 0) addAgenda();
+            if (existingAgendaItems.length === 0) {
+                addAgenda();
+            } 
+            const typeSelect = document.querySelector("select[name='Type']");
+            typeSelect?.addEventListener('change', updateAgendaSuggestionHint);
+            updateAgendaSuggestionHint();
             
             // Documents UI
             const docsContainer = document.getElementById("documentsContainer");

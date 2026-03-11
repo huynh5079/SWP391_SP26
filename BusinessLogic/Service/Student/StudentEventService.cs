@@ -389,30 +389,51 @@ namespace BusinessLogic.Service.Student
             });
         }
 
-        // ─── 5. My registered events ──────────────────────────────────────────
-        public async Task<List<StudentEventBrowseDto>> GetMyRegisteredEventsAsync(string studentId)
+        // ─── 5. My participations ─────────────────────────────────────────────
+        public async Task<List<StudentEventBrowseDto>> GetMyParticipationsAsync(string studentId)
         {
             var profile = await RequireStudentProfileAsync(studentId);
 
-            // Fetch active tickets with their events
-            var tickets = await _uow.Tickets.GetAllAsync(
-                t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled,
-                q => q.Include(x => x.Event)
-                        .ThenInclude(e => e.Location)
-                      .Include(x => x.Event)
-                        .ThenInclude(e => e.Topic)
-                      .Include(x => x.Event)
-                        .ThenInclude(e => e.Semester)
-                      .Include(x => x.Event)
-                        .ThenInclude(e => e.Tickets));
+            // Fetch active tickets or where student is team member or speaker
+            var events = await _uow.Events.GetAllAsync(
+                e => e.DeletedAt == null && (
+                     e.Tickets.Any(t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ||
+                     e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id)) ||
+                     e.EventAgenda.Any(a => a.StudentSpeakerId == profile.Id && a.DeletedAt == null)),
+                q => q.Include(x => x.Location)
+                      .Include(x => x.Topic)
+                      .Include(x => x.Semester)
+                      .Include(x => x.Tickets)
+                      .Include(x => x.EventTeams).ThenInclude(et => et.TeamMembers)
+                      .Include(x => x.EventAgenda));
 
-            return tickets
-                .Where(t => t.Event.DeletedAt == null)
-                .OrderBy(t => t.Event.StartTime)
-                .Select(t =>
+            return events
+                .OrderBy(e => e.StartTime)
+                .Select(e =>
                 {
-                    int count = t.Event.Tickets?.Count(tk => tk.DeletedAt == null && tk.Status != TicketStatusEnum.Cancelled) ?? 0;
-                    return MapToBrowseDto(t.Event, count, isRegistered: true);
+                    int count = e.Tickets?.Count(tk => tk.DeletedAt == null && tk.Status != TicketStatusEnum.Cancelled) ?? 0;
+                    
+                    // We mark isRegistered as true if they have an active ticket
+                    bool hasActiveTicket = e.Tickets?.Any(t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? false;
+                    
+                    // Determine Role
+                    string role = "";
+                    if (e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id)))
+                    {
+                        role = "Ban tổ chức";
+                    }
+                    else if (e.EventAgenda.Any(a => a.StudentSpeakerId == profile.Id && a.DeletedAt == null))
+                    {
+                        role = "Diễn giả";
+                    }
+                    else if (hasActiveTicket)
+                    {
+                        role = "Khách tham dự";
+                    }
+
+                    var dto = MapToBrowseDto(e, count, isRegistered: hasActiveTicket);
+                    dto.ParticipationRole = role;
+                    return dto;
                 })
                 .ToList();
         }

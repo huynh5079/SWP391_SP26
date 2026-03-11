@@ -4,14 +4,18 @@ using System.Net.NetworkInformation;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
+using AEMS_Solution.Models.Organizer.Manage;
 using AutoMapper;
+using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.ValidationData.Event;
 using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Helper;
+using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
+using BusinessLogic.Service.Event;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -20,10 +24,17 @@ using Microsoft.EntityFrameworkCore;
 	{
 	private readonly IOrganizerService _organizerService;
 	    private readonly IMapper _mapper;
-		public OrganizerController(IOrganizerService organizerService, IMapper mapper)
+	    private readonly ILocationService _locationService;
+	    private readonly IUnitOfWork _unitOfWork;
+		private readonly IEventService _eventService;
+
+		public OrganizerController(IOrganizerService organizerService, IEventService eventService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork)
 		{
 			_organizerService = organizerService;
+			_eventService = eventService;
 			_mapper = mapper;
+			_locationService = locationService;
+			_unitOfWork = unitOfWork;
 		}
         [HttpGet]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, int page = 1, int pageSize = 10)
@@ -262,6 +273,47 @@ using Microsoft.EntityFrameworkCore;
 			_mapper.Map(dto, vm);
 		}
 
+		[HttpGet]
+		public async Task<IActionResult> GetAvailableLocations(DateTime startTime, DateTime endTime)
+		{
+			if (endTime <= startTime)
+			{
+				return Json(new List<object>());
+			}
+
+			var locations = await _locationService.GetAvailableLocationsAsync(startTime, endTime);
+			return Json(locations.Select(x => new
+			{
+				id = x.LocationId,
+				name = x.Name,
+				address = x.Address,
+				building = ExtractAddressPart(x.Address, "Building"),
+				floor = ExtractAddressPart(x.Address, "Floor"),
+				room = ExtractAddressPart(x.Address, "Room"),
+				capacity = x.Capacity,
+				type = x.Type?.ToString()
+			}));
+		}
+
+		private static string ExtractAddressPart(string? address, string label)
+		{
+			if (string.IsNullOrWhiteSpace(address))
+			{
+				return string.Empty;
+			}
+
+			var segment = address
+				.Split(" - ", StringSplitOptions.RemoveEmptyEntries)
+				.FirstOrDefault(x => x.StartsWith(label + " ", StringComparison.OrdinalIgnoreCase));
+
+			if (string.IsNullOrWhiteSpace(segment))
+			{
+				return string.Empty;
+			}
+
+			return segment.Substring(label.Length).Trim();
+		}
+
 		
 		// Event/Create
 		[HttpGet]
@@ -291,6 +343,35 @@ using Microsoft.EntityFrameworkCore;
 
 			if (!vm.IsDepositRequired)
 				vm.DepositAmount = 0;
+
+			if (string.IsNullOrWhiteSpace(vm.LocationId))
+			{
+				ModelState.AddModelError(nameof(vm.LocationId), "Vui lòng chọn phòng hợp lệ.");
+			}
+			else
+			{
+				var selectedLocation = await _locationService.GetLocationByIdAsync(vm.LocationId);
+				if (selectedLocation == null)
+				{
+					ModelState.AddModelError(nameof(vm.LocationId), "Phòng đã chọn không tồn tại.");
+				}
+				else
+				{
+					if (vm.MaxCapacity > selectedLocation.Capacity)
+					{
+						ModelState.AddModelError(nameof(vm.MaxCapacity), $"Sức chứa sự kiện phải nhỏ hơn hoặc bằng sức chứa phòng ({selectedLocation.Capacity}).");
+					}
+
+					if (vm.EndTime > vm.StartTime)
+					{
+						var availableLocations = await _locationService.GetAvailableLocationsAsync(vm.StartTime, vm.EndTime);
+						if (!availableLocations.Any(x => x.LocationId == vm.LocationId))
+						{
+							ModelState.AddModelError(nameof(vm.LocationId), "Phòng đã chọn không còn khả dụng trong khoảng thời gian này.");
+						}
+					}
+				}
+			}
 
 			if (!ModelState.IsValid)
 			{
@@ -343,6 +424,31 @@ using Microsoft.EntityFrameworkCore;
 			{
 				var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
 				var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
+				
+				vm.Teams = dto.Teams.Select(t => new AEMS_Solution.Models.Event.EventTeamVm
+				{
+					Id = t.Id,
+					EventId = t.EventId,
+					TeamName = t.TeamName,
+					Description = t.Description,
+					Score = t.Score,
+					PlaceRank = t.PlaceRank,
+					CreatedAt = t.CreatedAt,
+					TeamMembers = t.TeamMembers.Select(m => new AEMS_Solution.Models.Event.TeamMemberVm
+					{
+						Id = m.Id,
+						TeamId = m.TeamId,
+						StudentId = m.StudentId,
+						StaffId = m.StaffId,
+						MemberName = m.MemberName,
+						MemberEmail = m.MemberEmail,
+						RoleName = m.RoleName,
+						TeamRole = m.TeamRole
+					}).ToList()
+				}).ToList();
+
+				var dropdowns = await _organizerService.GetCreateEventDropdownsAsync();
+				ViewBag.Locations = dropdowns.Locations;
 
 				return View("~/Views/Event/DetailEvent.cshtml", vm);
 			}
@@ -352,6 +458,192 @@ using Microsoft.EntityFrameworkCore;
 			}
 		}
 		// POST detail handler removed — use Manage POST if needed
+		
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateEventTeamFromDetail(string EventId, string TeamName, string Description)
+		{
+			if (string.IsNullOrWhiteSpace(EventId) || string.IsNullOrWhiteSpace(TeamName)) return BadRequest();
+			try
+			{
+				await _eventService.CreateEventTeamAsync(EventId, TeamName, Description);
+				SetSuccess("Đã tạo nhóm thành công.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> DeleteEventTeamFromDetail(string TeamId, string EventId)
+		{
+			if (string.IsNullOrWhiteSpace(TeamId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.DeleteEventTeamAsync(TeamId);
+				SetSuccess("Đã xóa nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> AddMemberToTeam(string TeamId, string EventId, string? StudentId, string? StaffId, string RoleName)
+		{
+			if (string.IsNullOrWhiteSpace(TeamId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.AddMemberToTeamAsync(TeamId, StudentId, StaffId, RoleName);
+				SetSuccess("Đã thêm thành viên vào nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> RemoveMemberFromTeam(string MemberId, string EventId)
+		{
+			if (string.IsNullOrWhiteSpace(MemberId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.RemoveMemberFromTeamAsync(MemberId);
+				SetSuccess("Đã xóa thành viên khỏi nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateAgendaFromDetail(CreateDetailAgendaViewModel model)
+		{
+			if (string.IsNullOrWhiteSpace(model.EventId))
+			{
+				SetError("Event id không hợp lệ.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (string.IsNullOrWhiteSpace(CurrentUserId))
+			{
+				return RedirectToAction("Login", "Auth");
+			}
+
+			if (!ModelState.IsValid)
+			{
+				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu agenda không hợp lệ.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
+			if (eventEntity == null)
+			{
+				SetError("Không tìm thấy sự kiện để thêm agenda.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (model.StartTime >= model.EndTime)
+			{
+				SetError("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			if (model.StartTime < eventEntity.StartTime || model.EndTime > eventEntity.EndTime)
+			{
+				SetError("Thời gian agenda phải nằm trong thời gian của event.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var agenda = new DataAccess.Entities.EventAgenda
+			{
+				EventId = model.EventId,
+				SessionName = model.SessionName.Trim(),
+				SpeakerInfo = model.SpeakerInfo?.Trim(),
+				Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
+				StartTime = model.StartTime,
+				EndTime = model.EndTime,
+				Location = string.IsNullOrWhiteSpace(model.Location) ? null : model.Location.Trim(),
+				UpdatedAt = DateTimeHelper.GetVietnamTime()
+			};
+
+			if (!string.IsNullOrEmpty(model.SpeakerUserId))
+			{
+				if (model.SpeakerUserRole == "Student")
+				{
+					var student = await _unitOfWork.StudentProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
+					if (student != null) agenda.StudentSpeakerId = student.Id;
+				}
+				else if (model.SpeakerUserRole == "Staff")
+				{
+					var staff = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
+					if (staff != null) agenda.StaffSpeakerId = staff.Id;
+				}
+			}
+
+			await _unitOfWork.EventAgenda.CreateAsync(agenda);
+			await _unitOfWork.SaveChangesAsync();
+
+			SetSuccess("Tạo agenda thành công.");
+			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateDocumentFromDetail(CreateDetailDocumentViewModel model)
+		{
+			if (string.IsNullOrWhiteSpace(model.EventId))
+			{
+				SetError("Event id không hợp lệ.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (string.IsNullOrWhiteSpace(CurrentUserId))
+			{
+				return RedirectToAction("Login", "Auth");
+			}
+
+			if (!ModelState.IsValid)
+			{
+				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu tài liệu không hợp lệ.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
+			if (eventEntity == null)
+			{
+				SetError("Không tìm thấy sự kiện để thêm tài liệu.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			var document = new DataAccess.Entities.EventDocument
+			{
+				EventId = model.EventId,
+				Name = model.Name.Trim(),
+				Url = model.Url.Trim(),
+				Type = string.IsNullOrWhiteSpace(model.Type) ? null : model.Type.Trim(),
+				UpdatedAt = DateTimeHelper.GetVietnamTime()
+			};
+
+			await _unitOfWork.EventDocuments.CreateAsync(document);
+			await _unitOfWork.SaveChangesAsync();
+
+			SetSuccess("Tạo document thành công.");
+			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+		}
+
 		[HttpGet]
 		public async Task<IActionResult> MyEvents(string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 		{

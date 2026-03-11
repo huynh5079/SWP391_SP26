@@ -1,0 +1,25 @@
+﻿[
+    //test is email and email is duplicate
+    {
+        "Email": "sv001@university.edu.vn",
+        "Password": "ValidPass@123",
+        "FullName": "Nguyễn Văn An",
+        "StudentCode": "DE191038",
+        "Phone": "0836130605",
+        "Major": "Software Engineering",
+        "Gender": "Female"
+    },
+    {
+        "Email": "sv001@university.edu.vn",
+        "Password": "ValidPass@123",
+        "FullName": "Nguyễn Văn An",
+        "StudentCode": "DE191038",
+        "Phone": "0836130605",
+        "Major": "Software Engineering",
+        "Gender": "Female"
+    }
+]
+   
+
+    
+

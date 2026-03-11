@@ -1,4 +1,4 @@
-﻿@model AEMS_Solution.Models.Organizer.MyEventsViewModel
+﻿@model AEMS_Solution.Models.Organizer.Manage.MyEventsViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "My Events";
@@ -20,7 +20,12 @@
 }
 
 <div class="container mt-4">
-    <h2 class="mb-4">📅 My Events</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">📅 My Events</h2>
+        <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Create Event
+        </a>
+    </div>
 
     @if (TempData["SuccessMessage"] != null)
     {
@@ -55,17 +60,10 @@
             <tr>
                 <th>Thumbnail</th>
                 <th>Title</th>
-                <th>Semester</th>
-                <th>Department</th>
                 <th>Location</th>
                 <th>Time</th>
-                <th>Capacity</th>
                 <th>Status</th>
-                <th>Mode</th>
-                <th>Meeting Url</th>
-                <th>Time State</th>
-                <th>Stats</th>
-                <th>Action</th>
+                <th class="text-center">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -83,8 +81,6 @@
                         <strong>@e.Title</strong>
                     </td>
 
-                    <td>@e.SemesterName</td>
-                    <td>@e.DepartmentName</td>
                     <td>@e.Location</td>
 
                     <td class="event-time" data-start="@e.StartTime.ToString("o")" data-end="@e.EndTime.ToString("o")">
@@ -96,35 +92,11 @@
                     </td>
 
                     <td>
-                        @e.RegisteredCount / @e.MaxCapacity
-                    </td>
-
-                    <td>
                         <span class="workflow-badge badge @StatusClass(e.Status)">@e.Status</span>
                     </td>
-                    <td>
-                        @e.Mode
-                    </td>
 
-                    <td style="max-width:200px; word-break:break-all;">
-                        @if (!string.IsNullOrEmpty(e.MeetingUrl))
-                        {
-                            <a href="@e.MeetingUrl" target="_blank">Link</a>
-                        }
-                    </td>
-                    <td>
-                        <span class="time-badge badge bg-light text-dark">--</span>
-                    </td>
-
-                    <td>
-                        🎟 @e.RegisteredCount <br />
-                        ✅ @e.CheckedInCount <br />
-                        ⏳ @e.WaitlistCount <br />
-                        ⭐ @e.AvgRating.ToString("0.0")
-                    </td>
-
-                    <td>
-                        <div class="d-flex flex-wrap gap-1 align-items-center" style="max-width: 320px;">
+                    <td class="text-center align-middle">
+                        <div class="d-flex flex-wrap gap-1 justify-content-center align-items-center" style="max-width: 320px; margin: 0 auto;">
                             <style>
                                 .action-pill {
                                     min-width: 90px;
@@ -197,43 +169,7 @@
         <div class="text-muted">Page @Model.Page of @Model.TotalPages (@Model.TotalItems total items)</div>
     }
     @section Scripts {
-        <script>
-            (function () {
-                function update() {
-                    const now = new Date();
 
-                    document.querySelectorAll('.event-time').forEach(el => {
-                        const startIso = el.getAttribute('data-start');
-                        const endIso = el.getAttribute('data-end');
-                        if (!startIso || !endIso) return;
-
-                        const start = new Date(startIso);
-                        const end = new Date(endIso);
-
-                        const row = el.closest('tr');
-                        if (!row) return;
-
-                        // ✅ chỉ update Time State badge
-                        const timeBadge = row.querySelector('.time-badge');
-                        if (!timeBadge) return;
-
-                        if (now < start) {
-                            timeBadge.textContent = 'Upcoming';
-                            timeBadge.className = 'time-badge badge bg-warning text-dark';
-                        } else if (now >= start && now <= end) {
-                            timeBadge.textContent = 'Happening';
-                            timeBadge.className = 'time-badge badge bg-info text-dark';
-                        } else {
-                            timeBadge.textContent = 'Completed';
-                            timeBadge.className = 'time-badge badge bg-secondary text-dark';
-                        }
-                    });
-                }
-
-                update();
-                setInterval(update, 30 * 1000);
-            })();
-        </script>
         <script>
             (function () {
                 document.querySelectorAll('.view-detail').forEach(btn => {

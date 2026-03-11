@@ -24,5 +24,8 @@ namespace BusinessLogic.DTOs.Student
 
         // Per-student registration status (null = not registered)
         public bool IsRegistered { get; set; }
+        
+        // Custom Role (e.g. Khách tham gia, Ban tổ chức, Diễn giả)
+        public string? ParticipationRole { get; set; }
     }
 }

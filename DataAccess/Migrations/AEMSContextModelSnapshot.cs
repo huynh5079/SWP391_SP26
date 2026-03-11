@@ -410,12 +410,18 @@ namespace DataAccess.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("SpeakerName")
+                    b.Property<string>("SpeakerInfo")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("StaffSpeakerId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime?>("StartTime")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StudentSpeakerId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -423,6 +429,10 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EventId");
+
+                    b.HasIndex("StaffSpeakerId");
+
+                    b.HasIndex("StudentSpeakerId");
 
                     b.ToTable("EventAgenda");
                 });
@@ -480,6 +490,9 @@ namespace DataAccess.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("FileQuiz")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -488,12 +501,25 @@ namespace DataAccess.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<string>("QuestionSetStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Available");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("Type")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -826,6 +852,9 @@ namespace DataAccess.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("FileQuiz")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("OptionA")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -1118,8 +1147,10 @@ namespace DataAccess.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("StaffId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("StudentId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("TeamId")
@@ -1131,10 +1162,11 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("StaffId");
+
                     b.HasIndex("StudentId");
 
-                    b.HasIndex(new[] { "TeamId", "StudentId" }, "UIX_TeamMember_Team_Student")
-                        .IsUnique();
+                    b.HasIndex("TeamId");
 
                     b.ToTable("TeamMember", (string)null);
                 });
@@ -1261,6 +1293,9 @@ namespace DataAccess.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<DateTime?>("ReactivateAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("RoleId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -1278,6 +1313,8 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("RoleId");
+
+                    b.HasIndex(new[] { "Status", "ReactivateAt" }, "IX_User_Status_ReactivateAt");
 
                     b.HasIndex(new[] { "Email" }, "UQ__User__A9D10534CD0FD16E")
                         .IsUnique();
@@ -1408,7 +1445,19 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasConstraintName("FK__EventAgen__Event__08B54D69");
 
+                    b.HasOne("DataAccess.Entities.StaffProfile", "StaffSpeaker")
+                        .WithMany("AgendasAsStaffSpeaker")
+                        .HasForeignKey("StaffSpeakerId");
+
+                    b.HasOne("DataAccess.Entities.StudentProfile", "StudentSpeaker")
+                        .WithMany("AgendasAsStudentSpeaker")
+                        .HasForeignKey("StudentSpeakerId");
+
                     b.Navigation("Event");
+
+                    b.Navigation("StaffSpeaker");
+
+                    b.Navigation("StudentSpeaker");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.EventDocument", b =>
@@ -1581,10 +1630,14 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("DataAccess.Entities.TeamMember", b =>
                 {
+                    b.HasOne("DataAccess.Entities.StaffProfile", "Staff")
+                        .WithMany("TeamMembers")
+                        .HasForeignKey("StaffId")
+                        .HasConstraintName("FK__TeamMembe_StaffId");
+
                     b.HasOne("DataAccess.Entities.StudentProfile", "Student")
                         .WithMany("TeamMembers")
                         .HasForeignKey("StudentId")
-                        .IsRequired()
                         .HasConstraintName("FK__TeamMembe__Stude__7E37BEF6");
 
                     b.HasOne("DataAccess.Entities.EventTeam", "Team")
@@ -1593,6 +1646,8 @@ namespace DataAccess.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK__TeamMembe__TeamI__7D439ABD");
+
+                    b.Navigation("Staff");
 
                     b.Navigation("Student");
 
@@ -1705,15 +1760,21 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("DataAccess.Entities.StaffProfile", b =>
                 {
+                    b.Navigation("AgendasAsStaffSpeaker");
+
                     b.Navigation("ApprovalLogs");
 
                     b.Navigation("CheckInHistories");
 
                     b.Navigation("Events");
+
+                    b.Navigation("TeamMembers");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.StudentProfile", b =>
                 {
+                    b.Navigation("AgendasAsStudentSpeaker");
+
                     b.Navigation("EventWaitlists");
 
                     b.Navigation("Feedbacks");

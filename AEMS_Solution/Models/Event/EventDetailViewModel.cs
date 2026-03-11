@@ -38,6 +38,9 @@ namespace AEMS_Solution.Models.Event
 		// Type / Status đang lưu dạng string trong DB (theo ERD)
 		public string? Type { get; set; }      // EventTypeEnum.ToString()
 		public EventStatusEnum Status { get; set; }  // EventStatusEnum
+		
+		public EventModeEnum? Mode { get; set; }
+		public string? MeetingUrl { get; set; }
 
 		public bool IsDepositRequired { get; set; }
 		public decimal DepositAmount { get; set; }
@@ -140,7 +143,7 @@ namespace AEMS_Solution.Models.Event
 
 		public string SessionName { get; set; } = "";
 		public string? Description { get; set; }
-		public string? SpeakerName { get; set; }
+		public string? SpeakerInfo { get; set; }
 
 		public DateTime StartTime { get; set; }
 		public DateTime EndTime { get; set; }
@@ -314,6 +317,19 @@ namespace AEMS_Solution.Models.Event
 		public decimal Score { get; set; }
 		public int? PlaceRank { get; set; }
 		public DateTime CreatedAt { get; set; }
+		public List<TeamMemberVm> TeamMembers { get; set; } = new();
+	}
+
+	public class TeamMemberVm
+	{
+		public string Id { get; set; } = "";
+		public string TeamId { get; set; } = "";
+		public string? StudentId { get; set; }
+		public string? StaffId { get; set; }
+		public string MemberName { get; set; } = "";
+		public string MemberEmail { get; set; } = "";
+		public string RoleName { get; set; } = "";
+		public string TeamRole { get; set; } = ""; // e.g. Leader, Member
 	}
 
 	// =========================

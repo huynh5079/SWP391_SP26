@@ -11,5 +11,19 @@
 - Organizer scans the QR code for check-in.
 
 ## Role Responsibilities
-- The Approver is responsible for creating and managing topics and approving event registrations.
-- The Organizer is responsible for managing tickets and facilitating check-in.
+- The Approver is responsible for creating and managing topics, creating rooms/locations, changing their status, and approving event registrations.
+- The Organizer is responsible for managing tickets, facilitating check-in, and seeing which rooms are available for a given time.
+
+## Room Addressing
+- Display and store room addresses with explicit labels, including Building, Floor, and Room, instead of bare values.
+- Normalize room addresses to avoid duplicate labels, such as 'Building Building B'; preserve a single explicit label for Building, Floor, and Room.
+
+## User Management
+- Implement 'soft delete' for users by changing the user's status rather than relying solely on DeletedAt; admin deletions may have a time limit for automatic reactivation.
+
+## Testing Guidelines
+- Use minimal test implementations that only cover the explicitly requested scenario, instead of full mock-heavy setups.
+- Load test data from JSON files when writing tests for this project.
+
+## Event Management
+- Apply the requested two-column layout and agenda management changes to `DetailEvent.cshtml`, not `CreateEvent.cshtml`.

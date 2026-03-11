@@ -272,11 +272,21 @@ public partial class AEMSContext : DbContext
 		{
 			entity.Property(e => e.EventId).HasMaxLength(450);
 			entity.Property(e => e.SessionName).HasMaxLength(255);
-			entity.Property(e => e.SpeakerName).HasMaxLength(255);
+			entity.Property(e => e.SpeakerInfo).HasMaxLength(255);
 
 			entity.HasOne(d => d.Event).WithMany(p => p.EventAgenda)
 				.HasForeignKey(d => d.EventId)
 				.HasConstraintName("FK__EventAgen__Event__08B54D69");
+
+			entity.HasOne(d => d.StudentSpeaker)
+				.WithMany(p => p.AgendasAsStudentSpeaker)
+				.HasForeignKey(d => d.StudentSpeakerId)
+				.OnDelete(DeleteBehavior.ClientSetNull);
+
+			entity.HasOne(d => d.StaffSpeaker)
+				.WithMany(p => p.AgendasAsStaffSpeaker)
+				.HasForeignKey(d => d.StaffSpeakerId)
+				.OnDelete(DeleteBehavior.ClientSetNull);
 		});
 
 		modelBuilder.Entity<EventDocument>(entity =>
@@ -302,6 +312,19 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.Type)
 				.HasMaxLength(50)
 				.HasConversion<string>();
+			entity.Property(e=>e.Status).
+			HasMaxLength(50).
+			HasConversion<string>();
+			// Map QuestionSetStatus enum to string (nvarchar(50)) with default 'Available'
+			entity.Property(e => e.QuestionSetStatus)
+				.IsRequired()
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(QuestionSetEnum.Available);
+
+		// File for quiz (nullable)
+		entity.Property(e => e.FileQuiz)
+			.HasColumnType("nvarchar(max)");
 
 			entity.HasOne(d => d.Event).WithMany(p => p.EventQuizzes)
 				.HasForeignKey(d => d.EventId)
@@ -533,7 +556,7 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("TeamMember");
 
-			entity.HasIndex(e => new { e.TeamId, e.StudentId }, "UIX_TeamMember_Team_Student").IsUnique();
+			// entity.HasIndex(e => new { e.TeamId, e.StudentId }, "UIX_TeamMember_Team_Student").IsUnique();
 
 			entity.Property(e => e.Role)
 				.HasMaxLength(50)
@@ -543,6 +566,11 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.StudentId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__TeamMembe__Stude__7E37BEF6");
+
+			entity.HasOne(d => d.Staff).WithMany(p => p.TeamMembers)
+				.HasForeignKey(d => d.StaffId)
+				.OnDelete(DeleteBehavior.ClientSetNull)
+				.HasConstraintName("FK__TeamMembe_StaffId");
 
 			entity.HasOne(d => d.Team).WithMany(p => p.TeamMembers)
 				.HasForeignKey(d => d.TeamId)
@@ -587,11 +615,13 @@ public partial class AEMSContext : DbContext
 			entity.ToTable("User");
 
 			entity.HasIndex(e => e.Email, "UQ__User__A9D10534CD0FD16E").IsUnique();
+			entity.HasIndex(e => new { e.Status, e.ReactivateAt }, "IX_User_Status_ReactivateAt");
 
 			entity.Property(e => e.Email).HasMaxLength(255);
 			entity.Property(e => e.FullName).HasMaxLength(255);
 			entity.Property(e => e.IsBanned).HasDefaultValue(false);
 			entity.Property(e => e.Phone).HasMaxLength(50);
+			entity.Property(e => e.ReactivateAt).HasColumnType("datetime2");
 			entity.Property(e => e.RoleId).HasMaxLength(450);
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)

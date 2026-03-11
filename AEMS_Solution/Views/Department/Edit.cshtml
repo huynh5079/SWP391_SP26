@@ -1,0 +1,60 @@
+@model AEMS_Solution.Models.Admin.DepartmentEditViewModel
+@{
+    ViewData["Title"] = "Chỉnh sửa Phòng Ban";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid px-4 mt-4">
+    <div class="mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm mb-3">
+            <i class="bi bi-arrow-left me-2"></i>Quay lại danh sách
+        </a>
+        <h2 class="mb-0 text-primary fw-bold"><i class="bi bi-pencil-square me-2"></i>Chỉnh sửa Phòng Ban</h2>
+        <p class="text-muted">Cập nhật thông tin chi tiết của phòng ban</p>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label fw-semibold">Tên Phòng Ban</label>
+                            <input asp-for="Name" class="form-control form-control-lg rounded-3" placeholder="Ví dụ: Khoa Công nghệ thông tin" />
+                            <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="mb-4">
+                            <label asp-for="Code" class="form-label fw-semibold">Mã Phòng Ban</label>
+                            <input asp-for="Code" class="form-control form-control-lg rounded-3" placeholder="Ví dụ: SE, SA" />
+                            <span asp-validation-for="Code" class="text-danger small mt-1 d-block"></span>
+                        </div>
+
+                        <hr class="text-muted opacity-50 my-4" />
+                        <div class="d-flex justify-content-end gap-2">
+                            <a asp-action="Index" class="btn btn-light rounded-pill px-4">Hủy bỏ</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 shadow-sm">
+                                <i class="bi bi-check2-all me-2"></i>Lưu Thay Đổi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

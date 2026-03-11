@@ -1,62 +1,169 @@
-@model AEMS_Solution.Models.Approver.ApproverDashboardViewModel
+@model AEMS_Solution.Models.Approver.ApproverDashboardStatsViewModel
+@using DataAccess.Enum
 @{
-    ViewData["Title"] = "Approval - Pending Events";
-    Layout = "_Layout";
+    ViewData["Title"] = "Approver Dashboard";
+    Layout = "_Approvallayout";
 }
 
-<div class="container mt-4">
-    <h2 class="mb-4">📋 Pending Approvals</h2>
-
-    <form class="row g-2 mb-3" method="get" asp-controller="Approver" asp-action="Index">
-        <div class="col-auto">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Approver - Dashboard</h1>
+            <p class="text-muted small">Manage event approvals and track statistics</p>
         </div>
 
-        <div class="col-auto">
-            <button class="btn btn-primary">Filter</button>
+        <div class="d-flex gap-2">
+            <a asp-controller="Approver" asp-action="PendingApprovals" class="btn btn-sm btn-primary shadow-sm">
+                <i class="bi bi-list-check"></i> Pending Approvals
+            </a>
+            <a asp-controller="Topic" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
+                <i class="bi bi-tags"></i> Topics
+            </a>
+            <a asp-controller="Location" asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
+                <i class="bi bi-geo-alt"></i> Locations
+            </a>
+            <a asp-controller="Approver" asp-action="Agenda" class="btn btn-sm btn-outline-info shadow-sm">
+                <i class="bi bi-calendar-range"></i> Agenda
+            </a>
         </div>
-    </form>
+    </div>
 
-    <table class="table table-bordered table-hover shadow">
-        <thead class="table-dark">
-            <tr>
-                <th>Thumbnail</th>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Last Reason</th>
-                <th>Action</th>
-                <th>Detail Event<th/>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var e in Model.Events)
-            {
-                <tr>
-                    <td style="width:120px">
-                        @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
-                        {
-                            <img src="@e.ThumbnailUrl" class="img-fluid rounded" />
-                        }
-                    </td>
-                    <td><strong>@e.Title</strong></td>
-                    <td>@e.Location</td>
-                    <td>
-                        @e.StartTime.ToString("dd/MM/yyyy HH:mm")<br />→<br />@e.EndTime.ToString("dd/MM/yyyy HH:mm")
-                    </td>
-                    <td>
-                        <span class="badge bg-warning text-dark">@e.Status</span>
-                    </td>
-                    <td class="text-break" style="max-width:200px;">@(!string.IsNullOrWhiteSpace(e.LastApprovalComment) ? e.LastApprovalComment : "")</td>
-                    <td>
-                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="approve" class="btn btn-sm btn-success">Approve</a>
-                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="reject" class="btn btn-sm btn-danger ms-1">Reject</a>
-                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="requestchange" class="btn btn-sm btn-warning ms-1">Request Change</a>
-                    </td>
-                    <td><a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">View</a><td/>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <!-- Stats Cards Row -->
+    <div class="row mb-4">
+        <!-- Total Pending -->
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Total Pending</p>
+                            <h3 class="mb-0 text-warning">@Model.TotalEventsPending</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-hourglass-split text-warning" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Approved -->
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Approved</p>
+                            <h3 class="mb-0 text-success">@Model.TotalEventsApproved</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-check-circle text-success" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Rejected -->
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Rejected</p>
+                            <h3 class="mb-0 text-danger">@Model.TotalEventsRejected</h3>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-x-circle text-danger" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Required -->
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Action Required</p>
+                            <h3 class="mb-0 text-primary">@Model.EventsAwaitingAction</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-bell-fill text-primary" style="font-size: 1.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Recent Pending Events Table -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Pending Events</h5>
+                    <a asp-controller="Approver" asp-action="PendingApprovals" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (Model.RecentPendingEvents != null && Model.RecentPendingEvents.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Thumbnail</th>
+                                        <th>Event Name</th>
+                                        <th>Start Time</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var evt in Model.RecentPendingEvents)
+                                    {
+                                        <tr>
+                                            <td style="width:80px">
+                                                @if (!string.IsNullOrEmpty(evt.ThumbnailUrl))
+                                                {
+                                                    <img src="@evt.ThumbnailUrl" class="img-fluid rounded" alt="Thumbnail" />
+                                                }
+                                            </td>
+                                            <td class="align-middle">
+                                                <strong>@evt.Title</strong>
+                                            </td>
+                                            <td class="align-middle">
+                                                @evt.StartTime.ToString("dd/MM/yyyy HH:mm")
+                                            </td>
+                                            <td class="align-middle">
+                                                <span class="badge bg-warning text-dark">@evt.Status</span>
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <div class="d-flex justify-content-center gap-1">
+                                                    <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@evt.EventId" asp-route-operation="approve" class="btn btn-sm btn-success">Approve</a>
+                                                    <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@evt.EventId" asp-route-operation="reject" class="btn btn-sm btn-danger">Reject</a>
+                                                    <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@evt.EventId" asp-route-operation="requestchange" class="btn btn-sm btn-warning">Request Change</a>
+                                                    <a asp-action="Detail" asp-route-id="@evt.EventId" class="btn btn-sm btn-info">View</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle"></i> No pending events require approval at the moment.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

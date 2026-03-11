@@ -129,10 +129,10 @@ namespace DataAccess.Enum
 
 	public enum LocationStatusEnum
 	{
-		Available,
-		Maintenance,
-		Occupied,
-		Closed
+		Available,    // phòng trống
+		Maintenance,  // đang bảo trì
+		Occupied,     // đang có người dùng
+		Closed        // phòng bị đóng / không cho sử dụng
 	}
 
 	public enum LocationTypeEnum
@@ -166,5 +166,22 @@ namespace DataAccess.Enum
 	public enum EventStatusAvailableEnum { 
 		Available,
 		NA //not available
+	}
+	public enum QuestionSetEnum
+	{
+		Available,
+		NA //not available
+	}
+	public enum QuizTypeEnum
+	{
+		Practice,
+		Exam,
+		Survey
+	}
+	public enum QuizStatusEnum
+	{
+		Draft, //nháp
+		Published,//đang làm bài
+		Closed//đã xong
 	}
 }

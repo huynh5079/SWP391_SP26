@@ -33,6 +33,13 @@ namespace DataAccess.Repositories
 		public IGenericRepository<Ticket> Tickets { get; }
 		public IGenericRepository<Feedback> Feedbacks { get; }
         public IGenericRepository<CheckInHistory> CheckInHistories { get; }
+        public IGenericRepository<QuizQuestion> QuizQuestion { get; } 
+        public IGenericRepository<EventQuiz> EventQuiz { get; }
+
+		// Teams
+		public IGenericRepository<EventTeam> EventTeams { get; }
+		public IGenericRepository<TeamMember> TeamMembers { get; }
+		// Expose Events as EventRepository for backward compatibility
 		public UnitOfWork(AEMSContext ctx, IUserRepository users, IChatRepository chatRepository)
         {
             _ctx = ctx;
@@ -56,7 +63,11 @@ namespace DataAccess.Repositories
 			Tickets = new GenericRepository<Ticket>(_ctx);
 			Feedbacks = new GenericRepository<Feedback>(_ctx);
             CheckInHistories = new GenericRepository<CheckInHistory>(_ctx);
-            //
+            QuizQuestion = new GenericRepository<QuizQuestion>(_ctx);
+            EventQuiz = new GenericRepository<EventQuiz>(_ctx);
+			EventTeams = new GenericRepository<EventTeam>(_ctx);
+			TeamMembers = new GenericRepository<TeamMember>(_ctx);
+			//
 		}
 
         public Task<int> SaveChangesAsync() => _ctx.SaveChangesAsync();

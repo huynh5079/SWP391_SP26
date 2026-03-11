@@ -1,0 +1,149 @@
+﻿@model AEMS_Solution.Models.Event.EventAgenda.MyAgendaViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    Layout = Model.IsReadOnly ? "_Approvallayout" : "_OrganizerLayout";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">@Model.PageTitle</h2>
+            <p class="text-muted mb-0">@Model.PageDescription</p>
+        </div>
+        @if (!Model.IsReadOnly)
+        {
+            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" asp-fragment="agendaContainer" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Thêm agenda từ Create Event
+            </a>
+        }
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="get" action="@(Model.IsReadOnly ? Url.Action("Agenda", "Approver") : Url.Action("MyAgenda", "EventAgenda"))" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Tìm kiếm</label>
+                    <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Session name, speaker, event..." />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Sự kiện</label>
+                    <select name="eventId" class="form-select" asp-items="Model.EventOptions">
+                        <option value="">-- Tất cả sự kiện --</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-outline-primary">Lọc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            @if (Model.Agendas.Any())
+            {
+                var groupedAgendas = Model.Agendas.GroupBy(a => a.EventTitle).ToList();
+                int accordionIndex = 0;
+
+                <div class="accordion" id="agendaAccordion">
+                    @foreach (var group in groupedAgendas)
+                    {
+                        var isFirst = accordionIndex == 0;
+                        var collapseId = "collapse-" + accordionIndex;
+                        var headerId = "heading-" + accordionIndex;
+                        var eventTitle = group.Key ?? "Unknown Event";
+                        var firstItem = group.First();
+                        
+                        <div class="accordion-item mb-3 border rounded shadow-sm">
+                            <h2 class="accordion-header" id="@headerId">
+                                <button class="accordion-button @(isFirst ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@(isFirst ? "true" : "false")" aria-controls="@collapseId">
+                                    <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                                        <div>
+                                            <span class="fw-bold text-dark me-2">@eventTitle</span>
+                                            <span class="badge bg-secondary me-1">@(firstItem.EventType?.ToString() ?? "Unknown Type")</span>
+                                            <span class="badge bg-info text-dark">@firstItem.EventStatus</span>
+                                        </div>
+                                        <div>
+                                            @{
+                                                var detailController = Model.IsReadOnly ? "Approver" : "Organizer";
+                                                var detailAction = Model.IsReadOnly ? "Detail" : "DetailEvent";
+                                            }
+                                            <a asp-controller="@detailController" asp-action="@detailAction" asp-route-id="@firstItem.EventId" class="btn btn-sm btn-outline-primary ms-3" onclick="event.stopPropagation();">
+                                                <i class="bi bi-box-arrow-up-right d-none d-sm-inline"></i> View Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="@collapseId" class="accordion-collapse collapse @(isFirst ? "show" : "")" aria-labelledby="@headerId" data-bs-parent="#agendaAccordion">
+                                <div class="accordion-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0 border-top-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="ps-4">Session</th>
+                                                    <th>Speaker</th>
+                                                    @if (Model.IsReadOnly)
+                                                    {
+                                                        <th>Organizer</th>
+                                                    }
+                                                    <th>Time</th>
+                                                    <th>Location</th>
+                                                    @if (!Model.IsReadOnly)
+                                                    {
+                                                        <th class="text-center pe-4">Action</th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var agenda in group)
+                                                {
+                                                    <tr>
+                                                        <td class="ps-4">
+                                                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(agenda.SessionName) ? "-" : agenda.SessionName)</div>
+                                                            @if (!string.IsNullOrWhiteSpace(agenda.Description))
+                                                            {
+                                                                <div class="small text-muted text-truncate" style="max-width: 260px;">@agenda.Description</div>
+                                                            }
+                                                        </td>
+                                                        <td>@(string.IsNullOrWhiteSpace(agenda.SpeakerInfo) ? "-" : agenda.SpeakerInfo)</td>
+                                                        @if (Model.IsReadOnly)
+                                                        {
+                                                            <td>@(string.IsNullOrWhiteSpace(agenda.OrganizerName) ? "-" : agenda.OrganizerName)</td>
+                                                        }
+                                                        <td>
+                                                            <div>@(agenda.StartTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                                                            <div class="small text-muted">đến @(agenda.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                                                        </td>
+                                                        <td>@(string.IsNullOrWhiteSpace(agenda.Location) ? "-" : agenda.Location)</td>
+                                                        @if (!Model.IsReadOnly)
+                                                        {
+                                                            <td class="text-center pe-4">
+                                                                <div class="d-inline-flex gap-2">
+                                                                    <a asp-action="EditAgenda" asp-route-id="@agenda.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                                                    <form asp-action="DeleteAgenda" asp-route-id="@agenda.Id" method="post" onsubmit="return confirm('Xác nhận xóa agenda này?');">
+                                                                        @Html.AntiForgeryToken()
+                                                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                                                    </form>
+                                                                </div>
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        accordionIndex++;
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">Chưa có agenda nào phù hợp với bộ lọc hiện tại.</div>
+            }
+        </div>
+    </div>
+</div>

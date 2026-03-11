@@ -9,5 +9,6 @@ namespace BusinessLogic.Service.ValidationData.Topic
 		void ValidateUpdateRequest(string topicId, UpdateTopicDTO dto);
 		void ValidateTopicExists(DataAccess.Entities.Topic? topic);
 		void ValidateDuplicateTopic(DataAccess.Entities.Topic? duplicateTopic);
+		void ValidateTopicNotUsed(bool isUsed);
 	}
 }
