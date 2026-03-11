@@ -367,9 +367,25 @@
                             <label class="form-label">Session Name</label>
                             <input name="SessionName" class="form-control" required />
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Speaker</label>
-                            <input name="SpeakerInfo" class="form-control" required />
+                        <div class="col-md-6 position-relative">
+                            <label class="form-label d-flex justify-content-between">
+                                Speaker
+                                <span class="badge bg-secondary" id="agendaSpeakerRoleBadge" style="display:none;"></span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" id="agendaSpeakerSearchInput" name="SpeakerInfo" class="form-control" placeholder="Search by name or email..." required autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clearAgendaSpeakerBtn" style="display:none;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Hidden fields to store selected user info -->
+                            <input type="hidden" id="agendaSpeakerUserId" name="SpeakerUserId" value="">
+                            <input type="hidden" id="agendaSpeakerUserRole" name="SpeakerUserRole" value="">
+                            
+                            <!-- Dropdown menu for search results -->
+                            <div id="agendaSpeakerSearchResults" class="dropdown-menu w-100 shadow-sm" style="display:none; max-height: 250px; overflow-y: auto; z-index: 1050;">
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Start Time</label>
@@ -627,4 +643,273 @@
             }
         </div>
     </div>
+	
+    <div class="card detail-card mt-4 mb-4">
+        <div class="card-body p-4 p-lg-5">
+            <div class="section-head mb-4">
+                <div>
+                    <h4 class="mb-1">Ban Tổ Chức & Đội ngũ</h4>
+                    <div class="text-muted">Quản lý các nhóm và thành viên ban tổ chức hoặc staff.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#createTeamForm" aria-expanded="false" aria-controls="createTeamForm">
+                        + Tạo Nhóm Mới
+                    </button>
+                    <span class="badge rounded-pill bg-light text-dark border">@(Model.Teams?.Count ?? 0) nhóm</span>
+                </div>
+            </div>
+
+            <!-- Create New Team Form -->
+            <div class="collapse mb-4" id="createTeamForm">
+                <form asp-controller="Organizer" asp-action="CreateEventTeamFromDetail" method="post" class="create-box">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="EventId" value="@Model.EventId" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tên nhóm (Team Name)</label>
+                            <input name="TeamName" class="form-control" placeholder="Ví dụ: Ban Hậu cần / Ban Truyền thông" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phân quyền chung</label>
+                            <input name="Description" class="form-control" placeholder="Mô tả công việc" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm mt-3">Tạo Nhóm</button>
+                </form>
+            </div>
+
+            <!-- Teams List -->
+            @if (Model.Teams == null || Model.Teams.Count == 0)
+            {
+                <p class="text-muted mb-0">Chưa có nhóm nào được tạo.</p>
+            }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var team in Model.Teams)
+                    {
+                        <div class="col-12 col-xl-6">
+                            <div class="agenda-card">
+                                <div class="agenda-card-header mb-3">
+                                    <div>
+                                        <h5 class="mb-0 text-primary">@team.TeamName</h5>
+                                        @if(!string.IsNullOrEmpty(team.Description))
+                                        {
+                                            <div class="text-muted small mt-1">@team.Description</div>
+                                        }
+                                    </div>
+                                    <form asp-controller="Organizer" asp-action="DeleteEventTeamFromDetail" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="TeamId" value="@team.Id" />
+                                        <input type="hidden" name="EventId" value="@Model.EventId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Xóa nhóm này?');"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <strong>Thành viên (@team.TeamMembers.Count):</strong>
+                                    @if(team.TeamMembers.Count > 0)
+                                    {
+                                        <ul class="list-group list-group-flush mt-2 border rounded-3 overflow-hidden">
+                                            @foreach(var member in team.TeamMembers)
+                                            {
+                                                <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 bg-light">
+                                                    <div>
+                                                        <div class="fw-semibold">@member.MemberName</div>
+                                                        <small class="text-muted">@member.RoleName</small>
+                                                    </div>
+                                                    <form asp-controller="Organizer" asp-action="RemoveMemberFromTeam" method="post" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="MemberId" value="@member.Id" />
+                                                        <input type="hidden" name="EventId" value="@Model.EventId" />
+                                                        <button type="submit" class="btn btn-link text-danger p-0 m-0 text-decoration-none" title="Xóa"><i class="bi bi-x-circle-fill"></i></button>
+                                                    </form>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <br/><small class="text-muted">Nhóm chưa có thành viên.</small>
+                                    }
+                                </div>
+
+                                <!-- Add Member API Form -->
+                                <div class="create-box p-3 mt-3">
+                                    <label class="small fw-semibold mb-2 text-dark">Thêm Thành Viên mới</label>
+                                    <form asp-controller="Organizer" asp-action="AddMemberToTeam" method="post" class="d-flex align-items-center gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="TeamId" value="@team.Id" />
+                                        <input type="hidden" name="EventId" value="@Model.EventId" />
+                                        <!-- Real values set by JS -->
+                                        <input type="hidden" name="StudentId" class="hidden-student-id-@team.Id" />
+                                        <input type="hidden" name="StaffId" class="hidden-staff-id-@team.Id" />
+                                        
+                                        <div class="position-relative flex-grow-1">
+                                            <input type="text" class="form-control form-control-sm user-search-input" data-team-id="@team.Id" placeholder="Nhập tên/email (>= 3 ký tự)..." autocomplete="off" />
+                                            <div class="user-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                        
+                                        <select name="RoleName" class="form-select form-select-sm" style="width: 100px;">
+                                            <option value="Member">Member</option>
+                                            <option value="Leader">Leader</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-primary btn-sm">Thêm</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInputs = document.querySelectorAll('.user-search-input');
+        
+        searchInputs.forEach(input => {
+            const teamId = input.getAttribute('data-team-id');
+            const resultsContainer = input.nextElementSibling;
+            const studentIdInput = document.querySelector(`.hidden-student-id-${teamId}`);
+            const staffIdInput = document.querySelector(`.hidden-staff-id-${teamId}`);
+            let debounceTimer;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const query = this.value;
+                if (query.length < 3) {
+                    resultsContainer.style.display = 'none';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/api/v1/userapi/search?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(resp => {
+                            if (!resp.success || !resp.data || resp.data.length === 0) {
+                                resultsContainer.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy ai</div>';
+                                resultsContainer.style.display = 'block';
+                                return;
+                            }
+                            
+                            resultsContainer.innerHTML = resp.data.map(user => `
+                                <div class="p-2 border-bottom user-search-item" style="cursor:pointer;" 
+                                     data-id="${user.id}" data-role="${user.role}" data-name="${user.fullName}">
+                                    <div class="fw-semibold small text-primary">${user.fullName}</div>
+                                    <div class="text-muted" style="font-size:0.75rem;">${user.email} <span class="badge bg-light text-dark">${user.role}</span></div>
+                                </div>
+                            `).join('');
+                            resultsContainer.style.display = 'block';
+                            
+                            // Attach click events
+                            const items = resultsContainer.querySelectorAll('.user-search-item');
+                            items.forEach(item => {
+                                item.addEventListener('click', function() {
+                                    const uid = this.getAttribute('data-id');
+                                    const urole = this.getAttribute('data-role');
+                                    input.value = this.getAttribute('data-name');
+                                    
+                                    if (urole.includes('Student')) {
+                                        studentIdInput.value = uid; // This actually maps to UserID. We'll need backend to map UserID -> StudentID
+                                        staffIdInput.value = '';
+                                    } else {
+                                        staffIdInput.value = uid; // UserID -> StaffID mapping needed backend
+                                        studentIdInput.value = '';
+                                    }
+                                    
+                                    resultsContainer.style.display = 'none';
+                                });
+                            });
+                        });
+                }, 300);
+            });
+            
+            // Hide click outside
+            document.addEventListener('click', function(e) {
+                if(e.target !== input && !resultsContainer.contains(e.target)) {
+                    resultsContainer.style.display = 'none';
+                }
+            });
+        });
+
+        // ================= Agenda Speaker Autocomplete =================
+        const agendaInput = document.getElementById('agendaSpeakerSearchInput');
+        const agendaResults = document.getElementById('agendaSpeakerSearchResults');
+        const agendaUserId = document.getElementById('agendaSpeakerUserId');
+        const agendaUserRole = document.getElementById('agendaSpeakerUserRole');
+        const agendaRoleBadge = document.getElementById('agendaSpeakerRoleBadge');
+        const agendaClearBtn = document.getElementById('clearAgendaSpeakerBtn');
+        let agendaTimer;
+
+        if (agendaInput && agendaResults) {
+            agendaInput.addEventListener('input', function() {
+                clearTimeout(agendaTimer);
+                const query = this.value;
+                
+                if (query.length < 3) {
+                    agendaResults.style.display = 'none';
+                    if (query.length === 0) {
+                        agendaClearBtn.style.display = 'none';
+                        agendaUserId.value = '';
+                        agendaUserRole.value = '';
+                        agendaRoleBadge.style.display = 'none';
+                    }
+                    return;
+                }
+                
+                agendaClearBtn.style.display = 'block';
+
+                agendaTimer = setTimeout(() => {
+                    fetch(`/api/v1/userapi/search?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(resp => {
+                            if (!resp.success || !resp.data || resp.data.length === 0) {
+                                agendaResults.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy ai</div>';
+                                agendaResults.style.display = 'block';
+                                return;
+                            }
+                            
+                            agendaResults.innerHTML = resp.data.map(user => `
+                                <div class="p-2 border-bottom agenda-search-item" style="cursor:pointer;" 
+                                     data-id="${user.id}" data-role="${user.role}" data-name="${user.fullName}">
+                                    <div class="fw-semibold small text-primary">${user.fullName}</div>
+                                    <div class="text-muted" style="font-size:0.75rem;">${user.email} <span class="badge bg-light text-dark">${user.role}</span></div>
+                                </div>
+                            `).join('');
+                            agendaResults.style.display = 'block';
+                            
+                            const items = agendaResults.querySelectorAll('.agenda-search-item');
+                            items.forEach(item => {
+                                item.addEventListener('click', function() {
+                                    agendaUserId.value = this.getAttribute('data-id');
+                                    agendaUserRole.value = this.getAttribute('data-role');
+                                    agendaInput.value = this.getAttribute('data-name');
+                                    agendaRoleBadge.textContent = this.getAttribute('data-role');
+                                    agendaRoleBadge.style.display = 'inline-block';
+                                    agendaResults.style.display = 'none';
+                                });
+                            });
+                        });
+                }, 300);
+            });
+
+            agendaClearBtn.addEventListener('click', function() {
+                agendaInput.value = '';
+                agendaUserId.value = '';
+                agendaUserRole.value = '';
+                agendaRoleBadge.style.display = 'none';
+                this.style.display = 'none';
+            });
+
+            document.addEventListener('click', function(e) {
+                if(e.target !== agendaInput && !agendaResults.contains(e.target)) {
+                    agendaResults.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>

@@ -10,6 +10,7 @@ using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
+using BusinessLogic.Service.Admin;
 using BusinessLogic.Service.Event.Sub_Service.Ticket;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.Event.Sub_Service.Quiz;
@@ -84,6 +85,7 @@ builder.Services.AddScoped<IOrganizerService, BusinessLogic.Service.Organizer.Or
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<ITopicService, TopicService>();
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IEventValidator, EventValidator>();
 
 // Quiz services

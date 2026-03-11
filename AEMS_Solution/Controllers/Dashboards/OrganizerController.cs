@@ -15,6 +15,7 @@ using DataAccess.Enum;
 using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
+using BusinessLogic.Service.Event;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +26,12 @@ using Microsoft.EntityFrameworkCore;
 	    private readonly IMapper _mapper;
 	    private readonly ILocationService _locationService;
 	    private readonly IUnitOfWork _unitOfWork;
-		public OrganizerController(IOrganizerService organizerService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork)
+		private readonly IEventService _eventService;
+
+		public OrganizerController(IOrganizerService organizerService, IEventService eventService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork)
 		{
 			_organizerService = organizerService;
+			_eventService = eventService;
 			_mapper = mapper;
 			_locationService = locationService;
 			_unitOfWork = unitOfWork;
@@ -420,6 +424,28 @@ using Microsoft.EntityFrameworkCore;
 			{
 				var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
 				var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
+				
+				vm.Teams = dto.Teams.Select(t => new AEMS_Solution.Models.Event.EventTeamVm
+				{
+					Id = t.Id,
+					EventId = t.EventId,
+					TeamName = t.TeamName,
+					Description = t.Description,
+					Score = t.Score,
+					PlaceRank = t.PlaceRank,
+					CreatedAt = t.CreatedAt,
+					TeamMembers = t.TeamMembers.Select(m => new AEMS_Solution.Models.Event.TeamMemberVm
+					{
+						Id = m.Id,
+						TeamId = m.TeamId,
+						StudentId = m.StudentId,
+						StaffId = m.StaffId,
+						MemberName = m.MemberName,
+						MemberEmail = m.MemberEmail,
+						RoleName = m.RoleName,
+						TeamRole = m.TeamRole
+					}).ToList()
+				}).ToList();
 
 				var dropdowns = await _organizerService.GetCreateEventDropdownsAsync();
 				ViewBag.Locations = dropdowns.Locations;
@@ -432,6 +458,75 @@ using Microsoft.EntityFrameworkCore;
 			}
 		}
 		// POST detail handler removed — use Manage POST if needed
+		
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateEventTeamFromDetail(string EventId, string TeamName, string Description)
+		{
+			if (string.IsNullOrWhiteSpace(EventId) || string.IsNullOrWhiteSpace(TeamName)) return BadRequest();
+			try
+			{
+				await _eventService.CreateEventTeamAsync(EventId, TeamName, Description);
+				SetSuccess("Đã tạo nhóm thành công.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> DeleteEventTeamFromDetail(string TeamId, string EventId)
+		{
+			if (string.IsNullOrWhiteSpace(TeamId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.DeleteEventTeamAsync(TeamId);
+				SetSuccess("Đã xóa nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> AddMemberToTeam(string TeamId, string EventId, string? StudentId, string? StaffId, string RoleName)
+		{
+			if (string.IsNullOrWhiteSpace(TeamId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.AddMemberToTeamAsync(TeamId, StudentId, StaffId, RoleName);
+				SetSuccess("Đã thêm thành viên vào nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> RemoveMemberFromTeam(string MemberId, string EventId)
+		{
+			if (string.IsNullOrWhiteSpace(MemberId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.RemoveMemberFromTeamAsync(MemberId);
+				SetSuccess("Đã xóa thành viên khỏi nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> CreateAgendaFromDetail(CreateDetailAgendaViewModel model)
@@ -483,6 +578,20 @@ using Microsoft.EntityFrameworkCore;
 				Location = string.IsNullOrWhiteSpace(model.Location) ? null : model.Location.Trim(),
 				UpdatedAt = DateTimeHelper.GetVietnamTime()
 			};
+
+			if (!string.IsNullOrEmpty(model.SpeakerUserId))
+			{
+				if (model.SpeakerUserRole == "Student")
+				{
+					var student = await _unitOfWork.StudentProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
+					if (student != null) agenda.StudentSpeakerId = student.Id;
+				}
+				else if (model.SpeakerUserRole == "Staff")
+				{
+					var staff = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
+					if (staff != null) agenda.StaffSpeakerId = staff.Id;
+				}
+			}
 
 			await _unitOfWork.EventAgenda.CreateAsync(agenda);
 			await _unitOfWork.SaveChangesAsync();

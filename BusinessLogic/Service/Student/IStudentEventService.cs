@@ -38,9 +38,9 @@ namespace BusinessLogic.Service.Student
         Task CancelRegistrationAsync(string studentId, string ticketId);
 
         /// <summary>
-        /// Returns all active tickets for the logged-in student.
+        /// Returns all events where the student is registered, part of the team, or a speaker.
         /// </summary>
-        Task<List<StudentEventBrowseDto>> GetMyRegisteredEventsAsync(string studentId);
+        Task<List<StudentEventBrowseDto>> GetMyParticipationsAsync(string studentId);
 
         /// <summary>
         /// Submit feedback after an event has ended.

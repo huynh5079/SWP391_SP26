@@ -13,6 +13,9 @@ namespace AEMS_Solution.Models.Event
         [Required(ErrorMessage = "Vui lòng nhập speaker")]
         public string SpeakerInfo { get; set; } = string.Empty;
 
+        public string? SpeakerUserId { get; set; }
+        public string? SpeakerUserRole { get; set; }
+
         public string? Description { get; set; }
 
         [Required(ErrorMessage = "Vui lòng chọn thời gian bắt đầu")]
