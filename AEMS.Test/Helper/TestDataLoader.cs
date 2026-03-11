@@ -8,8 +8,8 @@ namespace AEMS.Test.Helper
 	{
 		public static RegisterStudentRequestDto LoadStudentRegisterRequest(string fileName, int index = 0)
 		{
-			var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "TestData", fileName));
-			var json = File.ReadAllText(path);
+			var fullPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "TestData", fileName));
+			var json = File.ReadAllText(fullPath);
 			var options = new JsonSerializerOptions
 			{
 				PropertyNameCaseInsensitive = true,
@@ -31,20 +31,21 @@ namespace AEMS.Test.Helper
 
 		private sealed class StudentRegisterTestData
 		{
-			[JsonPropertyName("email")]
+			[JsonPropertyName("Email")]
 			public string Email { get; set; } = string.Empty;
 
-			[JsonPropertyName("password")]
+			[JsonPropertyName("Password")]
 			public string Password { get; set; } = string.Empty;
 
-			[JsonPropertyName("Name")]
-			public string FullName { get; set; } = string.Empty;
+            // match the JSON keys used in TestData/users.json
+            [JsonPropertyName("FullName")]
+            public string FullName { get; set; } = string.Empty;
 
-			[JsonPropertyName("mssv")]
-			public string StudentCode { get; set; } = string.Empty;
+            [JsonPropertyName("StudentCode")]
+            public string StudentCode { get; set; } = string.Empty;
 
-			[JsonPropertyName("sdt")]
-			public string Phone { get; set; } = string.Empty;
+            [JsonPropertyName("Phone")]
+            public string Phone { get; set; } = string.Empty;
 		}
 	}
 }
