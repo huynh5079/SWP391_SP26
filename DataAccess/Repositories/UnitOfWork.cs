@@ -33,8 +33,11 @@ namespace DataAccess.Repositories
 		public IGenericRepository<Ticket> Tickets { get; }
 		public IGenericRepository<Feedback> Feedbacks { get; }
         public IGenericRepository<CheckInHistory> CheckInHistories { get; }
-        public IGenericRepository<QuizQuestion> QuizQuestion { get; } 
         public IGenericRepository<EventQuiz> EventQuiz { get; }
+		public IGenericRepository<QuestionBank> QuestionBanks { get; }
+		public IGenericRepository<QuizSet> QuizSets { get; }
+		public IGenericRepository<QuizSetQuestion> QuizSetQuestions { get; }
+		public IGenericRepository<StudentAnswer> StudentAnswers { get; }
 
 		// Teams
 		public IGenericRepository<EventTeam> EventTeams { get; }
@@ -63,8 +66,11 @@ namespace DataAccess.Repositories
 			Tickets = new GenericRepository<Ticket>(_ctx);
 			Feedbacks = new GenericRepository<Feedback>(_ctx);
             CheckInHistories = new GenericRepository<CheckInHistory>(_ctx);
-            QuizQuestion = new GenericRepository<QuizQuestion>(_ctx);
             EventQuiz = new GenericRepository<EventQuiz>(_ctx);
+			QuestionBanks = new GenericRepository<QuestionBank>(_ctx);
+			QuizSets = new GenericRepository<QuizSet>(_ctx);
+			QuizSetQuestions = new GenericRepository<QuizSetQuestion>(_ctx);
+			StudentAnswers = new GenericRepository<StudentAnswer>(_ctx);
 			EventTeams = new GenericRepository<EventTeam>(_ctx);
 			TeamMembers = new GenericRepository<TeamMember>(_ctx);
 			//

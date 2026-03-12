@@ -18,16 +18,22 @@
         <div class="card-body">
             <form asp-action="Create" method="post" enctype="multipart/form-data">
                 <div class="mb-3">
+                    <label class="form-label">Event</label>
+                    <select asp-for="EventId" asp-items="Model.Events" class="form-select"></select>
+                    <span asp-validation-for="EventId" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Topic</label>
+                    <select asp-for="TopicId" asp-items="Model.Topics" class="form-select"></select>
+                    <span asp-validation-for="TopicId" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Title</label>
                     <input asp-for="Quiz.Title" class="form-control" />
                     <span asp-validation-for="Quiz.Title" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Event</label>
-                    <select asp-for="EventId" asp-items="Model.Events" class="form-select"></select>
-                    <span asp-validation-for="EventId" class="text-danger"></span>
-                </div>
+                
 
                 <div class="mb-3">
                     <label class="form-label">Type</label>
