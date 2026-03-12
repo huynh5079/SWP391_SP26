@@ -22,6 +22,11 @@ namespace AEMS_Solution.Models.Event.EventQuiz
         // Helper for creating/updating a single question
         public AddQuizQuestionRequestDto NewQuestion { get; set; } = new();
 
+        public List<AddQuizQuestionRequestDto> ManualQuestions { get; set; } = new()
+        {
+            new AddQuizQuestionRequestDto()
+        };
+
         // File uploaded for the quiz (bound from a form)
         public IFormFile? FileUpload { get; set; }
 

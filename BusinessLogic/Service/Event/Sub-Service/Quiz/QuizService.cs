@@ -65,6 +65,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					OptionC = question.OptionC,
 					OptionD = question.OptionD
 				},
+				TypeOption = DetermineQuestionType(question.OptionA, question.OptionB, question.OptionC, question.OptionD, question.CorrectAnswer),
 				CorrectAnswer = question.CorrectAnswer,
 				ScorePoint = question.ScorePoint,
 				OrderIndex = question.OrderIndex,
@@ -82,6 +83,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				QuizSetQuestionId = quizSetQuestion.Id,
 				QuestionText = question?.QuestionText ?? string.Empty,
 				Options = question == null ? new QuizQuestionOptionContract() : MapOptions(question),
+				TypeOption = question == null
+					? QuestionTypeOptionEnum.SingleChoice
+					: DetermineQuestionType(question.OptionA, question.OptionB, question.OptionC, question.OptionD, question.CorrectAnswer),
 				CorrectAnswer = question?.CorrectAnswer,
 				ScorePoint = quizSetQuestion.ScorePoint ?? 1,
 				OrderIndex = quizSetQuestion.OrderIndex,
@@ -101,6 +105,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				Title = quiz.Title,
 				Description = quizSet?.Description,
 				FileQuiz = quiz.FileQuiz ?? quizSet?.FileQuiz,
+				LiveQuizLink = quiz.LiveQuizLink,
 				Type = quiz.Type,
 				Status = quiz.Status,
 				QuestionSetStatus = quiz.QuestionSetStatus,
@@ -173,6 +178,64 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			}
 
 			return normalized;
+		}
+
+		private static string? NormalizeAnswers(string? value, QuestionTypeOptionEnum typeOption)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+			{
+				return null;
+			}
+
+			var answers = Regex.Matches(value.ToUpperInvariant(), "[ABCD]")
+				.Select(m => m.Value)
+				.Distinct()
+				.ToList();
+
+			if (typeOption == QuestionTypeOptionEnum.TrueFalse)
+			{
+				return answers.FirstOrDefault(x => x == "A" || x == "B");
+			}
+
+			if (typeOption == QuestionTypeOptionEnum.MultipleChoice)
+			{
+				return answers.Any() ? string.Join(",", answers) : null;
+			}
+
+			return answers.FirstOrDefault();
+		}
+
+		private static QuestionTypeOptionEnum DetermineQuestionType(string optionA, string optionB, string? optionC, string? optionD, string? correctAnswer)
+		{
+			if (string.Equals(optionA, "True", StringComparison.OrdinalIgnoreCase)
+				&& string.Equals(optionB, "False", StringComparison.OrdinalIgnoreCase)
+				&& string.IsNullOrWhiteSpace(optionC)
+				&& string.IsNullOrWhiteSpace(optionD))
+			{
+				return QuestionTypeOptionEnum.TrueFalse;
+			}
+
+			if (!string.IsNullOrWhiteSpace(correctAnswer) && correctAnswer.Contains(','))
+			{
+				return QuestionTypeOptionEnum.MultipleChoice;
+			}
+
+			return QuestionTypeOptionEnum.SingleChoice;
+		}
+
+		private static AddQuizQuestionRequestDto NormalizeQuestionRequest(AddQuizQuestionRequestDto request)
+		{
+			request.CorrectAnswer = NormalizeAnswers(request.CorrectAnswer, request.TypeOption) ?? string.Empty;
+
+			if (request.TypeOption == QuestionTypeOptionEnum.TrueFalse)
+			{
+				request.Options.OptionA = "True";
+				request.Options.OptionB = "False";
+				request.Options.OptionC = null;
+				request.Options.OptionD = null;
+			}
+
+			return request;
 		}
 
 		private async Task<QuizSet?> GetOrganizerQuestionBankAsync(string organizerId, string title)
@@ -344,6 +407,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					PassingScore = request.PassingScore,
 					QuestionSetStatus = questionCount > 0 ? QuestionSetEnum.Available : QuestionSetEnum.NA,
 					FileQuiz = quizSet.FileQuiz,
+					LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null,
 					Status = QuizStatusEnum.Draft,
 					IsActive = true
 				};
@@ -367,6 +431,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		public async Task<AddQuizQuestionResponseDto> AddQuizQuestionAsync(AddQuizQuestionRequestDto request)
 		{
+			request = NormalizeQuestionRequest(request);
 			_validator.ValidateAddQuestion(request);
 			var quiz = await _uow.EventQuiz.GetAsync(
 				q => q.Id == request.QuizId,
@@ -387,7 +452,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				OptionB = request.Options.OptionB.Trim(),
 				OptionC = string.IsNullOrWhiteSpace(request.Options.OptionC) ? null : request.Options.OptionC.Trim(),
 				OptionD = string.IsNullOrWhiteSpace(request.Options.OptionD) ? null : request.Options.OptionD.Trim(),
-				CorrectAnswer = NormalizeAnswer(request.CorrectAnswer) ?? throw new ArgumentException("CorrectAnswer khÃ´ng há»£p lá»‡"),
+				CorrectAnswer = request.CorrectAnswer,
 				Difficulty = request.Difficulty
 			};
 

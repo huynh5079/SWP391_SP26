@@ -450,6 +450,9 @@ public partial class AEMSContext : DbContext
 		entity.Property(e => e.FileQuiz)
 			.HasColumnType("nvarchar(max)");
 
+		entity.Property(e => e.LiveQuizLink)
+			.HasMaxLength(2000);
+
 			entity.HasOne(d => d.Event).WithMany(p => p.EventQuizzes)
 				.HasForeignKey(d => d.EventId)
 				.OnDelete(DeleteBehavior.ClientSetNull)

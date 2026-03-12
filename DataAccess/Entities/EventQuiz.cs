@@ -26,6 +26,7 @@ public partial class EventQuiz : BaseEntity
 	public QuizStatusEnum Status {get; set; }
 	//public DateTime? CreatedAt { get; set; }
 	public string? FileQuiz { get; set; }
+	public string? LiveQuizLink { get; set; }
 	public virtual Event Event { get; set; } = null!;
 	public virtual QuizSet? QuizSet { get; set; }
 	public virtual ICollection<EventQuizQuestion> EventQuizQuestions { get; set; } = new List<EventQuizQuestion>();

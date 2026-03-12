@@ -28,6 +28,15 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 
 			if (string.IsNullOrWhiteSpace(quizset.EventId))
 				throw new ArgumentException("EventId không hợp lệ.");
+
+			if (quizset.Type == QuizTypeEnum.LiveQuiz)
+			{
+				if (string.IsNullOrWhiteSpace(quizset.LiveQuizLink))
+					throw new ArgumentException("Live quiz bắt buộc phải có link.");
+
+				if (!Uri.TryCreate(quizset.LiveQuizLink, UriKind.Absolute, out _))
+					throw new ArgumentException("Link live quiz không hợp lệ.");
+			}
 		}
 
 		public void ValidateAddQuestion(AddQuizQuestionRequestDto question)
@@ -41,8 +50,21 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 			if (string.IsNullOrWhiteSpace(question.QuestionText))
 				throw new ArgumentException("Question text không hợp lệ.");
 
-			if (string.IsNullOrWhiteSpace(question.Options.OptionA) || string.IsNullOrWhiteSpace(question.Options.OptionB))
-				throw new ArgumentException("Phải có ít nhất 2 option");
+			if (question.TypeOption == QuestionTypeOptionEnum.TrueFalse)
+			{
+				if (string.IsNullOrWhiteSpace(question.CorrectAnswer) || (question.CorrectAnswer != "A" && question.CorrectAnswer != "B"))
+					throw new ArgumentException("True/False chỉ chấp nhận đáp án đúng là True hoặc False.");
+			}
+			else
+			{
+				if (string.IsNullOrWhiteSpace(question.Options.OptionA)
+					|| string.IsNullOrWhiteSpace(question.Options.OptionB)
+					|| string.IsNullOrWhiteSpace(question.Options.OptionC)
+					|| string.IsNullOrWhiteSpace(question.Options.OptionD))
+				{
+					throw new ArgumentException("Phải nhập đủ 4 đáp án.");
+				}
+			}
 
 			if (question.ScorePoint <= 0)
 				throw new ArgumentException("ScorePoint phải > 0");

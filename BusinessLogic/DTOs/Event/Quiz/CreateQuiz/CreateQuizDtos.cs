@@ -12,6 +12,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.CreateQuiz
         public QuizTypeEnum Type { get; set; }
         public int? PassingScore { get; set; }
         public string? FileQuiz { get; set; }
+        public string? LiveQuizLink { get; set; }
     }
 
     public class CreateQuizSetResponseDto

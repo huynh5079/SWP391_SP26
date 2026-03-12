@@ -19,6 +19,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.Contracts
         public string QuizSetQuestionId { get; set; } = string.Empty;
         public string QuestionText { get; set; } = string.Empty;
         public QuizQuestionOptionContract Options { get; set; } = new();
+        public QuestionTypeOptionEnum TypeOption { get; set; } = QuestionTypeOptionEnum.SingleChoice;
         public string? CorrectAnswer { get; set; }
         public int ScorePoint { get; set; }
         public int OrderIndex { get; set; }
@@ -35,6 +36,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.Contracts
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? FileQuiz { get; set; }
+        public string? LiveQuizLink { get; set; }
         public QuizTypeEnum Type { get; set; }
         public QuizStatusEnum Status { get; set; }
         public QuestionSetEnum QuestionSetStatus { get; set; }

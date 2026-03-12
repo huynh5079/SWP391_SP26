@@ -68,28 +68,38 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 SetError(ex.Message);
             }
 
-            return View("~/Views/Event/EventQuiz/Index.cshtml", vm);
+            return View("~/Views/Event/EventQuiz/CreateQuiz/Index.cshtml", vm);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Create(string? eventId)
+        public async Task<IActionResult> Create(string? eventId, string? mode)
         {
+            mode = NormalizeCreateMode(mode);
             var vm = new EventQuizViewModel
             {
                 EventId = eventId ?? string.Empty
             };
+            EnsureManualQuestions(vm);
             await LoadDropdowns(vm);
-            return View("~/Views/Event/EventQuiz/Create.cshtml", vm);
+            return View(GetCreateViewPath(mode), vm);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(EventQuizViewModel vm)
+        public async Task<IActionResult> Create(EventQuizViewModel vm, string? mode)
         {
+            mode = NormalizeCreateMode(mode);
+            EnsureManualQuestions(vm);
+
+            if (mode == "manual")
+            {
+                ValidateManualQuestions(vm);
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadDropdowns(vm);
-                return View("~/Views/Event/EventQuiz/Create.cshtml", vm);
+                return View(GetCreateViewPath(mode), vm);
             }
 
             try
@@ -103,10 +113,21 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     Title = vm.Quiz?.Title ?? string.Empty,
                     Type = vm.Quiz?.Type ?? default,
                     PassingScore = vm.Quiz?.PassingScore,
-                    FileQuiz = vm.Quiz?.FileQuiz
+                    FileQuiz = vm.Quiz?.FileQuiz,
+                    LiveQuizLink = vm.Quiz?.Type == DataAccess.Enum.QuizTypeEnum.LiveQuiz ? vm.Quiz.LiveQuizLink : null
                 };
 
                 var created = await _quizService.CreateQuizSetAsync(request);
+
+                if (mode == "manual")
+                {
+                    foreach (var question in GetSubmittedManualQuestions(vm))
+                    {
+                        question.QuizId = created.Quiz.EventQuizId;
+                        question.CorrectAnswer = NormalizeCorrectAnswer(question.CorrectAnswer, question.TypeOption);
+                        await _quizService.AddQuizQuestionAsync(question);
+                    }
+                }
 
                 if (vm.FileUpload != null && vm.FileUpload.Length > 0)
                 {
@@ -134,7 +155,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             }
 
             await LoadDropdowns(vm);
-            return View("~/Views/Event/EventQuiz/Create.cshtml", vm);
+            return View(GetCreateViewPath(mode), vm);
         }
 
         [HttpGet]
@@ -181,7 +202,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 return RedirectToAction(nameof(Index));
             }
 
-            return View("~/Views/Event/EventQuiz/Details.cshtml", vm);
+            return View("~/Views/Event/EventQuiz/CreateQuiz/Details.cshtml", vm);
         }
 
         [HttpPost]
@@ -261,6 +282,117 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             }
 
             return CurrentUserId;
+        }
+
+        private static string NormalizeCreateMode(string? mode)
+        {
+            return string.Equals(mode, "upload", StringComparison.OrdinalIgnoreCase)
+                ? "upload"
+                : "manual";
+        }
+
+        private static string GetCreateViewPath(string mode)
+        {
+            return string.Equals(mode, "upload", StringComparison.OrdinalIgnoreCase)
+                ? "~/Views/Event/EventQuiz/CreateQuiz/Uploadfile/Create.cshtml"
+                : "~/Views/Event/EventQuiz/CreateQuiz/Manual/Create.cshtml";
+        }
+
+        private static void EnsureManualQuestions(EventQuizViewModel vm)
+        {
+            vm.ManualQuestions ??= new List<AddQuizQuestionRequestDto>();
+
+            if (vm.ManualQuestions.Count == 0)
+            {
+                vm.ManualQuestions.Add(new AddQuizQuestionRequestDto());
+            }
+        }
+
+        private void ValidateManualQuestions(EventQuizViewModel vm)
+        {
+            var questions = GetSubmittedManualQuestions(vm);
+
+            if (!questions.Any())
+            {
+                ModelState.AddModelError(string.Empty, "Vui lòng thêm ít nhất 1 câu hỏi cho quiz tạo thủ công.");
+                return;
+            }
+
+            for (var i = 0; i < questions.Count; i++)
+            {
+                var question = questions[i];
+                if (string.IsNullOrWhiteSpace(question.QuestionText)
+                    || (question.TypeOption == DataAccess.Enum.QuestionTypeOptionEnum.TrueFalse && string.IsNullOrWhiteSpace(question.CorrectAnswer)))
+                {
+                    ModelState.AddModelError(string.Empty, $"Câu hỏi {i + 1} cần nhập nội dung câu hỏi.");
+                }
+
+                if (question.TypeOption != DataAccess.Enum.QuestionTypeOptionEnum.TrueFalse
+                    && (string.IsNullOrWhiteSpace(question.Options.OptionA)
+                        || string.IsNullOrWhiteSpace(question.Options.OptionB)
+                        || string.IsNullOrWhiteSpace(question.Options.OptionC)
+                        || string.IsNullOrWhiteSpace(question.Options.OptionD)))
+                {
+                    ModelState.AddModelError(string.Empty, $"Câu hỏi {i + 1} cần nhập đủ 4 đáp án.");
+                }
+
+                var correctAnswer = NormalizeCorrectAnswer(question.CorrectAnswer, question.TypeOption);
+                if (question.TypeOption == DataAccess.Enum.QuestionTypeOptionEnum.MultipleChoice)
+                {
+                    if (string.IsNullOrWhiteSpace(correctAnswer))
+                    {
+                        ModelState.AddModelError(string.Empty, $"Câu hỏi {i + 1} phải chọn ít nhất 1 đáp án đúng.");
+                    }
+                }
+                else if (question.TypeOption == DataAccess.Enum.QuestionTypeOptionEnum.TrueFalse)
+                {
+                    if (correctAnswer != "A" && correctAnswer != "B")
+                    {
+                        ModelState.AddModelError(string.Empty, $"Câu hỏi {i + 1} dạng True/False chỉ được chọn True hoặc False.");
+                    }
+                }
+                else if (correctAnswer != "A" && correctAnswer != "B" && correctAnswer != "C" && correctAnswer != "D")
+                {
+                    ModelState.AddModelError(string.Empty, $"Câu hỏi {i + 1} phải chọn đáp án đúng là A, B, C hoặc D.");
+                }
+
+                if (question.ScorePoint <= 0)
+                {
+                    question.ScorePoint = 1;
+                }
+            }
+        }
+
+        private static List<AddQuizQuestionRequestDto> GetSubmittedManualQuestions(EventQuizViewModel vm)
+        {
+            return (vm.ManualQuestions ?? new List<AddQuizQuestionRequestDto>())
+                .Where(q => !string.IsNullOrWhiteSpace(q.QuestionText)
+                    || !string.IsNullOrWhiteSpace(q.Options.OptionA)
+                    || !string.IsNullOrWhiteSpace(q.Options.OptionB)
+                    || !string.IsNullOrWhiteSpace(q.Options.OptionC)
+                    || !string.IsNullOrWhiteSpace(q.Options.OptionD)
+                    || !string.IsNullOrWhiteSpace(q.CorrectAnswer))
+                .ToList();
+        }
+
+        private static string NormalizeCorrectAnswer(string? correctAnswer, DataAccess.Enum.QuestionTypeOptionEnum typeOption)
+        {
+            if (string.IsNullOrWhiteSpace(correctAnswer))
+            {
+                return string.Empty;
+            }
+
+            var answers = System.Text.RegularExpressions.Regex.Matches(correctAnswer.ToUpperInvariant(), "[ABCD]")
+                .Select(m => m.Value)
+                .Distinct()
+                .ToList();
+
+            if (typeOption == DataAccess.Enum.QuestionTypeOptionEnum.MultipleChoice)
+            {
+                return string.Join(",", answers);
+            }
+
+            return answers.FirstOrDefault() ?? string.Empty;
         }
     }
 }
