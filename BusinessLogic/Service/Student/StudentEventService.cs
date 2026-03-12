@@ -166,6 +166,13 @@ namespace BusinessLogic.Service.Student
             bool isPublic = ev.Status == EventStatusEnum.Published ||
                             ev.Status == EventStatusEnum.Upcoming  ||
                             ev.Status == EventStatusEnum.Happening;
+            //waitlist status
+            var waitlistEntry = await _uow.EventWaitlist.GetAsync(
+                w => w.EventId == eventId && w.StudentId == profile.Id);
+
+            bool isInWaitlist = waitlistEntry != null &&
+                (waitlistEntry.Status == DataAccess.Enum.EventWaitlistStatusEnum.Waiting ||
+                 waitlistEntry.Status == DataAccess.Enum.EventWaitlistStatusEnum.Offered);
 
             return new StudentEventDetailDto
             {
@@ -191,9 +198,14 @@ namespace BusinessLogic.Service.Student
                 OrganizerAvatarUrl = ev.Organizer?.User?.AvatarUrl,
                 OrganizerPosition = ev.Organizer?.Position,
                 IsRegistered = isRegistered,
-                CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity,
+                CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity && !isInWaitlist,
                 CanCancel = isRegistered && isFuture,
-                TicketId = myTicket?.Id
+                TicketId = myTicket?.Id,
+                //IsFull = registeredCount >= ev.MaxCapacity,
+                IsInWaitlist = isInWaitlist,
+                WaitlistPosition = waitlistEntry?.Position,
+                WaitlistStatus = waitlistEntry?.Status,        // ✅ thêm
+                WaitlistStudentProfileId = waitlistEntry?.StudentId
             };
         }
 
@@ -378,6 +390,44 @@ namespace BusinessLogic.Service.Student
             await _uow.Tickets.UpdateAsync(ticket);
             await _uow.SaveChangesAsync();
 
+            // ✅ Offer người tiếp theo trong waitlist
+            try
+            {
+                var nextInLine = (await _uow.EventWaitlist.GetAllAsync(
+                    w => w.EventId == ticket.EventId &&
+                         w.Status == DataAccess.Enum.EventWaitlistStatusEnum.Waiting,
+                    q => q.Include(x => x.Student).ThenInclude(s => s.User)
+                           .OrderBy(x => x.Position))).FirstOrDefault();
+
+                if (nextInLine != null)
+                {
+                    nextInLine.Status = DataAccess.Enum.EventWaitlistStatusEnum.Offered;
+                    nextInLine.OfferedAt = now;
+                    nextInLine.IsNotified = true;
+                    nextInLine.UpdatedAt = now;
+                    await _uow.EventWaitlist.UpdateAsync(nextInLine);
+                    await _uow.SaveChangesAsync();
+
+                    var offeredUser = nextInLine.Student?.User;
+                    if (offeredUser != null)
+                    {
+                        await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                        {
+                            ReceiverId = offeredUser.Id,
+                            Title = "Có chỗ trống cho bạn!",
+                            Message = $"Có một chỗ trống trong sự kiện '{ticket.Event.Title}'. Hãy vào đăng ký ngay!",
+                            Type = DataAccess.Enum.NotificationType.TicketCreated,
+                            RelatedEntityId = ticket.EventId
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(ex, profile.UserId,
+                    "StudentEventService.CancelRegistrationAsync (OfferWaitlist)");
+            }
+
             // Send Generic in-app notification
             await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
             {
@@ -489,11 +539,49 @@ namespace BusinessLogic.Service.Student
             }
         }
 
-        // ─── Waitlist stub (future phase) ─────────────────────────────────────
-        public Task AddToWaitlistAsync(string studentId, string eventId)
+        // ─── Waitlist ─────────────────────────────────────────────────────────
+        public async Task AddToWaitlistAsync(string studentId, string eventId)
         {
-            // TODO: Implement waitlist logic in a future phase.
-            throw new InvalidOperationException("Event đã đầy. Chức năng đăng ký danh sách chờ sẽ sớm được hỗ trợ.");
+            var profile = await RequireStudentProfileAsync(studentId);
+
+            var existing = await _uow.EventWaitlist.GetAsync(
+                w => w.EventId == eventId && w.StudentId == profile.Id);
+
+            if (existing != null)
+                throw new InvalidOperationException("Bạn đã có trong danh sách chờ của sự kiện này.");
+
+            var count = await _uow.EventWaitlist.CountAsync(w => w.EventId == eventId);
+            var now = DateTimeHelper.GetVietnamTime();
+
+            var entry = new DataAccess.Entities.EventWaitlist
+            {
+                Id = Guid.NewGuid().ToString(),
+                EventId = eventId,
+                StudentId = profile.Id,
+                JoinedAt = now,
+                IsNotified = false,
+                Status = DataAccess.Enum.EventWaitlistStatusEnum.Waiting,
+                Position = count + 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await _uow.EventWaitlist.CreateAsync(entry);
+            await _uow.SaveChangesAsync();
+
+            // Thông báo cho sinh viên
+            var user = await _uow.Users.GetAsync(u => u.Id == studentId);
+            if (user != null)
+            {
+                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                {
+                    ReceiverId = user.Id,
+                    Title = "Đã vào danh sách chờ",
+                    Message = $"Sự kiện đã đầy. Bạn đang ở vị trí #{entry.Position} trong danh sách chờ.",
+                    Type = DataAccess.Enum.NotificationType.TicketCreated,
+                    RelatedEntityId = eventId
+                });
+            }
         }
     }
 }

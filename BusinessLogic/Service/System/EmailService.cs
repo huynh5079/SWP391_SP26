@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Mail;
 
 namespace BusinessLogic.Service.System
 {
@@ -6,6 +8,7 @@ namespace BusinessLogic.Service.System
     {
         Task SendPasswordResetEmailAsync(string toEmail, string token);
         Task SendEventRegistrationEmailAsync(string toEmail, string studentName, string eventTitle, DateTime startTime, string location, string qrCodeBase64);
+        Task SendAsync(string toEmail, string subject, string htmlBody);
     }
 
     public class EmailService : IEmailService
@@ -118,6 +121,33 @@ namespace BusinessLogic.Service.System
             }
 
             await client.SendMailAsync(mailMessage);
+        }
+
+        public async Task SendAsync(string toEmail, string subject, string htmlBody)
+        {
+            var smtpHost = _configuration["Email:SmtpHost"];
+            var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
+            var smtpUser = _configuration["Email:SmtpUser"];
+            var smtpPass = _configuration["Email:SmtpPass"];
+            var fromEmail = _configuration["Email:FromEmail"] ?? smtpUser;
+            var fromName = _configuration["Email:FromName"] ?? "AEMS System";
+
+            using var client = new SmtpClient(smtpHost, smtpPort)
+            {
+                Credentials = new NetworkCredential(smtpUser, smtpPass),
+                EnableSsl = true
+            };
+
+            var mail = new MailMessage
+            {
+                From = new MailAddress(fromEmail!, fromName),
+                Subject = subject,
+                Body = htmlBody,
+                IsBodyHtml = true
+            };
+            mail.To.Add(toEmail);
+
+            await client.SendMailAsync(mail);
         }
     }
 }

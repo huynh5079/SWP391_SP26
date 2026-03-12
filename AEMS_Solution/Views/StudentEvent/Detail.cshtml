@@ -184,7 +184,6 @@
                     </ul>
 
                     <hr />
-
                     <!-- ── Action buttons ──────────────────────────────── -->
                     @if (Model.IsRegistered)
                     {
@@ -192,19 +191,40 @@
                             <i class="bi bi-check-circle-fill"></i>
                             <span>Bạn đã đăng ký sự kiện này.</span>
                         </div>
-
                         @if (Model.CanCancel)
                         {
                             <form asp-action="Cancel" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="ticketId" value="@Model.TicketId" />
-                                <input type="hidden" name="eventId"  value="@Model.EventId"  />
+                                <input type="hidden" name="eventId" value="@Model.EventId" />
                                 <button type="submit" class="btn btn-outline-danger w-100"
                                         onclick="return confirm('Bạn chắc chắn muốn hủy đăng ký?')">
                                     <i class="bi bi-x-circle me-1"></i> Hủy đăng ký
                                 </button>
                             </form>
                         }
+                    }
+                    else if (Model.WaitlistStatus == DataAccess.Enum.EventWaitlistStatusEnum.Offered)
+                    {
+                        // ✅ Ưu tiên cao nhất — được mời tham gia
+                        <div class="alert alert-warning py-2 mb-3">
+                            <i class="bi bi-bell-fill me-1"></i>
+                            <strong>Bạn được mời tham gia sự kiện này!</strong>
+                            <div class="text-muted small mt-1">Xác nhận trước khi chỗ trống được nhường cho người khác.</div>
+                        </div>
+                        <form asp-action="AcceptWaitlist" asp-route-id="@Model.EventId" method="post" class="mb-2">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success w-100 fw-bold">
+                                <i class="bi bi-check-circle me-1"></i> Xác nhận tham gia
+                            </button>
+                        </form>
+                        <form asp-action="DeclineWaitlist" asp-route-id="@Model.EventId" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger w-100"
+                                    onclick="return confirm('Bạn chắc chắn muốn từ chối?')">
+                                <i class="bi bi-x-circle me-1"></i> Từ chối
+                            </button>
+                        </form>
                     }
                     else if (Model.CanRegister)
                     {
@@ -215,11 +235,25 @@
                             </button>
                         </form>
                     }
+                    else if (Model.IsInWaitlist)
+                    {
+                        <div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-hourglass-split"></i>
+                            <span>Bạn đang ở vị trí <strong>#@Model.WaitlistPosition</strong> trong danh sách chờ.</span>
+                        </div>
+                    }
                     else if (Model.IsFull)
                     {
-                        <button class="btn btn-secondary w-100" disabled>
-                            <i class="bi bi-person-x me-1"></i> Hết chỗ
-                        </button>
+                        <form asp-action="JoinWaitlist" asp-route-id="@Model.EventId" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-warning w-100 fw-bold">
+                                <i class="bi bi-hourglass me-1"></i> Đăng ký chờ
+                            </button>
+                        </form>
+                        <div class="text-muted small text-center mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Sự kiện đã đầy. Bạn sẽ được ưu tiên khi có chỗ trống.
+                        </div>
                     }
                     else
                     {
