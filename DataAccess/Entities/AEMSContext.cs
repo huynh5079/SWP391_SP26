@@ -452,6 +452,8 @@ public partial class AEMSContext : DbContext
 
 		entity.Property(e => e.LiveQuizLink)
 			.HasMaxLength(2000);
+			entity.Property(e => e.AllowReview)
+				.HasDefaultValue(false);
 
 			entity.HasOne(d => d.Event).WithMany(p => p.EventQuizzes)
 				.HasForeignKey(d => d.EventId)
@@ -486,9 +488,9 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.OptionC).HasMaxLength(255);
 			entity.Property(e => e.OptionD).HasMaxLength(255);
 			entity.Property(e => e.CorrectAnswer).HasMaxLength(50);
+			entity.Property(e => e.Explanation).HasColumnType("nvarchar(max)");
 			entity.Property(e => e.Difficulty)
-				.HasMaxLength(50)
-				.HasConversion<string>();
+				.HasDefaultValue(QuestionDifficultyEnum.Medium);
 			entity.Property(e => e.ScorePoint).HasDefaultValue(1);
 			entity.Property(e => e.OrderIndex).HasDefaultValue(0);
 
@@ -617,6 +619,7 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.OptionC).HasMaxLength(255);
 			entity.Property(e => e.OptionD).HasMaxLength(255);
 			entity.Property(e => e.CorrectAnswer).HasMaxLength(50);
+			entity.Property(e => e.Explanation).HasColumnType("nvarchar(max)");
 			entity.Property(e => e.Difficulty)
 				.HasMaxLength(50)
 				.HasConversion<string>();
@@ -643,6 +646,10 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.Title).HasMaxLength(255);
 			entity.Property(e => e.Description).HasMaxLength(1000);
 			entity.Property(e => e.FileQuiz).HasColumnType("nvarchar(max)");
+			entity.Property(e => e.SharingStatus)
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(QuizSetVisibilityEnum.Private);
 			entity.Property(e => e.IsActive).HasDefaultValue(true);
 
 			entity.HasOne(d => d.Topic).WithMany(p => p.QuizSets)

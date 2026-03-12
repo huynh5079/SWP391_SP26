@@ -15,8 +15,9 @@
                 <i class="bi bi-journal-plus"></i> Create Quiz
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
-                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId"><i class="bi bi-collection me-2"></i>Question Bank</a></li>
             </ul>
         </div>
     </div>
@@ -34,30 +35,58 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Title</th>
-                                <th>Event Id</th>
+                                 <th>Event</th>
+                                 <th>Semester</th>
                                 <th>Type</th>
                                 <th>Passing Score</th>
                                 <th>Questions</th>
                                 <th>Attempts</th>
                                 <th>Passed</th>
                                 <th>Status</th>
+                                <th>Access</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var q in Model.Quizzes)
                             {
+                                 var accessLabel = q.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Community" : "Private";
                                 <tr>
                                     <td>@q.Title</td>
-                                    <td>@q.EventId</td>
+                                     <td>@(string.IsNullOrWhiteSpace(q.EventTitle) ? q.EventId : q.EventTitle)</td>
+                                     <td>@(string.IsNullOrWhiteSpace(q.SemesterName) ? "-" : q.SemesterName)</td>
                                     <td>@q.Type</td>
                                     <td>@(q.PassingScore?.ToString() ?? "-")</td>
                                     <td>@(q.QuestionCount)</td>
                                     <td>@q.AttemptCount</td>
                                     <td>@q.PassedCount</td>
                                     <td>@q.Status</td>
+                                    <td>@accessLabel</td>
                                     <td>
-                                        <a asp-controller="EventQuiz" asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Details</a>
+                                         <div class="d-flex flex-wrap gap-2">
+                                             <a asp-controller="EventQuiz" asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Update</a>
+
+                                             @if (q.Status != DataAccess.Enum.QuizStatusEnum.Published)
+                                             {
+                                                 <form asp-controller="EventQuiz" asp-action="Publish" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
+                                                     @Html.AntiForgeryToken()
+                                                     <button type="submit" class="btn btn-sm btn-outline-success">Publish</button>
+                                                 </form>
+                                             }
+
+                                             @if (q.SharingStatus != DataAccess.Enum.QuizSetVisibilityEnum.Public)
+                                             {
+                                                  <form asp-controller="EventQuiz" asp-action="Share" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
+                                                     @Html.AntiForgeryToken()
+                                                      <button type="submit" class="btn btn-sm btn-outline-primary">Share</button>
+                                                 </form>
+                                             }
+
+                                             <form asp-controller="EventQuiz" asp-action="Delete" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa quiz này?');">
+                                                 @Html.AntiForgeryToken()
+                                                 <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                             </form>
+                                         </div>
                                     </td>
                                 </tr>
                             }

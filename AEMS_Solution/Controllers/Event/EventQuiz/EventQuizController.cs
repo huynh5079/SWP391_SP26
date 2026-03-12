@@ -1,11 +1,12 @@
 ﻿using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event.EventQuiz;
 using AutoMapper;
-using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
-using BusinessLogic.DTOs.Event.Quiz.CreateQuiz;
-using BusinessLogic.DTOs.Event.Quiz.GetQuiz;
-using BusinessLogic.DTOs.Event.Quiz.GetQuizScores;
-using BusinessLogic.DTOs.Event.Quiz.UploadQuizFile;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuizScores;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.QuizActions;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UploadQuizFile;
 using BusinessLogic.Service.Event.Sub_Service.Quiz;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.Organizer;
@@ -15,6 +16,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace AEMS_Solution.Controllers.Event.EventQuiz
@@ -42,26 +44,14 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             try
             {
                 var userId = EnsureCurrentUserId();
-                var organizerEvents = await _organizerService.GetMyEventsAsync(userId);
                 vm.EventId = eventId ?? string.Empty;
-
-                var eventItems = organizerEvents
-                    .Where(x => x.HasQuiz && !string.IsNullOrWhiteSpace(x.QuizId))
-                    .Where(x => string.IsNullOrWhiteSpace(eventId) || x.EventId == eventId)
-                    .ToList();
-
-                foreach (var item in eventItems)
+                var quizzes = await _quizService.GetOrganizerQuizzesAsync(new GetOrganizerQuizzesRequestDto
                 {
-                    var detail = await _quizService.GetQuizDetailAsync(new GetQuizDetailRequestDto
-                    {
-                        QuizId = item.QuizId!
-                    });
+                    UserId = userId,
+                    EventId = vm.EventId
+                });
 
-                    if (detail != null)
-                    {
-                        vm.Quizzes.Add(detail.Quiz);
-                    }
-                }
+                vm.Quizzes = quizzes.Quizzes;
             }
             catch (Exception ex)
             {
@@ -95,6 +85,10 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             {
                 ValidateManualQuestions(vm);
             }
+            else if (mode == "bank" && string.IsNullOrWhiteSpace(vm.SelectedQuizSetId))
+            {
+                ModelState.AddModelError(nameof(vm.SelectedQuizSetId), "Vui lòng chọn question bank.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -109,12 +103,15 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 {
                     UserId = userId,
                     EventId = vm.EventId,
+                    SourceQuizSetId = string.IsNullOrWhiteSpace(vm.SelectedQuizSetId) ? null : vm.SelectedQuizSetId,
                     TopicId = string.IsNullOrWhiteSpace(vm.TopicId) ? null : vm.TopicId,
                     Title = vm.Quiz?.Title ?? string.Empty,
                     Type = vm.Quiz?.Type ?? default,
                     PassingScore = vm.Quiz?.PassingScore,
                     FileQuiz = vm.Quiz?.FileQuiz,
-                    LiveQuizLink = vm.Quiz?.Type == DataAccess.Enum.QuizTypeEnum.LiveQuiz ? vm.Quiz.LiveQuizLink : null
+                    LiveQuizLink = vm.Quiz?.Type == DataAccess.Enum.QuizTypeEnum.LiveQuiz ? vm.Quiz.LiveQuizLink : null,
+                    AllowReview = vm.Quiz?.AllowReview ?? false,
+                    SharingStatus = vm.Quiz?.SharingStatus ?? DataAccess.Enum.QuizSetVisibilityEnum.Private
                 };
 
                 var created = await _quizService.CreateQuizSetAsync(request);
@@ -165,13 +162,6 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             try
             {
                 var userId = EnsureCurrentUserId();
-                var organizerEvents = await _organizerService.GetMyEventsAsync(userId);
-                var ownerEvent = organizerEvents.FirstOrDefault(x => x.QuizId == quizId);
-                if (ownerEvent == null)
-                {
-                    throw new InvalidOperationException("Không tìm thấy quiz thuộc organizer hiện tại.");
-                }
-
                 var detail = await _quizService.GetQuizDetailAsync(new GetQuizDetailRequestDto
                 {
                     QuizId = quizId
@@ -179,6 +169,13 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 if (detail == null)
                 {
                     throw new InvalidOperationException("Quiz không tồn tại.");
+                }
+
+                var organizerEvents = await _organizerService.GetMyEventsAsync(userId);
+                var ownerEvent = organizerEvents.FirstOrDefault(x => x.EventId == detail.Quiz.EventId);
+                if (ownerEvent == null)
+                {
+                    throw new InvalidOperationException("Không tìm thấy quiz thuộc organizer hiện tại.");
                 }
 
                 var scores = await _quizService.GetQuizScoresAsync(new GetQuizScoresRequestDto
@@ -225,6 +222,75 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Publish(string quizId)
+        {
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                await _quizService.PublishQuizAsync(new PublishQuizRequestDto
+                {
+                    QuizId = quizId,
+                    UserId = userId
+                });
+
+                SetSuccess("Đã publish quiz thành công.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Share(string quizId)
+        {
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                await _quizService.PublishQuizSetAsync(new PublishQuizSetRequestDto
+                {
+                    QuizId = quizId,
+                    UserId = userId
+                });
+
+                SetSuccess("Question bank đã được chia sẻ cho cộng đồng.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string quizId)
+        {
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                await _quizService.DeleteQuizAsync(new DeleteQuizRequestDto
+                {
+                    QuizId = quizId,
+                    UserId = userId
+                });
+
+                SetSuccess("Đã xóa quiz thành công.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadFile(string quizId, EventQuizViewModel vm)
         {
             try
@@ -264,6 +330,12 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 {
                     var events = await _organizerService.GetMyEventsAsync(userId);
                     vm.Events = events.Select(e => new SelectListItem(e.Title, e.EventId)).ToList();
+
+                    var quizBanks = await _quizService.GetAvailableQuizBanksAsync(new GetAvailableQuizBanksRequestDto
+                    {
+                        UserId = userId
+                    });
+                    vm.AvailableQuizBanks = quizBanks.QuizBanks;
                 }
 
                 var topics = await _topicService.GetAllTopicsAsync();
@@ -286,6 +358,13 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         private static string NormalizeCreateMode(string? mode)
         {
+            if (string.Equals(mode, "bank", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(mode, "questionbank", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(mode, "question-bank", StringComparison.OrdinalIgnoreCase))
+            {
+                return "bank";
+            }
+
             return string.Equals(mode, "upload", StringComparison.OrdinalIgnoreCase)
                 ? "upload"
                 : "manual";
@@ -293,6 +372,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         private static string GetCreateViewPath(string mode)
         {
+            if (string.Equals(mode, "bank", StringComparison.OrdinalIgnoreCase))
+            {
+                return "~/Views/Event/EventQuiz/CreateQuiz/QuestionBank/Create.cshtml";
+            }
+
             return string.Equals(mode, "upload", StringComparison.OrdinalIgnoreCase)
                 ? "~/Views/Event/EventQuiz/CreateQuiz/Uploadfile/Create.cshtml"
                 : "~/Views/Event/EventQuiz/CreateQuiz/Manual/Create.cshtml";
@@ -382,9 +466,16 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 return string.Empty;
             }
 
-            var answers = System.Text.RegularExpressions.Regex.Matches(correctAnswer.ToUpperInvariant(), "[ABCD]")
-                .Select(m => m.Value)
+            var normalized = correctAnswer.Replace(" ", string.Empty).ToUpperInvariant();
+            if (!Regex.IsMatch(normalized, @"^[A-D](,[A-D])*$"))
+            {
+                return string.Empty;
+            }
+
+            var answers = normalized
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Distinct()
+                .OrderBy(x => x)
                 .ToList();
 
             if (typeOption == DataAccess.Enum.QuestionTypeOptionEnum.MultipleChoice)

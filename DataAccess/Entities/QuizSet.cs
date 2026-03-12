@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DataAccess.Enum;
 
 namespace DataAccess.Entities;
 
@@ -14,6 +15,8 @@ public partial class QuizSet : BaseEntity
     public string? Description { get; set; }
 
     public string? FileQuiz { get; set; }
+
+    public QuizSetVisibilityEnum SharingStatus { get; set; } = QuizSetVisibilityEnum.Private;
 
     public bool IsActive { get; set; }
 

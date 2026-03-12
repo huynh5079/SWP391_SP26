@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
-using BusinessLogic.DTOs.Event.Quiz.Contracts;
-using BusinessLogic.DTOs.Event.Quiz.CreateQuiz;
-using BusinessLogic.DTOs.Event.Quiz.UpdateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UpdateQuiz;
 
 namespace BusinessLogic.Service.ValidationData.Quiz
 {

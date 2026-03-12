@@ -20,6 +20,8 @@ public partial class EventQuizQuestion : BaseEntity
 
 	public string CorrectAnswer { get; set; } = null!;
 
+	public string? Explanation { get; set; }
+
 	public QuestionDifficultyEnum Difficulty { get; set; } = QuestionDifficultyEnum.Medium;
 
 	public int ScorePoint { get; set; } = 1;

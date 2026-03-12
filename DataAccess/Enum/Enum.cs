@@ -185,6 +185,11 @@ namespace DataAccess.Enum
 		Published,//đang làm bài
 		Closed//đã xong
 	}
+	public enum QuizSetVisibilityEnum
+	{
+		Private,
+		Public
+	}
 	public enum QuizTimeTypeEvent { 
 		AfterEvent,
 		InEvent,
@@ -211,5 +216,10 @@ namespace DataAccess.Enum
 		InProgress,
 		Submitted,
 		Graded
+	}
+	public enum QuizBankSourceTypeEnum
+	{
+		Organizer,
+		Community
 	}
 }
