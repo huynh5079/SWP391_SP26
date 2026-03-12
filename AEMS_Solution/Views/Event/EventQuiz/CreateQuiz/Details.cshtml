@@ -12,7 +12,15 @@
         </div>
         <div class="d-flex gap-2">
             <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
-            <a asp-action="Create" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-primary">Create another quiz</a>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Create another quiz
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -76,6 +84,19 @@
                                     else
                                     {
                                         <a href="~/@Model.Quiz.FileQuiz" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Open file</a>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Live quiz link</div>
+                                    @if (string.IsNullOrWhiteSpace(Model.Quiz.LiveQuizLink))
+                                    {
+                                        <div class="fs-6 fw-semibold">-</div>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Model.Quiz.LiveQuizLink" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success mt-2">Open live quiz</a>
                                     }
                                 </div>
                             </div>

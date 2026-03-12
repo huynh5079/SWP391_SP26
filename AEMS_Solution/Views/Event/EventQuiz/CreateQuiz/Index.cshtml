@@ -10,10 +10,14 @@
             <h1 class="h3 mb-0">Quiz Management</h1>
             <p class="text-muted small">Create and manage quiz sets for your events</p>
         </div>
-        <div>
-            <a asp-controller="EventQuiz" asp-action="Create" class="btn btn-sm btn-primary">
+        <div class="dropdown">
+            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-journal-plus"></i> Create Quiz
-            </a>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+            </ul>
         </div>
     </div>
 

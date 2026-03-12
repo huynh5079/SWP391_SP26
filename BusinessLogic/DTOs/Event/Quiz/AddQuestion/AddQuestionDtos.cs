@@ -6,6 +6,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.AddQuestion
     public class AddQuizQuestionRequestDto
     {
         public string QuizId { get; set; } = string.Empty;
+        public QuestionTypeOptionEnum TypeOption { get; set; } = QuestionTypeOptionEnum.SingleChoice;
         public string QuestionText { get; set; } = string.Empty;
         public QuizQuestionOptionContract Options { get; set; } = new();
         public string CorrectAnswer { get; set; } = string.Empty;

@@ -13,13 +13,19 @@
             <p class="text-muted small">Manage events and track upcoming activities</p>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-sm btn-primary shadow-sm">
                 <i class="bi bi-plus-circle"></i> Create Event
             </a>
-                <a asp-controller="EventQuiz" asp-action="Create" class="btn btn-sm btn-primary shadow-sm">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-primary shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-journal-plus"></i> Create Quiz
-                </a>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                </ul>
+            </div>
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="myevents" class="btn btn-sm btn-outline-primary shadow-sm">
                 <i class="bi bi-calendar-event"></i> My Events
             </a>

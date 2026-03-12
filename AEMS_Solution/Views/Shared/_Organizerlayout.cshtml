@@ -35,10 +35,27 @@
                                 <i class="bi bi-house-door me-1"></i>Home
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" style="font-size:.9rem;">
-                                <i class="bi bi-plus-circle me-1"></i>Create Event
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle px-3 text-white opacity-80 fw-medium" href="#" id="organizerCreateDropdown"
+                               role="button" data-bs-toggle="dropdown" style="font-size:.9rem;">
+                                <i class="bi bi-plus-circle me-1"></i>Create
                             </a>
+                            <ul class="dropdown-menu shadow-lg border-0 mt-2 aems-dropdown" aria-labelledby="organizerCreateDropdown"
+                                style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
+                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create"><i class="bi bi-calendar-plus me-2"></i>Create Event</a></li>
+                                <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
+                                <li class="dropdown-submenu position-relative">
+                                    <a class="dropdown-item aems-dd-item quiz-submenu-toggle d-flex align-items-center justify-content-between" href="#">
+                                        <span><i class="bi bi-patch-question me-2"></i>Create Quiz</span>
+                                        <i class="bi bi-chevron-right small"></i>
+                                    </a>
+                                    <ul class="dropdown-menu shadow-lg border-0 aems-dropdown aems-submenu"
+                                        style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
+                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
                         </li>
                         <!-- Manage Dropdown -->
                         <li class="nav-item dropdown">
@@ -126,6 +143,11 @@
             .aems-dd-item.text-danger { color: #f87171 !important; }
             .aems-dd-item.text-danger:hover { background: rgba(239,68,68,.2) !important; }
             .dropdown-menu.aems-dropdown { animation: fadeInDown .15s ease; }
+            .dropdown-submenu > .dropdown-menu { top: 0; left: 100%; margin-top: -.5rem; margin-left: .35rem; }
+            .dropdown-submenu > .dropdown-menu.show { display: block; }
+            @@media (max-width: 991.98px) {
+                .dropdown-submenu > .dropdown-menu { left: 0; top: 100%; margin-top: .35rem; margin-left: 0; }
+            }
             @@keyframes fadeInDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         </style>
     </header>
@@ -163,6 +185,35 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/site.js?v=3" asp-append-version="true"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.quiz-submenu-toggle').forEach(function (toggle) {
+                toggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const submenu = this.nextElementSibling;
+                    const parentMenu = this.closest('.dropdown-menu');
+
+                    parentMenu?.querySelectorAll('.aems-submenu.show').forEach(function (menu) {
+                        if (menu !== submenu) {
+                            menu.classList.remove('show');
+                        }
+                    });
+
+                    submenu?.classList.toggle('show');
+                });
+            });
+
+            document.querySelectorAll('.aems-navbar .nav-item.dropdown').forEach(function (dropdown) {
+                dropdown.addEventListener('hide.bs.dropdown', function () {
+                    dropdown.querySelectorAll('.aems-submenu.show').forEach(function (menu) {
+                        menu.classList.remove('show');
+                    });
+                });
+            });
+        });
+    </script>
     <script src="~/js/chatbot.js" asp-append-version="true"></script>
     <script src="~/js/messenger-layout.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
