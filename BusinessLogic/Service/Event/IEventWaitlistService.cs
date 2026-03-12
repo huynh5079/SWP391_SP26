@@ -8,5 +8,6 @@ public interface IEventWaitlistService
     Task RemoveFromWaitlistAsync(string studentId, string eventId);
     Task<List<EventWaitlistDto>> GetWaitlistByEventAsync(string eventId);
     Task OfferNextAsync(string eventId);
+    Task NotifyOfferedStudentAsync(string eventId, string studentId);
     Task RespondToOfferAsync(RespondOfferRequestDto dto);
 }
