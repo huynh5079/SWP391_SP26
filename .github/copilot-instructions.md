@@ -27,3 +27,6 @@
 
 ## Event Management
 - Apply the requested two-column layout and agenda management changes to `DetailEvent.cshtml`, not `CreateEvent.cshtml`.
+
+## Quiz Schema
+- For the quiz schema in this project, remove direct EventQuiz-to-QuizQuestion linkage and StudentQuizScore.QuizId; keep StudentQuizScore linked only to EventQuiz while answers remain in StudentAnswer referencing QuestionBank. Answers should remain stored inside the question rather than in a separate Answer entity/table.

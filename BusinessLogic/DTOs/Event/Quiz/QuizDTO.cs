@@ -35,21 +35,27 @@ namespace BusinessLogic.DTOs.Event.Quiz
         public string Id { get; set; } = string.Empty;
         public string QuizId { get; set; } = string.Empty;
         public string QuestionText { get; set; } = string.Empty;
-        public string OptionA { get; set; } = string.Empty;
-        public string OptionB { get; set; } = string.Empty;
-        public string? OptionC { get; set; }
-        public string? OptionD { get; set; }
+        public List<QuizQuestionOptionDTO> Option {get; set; } = new();
         public string? CorrectAnswer { get; set; }
         public int? ScorePoint { get; set; }
     }
+	public class QuizQuestionOptionDTO
+    {
+		public string OptionA { get; set; } = string.Empty;
+		public string OptionB { get; set; } = string.Empty;
+		public string? OptionC { get; set; }
+		public string? OptionD { get; set; }
+	}
+
 	//student score for quiz
 	public class StudentQuizScoreDTO
     {
         public string Id { get; set; } = string.Empty;
-        public string QuizId { get; set; } = string.Empty;
+		public string EventQuizId { get; set; } = string.Empty;
         public string StudentId { get; set; } = string.Empty;
-        public int TotalScore { get; set; }
-        public bool IsPassed { get; set; }
-        public DateTime? SubmittedAt { get; set; }
+		public int Score { get; set; }
+		public DateTime? StartedAt { get; set; }
+		public DateTime? SubmittedAt { get; set; }
+		public StudentQuizScoreStatusEnum Status { get; set; }
     }
 }

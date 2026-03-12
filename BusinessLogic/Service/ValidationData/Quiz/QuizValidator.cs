@@ -18,6 +18,11 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 		{
 			_uow = uow;
 		}
+
+		private static QuizQuestionOptionDTO GetQuestionOptions(QuizQuestionDTO dto)
+		{
+			return dto.Option?.FirstOrDefault() ?? new QuizQuestionOptionDTO();
+		}
 		//add
 		public void ValidateAddQuizSet(QuizDTO quizset)
 		{
@@ -41,8 +46,10 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 			if (string.IsNullOrWhiteSpace(question.QuestionText))
 				throw new ArgumentException("Question text không hợp lệ.");
 
+			var options = GetQuestionOptions(question);
+
             // ensure at least two options
-            if (string.IsNullOrWhiteSpace(question.OptionA) || string.IsNullOrWhiteSpace(question.OptionB))
+            if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB))
             {
                 throw new ArgumentException("Phải có ít nhất 2 option");
             }
@@ -86,7 +93,8 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 		if (string.IsNullOrWhiteSpace(dto.QuestionText))
 			throw new ArgumentException("Question text không hợp lệ");
 
-		var options = new[] { dto.OptionA, dto.OptionB, dto.OptionC, dto.OptionD };
+		var questionOptions = GetQuestionOptions(dto);
+		var options = new[] { questionOptions.OptionA, questionOptions.OptionB, questionOptions.OptionC, questionOptions.OptionD };
 
 		var validOptions = options.Count(o => !string.IsNullOrWhiteSpace(o));
 

@@ -2,6 +2,7 @@
     ViewData["Title"] = "Academic Event Management";
 }
 
+
 <style>
     .hero-section {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -96,6 +97,7 @@
                         else if (User.IsInRole("Organizer"))
                         {
                             <a asp-controller="Organizer" asp-action="Index" class="btn btn-primary btn-lg rounded-pill px-5 shadow w-100 py-3 fw-bold"><i class="bi bi-calendar-event me-2"></i> Quản lý sự kiện</a>
+                            Layout = "_Organizerlayout";
                         }
                         else if (User.IsInRole("Approver"))
                         {

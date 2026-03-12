@@ -30,6 +30,7 @@ namespace AEMS_Solution.Models.Event.EventQuiz
 
         // Convenience properties
         public string EventId { get; set; } = string.Empty;
+        public string TopicId { get; set; } = string.Empty;
         public string QuizId => Quiz?.QuizsetId ?? string.Empty;
 
         // Dropdowns for create/edit pages
