@@ -66,6 +66,52 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
         }
 
         [HttpGet]
+        public async Task<IActionResult> QuestionBank(string? semester, string? eventTitle, string? title)
+        {
+            var vm = new EventQuizViewModel
+            {
+                SemesterFilter = semester?.Trim() ?? string.Empty,
+                EventTitleFilter = eventTitle?.Trim() ?? string.Empty,
+                QuizTitleFilter = title?.Trim() ?? string.Empty
+            };
+
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                var quizzes = await _quizService.GetOrganizerQuizzesAsync(new GetOrganizerQuizzesRequestDto
+                {
+                    UserId = userId
+                });
+
+                var filteredQuizzes = quizzes.Quizzes
+                    .Where(x => x.QuestionCount > 0)
+                    .Where(x => string.IsNullOrWhiteSpace(vm.SemesterFilter)
+                        || (!string.IsNullOrWhiteSpace(x.SemesterName)
+                            && x.SemesterName.Contains(vm.SemesterFilter, StringComparison.OrdinalIgnoreCase)))
+                    .Where(x => string.IsNullOrWhiteSpace(vm.EventTitleFilter)
+                        || (!string.IsNullOrWhiteSpace(x.EventTitle)
+                            && x.EventTitle.Contains(vm.EventTitleFilter, StringComparison.OrdinalIgnoreCase)))
+                    .Where(x => string.IsNullOrWhiteSpace(vm.QuizTitleFilter)
+                        || (!string.IsNullOrWhiteSpace(x.Title)
+                            && x.Title.Contains(vm.QuizTitleFilter, StringComparison.OrdinalIgnoreCase)))
+                    .GroupBy(x => x.QuizSetId)
+                    .Select(g => g.OrderByDescending(x => x.UpdatedAt).First())
+                    .OrderBy(x => x.SemesterName)
+                    .ThenBy(x => x.EventTitle)
+                    .ThenBy(x => x.Title)
+                    .ToList();
+
+                vm.Quizzes = filteredQuizzes;
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return View("~/Views/Event/EventQuiz/CreateQuiz/QuestionBank/Index.cshtml", vm);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Create(string? eventId, string? mode)
         {
             mode = NormalizeCreateMode(mode);

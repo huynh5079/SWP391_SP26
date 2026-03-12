@@ -295,13 +295,55 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			return request;
 		}
 
+		private async Task<string> GetUniqueQuizSetTitleAsync(string organizerId, string title, string? ignoreQuizSetId = null)
+		{
+			var baseTitle = string.IsNullOrWhiteSpace(title) ? "Quiz Set" : title.Trim();
+			var candidate = baseTitle;
+			var suffix = 2;
+
+			while (await _uow.QuizSets.CountAsync(x => x.OrganizerId == organizerId
+				&& x.Title == candidate
+				&& x.DeletedAt == null
+				&& (string.IsNullOrWhiteSpace(ignoreQuizSetId) || x.Id != ignoreQuizSetId)) > 0)
+			{
+				candidate = $"{baseTitle} ({suffix++})";
+			}
+
+			return candidate;
+		}
+
+		private async Task ValidateDuplicateQuizTitleInSemesterAsync(StaffProfile organizer, DataAccess.Entities.Event eventDataForAdd, string title)
+		{
+			var normalizedTitle = title?.Trim();
+			if (string.IsNullOrWhiteSpace(normalizedTitle))
+			{
+				return;
+			}
+
+			var sameTitleQuizzes = await _uow.EventQuiz.GetAllAsync(
+				x => x.DeletedAt == null && x.Title == normalizedTitle,
+				q => q.Include(x => x.Event));
+
+			var isDuplicated = sameTitleQuizzes.Any(x => x.Event != null
+				&& x.Event.DeletedAt == null
+				&& x.Event.OrganizerId == organizer.Id
+				&& x.Event.SemesterId == eventDataForAdd.SemesterId
+				&& string.Equals(x.Event.Title, eventDataForAdd.Title, StringComparison.OrdinalIgnoreCase));
+
+			if (isDuplicated)
+			{
+				throw new InvalidOperationException("Đã tồn tại quiz có cùng tiêu đề cho event này trong cùng semester.");
+			}
+		}
+
 		private async Task<(QuizSet QuizSet, int QuestionCount)> CreateQuizSetFromSourceAsync(QuizSet sourceQuizSet, StaffProfile organizer, CreateQuizSetRequestDto request, string? fallbackTopicId)
 		{
+			var uniqueQuizSetTitle = await GetUniqueQuizSetTitleAsync(organizer.Id, request.Title);
 			var quizSet = new QuizSet
 			{
 				TopicId = request.TopicId ?? sourceQuizSet.TopicId ?? fallbackTopicId,
 				OrganizerId = organizer.Id,
-				Title = request.Title,
+				Title = uniqueQuizSetTitle,
 				Description = sourceQuizSet.Description,
 				FileQuiz = sourceQuizSet.FileQuiz,
 				SharingStatus = request.SharingStatus,
@@ -352,11 +394,16 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (sourceQuizSet == null)
 				throw new InvalidOperationException("Không tìm thấy quiz set nguồn.");
 
+			var uniqueQuizSetTitle = await GetUniqueQuizSetTitleAsync(
+				sourceQuizSet.OrganizerId ?? string.Empty,
+				sourceQuizSet.Title,
+				sourceQuizSet.Id);
+
 			var clonedQuizSet = new QuizSet
 			{
 				TopicId = sourceQuizSet.TopicId,
 				OrganizerId = sourceQuizSet.OrganizerId,
-				Title = sourceQuizSet.Title,
+				Title = uniqueQuizSetTitle,
 				Description = sourceQuizSet.Description,
 				FileQuiz = sourceQuizSet.FileQuiz,
 				SharingStatus = sourceQuizSet.SharingStatus,
@@ -380,6 +427,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					OrderIndex = sourceQuestion.OrderIndex
 				});
 			}
+
+			await _uow.SaveChangesAsync();
 
 			quiz.QuizSetId = clonedQuizSet.Id;
 			quiz.QuizSet = clonedQuizSet;
@@ -575,6 +624,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				throw new InvalidOperationException("Báº¡n khÃ´ng cÃ³ quyá»n táº¡o quiz cho event nÃ y.");
 			if (eventDataForAdd.StartTime <= DateTime.UtcNow)
 				throw new Exception("Sá»± kiá»‡n Ä‘Ã£ báº¯t Ä‘áº§u, khÃ´ng thá»ƒ táº¡o quiz");
+			await ValidateDuplicateQuizTitleInSemesterAsync(organizer, eventDataForAdd, request.Title);
 
 			using var transaction = await _uow.BeginTransactionAsync();
 			try
@@ -605,11 +655,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				}
 				else
 				{
+					var uniqueQuizSetTitle = await GetUniqueQuizSetTitleAsync(organizer.Id, request.Title);
 					quizSet = new QuizSet
 					{
 						TopicId = request.TopicId ?? eventDataForAdd.TopicId,
 						OrganizerId = organizer.Id,
-						Title = request.Title,
+						Title = uniqueQuizSetTitle,
 						FileQuiz = request.FileQuiz,
 						SharingStatus = request.SharingStatus,
 						IsActive = true
