@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 using DataAccess.Entities;
+using System.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,7 @@ namespace DataAccess.Repositories.Abstraction
     {
         Task<int> SaveChangesAsync();
         Task<IDbContextTransaction> BeginTransactionAsync();
+        Task<IDbContextTransaction> BeginTransactionAsync(IsolationLevel isolationLevel);
         IUserRepository Users { get; }
         IChatRepository ChatRepository { get; }
         IGenericRepository<StudentProfile> StudentProfiles { get; }
@@ -38,6 +40,7 @@ namespace DataAccess.Repositories.Abstraction
         IGenericRepository<CheckInHistory> CheckInHistories { get; }
         // Quiz
         IGenericRepository<EventQuiz> EventQuiz { get; }
+		IGenericRepository<EventQuizQuestion> EventQuizQuestions { get; }
 		IGenericRepository<QuestionBank> QuestionBanks { get; }
 		IGenericRepository<QuizSet> QuizSets { get; }
 		IGenericRepository<QuizSetQuestion> QuizSetQuestions { get; }

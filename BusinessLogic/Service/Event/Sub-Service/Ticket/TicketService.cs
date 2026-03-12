@@ -9,6 +9,7 @@ using DataAccess.Enum;
 using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace BusinessLogic.Service.Event.Sub_Service.Ticket
 {
@@ -95,38 +96,52 @@ namespace BusinessLogic.Service.Event.Sub_Service.Ticket
 		{
 			_ticketValidator.ValidateCreateRequest(dto);
 
-			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == dto.EventId && x.DeletedAt == null);
-			_ticketValidator.ValidateEventExists(eventEntity);
-
-			var student = await _unitOfWork.StudentProfiles.GetAsync(
-				x => x.Id == dto.StudentId && x.DeletedAt == null,
-				q => q.Include(x => x.User));
-			_ticketValidator.ValidateStudentExists(student);
-
-			var existingTicket = await _unitOfWork.Tickets.GetAsync(
-				x => x.EventId == dto.EventId && x.StudentId == dto.StudentId && x.DeletedAt == null && x.Status != TicketStatusEnum.Cancelled);
-			_ticketValidator.ValidateDuplicateActiveTicket(existingTicket);
-
-			var now = DateTimeHelper.GetVietnamTime();
-			var ticket = new DataAccess.Entities.Ticket
+			using var transaction = await _unitOfWork.BeginTransactionAsync(IsolationLevel.Serializable);
+			try
 			{
-				Id = Guid.NewGuid().ToString(),
-				EventId = dto.EventId,
-				StudentId = dto.StudentId,
-				TicketCode = string.IsNullOrWhiteSpace(dto.TicketCode) ? GenerateTicketCode() : dto.TicketCode.Trim(),
-				Status = dto.Status,
-				CheckInTime = dto.Status == TicketStatusEnum.CheckedIn ? now : null,
-				CreatedAt = now,
-				UpdatedAt = now,
-				DeletedAt = null
-			};
+				var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == dto.EventId && x.DeletedAt == null);
+				_ticketValidator.ValidateEventExists(eventEntity);
 
-			await _unitOfWork.Tickets.CreateAsync(ticket);
-			await _unitOfWork.SaveChangesAsync();
+				var student = await _unitOfWork.StudentProfiles.GetAsync(
+					x => x.Id == dto.StudentId && x.DeletedAt == null,
+					q => q.Include(x => x.User));
+				_ticketValidator.ValidateStudentExists(student);
 
-			ticket.Event = eventEntity!;
-			ticket.Student = student!;
-			return MapTicket(ticket);
+				var existingTicket = await _unitOfWork.Tickets.GetAsync(
+					x => x.EventId == dto.EventId && x.StudentId == dto.StudentId && x.DeletedAt == null && x.Status != TicketStatusEnum.Cancelled);
+				_ticketValidator.ValidateDuplicateActiveTicket(existingTicket);
+
+				var activeTicketCount = await _unitOfWork.Tickets.CountAsync(
+					x => x.EventId == dto.EventId && x.DeletedAt == null && x.Status != TicketStatusEnum.Cancelled);
+				if (activeTicketCount >= eventEntity!.MaxCapacity)
+				{
+					throw new InvalidOperationException("Event đã đủ sức chứa.");
+				}
+
+				var now = DateTimeHelper.GetVietnamTime();
+				var ticket = new DataAccess.Entities.Ticket
+				{
+					Id = Guid.NewGuid().ToString(),
+					EventId = dto.EventId,
+					StudentId = dto.StudentId,
+					TicketCode = string.IsNullOrWhiteSpace(dto.TicketCode) ? GenerateTicketCode() : dto.TicketCode.Trim(),
+					Status = dto.Status,
+					CheckInTime = dto.Status == TicketStatusEnum.CheckedIn ? now : null
+				};
+
+				await _unitOfWork.Tickets.CreateAsync(ticket);
+				await _unitOfWork.SaveChangesAsync();
+				await transaction.CommitAsync();
+
+				ticket.Event = eventEntity;
+				ticket.Student = student!;
+				return MapTicket(ticket);
+			}
+			catch
+			{
+				await transaction.RollbackAsync();
+				throw;
+			}
 		}
 
 		public async Task<bool> UpdateTicketAsync(string ticketId, UpdateTicketDTO dto)

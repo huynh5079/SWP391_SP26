@@ -8,6 +8,8 @@ public partial class QuestionBank : BaseEntity
 {
     public string? TopicId { get; set; }
 
+    public string? OrganizerId { get; set; }
+
     public string QuestionText { get; set; } = null!;
 
     public string OptionA { get; set; } = null!;
@@ -23,6 +25,10 @@ public partial class QuestionBank : BaseEntity
     public QuestionDifficultyEnum Difficulty { get; set; } = QuestionDifficultyEnum.Medium;
 
     public virtual Topic? Topic { get; set; }
+
+    public virtual StaffProfile? Organizer { get; set; }
+
+    public virtual ICollection<EventQuizQuestion> EventQuizQuestions { get; set; } = new List<EventQuizQuestion>();
 
     public virtual ICollection<QuizSetQuestion> QuizSetQuestions { get; set; } = new List<QuizSetQuestion>();
 

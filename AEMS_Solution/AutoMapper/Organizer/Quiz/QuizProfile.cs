@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using AEMS_Solution.Models.Event.EventQuiz;
-using BusinessLogic.DTOs.Event.Quiz;
-using System.Collections.Generic;
+using BusinessLogic.DTOs.Event.Quiz.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.CreateQuiz;
 
 namespace AEMS_Solution.AutoMapper.Organizer.Quiz
 {
@@ -9,17 +9,17 @@ namespace AEMS_Solution.AutoMapper.Organizer.Quiz
     {
         public QuizProfile()
         {
-            // Map QuizDTO -> EventQuizViewModel (populate the Quiz property)
-            CreateMap<QuizDTO, EventQuizViewModel>()
+			CreateMap<QuizSummaryContract, EventQuizViewModel>()
                 .ForMember(dest => dest.Quiz, opt => opt.MapFrom(src => src));
 
-            // Map EventQuizViewModel -> QuizDTO (for create/update)
-            CreateMap<EventQuizViewModel, QuizDTO>()
+			CreateMap<EventQuizViewModel, CreateQuizSetRequestDto>()
+				.ForMember(dest => dest.UserId, opt => opt.Ignore())
                 .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventId))
+                .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Quiz != null ? src.Quiz.Title : string.Empty))
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Quiz != null ? src.Quiz.Type : default))
                 .ForMember(dest => dest.PassingScore, opt => opt.MapFrom(src => src.Quiz != null ? src.Quiz.PassingScore : null))
-                .ForMember(dest => dest.Questions, opt => opt.MapFrom(src => src.Quiz != null ? src.Quiz.Questions : new List<QuizQuestionDTO>()));
+				.ForMember(dest => dest.FileQuiz, opt => opt.MapFrom(src => src.Quiz != null ? src.Quiz.FileQuiz : null));
         }
     }
 }

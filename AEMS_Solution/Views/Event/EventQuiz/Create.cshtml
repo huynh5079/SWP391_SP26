@@ -1,4 +1,4 @@
-@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+﻿@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
 @{
     ViewData["Title"] = "Create Quiz";
     Layout = "_Organizerlayout";
@@ -33,13 +33,13 @@
                     <span asp-validation-for="Quiz.Title" class="text-danger"></span>
                 </div>
 
-                
-
                 <div class="mb-3">
                     <label class="form-label">Type</label>
                     <select asp-for="Quiz.Type" class="form-select">
-                        <option value="0">Standard</option>
-                        <option value="1">Timed</option>
+                        <option value="0">Practice</option>
+                        <option value="1">Exam</option>
+                        <option value="2">Survey</option>
+                        <option value="3">LiveQuiz</option>
                     </select>
                 </div>
 
@@ -49,8 +49,8 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Attach PDF (optional)</label>
-                    <input asp-for="FileUpload" class="form-control" type="file" accept=".pdf" />
+                    <label class="form-label">Upload quiz file (PDF, DOCX, TXT)</label>
+                    <input asp-for="FileUpload" class="form-control" type="file" accept=".pdf,.docx,.txt" />
                 </div>
 
                 <button type="submit" class="btn btn-primary">Create</button>

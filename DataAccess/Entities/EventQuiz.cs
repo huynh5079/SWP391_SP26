@@ -28,6 +28,7 @@ public partial class EventQuiz : BaseEntity
 	public string? FileQuiz { get; set; }
 	public virtual Event Event { get; set; } = null!;
 	public virtual QuizSet? QuizSet { get; set; }
+	public virtual ICollection<EventQuizQuestion> EventQuizQuestions { get; set; } = new List<EventQuizQuestion>();
 
     public virtual ICollection<StudentQuizScore> StudentQuizScores { get; set; } = new List<StudentQuizScore>();
 }

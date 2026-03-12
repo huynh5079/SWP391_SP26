@@ -1,25 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BusinessLogic.DTOs.Event.Quiz;
-using BusinessLogic.DTOs.Event.Quiz;
-using DataAccess.Enum;
+﻿using System.Collections.Generic;
+using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.CreateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.UpdateQuiz;
 
 namespace BusinessLogic.Service.ValidationData.Quiz
 {
 	public interface IQuizValidator
 	{
-	//Add
-		public void ValidateAddQuizSet(QuizDTO quiz);
-		public void ValidateAddQuestion(QuizQuestionDTO question);
-	//Update
-	   public void ValidateUpdateQuizSet(QuizDTO quiz);
-	    public void ValidateUpdateQuizQuestion(QuizQuestionDTO dto);
-		public void ValidatePassingScorewithQuestion(QuizDTO dto);
-		public void ValidateCheckDuplicateQuestion(string quizsetId, QuizDTO dto);
-        public void ValidateQuestionCount(string quizsetId, QuizDTO dto);
-		
+		void ValidateAddQuizSet(CreateQuizSetRequestDto quiz);
+		void ValidateAddQuestion(AddQuizQuestionRequestDto question);
+		void ValidateUpdateQuizSet(UpdateQuizSetRequestDto quiz);
+		void ValidateUpdateQuizQuestion(QuizQuestionContract dto);
+		void ValidatePassingScorewithQuestion(int? passingScore, IEnumerable<QuizQuestionContract> questions);
+		void ValidateCheckDuplicateQuestion(IEnumerable<QuizQuestionContract> questions);
+		void ValidateQuestionCount(IEnumerable<QuizQuestionContract> questions);
 	}
 }

@@ -46,6 +46,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ==========================================
 
 // Database Context
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddDbContext<AEMSContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 

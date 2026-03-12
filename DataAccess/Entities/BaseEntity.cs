@@ -21,6 +21,13 @@ namespace DataAccess.Entities
 
         public DateTime? DeletedAt { get; set; } = null;
 
+        public string? CreatedBy { get; set; }
+
+        public string? UpdatedBy { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
 
         protected BaseEntity()
         {

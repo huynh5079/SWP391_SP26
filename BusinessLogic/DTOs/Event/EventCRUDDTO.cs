@@ -78,7 +78,7 @@ public class UpdateEventRequestDto
     public DateTime EndTime { get; set; }
 
     public string TopicId { get; set; } = "";
-    public string LocationId { get; set; } = "";
+    public string? LocationId { get; set; }
 
     public EventStatusEnum? Status { get; set; }
 
