@@ -176,7 +176,8 @@ namespace DataAccess.Enum
 	{
 	    Practice,
 		Exam,
-		Survey
+		Survey,
+		LiveQuiz
 	}
 	public enum QuizStatusEnum
 	{
@@ -206,6 +207,7 @@ namespace DataAccess.Enum
 
 	public enum StudentQuizScoreStatusEnum
 	{
+		NotStarted,
 		InProgress,
 		Submitted,
 		Graded
