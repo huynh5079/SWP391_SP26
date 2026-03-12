@@ -14,7 +14,7 @@ using System.IO;
 
 namespace AEMS_Solution.Controllers.Event.EventQuiz
 {
-    [Authorize(Roles = "Organizer,Admin,Staff")]
+    [Authorize(Roles = "Organizer")]
     public class EventQuizController : BaseController
     {
         private readonly IQuizService _quizService;
@@ -36,11 +36,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             var vm = new EventQuizViewModel();
             try
             {
-                var quizzes = string.IsNullOrWhiteSpace(eventId)
-                    ? await _quizService.GetAllAsync()
-                    : await _quizService.GetByEventIdAsync(eventId);
+                var quizzes = string.IsNullOrWhiteSpace(eventId);
+                    //? await _quizService.GetAllAsync()
+                   // : await _quizService.GetByEventIdAsync(eventId);
 
-                vm.Quizzes = quizzes;
+                //vm.Quizzes = quizzes;
                 vm.EventId = eventId ?? string.Empty;
             }
             catch (Exception ex)

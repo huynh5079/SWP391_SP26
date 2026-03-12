@@ -37,8 +37,11 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<Feedback> Feedbacks { get; }
         IGenericRepository<CheckInHistory> CheckInHistories { get; }
         // Quiz
-        IGenericRepository<QuizQuestion> QuizQuestion { get; }
         IGenericRepository<EventQuiz> EventQuiz { get; }
+		IGenericRepository<QuestionBank> QuestionBanks { get; }
+		IGenericRepository<QuizSet> QuizSets { get; }
+		IGenericRepository<QuizSetQuestion> QuizSetQuestions { get; }
+		IGenericRepository<StudentAnswer> StudentAnswers { get; }
 
 		// Teams
 		IGenericRepository<EventTeam> EventTeams { get; }

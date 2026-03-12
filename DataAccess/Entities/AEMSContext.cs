@@ -63,7 +63,11 @@ public partial class AEMSContext : DbContext
 
 	public virtual DbSet<Notification> Notifications { get; set; }
 
-	public virtual DbSet<QuizQuestion> QuizQuestions { get; set; }
+	public virtual DbSet<QuestionBank> QuestionBanks { get; set; }
+
+	public virtual DbSet<QuizSet> QuizSets { get; set; }
+
+	public virtual DbSet<QuizSetQuestion> QuizSetQuestions { get; set; }
 
 	public virtual DbSet<Role> Roles { get; set; }
 
@@ -72,6 +76,8 @@ public partial class AEMSContext : DbContext
 	public virtual DbSet<StaffProfile> StaffProfiles { get; set; }
 
 	public virtual DbSet<StudentProfile> StudentProfiles { get; set; }
+
+	public virtual DbSet<StudentAnswer> StudentAnswers { get; set; }
 
 	public virtual DbSet<StudentQuizScore> StudentQuizScores { get; set; }
 
@@ -307,7 +313,9 @@ public partial class AEMSContext : DbContext
 			entity.ToTable("EventQuiz");
 
 			entity.Property(e => e.EventId).HasMaxLength(450);
+			entity.Property(e => e.QuizSetId).HasMaxLength(450);
 			entity.Property(e => e.PassingScore).HasDefaultValue(0);
+			entity.Property(e => e.TimeLimit).HasDefaultValue(0);
 			entity.Property(e => e.Title).HasMaxLength(255);
 			entity.Property(e => e.Type)
 				.HasMaxLength(50)
@@ -330,6 +338,10 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.EventId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__EventQuiz__Event__160F4887");
+
+			entity.HasOne(d => d.QuizSet).WithMany(p => p.EventQuizzes)
+				.HasForeignKey(d => d.QuizSetId)
+				.HasConstraintName("FK_EventQuiz_QuizSet");
 		});
 
 		modelBuilder.Entity<EventReminder>(entity =>
@@ -434,22 +446,61 @@ public partial class AEMSContext : DbContext
 				.HasConstraintName("FK__Notificat__UserI__10566F31");
 		});
 
-		modelBuilder.Entity<QuizQuestion>(entity =>
+		modelBuilder.Entity<QuestionBank>(entity =>
 		{
-			entity.ToTable("QuizQuestion");
+			entity.ToTable("QuestionBank");
 
-			entity.Property(e => e.CorrectAnswer).HasMaxLength(1);
+			entity.Property(e => e.TopicId).HasMaxLength(450);
+			entity.Property(e => e.QuestionText).HasMaxLength(1000);
 			entity.Property(e => e.OptionA).HasMaxLength(255);
 			entity.Property(e => e.OptionB).HasMaxLength(255);
 			entity.Property(e => e.OptionC).HasMaxLength(255);
 			entity.Property(e => e.OptionD).HasMaxLength(255);
-			entity.Property(e => e.QuestionText).HasMaxLength(500);
-			entity.Property(e => e.QuizId).HasMaxLength(450);
-			entity.Property(e => e.ScorePoint).HasDefaultValue(1);
+			entity.Property(e => e.CorrectAnswer).HasMaxLength(50);
+			entity.Property(e => e.Difficulty)
+				.HasMaxLength(50)
+				.HasConversion<string>();
 
-			entity.HasOne(d => d.Quiz).WithMany(p => p.QuizQuestions)
-				.HasForeignKey(d => d.QuizId)
-				.HasConstraintName("FK__QuizQuest__QuizI__17036CC0");
+			entity.HasOne(d => d.Topic).WithMany(p => p.QuestionBanks)
+				.HasForeignKey(d => d.TopicId)
+				.HasConstraintName("FK_QuestionBank_Topic");
+		});
+
+		modelBuilder.Entity<QuizSet>(entity =>
+		{
+			entity.ToTable("QuizSet");
+
+			entity.Property(e => e.TopicId).HasMaxLength(450);
+			entity.Property(e => e.Title).HasMaxLength(255);
+			entity.Property(e => e.Description).HasMaxLength(1000);
+			entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+			entity.HasOne(d => d.Topic).WithMany(p => p.QuizSets)
+				.HasForeignKey(d => d.TopicId)
+				.HasConstraintName("FK_QuizSet_Topic");
+		});
+
+		modelBuilder.Entity<QuizSetQuestion>(entity =>
+		{
+			entity.ToTable("QuizSetQuestion");
+
+			entity.Property(e => e.QuizSetId).HasMaxLength(450);
+			entity.Property(e => e.QuestionBankId).HasMaxLength(450);
+			entity.Property(e => e.ScorePoint).HasDefaultValue(1);
+			entity.Property(e => e.OrderIndex).HasDefaultValue(0);
+
+			entity.HasIndex(e => new { e.QuizSetId, e.QuestionBankId }, "UIX_QuizSetQuestion_QuizSet_Question")
+				.IsUnique();
+
+			entity.HasOne(d => d.QuizSet).WithMany(p => p.QuizSetQuestions)
+				.HasForeignKey(d => d.QuizSetId)
+				.OnDelete(DeleteBehavior.ClientSetNull)
+				.HasConstraintName("FK_QuizSetQuestion_QuizSet");
+
+			entity.HasOne(d => d.QuestionBank).WithMany(p => p.QuizSetQuestions)
+				.HasForeignKey(d => d.QuestionBankId)
+				.OnDelete(DeleteBehavior.ClientSetNull)
+				.HasConstraintName("FK_QuizSetQuestion_QuestionBank");
 		});
 
 		modelBuilder.Entity<Role>(entity =>
@@ -529,18 +580,48 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("StudentQuizScore");
 
-			entity.Property(e => e.QuizId).HasMaxLength(450);
+			entity.HasIndex(e => new { e.EventQuizId, e.StudentId }, "UIX_StudentQuizScore_EventQuiz_Student")
+				.IsUnique()
+				.HasFilter("[DeletedAt] IS NULL AND [EventQuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
+
+			entity.Property(e => e.EventQuizId).HasMaxLength(450);
+			entity.Property(e => e.Status)
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(StudentQuizScoreStatusEnum.Submitted);
 			entity.Property(e => e.StudentId).HasMaxLength(450);
 
-			entity.HasOne(d => d.Quiz).WithMany(p => p.StudentQuizScores)
-				.HasForeignKey(d => d.QuizId)
-				.OnDelete(DeleteBehavior.ClientSetNull)
-				.HasConstraintName("FK__StudentQu__QuizI__17F790F9");
+			entity.HasOne(d => d.EventQuiz).WithMany(p => p.StudentQuizScores)
+				.HasForeignKey(d => d.EventQuizId)
+				.HasConstraintName("FK_StudentQuizScore_EventQuiz");
 
 			entity.HasOne(d => d.Student).WithMany(p => p.StudentQuizScores)
 				.HasForeignKey(d => d.StudentId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
 				.HasConstraintName("FK__StudentQu__Stude__18EBB532");
+		});
+
+		modelBuilder.Entity<StudentAnswer>(entity =>
+		{
+			entity.ToTable("StudentAnswer");
+
+			entity.HasIndex(e => new { e.StudentQuizScoreId, e.QuestionBankId }, "UIX_StudentAnswer_StudentQuizScore_Question")
+				.IsUnique()
+				.HasFilter("[DeletedAt] IS NULL AND [StudentQuizScoreId] IS NOT NULL AND [QuestionBankId] IS NOT NULL");
+
+			entity.Property(e => e.StudentQuizScoreId).HasMaxLength(450);
+			entity.Property(e => e.QuestionBankId).HasMaxLength(450);
+			entity.Property(e => e.SelectedAnswer).HasMaxLength(50);
+
+			entity.HasOne(d => d.StudentQuizScore).WithMany(p => p.StudentAnswers)
+				.HasForeignKey(d => d.StudentQuizScoreId)
+				.OnDelete(DeleteBehavior.ClientSetNull)
+				.HasConstraintName("FK_StudentAnswer_StudentQuizScore");
+
+			entity.HasOne(d => d.QuestionBank).WithMany(p => p.StudentAnswers)
+				.HasForeignKey(d => d.QuestionBankId)
+				.OnDelete(DeleteBehavior.ClientSetNull)
+				.HasConstraintName("FK_StudentAnswer_QuestionBank");
 		});
 
 		modelBuilder.Entity<SystemErrorLog>(entity =>

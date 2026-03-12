@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DataAccess.Enum;
 
 namespace DataAccess.Entities;
 
@@ -21,7 +22,9 @@ public partial class QuizQuestion : BaseEntity
 
     public string CorrectAnswer { get; set; } = null!;
 
-    public int? ScorePoint { get; set; }
+	public QuestionTypeOptionEnum TypeOption { get; set; }
+
+	public int? ScorePoint { get; set; }
 
     public string? FileQuiz { get; set; }
 

@@ -189,4 +189,25 @@ namespace DataAccess.Enum
 		InEvent,
 		BeforeEvent
 	}
+	public enum QuestionTypeOptionEnum
+	{
+		SingleChoice,
+		MultipleChoice,
+		TrueFalse,
+		ShortAnswer
+	}
+
+	public enum QuestionDifficultyEnum
+	{
+		Easy,
+		Medium,
+		Hard
+	}
+
+	public enum StudentQuizScoreStatusEnum
+	{
+		InProgress,
+		Submitted,
+		Graded
+	}
 }
