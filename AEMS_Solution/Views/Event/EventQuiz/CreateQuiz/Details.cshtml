@@ -12,6 +12,7 @@
         </div>
         <div class="d-flex gap-2">
             <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+            <a asp-action="Preview" asp-route-quizId="@Model.Quiz.EventQuizId" class="btn btn-sm btn-outline-info">View quiz</a>
             <div class="dropdown">
                 <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     Create another quiz
@@ -83,13 +84,20 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="border rounded p-3 h-100">
-                                    <div class="small text-muted">Access</div>
-                                    <div class="fs-6 fw-semibold">@(Model.Quiz.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Community" : "Private")</div>
+                                    <div class="small text-muted">Question bank visibility</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private")</div>
                                     @if (Model.Quiz.SharingStatus != DataAccess.Enum.QuizSetVisibilityEnum.Public)
                                     {
                                         <form asp-action="Share" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" class="mt-2">
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">Share</button>
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Public to Community</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Restore" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-warning">Set Private</button>
                                         </form>
                                     }
                                 </div>

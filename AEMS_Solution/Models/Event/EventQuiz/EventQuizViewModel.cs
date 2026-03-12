@@ -44,6 +44,7 @@ namespace AEMS_Solution.Models.Event.EventQuiz
         public string TopicId { get; set; } = string.Empty;
         public string SelectedQuizSetId { get; set; } = string.Empty;
         public string QuizBankSourceFilter { get; set; } = "All";
+        public string QuizScope { get; set; } = "myquiz";
         public string QuizId => Quiz.EventQuizId;
         public string EventTitle { get; set; } = string.Empty;
         public string TopicName { get; set; } = string.Empty;

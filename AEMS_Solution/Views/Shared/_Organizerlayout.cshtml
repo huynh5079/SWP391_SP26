@@ -45,7 +45,7 @@
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create"><i class="bi bi-calendar-plus me-2"></i>Create Event</a></li>
                                 <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
                                 <li class="dropdown-submenu position-relative">
-                                    <a class="dropdown-item aems-dd-item quiz-submenu-toggle d-flex align-items-center justify-content-between" href="#">
+                                    <a class="dropdown-item aems-dd-item aems-submenu-toggle d-flex align-items-center justify-content-between" href="#">
                                         <span><i class="bi bi-patch-question me-2"></i>Create Quiz</span>
                                         <i class="bi bi-chevron-right small"></i>
                                     </a>
@@ -71,7 +71,17 @@
                                 <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="EventAgenda" asp-action="MyAgenda"><i class="bi bi-list-task me-2"></i>Agenda</a></li>
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="Ticket" asp-action="Index"><i class="bi bi-ticket me-2"></i>Tickets</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Index"><i class="bi bi-question-circle me-2"></i>Quiz</a></li>
+                                <li class="dropdown-submenu position-relative">
+                                    <a class="dropdown-item aems-dd-item aems-submenu-toggle d-flex align-items-center justify-content-between" href="#">
+                                        <span><i class="bi bi-question-circle me-2"></i>Quiz</span>
+                                        <i class="bi bi-chevron-right small"></i>
+                                    </a>
+                                    <ul class="dropdown-menu shadow-lg border-0 aems-dropdown aems-submenu"
+                                        style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
+                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Index" asp-route-scope="myquiz"><i class="bi bi-person-workspace me-2"></i>My Quiz</a></li>
+                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Index" asp-route-scope="community"><i class="bi bi-people me-2"></i>Quiz Community</a></li>
+                                    </ul>
+                                </li>
                             </ul>
                         </li>
                     </ul>
@@ -187,7 +197,7 @@
     <script src="~/js/site.js?v=3" asp-append-version="true"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.quiz-submenu-toggle').forEach(function (toggle) {
+            document.querySelectorAll('.aems-submenu-toggle').forEach(function (toggle) {
                 toggle.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();

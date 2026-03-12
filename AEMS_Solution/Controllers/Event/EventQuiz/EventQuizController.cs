@@ -13,6 +13,7 @@ using BusinessLogic.Service.Organizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using DataAccess.Enum;
 using System;
 using System.IO;
 using System.Linq;
@@ -38,20 +39,23 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? eventId)
+        public async Task<IActionResult> Index(string? eventId, string? scope)
         {
             var vm = new EventQuizViewModel();
             try
             {
                 var userId = EnsureCurrentUserId();
                 vm.EventId = eventId ?? string.Empty;
+                vm.QuizScope = NormalizeQuizScope(scope);
                 var quizzes = await _quizService.GetOrganizerQuizzesAsync(new GetOrganizerQuizzesRequestDto
                 {
                     UserId = userId,
                     EventId = vm.EventId
                 });
 
-                vm.Quizzes = quizzes.Quizzes;
+                vm.Quizzes = vm.QuizScope == "community"
+                    ? quizzes.Quizzes.Where(x => x.SharingStatus == QuizSetVisibilityEnum.Public).ToList()
+                    : quizzes.Quizzes;
             }
             catch (Exception ex)
             {
@@ -84,6 +88,10 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             if (mode == "manual")
             {
                 ValidateManualQuestions(vm);
+            }
+            else if (mode == "bank" && string.IsNullOrWhiteSpace(vm.TopicId))
+            {
+                ModelState.AddModelError(nameof(vm.TopicId), "Vui lòng chọn topic trước khi sử dụng question bank.");
             }
             else if (mode == "bank" && string.IsNullOrWhiteSpace(vm.SelectedQuizSetId))
             {
@@ -202,6 +210,48 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             return View("~/Views/Event/EventQuiz/CreateQuiz/Details.cshtml", vm);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> Preview(string quizId)
+        {
+            var vm = new EventQuizViewModel();
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                var preview = await _quizService.PreviewQuizAsync(new PreviewQuizRequestDto
+                {
+                    QuizId = quizId,
+                    UserId = userId
+                });
+
+                if (preview?.Preview == null)
+                {
+                    throw new InvalidOperationException("Quiz không tồn tại.");
+                }
+
+                var organizerEvents = await _organizerService.GetMyEventsAsync(userId);
+                var ownerEvent = organizerEvents.FirstOrDefault(x => x.EventId == preview.Preview.Quiz.EventId);
+                if (ownerEvent == null)
+                {
+                    throw new InvalidOperationException("Không tìm thấy quiz thuộc organizer hiện tại.");
+                }
+
+                vm.Detail = preview.Preview;
+                vm.Quiz = preview.Preview.Quiz;
+                vm.Questions = preview.Preview.Questions;
+                vm.EventId = preview.Preview.Quiz.EventId;
+                vm.TopicId = preview.Preview.Quiz.TopicId ?? string.Empty;
+                vm.EventTitle = ownerEvent.Title;
+                vm.TopicName = ownerEvent.TopicName ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View("~/Views/Event/EventQuiz/CreateQuiz/Preview.cshtml", vm);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddQuestion(string quizId, EventQuizViewModel vm)
@@ -240,7 +290,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 SetError(ex.Message);
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToReferrerOrIndex();
         }
 
         [HttpPost]
@@ -253,17 +303,42 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 await _quizService.PublishQuizSetAsync(new PublishQuizSetRequestDto
                 {
                     QuizId = quizId,
-                    UserId = userId
+                    UserId = userId,
+                    SharingStatus = QuizSetVisibilityEnum.Public
                 });
 
-                SetSuccess("Question bank đã được chia sẻ cho cộng đồng.");
+                SetSuccess("Question bank đã được chuyển sang Public và chia sẻ cho community.");
             }
             catch (Exception ex)
             {
                 SetError(ex.Message);
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToReferrerOrIndex();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Restore(string quizId)
+        {
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                await _quizService.PublishQuizSetAsync(new PublishQuizSetRequestDto
+                {
+                    QuizId = quizId,
+                    UserId = userId,
+                    SharingStatus = QuizSetVisibilityEnum.Private
+                });
+
+                SetSuccess("Question bank đã được chuyển về Private.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToReferrerOrIndex();
         }
 
         [HttpPost]
@@ -356,6 +431,26 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             return CurrentUserId;
         }
 
+        private IActionResult RedirectToReferrerOrIndex()
+        {
+            var referer = Request.Headers.Referer.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(referer))
+            {
+                if (Uri.TryCreate(referer, UriKind.Absolute, out var refererUri)
+                    && string.Equals(refererUri.Host, Request.Host.Host, StringComparison.OrdinalIgnoreCase))
+                {
+                    return LocalRedirect(refererUri.PathAndQuery);
+                }
+
+                if (Url.IsLocalUrl(referer))
+                {
+                    return LocalRedirect(referer);
+                }
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
         private static string NormalizeCreateMode(string? mode)
         {
             if (string.Equals(mode, "bank", StringComparison.OrdinalIgnoreCase)
@@ -368,6 +463,13 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             return string.Equals(mode, "upload", StringComparison.OrdinalIgnoreCase)
                 ? "upload"
                 : "manual";
+        }
+
+        private static string NormalizeQuizScope(string? scope)
+        {
+            return string.Equals(scope, "community", StringComparison.OrdinalIgnoreCase)
+                ? "community"
+                : "myquiz";
         }
 
         private static string GetCreateViewPath(string mode)

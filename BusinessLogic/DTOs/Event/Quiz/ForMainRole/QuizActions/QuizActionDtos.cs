@@ -20,6 +20,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.QuizActions
     {
         public string QuizId { get; set; } = string.Empty;
         public string UserId { get; set; } = string.Empty;
+        public QuizSetVisibilityEnum SharingStatus { get; set; } = QuizSetVisibilityEnum.Public;
     }
 
     public class PublishQuizSetResponseDto

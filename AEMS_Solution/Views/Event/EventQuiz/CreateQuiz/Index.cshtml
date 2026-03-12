@@ -2,23 +2,37 @@
 @{
     ViewData["Title"] = "Manage Quizzes";
     Layout = "_Organizerlayout";
+    var isCommunityScope = string.Equals(Model.QuizScope, "community", System.StringComparison.OrdinalIgnoreCase);
+    var scopeLabel = isCommunityScope ? "Quiz Community" : "My Quiz";
 }
 
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
             <h1 class="h3 mb-0">Quiz Management</h1>
-            <p class="text-muted small">Create and manage quiz sets for your events</p>
+            <p class="text-muted small mb-0">Create and manage quiz sets for your events</p>
+            <div class="small text-muted">Current scope: <strong>@scopeLabel</strong></div>
         </div>
-        <div class="dropdown">
-            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-journal-plus"></i> Create Quiz
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
-                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId"><i class="bi bi-upload me-2"></i>Upload File</a></li>
-                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId"><i class="bi bi-collection me-2"></i>Question Bank</a></li>
-            </ul>
+        <div class="d-flex gap-2 flex-wrap">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-funnel me-1"></i>@scopeLabel
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Index" asp-route-eventId="@Model.EventId" asp-route-scope="myquiz"><i class="bi bi-person-workspace me-2"></i>My Quiz</a></li>
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Index" asp-route-eventId="@Model.EventId" asp-route-scope="community"><i class="bi bi-people me-2"></i>Quiz Community</a></li>
+                </ul>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-journal-plus"></i> Create Quiz
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId"><i class="bi bi-collection me-2"></i>Question Bank</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -26,7 +40,7 @@
         <div class="card-body">
             @if (Model.Quizzes == null || !Model.Quizzes.Any())
             {
-                <div class="alert alert-info mb-0">No quizzes found. Create a quiz for one of your events to start managing questions and scores.</div>
+                <div class="alert alert-info mb-0">@(isCommunityScope ? "No community quizzes found in your quiz list yet." : "No quizzes found. Create a quiz for one of your events to start managing questions and scores.")</div>
             }
             else
             {
@@ -43,14 +57,14 @@
                                 <th>Attempts</th>
                                 <th>Passed</th>
                                 <th>Status</th>
-                                <th>Access</th>
+                                <th>Question Bank Visibility</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var q in Model.Quizzes)
                             {
-                                 var accessLabel = q.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Community" : "Private";
+                                 var visibilityLabel = q.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private";
                                 <tr>
                                     <td>@q.Title</td>
                                      <td>@(string.IsNullOrWhiteSpace(q.EventTitle) ? q.EventId : q.EventTitle)</td>
@@ -61,10 +75,11 @@
                                     <td>@q.AttemptCount</td>
                                     <td>@q.PassedCount</td>
                                     <td>@q.Status</td>
-                                    <td>@accessLabel</td>
+                                    <td>@visibilityLabel</td>
                                     <td>
                                          <div class="d-flex flex-wrap gap-2">
-                                             <a asp-controller="EventQuiz" asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Update</a>
+                                             <a asp-controller="EventQuiz" asp-action="Preview" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-info">View</a>
+                                             <a asp-controller="EventQuiz" asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Manage</a>
 
                                              @if (q.Status != DataAccess.Enum.QuizStatusEnum.Published)
                                              {
@@ -75,12 +90,19 @@
                                              }
 
                                              @if (q.SharingStatus != DataAccess.Enum.QuizSetVisibilityEnum.Public)
-                                             {
+                                              {
                                                   <form asp-controller="EventQuiz" asp-action="Share" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
-                                                     @Html.AntiForgeryToken()
-                                                      <button type="submit" class="btn btn-sm btn-outline-primary">Share</button>
-                                                 </form>
-                                             }
+                                                      @Html.AntiForgeryToken()
+                                                      <button type="submit" class="btn btn-sm btn-outline-primary">Public to Community</button>
+                                                  </form>
+                                              }
+                                              else
+                                              {
+                                                  <form asp-controller="EventQuiz" asp-action="Restore" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
+                                                      @Html.AntiForgeryToken()
+                                                      <button type="submit" class="btn btn-sm btn-outline-warning">Set Private</button>
+                                                  </form>
+                                              }
 
                                              <form asp-controller="EventQuiz" asp-action="Delete" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa quiz này?');">
                                                  @Html.AntiForgeryToken()

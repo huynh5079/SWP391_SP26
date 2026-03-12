@@ -94,11 +94,12 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="Quiz.SharingStatus" class="form-label">Access</label>
+                            <label asp-for="Quiz.SharingStatus" class="form-label">Question bank visibility</label>
                             <select asp-for="Quiz.SharingStatus" class="form-select">
                                 <option value="@((int)QuizSetVisibilityEnum.Private)">Private</option>
-                                <option value="@((int)QuizSetVisibilityEnum.Public)">Community</option>
+                                <option value="@((int)QuizSetVisibilityEnum.Public)">Public (Community)</option>
                             </select>
+                            <div class="form-text">`Private` chỉ dùng nội bộ. `Public (Community)` sẽ chia sẻ cho community.</div>
                         </div>
                     </div>
 
@@ -114,13 +115,13 @@
                             </div>
                             <div class="col-md-8">
                                 <label asp-for="SelectedQuizSetId" class="form-label">Question bank</label>
-                                <select asp-for="SelectedQuizSetId" class="form-select js-bank-select">
-                                    <option value="">Select question bank</option>
+                                <select asp-for="SelectedQuizSetId" class="form-select js-bank-select" disabled="@(string.IsNullOrWhiteSpace(Model.TopicId))">
+                                    <option value="">@(string.IsNullOrWhiteSpace(Model.TopicId) ? "Select topic first" : "Select question bank")</option>
                                     @foreach (var bank in availableBanks)
                                     {
                                         var sourceText = bank.SourceType == QuizBankSourceTypeEnum.Organizer ? "Organizer" : "Community";
                                         var ownerText = string.IsNullOrWhiteSpace(bank.OrganizerName) ? sourceText : bank.OrganizerName;
-                                        var accessText = bank.SharingStatus == QuizSetVisibilityEnum.Public ? "Community" : "Private";
+                                        var accessText = bank.SharingStatus == QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private";
                                         <option value="@bank.QuizSetId"
                                                 data-source="@sourceText"
                                                 data-topic-id="@bank.TopicId"
@@ -132,6 +133,7 @@
                                         </option>
                                     }
                                 </select>
+                                <div class="form-text">Chỉ hiện question bank đúng với topic đã chọn.</div>
                                 <span asp-validation-for="SelectedQuizSetId" class="text-danger"></span>
                             </div>
                         </div>
@@ -156,7 +158,7 @@
                                         <div class="fw-semibold js-bank-topic-value">-</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="text-muted small">Access</div>
+                                        <div class="text-muted small">Visibility</div>
                                         <div class="fw-semibold js-bank-sharing-value">-</div>
                                     </div>
                                 </div>
@@ -228,29 +230,34 @@
                 if (topicValue) topicValue.textContent = topicName || '-';
                 if (countValue) countValue.textContent = questionCount;
                 if (sharingValue) sharingValue.textContent = sharing;
-
-                if (topicSelect && !topicSelect.value && option.dataset.topicId) {
-                    topicSelect.value = option.dataset.topicId;
-                }
             }
 
             function applySourceFilter() {
-                if (!bankSelect || !sourceFilter) {
+                if (!bankSelect || !sourceFilter || !topicSelect) {
                     return;
                 }
 
                 const selectedValue = bankSelect.value;
+                const selectedTopicId = topicSelect.value;
                 bankSelect.innerHTML = '';
+                bankSelect.disabled = !selectedTopicId;
 
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
-                placeholder.textContent = 'Select question bank';
+                placeholder.textContent = selectedTopicId ? 'Select question bank' : 'Select topic first';
                 bankSelect.appendChild(placeholder);
+
+                if (!selectedTopicId) {
+                    bankSelect.value = '';
+                    updateBankInfo();
+                    return;
+                }
 
                 let hasSelectedValue = false;
                 allBankOptions.forEach(function (option) {
-                    const matches = sourceFilter.value === 'All' || option.dataset.source === sourceFilter.value;
-                    if (!matches) {
+                    const matchesSource = sourceFilter.value === 'All' || option.dataset.source === sourceFilter.value;
+                    const matchesTopic = option.dataset.topicId === selectedTopicId;
+                    if (!matchesSource || !matchesTopic) {
                         return;
                     }
 
@@ -266,6 +273,7 @@
 
             typeSelect?.addEventListener('change', toggleLiveQuizLink);
             sourceFilter?.addEventListener('change', applySourceFilter);
+            topicSelect?.addEventListener('change', applySourceFilter);
             bankSelect?.addEventListener('change', updateBankInfo);
 
             toggleLiveQuizLink();

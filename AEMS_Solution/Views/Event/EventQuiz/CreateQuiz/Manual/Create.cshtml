@@ -85,11 +85,12 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="Quiz.SharingStatus" class="form-label">Access</label>
+                        <label asp-for="Quiz.SharingStatus" class="form-label">Question bank visibility</label>
                         <select asp-for="Quiz.SharingStatus" class="form-select">
                             <option value="@((int)QuizSetVisibilityEnum.Private)">Private</option>
-                            <option value="@((int)QuizSetVisibilityEnum.Public)">Community</option>
+                            <option value="@((int)QuizSetVisibilityEnum.Public)">Public (Community)</option>
                         </select>
+                        <div class="form-text">`Private` chỉ dùng nội bộ. `Public (Community)` sẽ chia sẻ cho community.</div>
                     </div>
                 </div>
 
