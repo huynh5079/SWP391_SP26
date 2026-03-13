@@ -22,6 +22,12 @@ public class EventService : IEventService
 	private readonly IEventValidator _validator;
 	private readonly INotificationService _notificationService;
 
+	private static string? NormalizeLocationId(EventModeEnum? mode, string? locationId)
+		=> mode == EventModeEnum.Online || string.IsNullOrWhiteSpace(locationId) ? null : locationId;
+
+	private static string? NormalizeMeetingUrl(EventModeEnum? mode, string? meetingUrl)
+		=> mode == EventModeEnum.Offline || string.IsNullOrWhiteSpace(meetingUrl) ? null : meetingUrl.Trim();
+
 	public EventService(IUnitOfWork uow, IEventValidator validator, INotificationService notificationService)
 	{
 		_uow = uow;
@@ -344,15 +350,17 @@ public class EventService : IEventService
 			if (topic == null) throw new InvalidOperationException("Topic không tồn tại.");
 		}
 
-		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
-		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		var normalizedLocationId = NormalizeLocationId(dto.Mode, dto.LocationId);
+		var normalizedMeetingUrl = NormalizeMeetingUrl(dto.Mode, dto.MeetingUrl);
+		if (!string.IsNullOrWhiteSpace(normalizedLocationId))
+		{
+			var location = await _uow.Locations.GetByIdAsync(normalizedLocationId);
+			if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		}
 
 		var now = DateTimeHelper.GetVietnamTime();
 		if (dto.StartTime < now.AddDays(7))
 			throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
-
-		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
-			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
 
 		if (dto.Agendas != null)
 		{
@@ -383,7 +391,7 @@ public class EventService : IEventService
 				StartTime = dto.StartTime,
 				EndTime = dto.EndTime,
 				TopicId = dto.TopicId,
-				LocationId = dto.LocationId,
+				LocationId = normalizedLocationId,
 				OrganizerId = staff.Id,
 				SemesterId = dto.SemesterId,
 				DepartmentId = dto.DepartmentId,
@@ -392,7 +400,7 @@ public class EventService : IEventService
 				DepositAmount = dto.DepositAmount,
 				Type = dto.Type,
 				Mode = dto.Mode,
-				MeetingUrl = dto.MeetingUrl?.Trim(),
+				MeetingUrl = normalizedMeetingUrl,
 				Status = dto.Status ?? EventStatusEnum.Draft,
 				CreatedAt = now,
 				UpdatedAt = now
@@ -504,8 +512,13 @@ public class EventService : IEventService
 		var topic = await _uow.Topics.GetByIdAsync(dto.TopicId);
 		if (topic == null) throw new InvalidOperationException("Topic không tồn tại.");
 
-		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
-		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		var normalizedLocationId = NormalizeLocationId(dto.Mode, dto.LocationId);
+		var normalizedMeetingUrl = NormalizeMeetingUrl(dto.Mode, dto.MeetingUrl);
+		if (!string.IsNullOrWhiteSpace(normalizedLocationId))
+		{
+			var location = await _uow.Locations.GetByIdAsync(normalizedLocationId);
+			if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		}
 
 		if (!string.IsNullOrWhiteSpace(dto.SemesterId))
 		{
@@ -518,9 +531,6 @@ public class EventService : IEventService
 			var department = await _uow.Departments.GetByIdAsync(dto.DepartmentId);
 			if (department == null) throw new InvalidOperationException("Department không tồn tại.");
 		}
-
-		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
-			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
 
 		if (dto.Agendas != null)
 		{
@@ -550,7 +560,7 @@ public class EventService : IEventService
 			ev.SemesterId = dto.SemesterId;
 			ev.DepartmentId = dto.DepartmentId;
 			ev.TopicId = dto.TopicId;
-			ev.LocationId = dto.LocationId;
+			ev.LocationId = normalizedLocationId;
 			ev.MaxCapacity = dto.Capacity ?? ev.MaxCapacity;
 			ev.Type = dto.Type;
 			ev.Status = dto.Status ?? ev.Status;
@@ -558,7 +568,7 @@ public class EventService : IEventService
 			ev.DepositAmount = dto.DepositAmount;
 			ev.ThumbnailUrl = dto.BannerUrl;
 			ev.Mode = dto.Mode;
-			ev.MeetingUrl = dto.MeetingUrl?.Trim();
+			ev.MeetingUrl = normalizedMeetingUrl;
 			ev.UpdatedAt = now;
 
 			var existingAgendas = await _uow.EventAgenda.GetAllAsync(x => x.EventId == eventId);

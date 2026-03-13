@@ -10,10 +10,14 @@
             <h1 class="h3 mb-0">Quiz Management</h1>
             <p class="text-muted small">Create and manage quiz sets for your events</p>
         </div>
-        <div>
-            <a asp-controller="EventQuiz" asp-action="Create" class="btn btn-sm btn-primary">
+        <div class="dropdown">
+            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="bi bi-journal-plus"></i> Create Quiz
-            </a>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+            </ul>
         </div>
     </div>
 
@@ -21,7 +25,7 @@
         <div class="card-body">
             @if (Model.Quizzes == null || !Model.Quizzes.Any())
             {
-                <div class="alert alert-info">No quizzes found.</div>
+                <div class="alert alert-info mb-0">No quizzes found. Create a quiz for one of your events to start managing questions and scores.</div>
             }
             else
             {
@@ -30,12 +34,13 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Title</th>
-                                <th>Event</th>
+                                <th>Event Id</th>
                                 <th>Type</th>
                                 <th>Passing Score</th>
                                 <th>Questions</th>
                                 <th>Attempts</th>
                                 <th>Passed</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -50,8 +55,9 @@
                                     <td>@(q.QuestionCount)</td>
                                     <td>@q.AttemptCount</td>
                                     <td>@q.PassedCount</td>
+                                    <td>@q.Status</td>
                                     <td>
-                                        <a asp-controller="EventQuiz" asp-action="Index" asp-route-eventId="@q.EventId" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a asp-controller="EventQuiz" asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Details</a>
                                     </td>
                                 </tr>
                             }

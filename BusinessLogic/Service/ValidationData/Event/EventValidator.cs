@@ -10,6 +10,34 @@ namespace BusinessLogic.Service.ValidationData.Event
 {
 	public class EventValidator : IEventValidator
 	{
+		private static void ValidateMode(EventModeEnum? mode, string? locationId, string? meetingUrl)
+		{
+			if (mode == null)
+				throw new BusinessValidationException("Mode là bắt buộc.");
+
+			if (mode == EventModeEnum.Online)
+			{
+				if (!string.IsNullOrWhiteSpace(locationId))
+					throw new BusinessValidationException("Online event không được có LocationId.");
+				if (string.IsNullOrWhiteSpace(meetingUrl))
+					throw new BusinessValidationException("Online event phải có MeetingUrl.");
+			}
+			else if (mode == EventModeEnum.Offline)
+			{
+				if (string.IsNullOrWhiteSpace(locationId))
+					throw new BusinessValidationException("Offline event phải có LocationId.");
+				if (!string.IsNullOrWhiteSpace(meetingUrl))
+					throw new BusinessValidationException("Offline event không được có MeetingUrl.");
+			}
+			else if (mode == EventModeEnum.Hybrid)
+			{
+				if (string.IsNullOrWhiteSpace(locationId))
+					throw new BusinessValidationException("Hybrid event phải có LocationId.");
+				if (string.IsNullOrWhiteSpace(meetingUrl))
+					throw new BusinessValidationException("Hybrid event phải có MeetingUrl.");
+			}
+		}
+
 		//Valid create event
 		public void ValidateCreate(CreateEventRequestDto dto)
 		{
@@ -27,28 +55,7 @@ namespace BusinessLogic.Service.ValidationData.Event
 			if (dto.Capacity <= 0)
 				throw new BusinessValidationException("Capacity phải > 0.");
 
-			// 3) Rule theo Mode
-			if (dto.Mode == null)
-				throw new BusinessValidationException("Mode là bắt buộc.");
-
-			if (dto.Mode == EventModeEnum.Online)
-			{
-				if (string.IsNullOrWhiteSpace(dto.MeetingUrl))
-					throw new BusinessValidationException("Online event phải có MeetingUrl.");
-			}
-			else if (dto.Mode == EventModeEnum.Offline)
-			{
-				// Offline cần location
-				if (string.IsNullOrWhiteSpace(dto.LocationId))
-					throw new BusinessValidationException("Offline event phải có LocationId.");
-			}
-			else if (dto.Mode == EventModeEnum.Hybrid)
-			{
-				if (string.IsNullOrWhiteSpace(dto.LocationId))
-					throw new BusinessValidationException("Hybrid event phải có LocationId.");
-				if (string.IsNullOrWhiteSpace(dto.MeetingUrl))
-					throw new BusinessValidationException("Hybrid event phải có MeetingUrl.");
-			}
+			ValidateMode(dto.Mode, dto.LocationId, dto.MeetingUrl);
 
 			// 4) Topic/Location bắt buộc (nếu bạn luôn cần)
 			if (string.IsNullOrWhiteSpace(dto.TopicId))
@@ -60,6 +67,8 @@ namespace BusinessLogic.Service.ValidationData.Event
 			// Update thì có thể reuse rule create nếu bạn muốn
 			if (dto.StartTime >= dto.EndTime)
 				throw new BusinessValidationException("StartTime phải nhỏ hơn EndTime.");
+
+			ValidateMode(dto.Mode, dto.LocationId, dto.MeetingUrl);
 		}
 
 		public void ValidateAgendas(List<CreateAgendaItemDto>? agendas)

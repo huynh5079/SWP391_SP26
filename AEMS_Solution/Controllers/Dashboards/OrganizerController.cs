@@ -1,4 +1,4 @@
-﻿using System.Drawing.Printing;
+using System.Drawing.Printing;
 using System.Linq;
 using System.Net.NetworkInformation;
 using AEMS_Solution.Controllers.Common;
@@ -458,7 +458,52 @@ using Microsoft.EntityFrameworkCore;
 			}
 		}
 		// POST detail handler removed — use Manage POST if needed
-		
+
+		// My Participated Events: Events where staff is a Team Member or Speaker
+		[HttpGet]
+		public async Task<IActionResult> MyParticipatedEvents()
+		{
+			if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+			// Resolve StaffProfile from UserId
+			var staffProfile = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == CurrentUserId);
+			if (staffProfile == null)
+			{
+				SetError("Không tìm thấy hồ sơ nhân sự.");
+				return RedirectToAction(nameof(Index));
+			}
+
+			// Fetch events where this staff is a team member or a speaker
+			var events = await _unitOfWork.Events.GetAllAsync(
+				e => e.DeletedAt == null && (
+				     e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id)) ||
+				     e.EventAgenda.Any(a => a.StaffSpeakerId == staffProfile.Id && a.DeletedAt == null)),
+				q => q.Include(x => x.Location)
+				      .Include(x => x.Topic)
+				      .Include(x => x.Semester)
+				      .Include(x => x.EventTeams)
+				        .ThenInclude(et => et.TeamMembers)
+				      .Include(x => x.EventAgenda));
+
+			var vm = events
+				.OrderBy(e => e.StartTime)
+				.Select(e => new
+				{
+					EventId = e.Id,
+					Title = e.Title,
+					Status = e.Status.ToString(),
+					StartTime = e.StartTime,
+					EndTime = e.EndTime,
+					Location = e.Location?.Address ?? e.LocationId,
+					Role = e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id))
+						? "Ban tổ chức"
+						: "Diễn giả"
+				})
+				.ToList();
+
+			return View("~/Views/Organizer/MyParticipatedEvents.cshtml", vm);
+		}
+
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> CreateEventTeamFromDetail(string EventId, string TeamName, string Description)

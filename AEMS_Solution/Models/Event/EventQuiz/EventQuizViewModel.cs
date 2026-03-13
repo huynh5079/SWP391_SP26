@@ -1,20 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.GetQuiz;
 using Microsoft.AspNetCore.Http;
-using BusinessLogic.DTOs.Event.Quiz;
 using Microsoft.AspNetCore.Mvc.Rendering;
 namespace AEMS_Solution.Models.Event.EventQuiz
 {
     public class EventQuizViewModel
     {
         // A list of quizzes for index/list views
-        public List<QuizDTO> Quizzes { get; set; } = new();
+        public List<QuizSummaryContract> Quizzes { get; set; } = new();
 
         // The currently selected/edited quiz
-        public QuizDTO? Quiz { get; set; }
+        public QuizSummaryContract Quiz { get; set; } = new();
+
+        public GetQuizDetailResponseDto? Detail { get; set; }
+
+        public List<QuizQuestionContract> Questions { get; set; } = new();
 
         // Helper for creating/updating a single question
-        public QuizQuestionDTO NewQuestion { get; set; } = new();
+        public AddQuizQuestionRequestDto NewQuestion { get; set; } = new();
+
+        public List<AddQuizQuestionRequestDto> ManualQuestions { get; set; } = new()
+        {
+            new AddQuizQuestionRequestDto()
+        };
 
         // File uploaded for the quiz (bound from a form)
         public IFormFile? FileUpload { get; set; }
@@ -23,14 +34,17 @@ namespace AEMS_Solution.Models.Event.EventQuiz
         public List<QuizAnswerViewModel> Answers { get; set; } = new();
 
         // Scores for a quiz
-        public List<StudentQuizScoreDTO> Scores { get; set; } = new();
+        public List<QuizScoreContract> Scores { get; set; } = new();
 
         // Current student's score (if any)
-        public StudentQuizScoreDTO? CurrentStudentScore { get; set; }
+        public QuizScoreContract? CurrentStudentScore { get; set; }
 
         // Convenience properties
         public string EventId { get; set; } = string.Empty;
-        public string QuizId => Quiz?.QuizsetId ?? string.Empty;
+        public string TopicId { get; set; } = string.Empty;
+        public string QuizId => Quiz.EventQuizId;
+        public string EventTitle { get; set; } = string.Empty;
+        public string TopicName { get; set; } = string.Empty;
 
         // Dropdowns for create/edit pages
         public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> Events { get; set; } = new();
