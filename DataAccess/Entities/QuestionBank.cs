@@ -24,7 +24,7 @@ public partial class QuestionBank : BaseEntity
 
     public string? Explanation { get; set; }
 
-    public QuestionDifficultyEnum Difficulty { get; set; } = QuestionDifficultyEnum.Medium;
+    public QuestionDifficultyEnum Difficulty { get; set; } = QuestionDifficultyEnum.Easy;
 
     public virtual Topic? Topic { get; set; }
 
