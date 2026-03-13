@@ -1,247 +1,322 @@
 @model AEMS_Solution.Models.Admin.AdminDashboardViewModel
 @{
     ViewData["Title"] = "Admin Dashboard";
-    // Layout = "~/Views/Shared/_AdminLayout.cshtml"; // Configured in _ViewStart
+    Layout = "~/Views/Shared/_AdminLayout.cshtml"; // Apply new Admin Layout
 }
 
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800">Hello, Admin!</h1>
-            <p class="text-muted small">Here's what's happening with your system today.</p>
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Executive Dashboard</h1>
+        <p class="page-subtitle">Monitor system health and participant engagement.</p>
+    </div>
+    <div class="header-actions">
+        <a href="#" class="btn-custom btn-export">
+            <i class="bi bi-download"></i> Export
+        </a>
+        <a href="#" class="btn-custom btn-create">
+            <i class="bi bi-plus-lg"></i> Create Event
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-cards">
+    <!-- Errors Card -->
+    <div class="stat-card" style="cursor: pointer;" onclick="location.href='@Url.Action("Index", "SystemLog")'">
+        <div class="stat-header">
+            <div class="stat-icon error">
+                <i class="bi bi-exclamation-circle-fill"></i>
+            </div>
+            <div class="stat-badge negative">-2%</div>
         </div>
-        <div>
-            <a href="@Url.Action("Index", "UserManagement")" class="btn btn-sm btn-primary shadow-sm me-2 mb-2">
-                <i class="bi bi-people"></i> Manage Users
-            </a>
-            <a href="@Url.Action("Index", "AdminNotification")" class="btn btn-sm btn-info text-white shadow-sm me-2 mb-2">
-                <i class="bi bi-bell"></i> Manage Notifications
-            </a>
-            <a href="@Url.Action("Create", "AdminNotification")" class="btn btn-sm btn-warning shadow-sm me-2 mb-2">
-                <i class="bi bi-megaphone"></i> Broadcast
-            </a>
-            <a href="@Url.Action("Index", "SystemLog")" class="btn btn-sm btn-outline-primary shadow-sm mb-2">
-                <i class="bi bi-activity"></i> View System Logs
-            </a>
+        <div class="stat-title">System Errors</div>
+        <div class="stat-value">@Model.TotalErrorsToday</div>
+    </div>
+
+    <!-- New Users Card -->
+    <div class="stat-card" @(Model.TotalUsers > 0 ? "style=cursor:pointer; onclick=location.href='" + Url.Action("Index", "UserManagement") + "'" : "style=opacity:0.7;")>
+        <div class="stat-header">
+            <div class="stat-icon users">
+                <i class="bi bi-person-plus-fill"></i>
+            </div>
+            <div class="stat-badge positive-blue">+14%</div>
+        </div>
+        <div class="stat-title">New Users</div>
+        <div class="stat-value">@Model.TotalUsers</div> 
+    </div>
+
+    <!-- Active Students Card -->
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon students">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="stat-badge positive-green">+8%</div>
+        </div>
+        <div class="stat-title">Active Students</div>
+        <div class="stat-value">0</div> 
+    </div>
+
+    <!-- Staff Members Card -->
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon staff">
+                <i class="bi bi-person-vcard-fill"></i>
+            </div>
+            <div class="stat-badge neutral">STABLE</div>
+        </div>
+        <div class="stat-title">Staff Members</div>
+        <div class="stat-value">0</div> 
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="charts-grid">
+    <!-- Trend Chart -->
+    <div class="glass-card">
+        <div class="card-title-box">
+            <div>
+                <h2 class="card-title">System Activity Trend</h2>
+                <p class="card-subtitle">Activity volume monitored over the last 7 days</p>
+            </div>
+            <select class="chart-dropdown">
+                <option>Last 7 Days</option>
+                <option>Last 30 Days</option>
+            </select>
+        </div>
+        <div style="position: relative; height: 300px; width: 100%;">
+            <canvas id="trendChart"></canvas>
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="row g-3 mb-4">
-        <!-- Errors Today Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2 cursor-pointer" onclick="location.href='@Url.Action("Index", "SystemLog")'" style="border-left: 4px solid #dc3545; cursor: pointer;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                System Errors (Today)
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalErrorsToday</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-exclamation-octagon display-6 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+    <!-- User Category Chart -->
+    <div class="glass-card">
+        <div class="card-title-box">
+            <div>
+                <h2 class="card-title">User Category</h2>
+                <p class="card-subtitle">Total distribution by role</p>
             </div>
         </div>
-
-        <!-- Total Users Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2 cursor-pointer" onclick="location.href='@Url.Action("Index", "UserManagement")'" style="border-left: 4px solid #4e73df; cursor: pointer;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Users
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalUsers</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-people display-6 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div style="position: relative; height: 200px; width: 100%;">
+            <div style="position: relative; height: 100%; width: 200px; margin: 0 auto;">
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b;">@Model.TotalUsers</div>
+                <div style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px;">TOTAL</div>
             </div>
         </div>
-        
-        <!-- Total Students Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-             <div class="card border-left-info shadow h-100 py-2" style="border-left: 4px solid #36b9cc;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Students
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalStudents</div>
+        <div style="margin-top: 24px;">
+            @if(Model.UserDistribution != null && Model.UserDistribution.Any())
+            {
+                var colors = new[] { "#1e293b", "#3b82f6", "#22c55e", "#64748b" };
+                int colorIndex = 0;
+                foreach(var role in Model.UserDistribution)
+                {
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: @colors[colorIndex % colors.Length];"></span>
+                            <span style="font-size: 0.85rem; color: #64748b;">@role.Key</span>
                         </div>
-                         <div class="col-auto">
-                            <i class="bi bi-mortarboard display-6 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Total Staff Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-             <div class="card border-left-success shadow h-100 py-2" style="border-left: 4px solid #1cc88a;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Staff
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalStaff</div>
-                        </div>
-                         <div class="col-auto">
-                            <i class="bi bi-person-badge display-6 text-gray-300"></i>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b;">
+                            @((Model.TotalUsers > 0) ? Math.Round((double)role.Value / Model.TotalUsers * 100) : 0)% 
+                            <span style="color: #94a3b8; font-size: 0.75rem;">(@role.Value)</span>
                         </div>
                     </div>
-                </div>
-            </div>
+                    colorIndex++;
+                }
+            }
+            else
+            {
+                <div style="text-align: center; color: #64748b; font-size: 0.85rem;">No user data available</div>
+            }
         </div>
     </div>
-    
-    <!-- Charts Row -->
-    <div class="row">
-        <!-- Error Trend Chart -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                     <h6 class="m-0 font-weight-bold text-primary">System Errors (Last 7 Days)</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area" style="position: relative; height: 300px; width: 100%;">
-                         <canvas id="errorTrendChart"></canvas>
-                    </div>
-                     <small class="text-muted mt-2 d-block text-center fst-italic">Click on chart to view details</small>
-                </div>
-            </div>
+</div>
+
+<!-- Recent Events Table -->
+<div class="glass-card" style="margin-bottom: 40px; padding: 0;">
+    <div style="padding: 24px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #eef0f4;">
+        <div>
+            <h2 class="card-title">Recent Educational Events</h2>
+            <p class="card-subtitle">A comprehensive view of active workshops.</p>
         </div>
-        
-        <!-- User Distribution Chart -->
-         <div class="col-lg-4 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                     <h6 class="m-0 font-weight-bold text-primary">User Distribution</h6>
-                </div>
-                <div class="card-body">
-                     <div class="chart-pie pt-4 pb-2" style="position: relative; height: 260px; width: 100%;">
-                         <canvas id="userDistChart"></canvas>
-                     </div>
-                </div>
-            </div>
-         </div>
+        <a href="#" class="btn-link-custom">View All Events</a>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th style="padding-left: 24px;">EVENT NAME</th>
+                    <th>DEPARTMENT</th>
+                    <th>DATE & TIME</th>
+                    <th>CAPACITY</th>
+                    <th>STATUS</th>
+                    <th style="padding-right: 24px; width: 50px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Event 1 -->
+                <!-- Template row for Backend Team to iterate (e.g. foreach(var evt in Model.RecentEvents)) -->
+                @* 
+                <tr>
+                    <td style="padding-left: 24px;">
+                        <div class="event-name-flex">
+                            <div class="event-icon @evt.IconClass">@evt.IconText</div>
+                            <div class="event-title">@evt.EventName</div>
+                        </div>
+                    </td>
+                    <td><div class="event-dept">@evt.Department</div></td>
+                    <td>
+                        <div class="event-date">@evt.DateText</div>
+                        <div class="event-time">@evt.TimeText</div>
+                    </td>
+                    <td>
+                        <div class="capacity-wrapper">
+                            <div class="progress-tube">
+                                <div class="progress-fill black" style="width: @evt.CapacityPercent%;"></div>
+                            </div>
+                            <div class="capacity-text">@evt.CapacityPercent%</div>
+                        </div>
+                    </td>
+                    <td><span class="status-pill @evt.StatusClass">@evt.StatusText</span></td>
+                    <td style="padding-right: 24px; text-align: right;">
+                        <button class="btn-dot"><i class="bi bi-three-dots"></i></button>
+                    </td>
+                </tr> 
+                *@
+                
+                <!-- Display when no events are available -->
+                <tr>
+                    <td colspan="6" style="padding: 40px 24px; text-align: center;">
+                        <div style="color: #94a3b8; font-size: 0.9rem;">
+                            <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
+                            No recent educational events found.
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 @section Scripts {
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script>
-        // --- Data ---
+        // Load data from ViewModel
         var trendLabels = @Html.Raw(Json.Serialize(Model.ErrorTrendLabels));
         var trendData = @Html.Raw(Json.Serialize(Model.ErrorTrendData));
         
-        var userLabels = @Html.Raw(Json.Serialize(Model.UserDistribution.Keys));
-        var userData = @Html.Raw(Json.Serialize(Model.UserDistribution.Values));
+        // Fallback to Template Mock Data if Database is empty
+        if (!trendLabels || trendLabels.length === 0) {
+            trendLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            trendData = [12, 19, 15, 25, 22, 30, 28];
+        }
 
-        // --- Error Trend Chart (Line) ---
-        var ctxTrend = document.getElementById("errorTrendChart").getContext('2d');
-        var errorTrendChart = new Chart(ctxTrend, {
+        var userLabels = [];
+        var userData = [];
+        @if (Model.UserDistribution != null)
+        {
+            foreach(var role in Model.UserDistribution)
+            {
+                @:userLabels.push('@Html.Raw(role.Key)');
+                @:userData.push(@role.Value);
+            }
+        }
+
+        // System Activity Trend Chart (Line)
+        var ctxTrend = document.getElementById('trendChart').getContext('2d');
+
+        // Create a gradient for the line
+        var gradient = ctxTrend.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(67, 97, 238, 0.2)');
+        gradient.addColorStop(1, 'rgba(67, 97, 238, 0)');
+
+        var trendChart = new Chart(ctxTrend, {
             type: 'line',
             data: {
                 labels: trendLabels,
                 datasets: [{
-                    label: "System Errors",
-                    lineTension: 0.3,
-                    backgroundColor: "rgba(220, 53, 69, 0.05)",
-                    borderColor: "rgba(220, 53, 69, 1)",
-                    pointRadius: 3,
-                    pointBackgroundColor: "rgba(220, 53, 69, 1)",
-                    pointBorderColor: "rgba(220, 53, 69, 1)",
-                    pointHoverRadius: 3,
-                    pointHoverBackgroundColor: "rgba(220, 53, 69, 1)",
-                    pointHoverBorderColor: "rgba(220, 53, 69, 1)",
-                    pointHitRadius: 10,
-                    pointBorderWidth: 2,
-                    data: trendData,
-                }],
+                    label: 'System Errors',
+                    data: trendData, 
+                    borderColor: '#3b82f6', // Bright Blue
+                    backgroundColor: gradient,
+                    borderWidth: 4,
+                    pointRadius: 4, // Show dots for actual data
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4 // Smooth curve
+                }]
             },
             options: {
+                responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 10, right: 25, top: 25, bottom: 0 } },
-                scales: {
-                    x: { grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 7 } },
-                    y: { ticks: { maxTicksLimit: 5, padding: 10, callback: function(value) { return value; } }, grid: { color: "rgb(234, 236, 244)", zeroLineColor: "rgb(234, 236, 244)", drawBorder: false, borderDash: [2], zeroLineBorderDash: [2] } },
-                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: "rgb(255,255,255)",
-                        bodyColor: "#858796",
-                        titleMarginBottom: 10,
-                        titleColor: '#6e707e',
-                        titleFont: { size: 14 },
-                        borderColor: '#dddfeb',
-                        borderWidth: 1,
-                        xPadding: 15,
-                        yPadding: 15,
+                        backgroundColor: '#1e293b',
+                        padding: 10,
+                        titleFont: { size: 13, family: 'Inter' },
+                        bodyFont: { size: 13, family: 'Inter' },
                         displayColors: false,
-                        intersect: false,
-                        mode: 'index',
-                        caretPadding: 10,
                     }
                 },
+                scales: {
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { color: '#94a3b8', font: { size: 11, family: 'Inter' }, padding: 10 }
+                    },
+                    y: {
+                        display: false, // hide y axis completely
+                        min: 0,
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 onClick: (e) => {
-                     window.location.href = '@Url.Action("Index", "SystemLog")';
+                     window.location.href = '/SystemLog';
                 }
             }
         });
 
-        // --- User Distribution Chart (Doughnut) ---
-        var ctxUser = document.getElementById("userDistChart").getContext('2d');
-        var userDistChart = new Chart(ctxUser, {
+        // User Category Chart (Doughnut)
+        var ctxCategory = document.getElementById('categoryChart').getContext('2d');
+        var categoryChart = new Chart(ctxCategory, {
             type: 'doughnut',
             data: {
                 labels: userLabels,
                 datasets: [{
                     data: userData,
-                    backgroundColor: ['#36b9cc', '#1cc88a', '#4e73df'],
-                    hoverBackgroundColor: ['#2c9faf', '#17a673', '#2e59d9'],
-                    hoverBorderColor: "rgba(234, 236, 244, 1)",
-                }],
+                    backgroundColor: [
+                        '#1e293b', // Black 
+                        '#3b82f6', // Blue 
+                        '#22c55e', // Green 
+                        '#64748b'  // Slate (fallback)
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
             },
             options: {
+                responsive: true,
                 maintainAspectRatio: false,
+                cutout: '75%', // Make it thin like the mockup
                 plugins: {
+                    legend: { display: false },
                     tooltip: {
-                        backgroundColor: "rgb(255,255,255)",
-                        bodyColor: "#858796",
-                        borderColor: '#dddfeb',
-                        borderWidth: 1,
-                        xPadding: 15,
-                        yPadding: 15,
-                        displayColors: false,
-                        caretPadding: 10,
-                    },
-                     legend: { position: 'bottom' },
-                },
-                cutout: '70%',
-                onClick: (e, activeElements) => {
-                     // Redirect to User Management if exists, else do nothing (or show alert)
-                     // window.location.href = '@Url.Action("Index", "UserManagement")'; 
-                     // Assuming Controller is Admin and action is UserManagement (or similar)
-                     // Since UserManagement controller is not explicitly defined in request, checking context...
-                     // Can redirect to Student/Organizer Index based on slice clicked? Too complex for now.
-                     // Just nice-to-have.
+                        backgroundColor: '#1e293b',
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.raw;
+                            }
+                        }
+                    }
                 }
-            },
+            }
         });
     </script>
 }

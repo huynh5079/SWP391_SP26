@@ -26,7 +26,7 @@ namespace AEMS_Solution.Controllers.Dashboards
 
                 // 2. User Stats
                 // Note: Fetching all users is heavy. Should add Count methods to Repo later.
-                var allUsers = await _uow.Users.GetAllAsync();
+                var allUsers = await _uow.Users.GetAllAsync(null, query => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.Include(query, u => u.Role));
                 var totalUsers = allUsers.Count();
                 var totalStudents = allUsers.Count(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Student);
                 var totalStaff = allUsers.Count(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver));
