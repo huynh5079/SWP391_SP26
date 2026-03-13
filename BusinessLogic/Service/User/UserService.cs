@@ -199,41 +199,55 @@ namespace BusinessLogic.Service.User
         public async Task<int> ReactivateExpiredUsersAsync(string? userId = null)
         {
             var now = DateTimeHelper.GetVietnamTime();
-            var expiredUsers = (await _uow.Users.GetAllAsync(u =>
-                u.IsBanned == true &&
-                u.Status == UserStatusEnum.Inactive &&
-                u.ReactivateAt.HasValue &&
-                u.ReactivateAt <= now &&
-                (string.IsNullOrEmpty(userId) || u.Id == userId)))
-                .ToList();
+			const int batchSize = 200;
+			var totalUnlocked = 0;
 
-            if (expiredUsers.Count == 0)
-            {
-                return 0;
-            }
+			while (true)
+			{
+				var expiredUsers = (await _uow.Users.GetAllAsync(
+					u => u.IsBanned == true
+						&& u.Status == UserStatusEnum.Inactive
+						&& u.ReactivateAt.HasValue
+						&& u.ReactivateAt <= now
+						&& (string.IsNullOrEmpty(userId) || u.Id == userId),
+					q => q.OrderBy(u => u.ReactivateAt).Take(batchSize)))
+					.ToList();
 
-            foreach (var expiredUser in expiredUsers)
-            {
-                expiredUser.Status = UserStatusEnum.Active;
-                expiredUser.IsBanned = false;
-                expiredUser.ReactivateAt = null;
-            }
+				if (expiredUsers.Count == 0)
+				{
+					break;
+				}
 
-            await _uow.SaveChangesAsync();
+				foreach (var expiredUser in expiredUsers)
+				{
+					expiredUser.Status = UserStatusEnum.Active;
+					expiredUser.IsBanned = false;
+					expiredUser.ReactivateAt = null;
+				}
 
-            foreach (var expiredUser in expiredUsers)
-            {
-                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
-                {
-                    ReceiverId = expiredUser.Id,
-                    Title = "Tài khoản được mở khóa",
-                    Message = "Tài khoản của bạn đã được tự động mở khóa theo thời gian đã thiết lập.",
-                    Type = DataAccess.Enum.NotificationType.AccountUnban,
-                    RelatedEntityId = expiredUser.Id
-                });
-            }
+				await _uow.SaveChangesAsync();
 
-            return expiredUsers.Count;
+				foreach (var expiredUser in expiredUsers)
+				{
+					await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+					{
+						ReceiverId = expiredUser.Id,
+						Title = "Tài khoản được mở khóa",
+						Message = "Tài khoản của bạn đã được tự động mở khóa theo thời gian đã thiết lập.",
+						Type = DataAccess.Enum.NotificationType.AccountUnban,
+						RelatedEntityId = expiredUser.Id
+					});
+				}
+
+				totalUnlocked += expiredUsers.Count;
+
+				if (!string.IsNullOrEmpty(userId))
+				{
+					break;
+				}
+			}
+
+			return totalUnlocked;
         }
 
         public async Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequestDto request)

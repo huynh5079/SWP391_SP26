@@ -185,13 +185,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 		{
 			if (string.IsNullOrWhiteSpace(userId))
 			{
-				throw new ArgumentException("UserId khÃ´ng há»£p lá»‡.");
+				throw new ArgumentException("UserId không hợp lệ.");
 			}
 
 			var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
 			if (staff == null)
 			{
-				throw new InvalidOperationException("ChÆ°a thiáº¿t láº­p há»“ sÆ¡ nhÃ¢n viÃªn (StaffProfile).");
+				throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile).");
 			}
 
 			return staff;
@@ -208,6 +208,44 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			value = string.Empty;
 			return false;
+		}
+
+		private static bool TryReadInlineOptions(string line, QuizQuestionOptionContract options)
+		{
+			if (string.IsNullOrWhiteSpace(line))
+			{
+				return false;
+			}
+
+			var matches = Regex.Matches(
+				line,
+				@"([A-D])\s*[\.:\)\-]\s*(.*?)(?=(?:\s+[A-D]\s*[\.:\)\-]\s*)|$)",
+				RegexOptions.IgnoreCase);
+
+			if (matches.Count <= 1)
+			{
+				return false;
+			}
+
+			foreach (Match match in matches)
+			{
+				var option = match.Groups[1].Value.ToUpperInvariant();
+				var value = match.Groups[2].Value.Trim();
+				if (string.IsNullOrWhiteSpace(value))
+				{
+					continue;
+				}
+
+				switch (option)
+				{
+					case "A": options.OptionA = value; break;
+					case "B": options.OptionB = value; break;
+					case "C": options.OptionC = value; break;
+					case "D": options.OptionD = value; break;
+				}
+			}
+
+			return !string.IsNullOrWhiteSpace(options.OptionA) && !string.IsNullOrWhiteSpace(options.OptionB);
 		}
 
 		private static string? NormalizeAnswer(string? value)
@@ -539,8 +577,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			foreach (var questionDto in questions.Where(x => !string.IsNullOrWhiteSpace(x.QuestionText)))
 			{
 				var options = GetQuestionOptions(questionDto);
-				var answer = NormalizeAnswers(questionDto.CorrectAnswer, questionDto.TypeOption);
-				if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB) || string.IsNullOrWhiteSpace(answer))
+				var answer = NormalizeAnswers(questionDto.CorrectAnswer, questionDto.TypeOption) ?? string.Empty;
+				if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB))
 				{
 					continue;
 				}
@@ -619,11 +657,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			var organizer = await GetOrganizerAsync(request.UserId);
 			var eventDataForAdd = await _uow.Events.GetByIdAsync(request.EventId);
 			if (eventDataForAdd == null)
-				throw new Exception("Event khÃ´ng tá»“n táº¡i");
+				throw new Exception("Event không tồn tại");
 			if (eventDataForAdd.OrganizerId != organizer.Id)
-				throw new InvalidOperationException("Báº¡n khÃ´ng cÃ³ quyá»n táº¡o quiz cho event nÃ y.");
+				throw new InvalidOperationException("Bạn không có quyền tạo quiz cho event này.");
 			if (eventDataForAdd.StartTime <= DateTime.UtcNow)
-				throw new Exception("Sá»± kiá»‡n Ä‘Ã£ báº¯t Ä‘áº§u, khÃ´ng thá»ƒ táº¡o quiz");
+				throw new Exception("Sự kiện đã bắt đầu, không thể tạo quiz");
 			await ValidateDuplicateQuizTitleInSemesterAsync(organizer, eventDataForAdd, request.Title);
 
 			using var transaction = await _uow.BeginTransactionAsync();
@@ -918,9 +956,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (quiz == null)
 				throw new KeyNotFoundException("Quiz set not found");
 			if (quiz.Status == QuizStatusEnum.Published)
-				throw new InvalidOperationException("Quiz Ä‘Ã£ publish, khÃ´ng thá»ƒ thÃªm cÃ¢u há»i");
+				throw new InvalidOperationException("Quiz đã publish, không thể thêm câu hỏi");
 			if (quiz.QuizSet == null || string.IsNullOrWhiteSpace(quiz.Event?.OrganizerId))
-				throw new InvalidOperationException("Quiz set chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh Ä‘áº§y Ä‘á»§.");
+				throw new InvalidOperationException("Quiz set chưa được cấu hình đầy đủ.");
 
 			var quizSet = await EnsureExclusiveQuizSetAsync(quiz);
 
@@ -1066,15 +1104,15 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					.Include(x => x.StudentQuizScores)
 					.Include(x => x.EventQuizQuestions));
 			if (quiz.Status == QuizStatusEnum.Published)
-				throw new InvalidOperationException("Quiz Ä‘ang má»Ÿ, khÃ´ng thá»ƒ chá»‰nh sá»­a");
+				throw new InvalidOperationException("Quiz đang mở, không thể chỉnh sửa");
 			if (quiz.EventId != request.EventId)
-				throw new InvalidOperationException("Quiz khÃ´ng thuá»™c event nÃ y");
+				throw new InvalidOperationException("Quiz không thuộc event này");
 
 			var eventData = await _uow.Events.GetByIdAsync(request.EventId);
 			if (eventData == null)
-				throw new ArgumentException("Event khÃ´ng tá»“n táº¡i.");
+				throw new ArgumentException("Event không tồn tại.");
 			if (eventData.StartTime <= DateTime.UtcNow)
-				throw new Exception("Sá»± kiá»‡n Ä‘Ã£ báº¯t Ä‘áº§u, khÃ´ng thá»ƒ cáº­p nháº­t Quiz");
+				throw new Exception("Sự kiện đã bắt đầu, không thể cập nhật Quiz");
 
 			quiz.Title = request.Title;
 			quiz.Type = request.Type;
@@ -1106,36 +1144,37 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			};
 		}
 
+
 		public async Task<UploadQuizFileResponseDto> UploadQuizFileAsync(UploadQuizFileRequestDto request)
 		{
 			if (string.IsNullOrWhiteSpace(request.FileName))
-				throw new ArgumentException("fileName khÃ´ng há»Ÿp lá»‡");
+				throw new ArgumentException("fileName không hợp lệ");
 			if (request.FileContent == null || request.FileContent.Length == 0)
-				throw new ArgumentException("fileContent khÃ´ng há»Ÿp lá»‡");
+				throw new ArgumentException("fileContent không hợp lệ");
 
 			var organizer = await GetOrganizerAsync(request.UserId);
 			var quiz = await _uow.EventQuiz.GetAsync(
 				q => q.Id == request.QuizId,
 				q => q.Include(x => x.Event).Include(x => x.QuizSet));
 			if (quiz == null)
-				throw new KeyNotFoundException("Quiz set not found");
+				throw new KeyNotFoundException("Không tìm Quiz set");
 			if (quiz.Event?.OrganizerId != organizer.Id)
-				throw new InvalidOperationException("Báº¡n khÃ´ng cÃ³ quyá»n upload file cho quiz nÃ y.");
+				throw new InvalidOperationException("Bạn không có quyền upload file cho quiz này.");
 			if (quiz.QuizSet == null)
-				throw new InvalidOperationException("Quiz chÆ°a liÃªn káº¿t quiz set.");
+				throw new InvalidOperationException("Quiz chưa liên kết quiz set.");
 			if (quiz.Status == QuizStatusEnum.Published)
-				throw new InvalidOperationException("Quiz Ä‘Ã£ publish, khÃ´ng thá»ƒ upload láº¡i file.");
+				throw new InvalidOperationException("Quiz đã publish, không thể upload lại file.");
 
 			var quizSet = await EnsureExclusiveQuizSetAsync(quiz);
 
 			var ext = Path.GetExtension(request.FileName).ToLowerInvariant();
 			var allowExt = new[] { ".pdf", ".txt", ".docx" };
 			if (!allowExt.Contains(ext))
-				throw new InvalidOperationException("Chá»‰ cho phÃ©p file PDF, TXT hoáº·c DOCX");
+				throw new InvalidOperationException("Chỉ cho phép file PDF, TXT hoặc DOCX");
 
-			var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "quiz", quizSet.Id);
+			var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "quiz");
 			Directory.CreateDirectory(uploadsRoot);
-			var safeFileName = Path.GetFileName(request.FileName);
+			var safeFileName = $"{quizSet.Id}_{Path.GetFileName(request.FileName)}";
 			var fullPath = Path.Combine(uploadsRoot, safeFileName);
 			await File.WriteAllBytesAsync(fullPath, request.FileContent);
 
@@ -1149,9 +1188,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			var questions = ParseQuestions(textContent);
 			if (!questions.Any())
-				throw new InvalidOperationException("KhÃ´ng Ä‘á»c Ä‘Æ°á»£c cÃ¢u há»i há»£p lá»‡ tá»« file quiz.");
+				throw new InvalidOperationException("Không đọc được câu hỏi hợp lệ từ file quiz.");
 
-			var relative = Path.Combine("uploads", "quiz", quizSet.Id, safeFileName).Replace('\\', '/');
+			var relative = Path.Combine("uploads", "quiz", safeFileName).Replace('\\', '/');
 			quizSet.FileQuiz = relative;
 			quizSet.TopicId ??= quiz.Event?.TopicId;
 			quizSet.OrganizerId ??= organizer.Id;
@@ -1211,92 +1250,128 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 		private List<QuizQuestionContract> ParseQuestions(string text)
 		{
 			var questions = new List<QuizQuestionContract>();
+
 			if (string.IsNullOrWhiteSpace(text))
-			{
 				return questions;
-			}
 
-			var normalizedText = text.Replace("\r\n", "\n").Replace('\r', '\n');
-			var blocks = Regex.Split(normalizedText, @"(?=^\s*Question\s*:)", RegexOptions.Multiline | RegexOptions.IgnoreCase)
-				.Where(b => !string.IsNullOrWhiteSpace(b))
-				.ToList();
+			text = NormalizeQuizText(text);
 
-			if (!blocks.Any() && normalizedText.Contains("Question:", StringComparison.OrdinalIgnoreCase))
+			var questionRegex = new Regex(
+				@"(?im)(?:câu|question|q)?\s*\d+\s*[:\.\-\)]\s*(?<body>.+?)(?=(?:câu|question|q)?\s*\d+\s*[:\.\-\)]|\z)",
+				RegexOptions.Singleline);
+
+			var optionRegex = new Regex(
+				@"(?im)^\s*([A-D])\s*[\.\:\)\-]\s*(.+)$",
+				RegexOptions.Multiline);
+
+			var answerRegex = new Regex(
+				@"(?im)(?:đáp án|answer|correct)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)");
+
+			var scoreRegex = new Regex(
+				@"(?im)(?:score|điểm)\s*[:\-]?\s*(\d+)");
+
+			var explanationRegex = new Regex(
+				@"(?im)(?:explanation|giải thích)\s*[:\-]?\s*(.+)");
+
+			var matches = questionRegex.Matches(text);
+
+			foreach (Match match in matches)
 			{
-				blocks = normalizedText.Split("Question:", StringSplitOptions.RemoveEmptyEntries)
-					.Select(b => $"Question:{b}")
-					.ToList();
-			}
+				var body = match.Groups["body"].Value.Trim();
 
-			foreach (var block in blocks)
-			{
-				var lines = block.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-				var options = new QuizQuestionOptionContract();
-				string questionText = string.Empty;
-				string? correctAnswer = null;
-				int score = 1;
-
-				foreach (var line in lines)
-				{
-					if (line.StartsWith("Question", StringComparison.OrdinalIgnoreCase))
-					{
-						var parts = line.Split(':', 2);
-						questionText = parts.Length == 2 ? parts[1].Trim() : line.Trim();
-						continue;
-					}
-
-					if (TryReadOption(line, 'A', out var optionA))
-					{
-						options.OptionA = optionA;
-						continue;
-					}
-					if (TryReadOption(line, 'B', out var optionB))
-					{
-						options.OptionB = optionB;
-						continue;
-					}
-					if (TryReadOption(line, 'C', out var optionC))
-					{
-						options.OptionC = optionC;
-						continue;
-					}
-					if (TryReadOption(line, 'D', out var optionD))
-					{
-						options.OptionD = optionD;
-						continue;
-					}
-					if (line.StartsWith("Answer", StringComparison.OrdinalIgnoreCase))
-					{
-						var parts = line.Split(':', 2);
-						correctAnswer = NormalizeAnswer(parts.Length == 2 ? parts[1] : line);
-						continue;
-					}
-					if (line.StartsWith("Score", StringComparison.OrdinalIgnoreCase))
-					{
-						var parts = line.Split(':', 2);
-						if (parts.Length == 2 && int.TryParse(parts[1].Trim(), out var parsedScore) && parsedScore > 0)
-						{
-							score = parsedScore;
-						}
-					}
-				}
-
-				if (string.IsNullOrWhiteSpace(questionText) || string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB) || string.IsNullOrWhiteSpace(correctAnswer))
-				{
+				var optionMatches = optionRegex.Matches(body);
+				if (optionMatches.Count < 2)
 					continue;
+
+				var questionText = body.Substring(0, optionMatches[0].Index).Trim();
+
+				var options = new QuizQuestionOptionContract();
+
+				foreach (Match option in optionMatches)
+				{
+					var key = option.Groups[1].Value.ToUpper();
+					var value = option.Groups[2].Value.Trim();
+
+					switch (key)
+					{
+						case "A": options.OptionA = value; break;
+						case "B": options.OptionB = value; break;
+						case "C": options.OptionC = value; break;
+						case "D": options.OptionD = value; break;
+					}
 				}
+
+				if (string.IsNullOrWhiteSpace(options.OptionA) ||
+					string.IsNullOrWhiteSpace(options.OptionB))
+					continue;
+
+				var answer = "";
+				var answerMatch = answerRegex.Match(body);
+				if (answerMatch.Success)
+				{
+					answer = answerMatch.Groups[1].Value
+						.Replace(" ", "")
+						.ToUpper();
+				}
+
+				int score = 1;
+				var scoreMatch = scoreRegex.Match(body);
+				if (scoreMatch.Success)
+					int.TryParse(scoreMatch.Groups[1].Value, out score);
+
+				string explanation = null;
+				var expMatch = explanationRegex.Match(body);
+				if (expMatch.Success)
+					explanation = expMatch.Groups[1].Value.Trim();
 
 				questions.Add(new QuizQuestionContract
 				{
 					QuestionText = questionText,
 					Options = options,
-					CorrectAnswer = correctAnswer,
+					CorrectAnswer = answer,
 					ScorePoint = score,
+					Explanation = explanation,
 					Difficulty = QuestionDifficultyEnum.Medium
 				});
 			}
 
-			return questions;
+			return RemoveDuplicateQuestions(questions);
+		}
+		private string NormalizeQuizText(string text)
+		{
+			text = text.Replace("\r\n", "\n").Replace('\r', '\n');
+
+			text = Regex.Replace(text, @"\u00A0", " "); // remove non breaking space
+			text = Regex.Replace(text, @"\t", " ");
+
+			// đảm bảo option xuống dòng
+			text = Regex.Replace(text, @"\s([A-D])\.", "\n$1.");
+			text = Regex.Replace(text, @"\s([A-D])\)", "\n$1)");
+			text = Regex.Replace(text, @"\s([A-D])\:", "\n$1:");
+
+			// đảm bảo question xuống dòng
+			text = Regex.Replace(text, @"\s(Câu\s*\d+)", "\n$1", RegexOptions.IgnoreCase);
+			text = Regex.Replace(text, @"\s(Question\s*\d+)", "\n$1", RegexOptions.IgnoreCase);
+
+			return text.Trim();
+		}
+		private List<QuizQuestionContract> RemoveDuplicateQuestions(List<QuizQuestionContract> questions)
+		{
+			var result = new List<QuizQuestionContract>();
+			var seen = new HashSet<string>();
+
+			foreach (var q in questions)
+			{
+				var key = q.QuestionText.Trim().ToLower();
+
+				if (!seen.Contains(key))
+				{
+					seen.Add(key);
+					result.Add(q);
+				}
+			}
+
+			return result;
 		}
 	}
 }
