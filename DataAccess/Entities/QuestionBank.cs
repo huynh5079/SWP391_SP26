@@ -22,6 +22,8 @@ public partial class QuestionBank : BaseEntity
 
     public string CorrectAnswer { get; set; } = null!;
 
+    public string? Explanation { get; set; }
+
     public QuestionDifficultyEnum Difficulty { get; set; } = QuestionDifficultyEnum.Medium;
 
     public virtual Topic? Topic { get; set; }

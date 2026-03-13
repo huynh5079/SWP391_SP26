@@ -39,6 +39,7 @@ namespace DataAccess.Repositories
 		public IGenericRepository<QuestionBank> QuestionBanks { get; }
 		public IGenericRepository<QuizSet> QuizSets { get; }
 		public IGenericRepository<QuizSetQuestion> QuizSetQuestions { get; }
+		public IGenericRepository<StudentQuizScore> StudentQuizScores { get; }
 		public IGenericRepository<StudentAnswer> StudentAnswers { get; }
 
 		// Teams
@@ -73,6 +74,7 @@ namespace DataAccess.Repositories
 			QuestionBanks = new GenericRepository<QuestionBank>(_ctx);
 			QuizSets = new GenericRepository<QuizSet>(_ctx);
 			QuizSetQuestions = new GenericRepository<QuizSetQuestion>(_ctx);
+			StudentQuizScores = new GenericRepository<StudentQuizScore>(_ctx);
 			StudentAnswers = new GenericRepository<StudentAnswer>(_ctx);
 			EventTeams = new GenericRepository<EventTeam>(_ctx);
 			TeamMembers = new GenericRepository<TeamMember>(_ctx);

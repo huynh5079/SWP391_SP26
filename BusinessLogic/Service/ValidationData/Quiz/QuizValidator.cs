@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
-using BusinessLogic.DTOs.Event.Quiz.Contracts;
-using BusinessLogic.DTOs.Event.Quiz.CreateQuiz;
-using BusinessLogic.DTOs.Event.Quiz.UpdateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UpdateQuiz;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 
@@ -90,8 +90,20 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 			if (dto.PassingScore < 0)
 				throw new ArgumentException("PassingScore >= 0");
 
+			if (dto.TimeLimit.HasValue && dto.TimeLimit < 0)
+				throw new ArgumentException("TimeLimit >= 0");
+
 			if (!Enum.IsDefined(typeof(QuizTypeEnum), dto.Type))
 				throw new ArgumentException("Quiz type không hợp lệ.");
+
+			if (dto.Type == QuizTypeEnum.LiveQuiz)
+			{
+				if (string.IsNullOrWhiteSpace(dto.LiveQuizLink))
+					throw new ArgumentException("Live quiz bắt buộc phải có link.");
+
+				if (!Uri.TryCreate(dto.LiveQuizLink, UriKind.Absolute, out _))
+					throw new ArgumentException("Link live quiz không hợp lệ.");
+			}
 		}
 
 		public void ValidateUpdateQuizQuestion(QuizQuestionContract dto)

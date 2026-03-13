@@ -44,6 +44,7 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<QuestionBank> QuestionBanks { get; }
 		IGenericRepository<QuizSet> QuizSets { get; }
 		IGenericRepository<QuizSetQuestion> QuizSetQuestions { get; }
+		IGenericRepository<StudentQuizScore> StudentQuizScores { get; }
 		IGenericRepository<StudentAnswer> StudentAnswers { get; }
 
 		// Teams

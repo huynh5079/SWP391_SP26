@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using BusinessLogic.DTOs.Event.Quiz.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
 
-namespace BusinessLogic.DTOs.Event.Quiz.GetQuizScores
+namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuizScores
 {
     public class GetQuizScoresRequestDto
     {

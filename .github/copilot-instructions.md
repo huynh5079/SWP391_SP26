@@ -13,6 +13,7 @@
 ## Role Responsibilities
 - The Approver is responsible for creating and managing topics, creating rooms/locations, changing their status, and approving event registrations.
 - The Organizer is responsible for managing tickets, facilitating check-in, and seeing which rooms are available for a given time.
+- Allow one organizer to have multiple QuizSet records; do not enforce one QuizSet per organizer.
 
 ## Room Addressing
 - Display and store room addresses with explicit labels, including Building, Floor, and Room, instead of bare values.
@@ -30,3 +31,7 @@
 
 ## Quiz Schema
 - For the quiz schema in this project, remove direct EventQuiz-to-QuizQuestion linkage and StudentQuizScore.QuizId; keep StudentQuizScore linked only to EventQuiz while answers remain in StudentAnswer referencing QuestionBank. Answers should remain stored inside the question rather than in a separate Answer entity/table.
+- Store status fields as strings in the database.
+
+## Enum Management
+- Prefer shared enums to live in the central enum file/class instead of being declared inside feature DTO/contracts files.
