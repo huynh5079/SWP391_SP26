@@ -1,7 +1,7 @@
-using BusinessLogic.DTOs.Event.Quiz.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
 using DataAccess.Enum;
 
-namespace BusinessLogic.DTOs.Event.Quiz.AddQuestion
+namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion
 {
     public class AddQuizQuestionRequestDto
     {
@@ -10,6 +10,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.AddQuestion
         public string QuestionText { get; set; } = string.Empty;
         public QuizQuestionOptionContract Options { get; set; } = new();
         public string CorrectAnswer { get; set; } = string.Empty;
+        public string? Explanation { get; set; }
         public int ScorePoint { get; set; } = 1;
         public QuestionDifficultyEnum Difficulty { get; set; } = QuestionDifficultyEnum.Medium;
     }

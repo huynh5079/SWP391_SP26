@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
-using BusinessLogic.DTOs.Event.Quiz.Contracts;
-using BusinessLogic.DTOs.Event.Quiz.GetQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuiz;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 namespace AEMS_Solution.Models.Event.EventQuiz
@@ -42,6 +42,12 @@ namespace AEMS_Solution.Models.Event.EventQuiz
         // Convenience properties
         public string EventId { get; set; } = string.Empty;
         public string TopicId { get; set; } = string.Empty;
+        public string SelectedQuizSetId { get; set; } = string.Empty;
+        public string QuizBankSourceFilter { get; set; } = "All";
+        public string QuizScope { get; set; } = "myquiz";
+        public string SemesterFilter { get; set; } = string.Empty;
+        public string EventTitleFilter { get; set; } = string.Empty;
+        public string QuizTitleFilter { get; set; } = string.Empty;
         public string QuizId => Quiz.EventQuizId;
         public string EventTitle { get; set; } = string.Empty;
         public string TopicName { get; set; } = string.Empty;
@@ -49,6 +55,7 @@ namespace AEMS_Solution.Models.Event.EventQuiz
         // Dropdowns for create/edit pages
         public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> Events { get; set; } = new();
         public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> Topics { get; set; } = new();
+        public List<QuizBankSummaryContract> AvailableQuizBanks { get; set; } = new();
     }
 
     // ViewModel used to submit an answer for a question

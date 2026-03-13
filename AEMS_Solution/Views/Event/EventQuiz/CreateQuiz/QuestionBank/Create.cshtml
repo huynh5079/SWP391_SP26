@@ -1,0 +1,283 @@
+@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Create Quiz from Question Bank";
+    Layout = "_Organizerlayout";
+    var availableBanks = Model.AvailableQuizBanks ?? new List<QuizBankSummaryContract>();
+    var hasBanks = availableBanks.Any();
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Create Quiz from Question Bank</h1>
+            <p class="text-muted small mb-0">Use your own bank or community banks as a starting point for a new quiz.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil-square me-1"></i>Switch to Manual
+            </a>
+            <a asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-upload me-1"></i>Switch to Upload File
+            </a>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div class="alert alert-light border d-flex align-items-start gap-2 mb-4">
+                <i class="bi bi-collection text-primary"></i>
+                <div>Question bank gồm nhiều câu hỏi đã được gom sẵn. Bạn có thể chọn ngân hàng câu hỏi của riêng mình hoặc dùng question bank từ cộng đồng.</div>
+            </div>
+
+            @if (!hasBanks)
+            {
+                <div class="alert alert-warning mb-0">Chưa có question bank khả dụng. Hãy tạo quiz thủ công hoặc upload file trước.</div>
+            }
+            else
+            {
+                <form asp-action="Create" asp-route-mode="bank" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="EventId" class="form-label">Event</label>
+                            <select asp-for="EventId" asp-items="Model.Events" class="form-select">
+                                <option value="">Select event</option>
+                            </select>
+                            <span asp-validation-for="EventId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="TopicId" class="form-label">Topic</label>
+                            <select asp-for="TopicId" asp-items="Model.Topics" class="form-select js-topic-select">
+                                <option value="">Select topic</option>
+                            </select>
+                            <span asp-validation-for="TopicId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Quiz.Title" class="form-label">Quiz title</label>
+                            <input asp-for="Quiz.Title" class="form-control" placeholder="Enter quiz title" />
+                            <span asp-validation-for="Quiz.Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Quiz.Type" class="form-label">Type</label>
+                            <select asp-for="Quiz.Type" class="form-select js-quiz-type">
+                                <option value="0">Practice</option>
+                                <option value="1">Exam</option>
+                                <option value="2">Survey</option>
+                                <option value="3">LiveQuiz</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Quiz.PassingScore" class="form-label">Passing score</label>
+                            <input asp-for="Quiz.PassingScore" class="form-control" type="number" min="0" placeholder="Enter passing score" />
+                            <span asp-validation-for="Quiz.PassingScore" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12 d-none js-live-quiz-link-group">
+                            <label asp-for="Quiz.LiveQuizLink" class="form-label">Live quiz link</label>
+                            <input asp-for="Quiz.LiveQuizLink" class="form-control js-live-quiz-link-input" type="url" placeholder="https://..." />
+                            <span asp-validation-for="Quiz.LiveQuizLink" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-2">
+                                <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" />
+                                <label asp-for="Quiz.AllowReview" class="form-check-label">Cho phép học sinh xem đáp án sau khi nộp bài</label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Quiz.SharingStatus" class="form-label">Question bank visibility</label>
+                            <select asp-for="Quiz.SharingStatus" class="form-select">
+                                <option value="@((int)QuizSetVisibilityEnum.Private)">Private</option>
+                                <option value="@((int)QuizSetVisibilityEnum.Public)">Public (Community)</option>
+                            </select>
+                            <div class="form-text">`Private` chỉ dùng nội bộ. `Public (Community)` sẽ chia sẻ cho community.</div>
+                        </div>
+                    </div>
+
+                    <div class="border-top mt-4 pt-4">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label asp-for="QuizBankSourceFilter" class="form-label">Question bank source</label>
+                                <select asp-for="QuizBankSourceFilter" class="form-select js-bank-source-filter">
+                                    <option value="All">All</option>
+                                    <option value="Organizer">Organizer</option>
+                                    <option value="Community">Community</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8">
+                                <label asp-for="SelectedQuizSetId" class="form-label">Question bank</label>
+                                <select asp-for="SelectedQuizSetId" class="form-select js-bank-select" disabled="@(string.IsNullOrWhiteSpace(Model.TopicId))">
+                                    <option value="">@(string.IsNullOrWhiteSpace(Model.TopicId) ? "Select topic first" : "Select question bank")</option>
+                                    @foreach (var bank in availableBanks)
+                                    {
+                                        var sourceText = bank.SourceType == QuizBankSourceTypeEnum.Organizer ? "Organizer" : "Community";
+                                        var ownerText = string.IsNullOrWhiteSpace(bank.OrganizerName) ? sourceText : bank.OrganizerName;
+                                        var accessText = bank.SharingStatus == QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private";
+                                        <option value="@bank.QuizSetId"
+                                                data-source="@sourceText"
+                                                data-topic-id="@bank.TopicId"
+                                                data-topic-name="@bank.TopicName"
+                                                data-question-count="@bank.QuestionCount"
+                                                data-sharing="@accessText"
+                                                data-owner="@ownerText">
+                                            [@sourceText] @bank.Title (@bank.QuestionCount câu hỏi)
+                                        </option>
+                                    }
+                                </select>
+                                <div class="form-text">Chỉ hiện question bank đúng với topic đã chọn.</div>
+                                <span asp-validation-for="SelectedQuizSetId" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="card bg-light border-0 mt-3 js-bank-info d-none">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="text-muted small">Source</div>
+                                        <div class="fw-semibold js-bank-source-value">-</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-muted small">Owner</div>
+                                        <div class="fw-semibold js-bank-owner-value">-</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-muted small">Questions</div>
+                                        <div class="fw-semibold js-bank-count-value">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="text-muted small">Topic</div>
+                                        <div class="fw-semibold js-bank-topic-value">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="text-muted small">Visibility</div>
+                                        <div class="fw-semibold js-bank-sharing-value">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Create Quiz
+                        </button>
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const typeSelect = document.querySelector('.js-quiz-type');
+            const liveLinkGroup = document.querySelector('.js-live-quiz-link-group');
+            const liveLinkInput = document.querySelector('.js-live-quiz-link-input');
+            const sourceFilter = document.querySelector('.js-bank-source-filter');
+            const bankSelect = document.querySelector('.js-bank-select');
+            const bankInfo = document.querySelector('.js-bank-info');
+            const topicSelect = document.querySelector('.js-topic-select');
+            const allBankOptions = bankSelect
+                ? Array.from(bankSelect.querySelectorAll('option')).filter(function (option) { return option.value; })
+                : [];
+
+            function toggleLiveQuizLink() {
+                const isLiveQuiz = typeSelect && typeSelect.value === '3';
+                liveLinkGroup?.classList.toggle('d-none', !isLiveQuiz);
+
+                if (liveLinkInput) {
+                    liveLinkInput.required = isLiveQuiz;
+                    if (!isLiveQuiz) {
+                        liveLinkInput.value = '';
+                    }
+                }
+            }
+
+            function updateBankInfo() {
+                const option = bankSelect?.selectedOptions?.[0];
+                if (!option || !option.value) {
+                    bankInfo?.classList.add('d-none');
+                    return;
+                }
+
+                bankInfo?.classList.remove('d-none');
+                const source = option.dataset.source ?? '-';
+                const owner = option.dataset.owner ?? '-';
+                const topicName = option.dataset.topicName ?? '-';
+                const questionCount = option.dataset.questionCount ?? '0';
+                const sharing = option.dataset.sharing ?? '-';
+
+                const sourceValue = document.querySelector('.js-bank-source-value');
+                const ownerValue = document.querySelector('.js-bank-owner-value');
+                const topicValue = document.querySelector('.js-bank-topic-value');
+                const countValue = document.querySelector('.js-bank-count-value');
+                const sharingValue = document.querySelector('.js-bank-sharing-value');
+
+                if (sourceValue) sourceValue.textContent = source;
+                if (ownerValue) ownerValue.textContent = owner;
+                if (topicValue) topicValue.textContent = topicName || '-';
+                if (countValue) countValue.textContent = questionCount;
+                if (sharingValue) sharingValue.textContent = sharing;
+            }
+
+            function applySourceFilter() {
+                if (!bankSelect || !sourceFilter || !topicSelect) {
+                    return;
+                }
+
+                const selectedValue = bankSelect.value;
+                const selectedTopicId = topicSelect.value;
+                bankSelect.innerHTML = '';
+                bankSelect.disabled = !selectedTopicId;
+
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = selectedTopicId ? 'Select question bank' : 'Select topic first';
+                bankSelect.appendChild(placeholder);
+
+                if (!selectedTopicId) {
+                    bankSelect.value = '';
+                    updateBankInfo();
+                    return;
+                }
+
+                let hasSelectedValue = false;
+                allBankOptions.forEach(function (option) {
+                    const matchesSource = sourceFilter.value === 'All' || option.dataset.source === sourceFilter.value;
+                    const matchesTopic = option.dataset.topicId === selectedTopicId;
+                    if (!matchesSource || !matchesTopic) {
+                        return;
+                    }
+
+                    bankSelect.appendChild(option);
+                    if (option.value === selectedValue) {
+                        hasSelectedValue = true;
+                    }
+                });
+
+                bankSelect.value = hasSelectedValue ? selectedValue : '';
+                updateBankInfo();
+            }
+
+            typeSelect?.addEventListener('change', toggleLiveQuizLink);
+            sourceFilter?.addEventListener('change', applySourceFilter);
+            topicSelect?.addEventListener('change', applySourceFilter);
+            bankSelect?.addEventListener('change', updateBankInfo);
+
+            toggleLiveQuizLink();
+            applySourceFilter();
+        });
+    </script>
+}

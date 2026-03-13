@@ -5,13 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using BusinessLogic.DTOs.Event.Quiz.AddQuestion;
-using BusinessLogic.DTOs.Event.Quiz.Contracts;
-using BusinessLogic.DTOs.Event.Quiz.CreateQuiz;
-using BusinessLogic.DTOs.Event.Quiz.GetQuiz;
-using BusinessLogic.DTOs.Event.Quiz.GetQuizScores;
-using BusinessLogic.DTOs.Event.Quiz.UpdateQuiz;
-using BusinessLogic.DTOs.Event.Quiz.UploadQuizFile;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuizScores;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.QuizActions;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UpdateQuiz;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UploadQuizFile;
 using BusinessLogic.Service.ValidationData.Quiz;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -67,6 +68,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				},
 				TypeOption = DetermineQuestionType(question.OptionA, question.OptionB, question.OptionC, question.OptionD, question.CorrectAnswer),
 				CorrectAnswer = question.CorrectAnswer,
+				Explanation = question.Explanation,
 				ScorePoint = question.ScorePoint,
 				OrderIndex = question.OrderIndex,
 				Difficulty = question.Difficulty
@@ -87,6 +89,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					? QuestionTypeOptionEnum.SingleChoice
 					: DetermineQuestionType(question.OptionA, question.OptionB, question.OptionC, question.OptionD, question.CorrectAnswer),
 				CorrectAnswer = question?.CorrectAnswer,
+				Explanation = question?.Explanation,
 				ScorePoint = quizSetQuestion.ScorePoint ?? 1,
 				OrderIndex = quizSetQuestion.OrderIndex,
 				Difficulty = question?.Difficulty ?? QuestionDifficultyEnum.Medium
@@ -100,6 +103,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				EventQuizId = quiz.Id,
 				QuizSetId = quiz.QuizSetId ?? quizSet?.Id ?? string.Empty,
 				EventId = quiz.EventId,
+				EventTitle = quiz.Event?.Title ?? string.Empty,
+				SemesterName = quiz.Event?.Semester?.Name ?? quiz.Event?.Semester?.Code ?? string.Empty,
+				SharingStatus = quizSet?.SharingStatus ?? QuizSetVisibilityEnum.Private,
 				TopicId = quizSet?.TopicId,
 				OrganizerId = quizSet?.OrganizerId,
 				Title = quiz.Title,
@@ -111,6 +117,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				QuestionSetStatus = quiz.QuestionSetStatus,
 				PassingScore = quiz.PassingScore,
 				TimeLimit = quiz.TimeLimit,
+				AllowReview = quiz.AllowReview,
 				IsActive = quiz.IsActive,
 				QuestionCount = questionCount,
 				AttemptCount = attemptCount,
@@ -131,6 +138,46 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				StartedAt = score.StartedAt,
 				SubmittedAt = score.SubmittedAt,
 				Status = score.Status
+			};
+		}
+
+		private static QuizBankSummaryContract MapQuizBankSummaryContract(QuizSet quizSet, string currentOrganizerId)
+		{
+			var sourceType = quizSet.OrganizerId == currentOrganizerId
+				? QuizBankSourceTypeEnum.Organizer
+				: QuizBankSourceTypeEnum.Community;
+
+			return new QuizBankSummaryContract
+			{
+				QuizSetId = quizSet.Id,
+				Title = quizSet.Title,
+				TopicId = quizSet.TopicId,
+				TopicName = quizSet.Topic?.Name ?? string.Empty,
+				OrganizerId = quizSet.OrganizerId,
+				OrganizerName = quizSet.Organizer?.User?.FullName ?? string.Empty,
+				Description = quizSet.Description,
+				FileQuiz = quizSet.FileQuiz,
+				SharingStatus = quizSet.SharingStatus,
+				SourceType = sourceType,
+				QuestionCount = quizSet.QuizSetQuestions.Count(x => x.DeletedAt == null),
+				UpdatedAt = quizSet.UpdatedAt
+			};
+		}
+
+		private static QuestionBank CloneQuestionBank(QuestionBank questionBank, string organizerId, string? topicId)
+		{
+			return new QuestionBank
+			{
+				TopicId = topicId ?? questionBank.TopicId,
+				OrganizerId = organizerId,
+				QuestionText = questionBank.QuestionText,
+				OptionA = questionBank.OptionA,
+				OptionB = questionBank.OptionB,
+				OptionC = questionBank.OptionC,
+				OptionD = questionBank.OptionD,
+				CorrectAnswer = questionBank.CorrectAnswer,
+				Explanation = questionBank.Explanation,
+				Difficulty = questionBank.Difficulty
 			};
 		}
 
@@ -170,39 +217,49 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				return null;
 			}
 
-			var normalized = value.Trim();
-			var match = Regex.Match(normalized, @"\b([ABCD])\b", RegexOptions.IgnoreCase);
-			if (match.Success)
+			var normalized = value.Replace(" ", string.Empty).ToUpperInvariant();
+			if (!Regex.IsMatch(normalized, @"^[A-D](,[A-D])*$"))
 			{
-				return match.Groups[1].Value.ToUpperInvariant();
+				throw new ArgumentException("Invalid answer format");
 			}
 
-			return normalized;
+			return string.Join(",", normalized
+				.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				.Distinct()
+				.OrderBy(x => x));
 		}
 
 		private static string? NormalizeAnswers(string? value, QuestionTypeOptionEnum typeOption)
 		{
-			if (string.IsNullOrWhiteSpace(value))
+			var normalized = NormalizeAnswer(value);
+			if (string.IsNullOrWhiteSpace(normalized))
 			{
 				return null;
 			}
 
-			var answers = Regex.Matches(value.ToUpperInvariant(), "[ABCD]")
-				.Select(m => m.Value)
-				.Distinct()
-				.ToList();
+			var answers = normalized.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 			if (typeOption == QuestionTypeOptionEnum.TrueFalse)
 			{
-				return answers.FirstOrDefault(x => x == "A" || x == "B");
+				if (answers.Length != 1 || (answers[0] != "A" && answers[0] != "B"))
+				{
+					throw new ArgumentException("Invalid answer format");
+				}
+
+				return answers[0];
 			}
 
 			if (typeOption == QuestionTypeOptionEnum.MultipleChoice)
 			{
-				return answers.Any() ? string.Join(",", answers) : null;
+				return string.Join(",", answers.OrderBy(x => x));
 			}
 
-			return answers.FirstOrDefault();
+			if (answers.Length != 1)
+			{
+				throw new ArgumentException("Invalid answer format");
+			}
+
+			return answers[0];
 		}
 
 		private static QuestionTypeOptionEnum DetermineQuestionType(string optionA, string optionB, string? optionC, string? optionD, string? correctAnswer)
@@ -238,9 +295,171 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			return request;
 		}
 
-		private async Task<QuizSet?> GetOrganizerQuestionBankAsync(string organizerId, string title)
+		private async Task<string> GetUniqueQuizSetTitleAsync(string organizerId, string title, string? ignoreQuizSetId = null)
 		{
-			return await _uow.QuizSets.GetAsync(x => x.OrganizerId == organizerId && x.Title == title && x.DeletedAt == null);
+			var baseTitle = string.IsNullOrWhiteSpace(title) ? "Quiz Set" : title.Trim();
+			var candidate = baseTitle;
+			var suffix = 2;
+
+			while (await _uow.QuizSets.CountAsync(x => x.OrganizerId == organizerId
+				&& x.Title == candidate
+				&& x.DeletedAt == null
+				&& (string.IsNullOrWhiteSpace(ignoreQuizSetId) || x.Id != ignoreQuizSetId)) > 0)
+			{
+				candidate = $"{baseTitle} ({suffix++})";
+			}
+
+			return candidate;
+		}
+
+		private async Task ValidateDuplicateQuizTitleInSemesterAsync(StaffProfile organizer, DataAccess.Entities.Event eventDataForAdd, string title)
+		{
+			var normalizedTitle = title?.Trim();
+			if (string.IsNullOrWhiteSpace(normalizedTitle))
+			{
+				return;
+			}
+
+			var sameTitleQuizzes = await _uow.EventQuiz.GetAllAsync(
+				x => x.DeletedAt == null && x.Title == normalizedTitle,
+				q => q.Include(x => x.Event));
+
+			var isDuplicated = sameTitleQuizzes.Any(x => x.Event != null
+				&& x.Event.DeletedAt == null
+				&& x.Event.OrganizerId == organizer.Id
+				&& x.Event.SemesterId == eventDataForAdd.SemesterId
+				&& string.Equals(x.Event.Title, eventDataForAdd.Title, StringComparison.OrdinalIgnoreCase));
+
+			if (isDuplicated)
+			{
+				throw new InvalidOperationException("Đã tồn tại quiz có cùng tiêu đề cho event này trong cùng semester.");
+			}
+		}
+
+		private async Task<(QuizSet QuizSet, int QuestionCount)> CreateQuizSetFromSourceAsync(QuizSet sourceQuizSet, StaffProfile organizer, CreateQuizSetRequestDto request, string? fallbackTopicId)
+		{
+			var uniqueQuizSetTitle = await GetUniqueQuizSetTitleAsync(organizer.Id, request.Title);
+			var quizSet = new QuizSet
+			{
+				TopicId = request.TopicId ?? sourceQuizSet.TopicId ?? fallbackTopicId,
+				OrganizerId = organizer.Id,
+				Title = uniqueQuizSetTitle,
+				Description = sourceQuizSet.Description,
+				FileQuiz = sourceQuizSet.FileQuiz,
+				SharingStatus = request.SharingStatus,
+				IsActive = true
+			};
+
+			await _uow.QuizSets.CreateAsync(quizSet);
+
+			var sourceQuestions = sourceQuizSet.QuizSetQuestions
+				.Where(x => x.DeletedAt == null && x.QuestionBank != null)
+				.OrderBy(x => x.OrderIndex)
+				.ToList();
+
+			var orderIndex = 1;
+			foreach (var sourceQuestion in sourceQuestions)
+			{
+				var clonedQuestionBank = CloneQuestionBank(sourceQuestion.QuestionBank!, organizer.Id, quizSet.TopicId);
+				await _uow.QuestionBanks.CreateAsync(clonedQuestionBank);
+
+				await _uow.QuizSetQuestions.CreateAsync(new QuizSetQuestion
+				{
+					QuizSetId = quizSet.Id,
+					QuestionBankId = clonedQuestionBank.Id,
+					ScorePoint = sourceQuestion.ScorePoint ?? 1,
+					OrderIndex = orderIndex++
+				});
+			}
+
+			return (quizSet, sourceQuestions.Count);
+		}
+
+		private async Task<QuizSet> EnsureExclusiveQuizSetAsync(EventQuiz quiz)
+		{
+			if (quiz.QuizSet == null || string.IsNullOrWhiteSpace(quiz.QuizSetId))
+				throw new InvalidOperationException("Quiz chưa liên kết quiz set.");
+
+			var activeLinkedQuizCount = await _uow.EventQuiz.CountAsync(x => x.QuizSetId == quiz.QuizSetId && x.DeletedAt == null);
+			if (activeLinkedQuizCount <= 1)
+			{
+				return quiz.QuizSet;
+			}
+
+			var sourceQuizSet = await _uow.QuizSets.GetAsync(
+				x => x.Id == quiz.QuizSetId && x.DeletedAt == null,
+				q => q.Include(x => x.QuizSetQuestions)
+					.ThenInclude(x => x.QuestionBank));
+
+			if (sourceQuizSet == null)
+				throw new InvalidOperationException("Không tìm thấy quiz set nguồn.");
+
+			var uniqueQuizSetTitle = await GetUniqueQuizSetTitleAsync(
+				sourceQuizSet.OrganizerId ?? string.Empty,
+				sourceQuizSet.Title,
+				sourceQuizSet.Id);
+
+			var clonedQuizSet = new QuizSet
+			{
+				TopicId = sourceQuizSet.TopicId,
+				OrganizerId = sourceQuizSet.OrganizerId,
+				Title = uniqueQuizSetTitle,
+				Description = sourceQuizSet.Description,
+				FileQuiz = sourceQuizSet.FileQuiz,
+				SharingStatus = sourceQuizSet.SharingStatus,
+				IsActive = sourceQuizSet.IsActive
+			};
+
+			await _uow.QuizSets.CreateAsync(clonedQuizSet);
+
+			foreach (var sourceQuestion in sourceQuizSet.QuizSetQuestions
+				.Where(x => x.DeletedAt == null && x.QuestionBank != null)
+				.OrderBy(x => x.OrderIndex))
+			{
+				var clonedQuestionBank = CloneQuestionBank(sourceQuestion.QuestionBank!, clonedQuizSet.OrganizerId ?? string.Empty, clonedQuizSet.TopicId);
+				await _uow.QuestionBanks.CreateAsync(clonedQuestionBank);
+
+				await _uow.QuizSetQuestions.CreateAsync(new QuizSetQuestion
+				{
+					QuizSetId = clonedQuizSet.Id,
+					QuestionBankId = clonedQuestionBank.Id,
+					ScorePoint = sourceQuestion.ScorePoint ?? 1,
+					OrderIndex = sourceQuestion.OrderIndex
+				});
+			}
+
+			await _uow.SaveChangesAsync();
+
+			quiz.QuizSetId = clonedQuizSet.Id;
+			quiz.QuizSet = clonedQuizSet;
+			quiz.FileQuiz = clonedQuizSet.FileQuiz;
+			await RefreshEventQuizQuestionsAsync(quiz);
+			await _uow.EventQuiz.UpdateAsync(quiz);
+
+			return clonedQuizSet;
+		}
+
+		private async Task<EventQuiz> GetOwnedQuizAsync(string quizId, string userId, Func<IQueryable<EventQuiz>, IQueryable<EventQuiz>>? includes = null)
+		{
+			if (string.IsNullOrWhiteSpace(userId))
+				throw new InvalidOperationException("Không xác định được organizer hiện tại.");
+
+			var organizer = await GetOrganizerAsync(userId);
+			var quiz = await _uow.EventQuiz.GetAsync(
+				x => x.Id == quizId,
+				q =>
+				{
+					var query = q.Include(x => x.Event);
+					return includes != null ? includes(query) : query;
+				});
+
+			if (quiz == null)
+				throw new KeyNotFoundException("Quiz không tồn tại.");
+
+			if (quiz.Event?.OrganizerId != organizer.Id)
+				throw new InvalidOperationException("Bạn không có quyền thao tác quiz này.");
+
+			return quiz;
 		}
 
 		private static EventQuizQuestion CreateSnapshotQuestion(EventQuiz quiz, QuestionBank questionBank, int orderIndex, int scorePoint)
@@ -255,6 +474,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				OptionC = questionBank.OptionC,
 				OptionD = questionBank.OptionD,
 				CorrectAnswer = questionBank.CorrectAnswer,
+				Explanation = questionBank.Explanation,
 				Difficulty = questionBank.Difficulty,
 				ScorePoint = scorePoint,
 				OrderIndex = orderIndex
@@ -319,26 +539,42 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			foreach (var questionDto in questions.Where(x => !string.IsNullOrWhiteSpace(x.QuestionText)))
 			{
 				var options = GetQuestionOptions(questionDto);
-				var answer = NormalizeAnswer(questionDto.CorrectAnswer);
+				var answer = NormalizeAnswers(questionDto.CorrectAnswer, questionDto.TypeOption);
 				if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB) || string.IsNullOrWhiteSpace(answer))
 				{
 					continue;
 				}
 
-				var questionBank = new QuestionBank
-				{
-					TopicId = quizSet.TopicId,
-					OrganizerId = organizer.Id,
-					QuestionText = questionDto.QuestionText.Trim(),
-					OptionA = options.OptionA.Trim(),
-					OptionB = options.OptionB.Trim(),
-					OptionC = string.IsNullOrWhiteSpace(options.OptionC) ? null : options.OptionC.Trim(),
-					OptionD = string.IsNullOrWhiteSpace(options.OptionD) ? null : options.OptionD.Trim(),
-					CorrectAnswer = answer,
-					Difficulty = questionDto.Difficulty
-				};
+				var normalizedQuestionText = questionDto.QuestionText.Trim();
+				var questionBank = await _uow.QuestionBanks.GetAsync(
+					x => x.QuestionText.ToLower() == normalizedQuestionText.ToLower() && x.DeletedAt == null);
 
-				await _uow.QuestionBanks.CreateAsync(questionBank);
+				if (questionBank == null)
+				{
+					questionBank = new QuestionBank
+					{
+						TopicId = quizSet.TopicId,
+						OrganizerId = organizer.Id,
+						QuestionText = normalizedQuestionText,
+						OptionA = options.OptionA.Trim(),
+						OptionB = options.OptionB.Trim(),
+						OptionC = string.IsNullOrWhiteSpace(options.OptionC) ? null : options.OptionC.Trim(),
+						OptionD = string.IsNullOrWhiteSpace(options.OptionD) ? null : options.OptionD.Trim(),
+						CorrectAnswer = answer,
+						Explanation = string.IsNullOrWhiteSpace(questionDto.Explanation) ? null : questionDto.Explanation.Trim(),
+						Difficulty = questionDto.Difficulty
+					};
+
+					await _uow.QuestionBanks.CreateAsync(questionBank);
+				}
+
+				var existingQuizSetQuestion = await _uow.QuizSetQuestions.GetAsync(
+					x => x.QuizSetId == quizSet.Id && x.QuestionBankId == questionBank.Id && x.DeletedAt == null);
+				if (existingQuizSetQuestion != null)
+				{
+					continue;
+				}
+
 				await _uow.QuizSetQuestions.CreateAsync(new QuizSetQuestion
 				{
 					QuizSetId = quizSet.Id,
@@ -353,6 +589,30 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			await SyncQuestionBankAsync(quizSet, questionSetStatus);
 		}
 
+		public async Task<GetAvailableQuizBanksResponseDto> GetAvailableQuizBanksAsync(GetAvailableQuizBanksRequestDto request)
+		{
+			var organizer = await GetOrganizerAsync(request.UserId);
+
+			var quizSets = (await _uow.QuizSets.GetAllAsync(
+				x => x.DeletedAt == null
+					&& x.IsActive
+					&& (x.OrganizerId == organizer.Id || x.SharingStatus == QuizSetVisibilityEnum.Public),
+				q => q.Include(x => x.Topic)
+					.Include(x => x.Organizer)
+						.ThenInclude(x => x!.User)
+					.Include(x => x.QuizSetQuestions)))
+				.OrderByDescending(x => x.UpdatedAt)
+				.ToList();
+
+			return new GetAvailableQuizBanksResponseDto
+			{
+				QuizBanks = quizSets
+					.Where(x => x.OrganizerId == organizer.Id || x.SharingStatus == QuizSetVisibilityEnum.Public)
+					.Select(x => MapQuizBankSummaryContract(x, organizer.Id))
+					.ToList()
+			};
+		}
+
 		public async Task<CreateQuizSetResponseDto> CreateQuizSetAsync(CreateQuizSetRequestDto request)
 		{
 			_validator.ValidateAddQuizSet(request);
@@ -364,40 +624,53 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				throw new InvalidOperationException("Báº¡n khÃ´ng cÃ³ quyá»n táº¡o quiz cho event nÃ y.");
 			if (eventDataForAdd.StartTime <= DateTime.UtcNow)
 				throw new Exception("Sá»± kiá»‡n Ä‘Ã£ báº¯t Ä‘áº§u, khÃ´ng thá»ƒ táº¡o quiz");
+			await ValidateDuplicateQuizTitleInSemesterAsync(organizer, eventDataForAdd, request.Title);
 
 			using var transaction = await _uow.BeginTransactionAsync();
 			try
 			{
-				var quizSet = await GetOrganizerQuestionBankAsync(organizer.Id, request.Title);
-				if (quizSet == null)
+				QuizSet quizSet;
+				int questionCount;
+
+				if (!string.IsNullOrWhiteSpace(request.SourceQuizSetId))
 				{
+					if (string.IsNullOrWhiteSpace(request.TopicId))
+						throw new InvalidOperationException("Vui lòng chọn topic trước khi sử dụng question bank.");
+
+					var sourceQuizSet = await _uow.QuizSets.GetAsync(
+						x => x.Id == request.SourceQuizSetId && x.DeletedAt == null && x.IsActive,
+						q => q.Include(x => x.QuizSetQuestions)
+							.ThenInclude(x => x.QuestionBank));
+
+					if (sourceQuizSet == null)
+						throw new KeyNotFoundException("Question bank không tồn tại.");
+
+					if (sourceQuizSet.OrganizerId != organizer.Id && sourceQuizSet.SharingStatus != QuizSetVisibilityEnum.Public)
+						throw new InvalidOperationException("Bạn không có quyền sử dụng question bank này.");
+
+					if (string.IsNullOrWhiteSpace(sourceQuizSet.TopicId) || sourceQuizSet.TopicId != request.TopicId)
+						throw new InvalidOperationException("Question bank không thuộc topic đã chọn.");
+
+					(quizSet, questionCount) = await CreateQuizSetFromSourceAsync(sourceQuizSet, organizer, request, eventDataForAdd.TopicId);
+				}
+				else
+				{
+					var uniqueQuizSetTitle = await GetUniqueQuizSetTitleAsync(organizer.Id, request.Title);
 					quizSet = new QuizSet
 					{
 						TopicId = request.TopicId ?? eventDataForAdd.TopicId,
 						OrganizerId = organizer.Id,
-						Title = request.Title,
+						Title = uniqueQuizSetTitle,
 						FileQuiz = request.FileQuiz,
+						SharingStatus = request.SharingStatus,
 						IsActive = true
 					};
 
 					await _uow.QuizSets.CreateAsync(quizSet);
-				}
-				else
-				{
-					quizSet.TopicId ??= request.TopicId ?? eventDataForAdd.TopicId;
-					if (string.IsNullOrWhiteSpace(quizSet.Title))
-					{
-						quizSet.Title = request.Title;
-					}
-					if (string.IsNullOrWhiteSpace(quizSet.FileQuiz) && !string.IsNullOrWhiteSpace(request.FileQuiz))
-					{
-						quizSet.FileQuiz = request.FileQuiz;
-					}
-					quizSet.IsActive = true;
-					await _uow.QuizSets.UpdateAsync(quizSet);
+
+					questionCount = await _uow.QuizSetQuestions.CountAsync(x => x.QuizSetId == quizSet.Id && x.DeletedAt == null);
 				}
 
-				var questionCount = await _uow.QuizSetQuestions.CountAsync(x => x.QuizSetId == quizSet.Id && x.DeletedAt == null);
 				var quiz = new EventQuiz
 				{
 					EventId = request.EventId,
@@ -408,6 +681,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					QuestionSetStatus = questionCount > 0 ? QuestionSetEnum.Available : QuestionSetEnum.NA,
 					FileQuiz = quizSet.FileQuiz,
 					LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null,
+					AllowReview = request.AllowReview,
 					Status = QuizStatusEnum.Draft,
 					IsActive = true
 				};
@@ -429,6 +703,211 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			}
 		}
 
+		public async Task<PreviewQuizResponseDto> PreviewQuizAsync(PreviewQuizRequestDto request)
+		{
+			await GetOwnedQuizAsync(request.QuizId, request.UserId ?? string.Empty);
+			var detail = await GetQuizDetailAsync(new GetQuizDetailRequestDto { QuizId = request.QuizId });
+			if (detail == null)
+				throw new KeyNotFoundException("Quiz không tồn tại.");
+
+			return new PreviewQuizResponseDto
+			{
+				Preview = detail
+			};
+		}
+
+		public async Task<PublishQuizResponseDto> PublishQuizAsync(PublishQuizRequestDto request)
+		{
+			var quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId ?? string.Empty, q => q.Include(x => x.EventQuizQuestions));
+
+			if (quiz.QuestionSetStatus != QuestionSetEnum.Available || !quiz.EventQuizQuestions.Any(x => x.DeletedAt == null))
+				throw new InvalidOperationException("Quiz chưa có câu hỏi để publish.");
+
+			quiz.Status = QuizStatusEnum.Published;
+			await _uow.EventQuiz.UpdateAsync(quiz);
+			await _uow.SaveChangesAsync();
+
+			return new PublishQuizResponseDto
+			{
+				QuizId = quiz.Id,
+				Status = quiz.Status
+			};
+		}
+
+		public async Task<PublishQuizSetResponseDto> PublishQuizSetAsync(PublishQuizSetRequestDto request)
+		{
+			var quiz = await GetOwnedQuizAsync(
+				request.QuizId,
+				request.UserId,
+				q => q.Include(x => x.QuizSet));
+
+			if (quiz.QuizSet == null)
+				throw new InvalidOperationException("Quiz chưa liên kết quiz set.");
+
+			var quizSet = await EnsureExclusiveQuizSetAsync(quiz);
+			quizSet.SharingStatus = request.SharingStatus;
+			await _uow.QuizSets.UpdateAsync(quizSet);
+			await _uow.SaveChangesAsync();
+
+			return new PublishQuizSetResponseDto
+			{
+				QuizId = quiz.Id,
+				SharingStatus = quizSet.SharingStatus
+			};
+		}
+
+		public async Task<DeleteQuizResponseDto> DeleteQuizAsync(DeleteQuizRequestDto request)
+		{
+			var quiz = await GetOwnedQuizAsync(
+				request.QuizId,
+				request.UserId,
+				q => q.Include(x => x.EventQuizQuestions)
+					.Include(x => x.StudentQuizScores));
+
+			if (quiz.StudentQuizScores.Any(x => x.DeletedAt == null))
+				throw new InvalidOperationException("Quiz đã có lượt làm bài, không thể xóa.");
+
+			foreach (var question in quiz.EventQuizQuestions.Where(x => x.DeletedAt == null).ToList())
+			{
+				await _uow.EventQuizQuestions.RemoveAsync(question);
+			}
+
+			await _uow.EventQuiz.RemoveAsync(quiz);
+			await _uow.SaveChangesAsync();
+
+			return new DeleteQuizResponseDto
+			{
+				QuizId = request.QuizId
+			};
+		}
+
+		public async Task<CloseQuizResponseDto> CloseQuizAsync(CloseQuizRequestDto request)
+		{
+			var quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId);
+			quiz.Status = QuizStatusEnum.Closed;
+			await _uow.EventQuiz.UpdateAsync(quiz);
+			await _uow.SaveChangesAsync();
+
+			return new CloseQuizResponseDto
+			{
+				QuizId = quiz.Id,
+				Status = quiz.Status
+			};
+		}
+
+		public async Task<UpdateQuizQuestionResponseDto> UpdateQuizQuestionAsync(UpdateQuizQuestionRequestDto request)
+		{
+			var normalizedRequest = NormalizeQuestionRequest(new AddQuizQuestionRequestDto
+			{
+				QuizId = request.QuizId,
+				QuestionText = request.QuestionText,
+				Options = request.Options,
+				TypeOption = request.TypeOption,
+				CorrectAnswer = request.CorrectAnswer,
+				Explanation = request.Explanation,
+				ScorePoint = request.ScorePoint,
+				Difficulty = request.Difficulty
+			});
+
+			_validator.ValidateAddQuestion(normalizedRequest);
+
+			var question = await _uow.EventQuizQuestions.GetAsync(
+				x => x.Id == request.EventQuizQuestionId,
+				q => q.Include(x => x.EventQuiz));
+			if (question == null)
+				throw new KeyNotFoundException("Không tìm thấy câu hỏi.");
+			if (question.EventQuizId != request.QuizId)
+				throw new InvalidOperationException("Câu hỏi không thuộc quiz này.");
+
+			var quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId);
+			if (quiz.Status == QuizStatusEnum.Published)
+				throw new InvalidOperationException("Quiz đang publish, không thể cập nhật câu hỏi.");
+
+			question.QuestionText = normalizedRequest.QuestionText.Trim();
+			question.OptionA = normalizedRequest.Options.OptionA.Trim();
+			question.OptionB = normalizedRequest.Options.OptionB.Trim();
+			question.OptionC = string.IsNullOrWhiteSpace(normalizedRequest.Options.OptionC) ? null : normalizedRequest.Options.OptionC.Trim();
+			question.OptionD = string.IsNullOrWhiteSpace(normalizedRequest.Options.OptionD) ? null : normalizedRequest.Options.OptionD.Trim();
+			question.CorrectAnswer = normalizedRequest.CorrectAnswer;
+			question.Explanation = normalizedRequest.Explanation;
+			question.ScorePoint = normalizedRequest.ScorePoint > 0 ? normalizedRequest.ScorePoint : 1;
+			question.Difficulty = normalizedRequest.Difficulty;
+
+			await _uow.EventQuizQuestions.UpdateAsync(question);
+
+			if (!string.IsNullOrWhiteSpace(question.QuestionBankId))
+			{
+				var questionBank = await _uow.QuestionBanks.GetByIdAsync(question.QuestionBankId);
+				if (questionBank != null)
+				{
+					questionBank.QuestionText = question.QuestionText;
+					questionBank.OptionA = question.OptionA;
+					questionBank.OptionB = question.OptionB;
+					questionBank.OptionC = question.OptionC;
+					questionBank.OptionD = question.OptionD;
+					questionBank.CorrectAnswer = question.CorrectAnswer;
+					questionBank.Explanation = question.Explanation;
+					questionBank.Difficulty = question.Difficulty;
+					await _uow.QuestionBanks.UpdateAsync(questionBank);
+				}
+
+				if (!string.IsNullOrWhiteSpace(quiz.QuizSetId))
+				{
+					var quizSetQuestion = await _uow.QuizSetQuestions.GetAsync(x => x.QuizSetId == quiz.QuizSetId && x.QuestionBankId == question.QuestionBankId);
+					if (quizSetQuestion != null)
+					{
+						quizSetQuestion.ScorePoint = question.ScorePoint;
+						await _uow.QuizSetQuestions.UpdateAsync(quizSetQuestion);
+					}
+				}
+			}
+
+			await _uow.SaveChangesAsync();
+
+			return new UpdateQuizQuestionResponseDto
+			{
+				Question = MapQuestionContract(question)
+			};
+		}
+
+		public async Task<DeleteQuizQuestionResponseDto> DeleteQuizQuestionAsync(DeleteQuizQuestionRequestDto request)
+		{
+			var question = await _uow.EventQuizQuestions.GetAsync(x => x.Id == request.EventQuizQuestionId);
+			if (question == null)
+				throw new KeyNotFoundException("Không tìm thấy câu hỏi.");
+			if (question.EventQuizId != request.QuizId)
+				throw new InvalidOperationException("Câu hỏi không thuộc quiz này.");
+
+			var quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId);
+			if (quiz.Status == QuizStatusEnum.Published)
+				throw new InvalidOperationException("Quiz đang publish, không thể xóa câu hỏi.");
+
+			await _uow.EventQuizQuestions.RemoveAsync(question);
+
+			if (!string.IsNullOrWhiteSpace(quiz.QuizSetId) && !string.IsNullOrWhiteSpace(question.QuestionBankId))
+			{
+				var quizSetQuestion = await _uow.QuizSetQuestions.GetAsync(x => x.QuizSetId == quiz.QuizSetId && x.QuestionBankId == question.QuestionBankId);
+				if (quizSetQuestion != null)
+				{
+					await _uow.QuizSetQuestions.RemoveAsync(quizSetQuestion);
+				}
+			}
+
+			await _uow.SaveChangesAsync();
+
+			var remainingQuestions = await _uow.EventQuizQuestions.CountAsync(x => x.EventQuizId == request.QuizId && x.DeletedAt == null);
+			quiz.QuestionSetStatus = remainingQuestions > 0 ? QuestionSetEnum.Available : QuestionSetEnum.NA;
+			await _uow.EventQuiz.UpdateAsync(quiz);
+			await _uow.SaveChangesAsync();
+
+			return new DeleteQuizQuestionResponseDto
+			{
+				QuizId = request.QuizId,
+				EventQuizQuestionId = request.EventQuizQuestionId,
+				RemainingQuestions = remainingQuestions
+			};
+		}
+
 		public async Task<AddQuizQuestionResponseDto> AddQuizQuestionAsync(AddQuizQuestionRequestDto request)
 		{
 			request = NormalizeQuestionRequest(request);
@@ -443,9 +922,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (quiz.QuizSet == null || string.IsNullOrWhiteSpace(quiz.Event?.OrganizerId))
 				throw new InvalidOperationException("Quiz set chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh Ä‘áº§y Ä‘á»§.");
 
+			var quizSet = await EnsureExclusiveQuizSetAsync(quiz);
+
 			var questionBank = new QuestionBank
 			{
-				TopicId = quiz.QuizSet.TopicId,
+				TopicId = quizSet.TopicId,
 				OrganizerId = quiz.Event.OrganizerId,
 				QuestionText = request.QuestionText.Trim(),
 				OptionA = request.Options.OptionA.Trim(),
@@ -453,6 +934,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				OptionC = string.IsNullOrWhiteSpace(request.Options.OptionC) ? null : request.Options.OptionC.Trim(),
 				OptionD = string.IsNullOrWhiteSpace(request.Options.OptionD) ? null : request.Options.OptionD.Trim(),
 				CorrectAnswer = request.CorrectAnswer,
+				Explanation = request.Explanation,
 				Difficulty = request.Difficulty
 			};
 
@@ -472,7 +954,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			await _uow.EventQuiz.UpdateAsync(quiz);
 			await _uow.SaveChangesAsync();
 			quizSetQuestion.QuestionBank = questionBank;
-			await SyncQuestionBankAsync(quiz.QuizSet, QuestionSetEnum.Available);
+			await SyncQuestionBankAsync(quizSet, QuestionSetEnum.Available);
 			await _uow.SaveChangesAsync();
 
 			return new AddQuizQuestionResponseDto
@@ -486,6 +968,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			var quiz = await _uow.EventQuiz.GetAsync(
 				q => q.Id == request.QuizId,
 				q => q.Include(x => x.QuizSet)
+					.Include(x => x.Event)
+						.ThenInclude(x => x!.Semester)
 					.Include(x => x.StudentQuizScores)
 					.Include(x => x.EventQuizQuestions));
 			if (quiz == null)
@@ -504,6 +988,46 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			{
 				Quiz = MapQuizSummaryContract(quiz, quiz.QuizSet, questions.Count, attemptCount, passedCount),
 				Questions = questions
+			};
+		}
+
+		public async Task<GetOrganizerQuizzesResponseDto> GetOrganizerQuizzesAsync(GetOrganizerQuizzesRequestDto request)
+		{
+			if (string.IsNullOrWhiteSpace(request.UserId))
+				throw new InvalidOperationException("Không xác định được organizer hiện tại.");
+
+			var organizer = await GetOrganizerAsync(request.UserId);
+			var organizerEvents = (await _uow.Events.GetAllAsync(
+				x => x.OrganizerId == organizer.Id
+					&& x.DeletedAt == null
+					&& (string.IsNullOrWhiteSpace(request.EventId) || x.Id == request.EventId)))
+				.ToList();
+
+			if (!organizerEvents.Any())
+			{
+				return new GetOrganizerQuizzesResponseDto();
+			}
+
+			var eventIds = organizerEvents.Select(x => x.Id).ToList();
+			var quizzes = (await _uow.EventQuiz.GetAllAsync(
+				x => eventIds.Contains(x.EventId) && x.DeletedAt == null,
+				q => q.Include(x => x.QuizSet)
+					.Include(x => x.Event)
+						.ThenInclude(x => x!.Semester)
+					.Include(x => x.StudentQuizScores)
+					.Include(x => x.EventQuizQuestions)))
+				.OrderByDescending(x => x.CreatedAt)
+				.ToList();
+
+			return new GetOrganizerQuizzesResponseDto
+			{
+				Quizzes = quizzes.Select(quiz =>
+				{
+					var questionCount = quiz.EventQuizQuestions.Count(x => x.DeletedAt == null);
+					var attemptCount = quiz.StudentQuizScores.Count(x => x.DeletedAt == null);
+					var passedCount = quiz.StudentQuizScores.Count(x => x.DeletedAt == null && (x.Score ?? 0) >= (quiz.PassingScore ?? 0));
+					return MapQuizSummaryContract(quiz, quiz.QuizSet, questionCount, attemptCount, passedCount);
+				}).ToList()
 			};
 		}
 
@@ -535,13 +1059,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 		{
 			_validator.ValidateUpdateQuizSet(request);
 
-			var quiz = await _uow.EventQuiz.GetAsync(
-				q => q.Id == request.QuizId,
+			var quiz = await GetOwnedQuizAsync(
+				request.QuizId,
+				request.UserId,
 				q => q.Include(x => x.QuizSet)
 					.Include(x => x.StudentQuizScores)
 					.Include(x => x.EventQuizQuestions));
-			if (quiz == null)
-				throw new KeyNotFoundException("Quiz khÃ´ng tá»“n táº¡i");
 			if (quiz.Status == QuizStatusEnum.Published)
 				throw new InvalidOperationException("Quiz Ä‘ang má»Ÿ, khÃ´ng thá»ƒ chá»‰nh sá»­a");
 			if (quiz.EventId != request.EventId)
@@ -556,6 +1079,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			quiz.Title = request.Title;
 			quiz.Type = request.Type;
 			quiz.PassingScore = request.PassingScore;
+			quiz.TimeLimit = request.TimeLimit;
+			quiz.LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null;
+			quiz.AllowReview = request.AllowReview;
 			if (quiz.QuizSet != null)
 			{
 				quiz.QuizSet.Title = request.Title;
@@ -600,12 +1126,14 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (quiz.Status == QuizStatusEnum.Published)
 				throw new InvalidOperationException("Quiz Ä‘Ã£ publish, khÃ´ng thá»ƒ upload láº¡i file.");
 
+			var quizSet = await EnsureExclusiveQuizSetAsync(quiz);
+
 			var ext = Path.GetExtension(request.FileName).ToLowerInvariant();
 			var allowExt = new[] { ".pdf", ".txt", ".docx" };
 			if (!allowExt.Contains(ext))
 				throw new InvalidOperationException("Chá»‰ cho phÃ©p file PDF, TXT hoáº·c DOCX");
 
-			var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "quiz", quiz.QuizSet.Id);
+			var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "quiz", quizSet.Id);
 			Directory.CreateDirectory(uploadsRoot);
 			var safeFileName = Path.GetFileName(request.FileName);
 			var fullPath = Path.Combine(uploadsRoot, safeFileName);
@@ -623,17 +1151,17 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (!questions.Any())
 				throw new InvalidOperationException("KhÃ´ng Ä‘á»c Ä‘Æ°á»£c cÃ¢u há»i há»£p lá»‡ tá»« file quiz.");
 
-			var relative = Path.Combine("uploads", "quiz", quiz.QuizSet.Id, safeFileName).Replace('\\', '/');
-			quiz.QuizSet.FileQuiz = relative;
-			quiz.QuizSet.TopicId ??= quiz.Event?.TopicId;
-			quiz.QuizSet.OrganizerId ??= organizer.Id;
+			var relative = Path.Combine("uploads", "quiz", quizSet.Id, safeFileName).Replace('\\', '/');
+			quizSet.FileQuiz = relative;
+			quizSet.TopicId ??= quiz.Event?.TopicId;
+			quizSet.OrganizerId ??= organizer.Id;
 
 			using var transaction = await _uow.BeginTransactionAsync();
 			try
 			{
-				await PersistQuestionsAsync(quiz.QuizSet, organizer, questions, true);
+				await PersistQuestionsAsync(quizSet, organizer, questions, true);
 				await RefreshEventQuizQuestionsAsync(quiz);
-				await _uow.QuizSets.UpdateAsync(quiz.QuizSet);
+				await _uow.QuizSets.UpdateAsync(quizSet);
 				await _uow.EventQuiz.UpdateAsync(quiz);
 				await _uow.SaveChangesAsync();
 				await transaction.CommitAsync();

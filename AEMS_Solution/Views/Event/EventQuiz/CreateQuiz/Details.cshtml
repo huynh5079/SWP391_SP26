@@ -12,6 +12,7 @@
         </div>
         <div class="d-flex gap-2">
             <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+            <a asp-action="Preview" asp-route-quizId="@Model.Quiz.EventQuizId" class="btn btn-sm btn-outline-info">View quiz</a>
             <div class="dropdown">
                 <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     Create another quiz
@@ -19,6 +20,7 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                     <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
                     <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="bank"><i class="bi bi-collection me-2"></i>Question Bank</a></li>
                 </ul>
             </div>
         </div>
@@ -72,6 +74,32 @@
                                 <div class="border rounded p-3 h-100">
                                     <div class="small text-muted">Question set</div>
                                     <div class="fs-6 fw-semibold">@Model.Quiz.QuestionSetStatus</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Review mode</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.AllowReview ? "Allowed" : "Hidden")</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Question bank visibility</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private")</div>
+                                    @if (Model.Quiz.SharingStatus != DataAccess.Enum.QuizSetVisibilityEnum.Public)
+                                    {
+                                        <form asp-action="Share" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Public to Community</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Restore" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-warning">Set Private</button>
+                                        </form>
+                                    }
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -134,6 +162,10 @@
                                 <textarea asp-for="NewQuestion.QuestionText" class="form-control" rows="3"></textarea>
                             </div>
                             <div class="mb-3">
+                                <label asp-for="NewQuestion.Explanation" class="form-label">Explanation</label>
+                                <textarea asp-for="NewQuestion.Explanation" class="form-control" rows="2" placeholder="Giải thích đáp án (không bắt buộc)"></textarea>
+                            </div>
+                            <div class="mb-3">
                                 <label asp-for="NewQuestion.Options.OptionA" class="form-label">Option A</label>
                                 <input asp-for="NewQuestion.Options.OptionA" class="form-control" />
                             </div>
@@ -157,6 +189,14 @@
                                 <div class="col-md-6">
                                     <label asp-for="NewQuestion.ScorePoint" class="form-label">Score point</label>
                                     <input asp-for="NewQuestion.ScorePoint" class="form-control" type="number" min="1" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="NewQuestion.Difficulty" class="form-label">Difficulty</label>
+                                    <select asp-for="NewQuestion.Difficulty" class="form-select">
+                                        <option value="0">Easy</option>
+                                        <option value="1">Medium</option>
+                                        <option value="2">Hard</option>
+                                    </select>
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-success w-100 mt-3">Add question</button>
@@ -204,6 +244,10 @@
                                         <div class="small text-muted">Correct answer: <strong>@question.CorrectAnswer</strong></div>
                                         <div class="small text-muted">Score point: <strong>@question.ScorePoint</strong></div>
                                         <div class="small text-muted">Difficulty: <strong>@question.Difficulty</strong></div>
+                                        @if (!string.IsNullOrWhiteSpace(question.Explanation))
+                                        {
+                                            <div class="small text-muted mt-2">Explanation: <strong>@question.Explanation</strong></div>
+                                        }
                                     </div>
                                 </div>
                             </div>

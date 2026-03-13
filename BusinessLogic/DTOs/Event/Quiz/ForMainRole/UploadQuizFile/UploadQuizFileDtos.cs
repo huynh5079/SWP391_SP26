@@ -1,4 +1,4 @@
-namespace BusinessLogic.DTOs.Event.Quiz.UploadQuizFile
+namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.UploadQuizFile
 {
     public class UploadQuizFileRequestDto
     {
