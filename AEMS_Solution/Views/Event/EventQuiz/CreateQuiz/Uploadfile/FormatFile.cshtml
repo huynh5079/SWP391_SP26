@@ -1,0 +1,59 @@
+﻿<div class="modal fade" id="formatFileModal" tabindex="-1" aria-labelledby="formatFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="formatFileModalLabel">
+                    <i class="bi bi-file-earmark-text text-primary me-2"></i>Hướng dẫn định dạng file Upload
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info border-info">
+                    <strong><i class="bi bi-info-circle me-1"></i>Cấu trúc cơ bản:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Mỗi câu hỏi cần đánh số bắt đầu bằng <code>Câu X:</code> hoặc <code>Question X:</code>.</li>
+                        <li>Các đáp án bắt đầu bằng <code>A.</code>, <code>B.</code>, <code>C.</code>, <code>D.</code> hoặc <code>A)</code>.</li>
+                        <li>Kèm theo đáp án đúng (tùy chọn) với mẫu <code>Đáp án: A</code> hoặc <code>Answer: A</code>.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-light p-3 border rounded shadow-sm">
+                    <strong>Ví dụ mẫu chuẩn 1 (Các đáp án xếp dọc):</strong>
+                    <pre class="mb-0 mt-3 p-3 bg-white border" style="font-family: Consolas, monospace; max-height: 250px; overflow-y: auto;">
+Câu 1: Thủ đô của Việt Nam là gì?
+A. Hồ Chí Minh
+B. Đà Nẵng
+C. Hà Nội
+D. Huế
+Đáp án: C
+
+Câu 2: HTML viết tắt của từ gì?
+A. Hyper Text Markup Language
+B. Hot Mail
+C. How to Make Lasagna
+Đáp án: A
+                    </pre>
+
+                    <strong class="mt-4 d-block">Ví dụ mẫu chuẩn 2 (Các đáp án xếp ngang):</strong>
+                    <pre class="mb-0 mt-3 p-3 bg-white border" style="font-family: Consolas, monospace; max-height: 250px; overflow-y: auto;">
+Question 1: Returning home after the earthquake, Simon saw that his house was extremely chaotic.
+A. organised    B. tidy    C. messy    D. neat
+Answer: C
+
+Question 2: My uncle dreams of having a new house, so he plans to save up for it.
+A. leaves       B. moves   C. intends  D. quits
+Answer: C
+                    </pre>
+                </div>
+                
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i><strong>Lưu ý quan trọng:</strong> 
+                    Nếu file của bạn không đúng với định dạng trên, hệ thống sẽ <strong>không thể nhận diện và tự động thêm</strong> các câu hỏi vào quiz.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng cửa sổ</button>
+            </div>
+        </div>
+    </div>
+</div>

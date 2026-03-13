@@ -410,7 +410,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost]
+        [HttpPost("upload-multiple")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadFile(string quizId, EventQuizViewModel vm)
         {
@@ -419,8 +419,9 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 var userId = EnsureCurrentUserId();
                 if (vm.FileUpload == null || vm.FileUpload.Length == 0)
                 {
-                    throw new InvalidOperationException("Vui lòng chọn file quiz để upload.");
-                }
+					SetError("Vui lòng chọn file quiz");
+					return RedirectToAction(nameof(Details), new { quizId });
+				}
 
                 using var ms = new MemoryStream();
                 await vm.FileUpload.CopyToAsync(ms);

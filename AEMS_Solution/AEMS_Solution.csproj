@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);wwwroot\uploads\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,6 +28,15 @@
     <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <None Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <None Remove="Views\EventforOrganizer\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tránh restart/reload server khi upload file vào thư mục wwwroot/uploads -->
+    <Watch Remove="wwwroot\uploads\**" />
+    <Content Update="wwwroot\uploads\**" Watch="false" />
+  </ItemGroup>
+
+  <ItemGroup>
   </ItemGroup>
 
   <ItemGroup>
