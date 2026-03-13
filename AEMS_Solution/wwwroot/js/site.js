@@ -121,4 +121,6 @@ document.addEventListener("DOMContentLoaded", function () {
             return console.error("SignalR Connection Error: ", err.toString());
         });
     }
+
+    // Chatbot interaction is handled by /wwwroot/js/chatbot.js.
 });

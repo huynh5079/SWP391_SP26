@@ -1,0 +1,114 @@
+﻿[
+	//only have title, the rest of the fields are optional
+	{
+		"Title": "Test Event"
+	},
+	//time not available
+	{
+		"Title": "Test Event 1",
+		"Description": "This is a test event",
+		"SemesterName": "Spring 2026",
+		"DepartmentName": "Kinh doanh quốc tế",
+		"TopicName": "Kinh tế",
+		"Location": "Tòa Gammar -Tầng 2 -Phòng 201",
+		"StartTime": "11/03/2026 10:45:00 SA",
+		"EndTime": "12/03/2026 10:45:00 SA",
+		"MaxCapacity": "200",
+		"ThumbnailUrl": "https://example.com/event-thumbnail.jpg",
+		"Type": "Seminar",
+		"Status": "Draft",
+		"Mode": "Offline",
+		//Agenda
+		"Agendas": [
+			{
+				"SessionName": "abc",
+				"Speaker": "Khờ Ôi Khôi",
+				"Description": "Okvip nhà cái đến từ châu âu",
+				"StartTime": "15/03/2026 10:45:00 SA",
+				"EndTime": "16/03/2026 11:00:00 SA",
+				"Location": "Tòa Alpha -Tầng 1 -Phòng 101"
+			},
+			{
+				"SessionName": "abc",
+				"Speaker": "Khờ Ôi Khôi",
+				"Description": "Okvip nhà cái đến từ châu âu",
+				"StartTime": "15/03/2026 10:45:00 SA",
+				"EndTime": "16/03/2026 11:00:00 SA",
+				"Location": "Tòa Alpha -Tầng 1 -Phòng 101"
+			}
+		]
+
+	},
+	//time available(after 7 day)
+	{
+		"Title": "Test Event 1",
+		"Description": "This is a test event",
+		"SemesterName": "Spring 2026",
+		"DepartmentName": "Kinh doanh quốc tế",
+		"TopicName": "Kinh tế",
+		"Location": "Tòa Gammar -Tầng 2 -Phòng 201",
+		"StartTime": "28/04/2026 10:45:00 SA",
+		"EndTime": "3/09/2026 10:45:00 SA",
+		"MaxCapacity": "200",
+		"ThumbnailUrl": "https://example.com/event-thumbnail.jpg",
+		"Type": "Seminar",
+		"Status": "Draft",
+		"Mode": "Offline",
+		//Agenda in time with event
+		"Agendas": [
+			{
+				"SessionName": "abc",
+				"Speaker": "Khờ Ôi Khôi",
+				"Description": "Okvip nhà cái đến từ châu âu",
+				"StartTime": "30/05/2026 10:45:00 SA",
+				"EndTime": "1/06/2026 11:00:00 SA",
+				"Location": "Tòa Alpha -Tầng 1 -Phòng 101"
+			},
+			{
+				"SessionName": "abc",
+				"Speaker": "Khờ Ôi Khôi",
+				"Description": "Okvip nhà cái đến từ châu âu",
+				"StartTime": "1/07/2026 10:45:00 SA",
+				"EndTime": "16/08/2026 11:00:00 SA",
+				"Location": "Tòa Alpha -Tầng 1 -Phòng 101"
+			}
+		]
+
+	},
+	//time available(after 7 day)
+	{
+		"Title": "Test Event 1",
+		"Description": "This is a test event",
+		"SemesterName": "Spring 2026",
+		"DepartmentName": "Kinh doanh quốc tế",
+		"TopicName": "Kinh tế",
+		"Location": "Tòa Gammar -Tầng 2 -Phòng 201",
+		"StartTime": "28/04/2026 10:45:00 SA",
+		"EndTime": "3/09/2026 10:45:00 SA",
+		"MaxCapacity": "200",
+		"ThumbnailUrl": "https://example.com/event-thumbnail.jpg",
+		"Type": "Seminar",
+		"Status": "Draft",
+		"Mode": "Offline",
+		//Agenda not async with event
+		"Agendas": [
+			{
+				"SessionName": "abc",
+				"Speaker": "Khờ Ôi Khôi",
+				"Description": "Okvip nhà cái đến từ châu âu",
+				"StartTime": "1/03/2026 10:45:00 SA",
+				"EndTime": "1/06/2026 11:00:00 SA",
+				"Location": "Tòa Alpha -Tầng 1 -Phòng 101"
+			},
+			{
+				"SessionName": "abc",
+				"Speaker": "Khờ Ôi Khôi",
+				"Description": "Okvip nhà cái đến từ châu âu",
+				"StartTime": "27/11/2026 10:45:00 SA",
+				"EndTime": "16/10/2026 11:00:00 SA",
+				"Location": "Tòa Alpha -Tầng 1 -Phòng 101"
+			}
+		]
+
+	}
+]

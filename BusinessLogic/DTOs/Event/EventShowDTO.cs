@@ -8,7 +8,7 @@ public class EventAgendaDto
     public string EventId { get; set; } = "";
     public string SessionName { get; set; } = "";
     public string? Description { get; set; }
-    public string? SpeakerName { get; set; }
+    public string? SpeakerInfo { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     public string? Location { get; set; }
@@ -23,26 +23,59 @@ public class EventDocumentDto
     public string? Type { get; set; }
 }
 
+public class TeamMemberDto
+{
+    public string Id { get; set; } = "";
+    public string TeamId { get; set; } = "";
+    public string? StudentId { get; set; }
+    public string? StaffId { get; set; }
+    public string MemberName { get; set; } = "";
+    public string MemberEmail { get; set; } = "";
+    public string RoleName { get; set; } = "";
+    public string TeamRole { get; set; } = "";
+}
+
+public class EventTeamDto
+{
+    public string Id { get; set; } = "";
+    public string EventId { get; set; } = "";
+    public string TeamName { get; set; } = "";
+    public string? Description { get; set; }
+    public decimal Score { get; set; }
+    public int? PlaceRank { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<TeamMemberDto> TeamMembers { get; set; } = new();
+}
+
 public class EventDetailsDto
 {
     public string EventId { get; set; } = "";
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? ThumbnailUrl { get; set; }
+    public string? SemesterId { get; set; }
     public string? SemesterName { get; set; }
+    public string? DepartmentId { get; set; }
     public string? DepartmentName { get; set; }
+    public string? LocationId { get; set; }
     public string? Location { get; set; }
+    public string? TopicId { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     public int MaxCapacity { get; set; }
     public bool IsDepositRequired { get; set; }
     public decimal DepositAmount { get; set; }
+    public EventTypeEnum? Type { get; set; }
+    public EventStatusEnum Status { get; set; }
+    public EventModeEnum? Mode { get; set; }
+    public string? MeetingUrl { get; set; }
     public int RegisteredCount { get; set; }
     public int CheckedInCount { get; set; }
     public int WaitlistCount { get; set; }
     public double AvgRating { get; set; }
     public List<EventAgendaDto> Agendas { get; set; } = new();
     public List<EventDocumentDto> Documents { get; set; } = new();
+    public List<EventTeamDto> Teams { get; set; } = new();
 
     // Permission flags
     public bool CanEdit { get; set; }

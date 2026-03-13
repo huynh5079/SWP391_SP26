@@ -29,6 +29,8 @@ public partial class StudentProfile: BaseEntity
 
     public virtual ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
 
+    public virtual ICollection<EventAgenda> AgendasAsStudentSpeaker { get; set; } = new List<EventAgenda>();
+
     public virtual ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
 
     public virtual User? User { get; set; }

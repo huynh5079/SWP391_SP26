@@ -17,6 +17,8 @@ public partial class Notification : BaseEntity
 
     public string? Type { get; set; }
 
+    public string? RelatedEntityId { get; set; }
+
     //public DateTime? CreatedAt { get; set; }
 
     public virtual User? User { get; set; }

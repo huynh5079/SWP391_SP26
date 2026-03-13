@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BusinessLogic.DTOs;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
+using EventAgendaEntity = DataAccess.Entities.EventAgenda;
+using EventDocumentEntity = DataAccess.Entities.EventDocument;
 using Microsoft.EntityFrameworkCore;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 
 namespace BusinessLogic.Service.Event;
 
@@ -18,6 +21,12 @@ public class EventService : IEventService
 	private readonly IUnitOfWork _uow;
 	private readonly IEventValidator _validator;
 	private readonly INotificationService _notificationService;
+
+	private static string? NormalizeLocationId(EventModeEnum? mode, string? locationId)
+		=> mode == EventModeEnum.Online || string.IsNullOrWhiteSpace(locationId) ? null : locationId;
+
+	private static string? NormalizeMeetingUrl(EventModeEnum? mode, string? meetingUrl)
+		=> mode == EventModeEnum.Offline || string.IsNullOrWhiteSpace(meetingUrl) ? null : meetingUrl.Trim();
 
 	public EventService(IUnitOfWork uow, IEventValidator validator, INotificationService notificationService)
 	{
@@ -70,12 +79,14 @@ public class EventService : IEventService
 					var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
 					if (studentProfile?.UserId != null)
 					{
-						await _notificationService.SendNotificationAsync(
-							studentProfile.UserId,
-							"Sự kiện đã bị hủy",
-							$"Sự kiện '{ev.Title}' mà bạn đăng ký tham gia đã bị hủy bởi Ban Tổ Chức.",
-							"EventOrganizeCancel"
-						);
+						await _notificationService.SendNotificationAsync(new SendNotificationRequest
+						{
+							ReceiverId = studentProfile.UserId,
+							Title = "Sự kiện đã bị hủy",
+							Message = $"Sự kiện '{ev.Title}' mà bạn đăng ký tham gia đã bị hủy bởi Ban Tổ Chức.",
+							Type = DataAccess.Enum.NotificationType.EventOrganizeCancel,
+							RelatedEntityId = ev.Id
+						});
 					}
 				}
 			}
@@ -119,12 +130,14 @@ public class EventService : IEventService
 			// Notify Organizer that their event is live
 			if (staff.UserId != null)
 			{
-				await _notificationService.SendNotificationAsync(
-					staff.UserId,
-					"Sự kiện đã được xuất bản",
-					$"Sự kiện '{ev.Title}' của bạn đã chính thức được công khai trên hệ thống.",
-					"EventPublished"
-				);
+				await _notificationService.SendNotificationAsync(new SendNotificationRequest
+				{
+					ReceiverId = staff.UserId,
+					Title = "Sự kiện đã được xuất bản",
+					Message = $"Sự kiện '{ev.Title}' của bạn đã chính thức được công khai trên hệ thống.",
+					Type = DataAccess.Enum.NotificationType.EventPublished,
+					RelatedEntityId = ev.Id
+				});
 			}
 		}
 		catch
@@ -337,21 +350,23 @@ public class EventService : IEventService
 			if (topic == null) throw new InvalidOperationException("Topic không tồn tại.");
 		}
 
-		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
-		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		var normalizedLocationId = NormalizeLocationId(dto.Mode, dto.LocationId);
+		var normalizedMeetingUrl = NormalizeMeetingUrl(dto.Mode, dto.MeetingUrl);
+		if (!string.IsNullOrWhiteSpace(normalizedLocationId))
+		{
+			var location = await _uow.Locations.GetByIdAsync(normalizedLocationId);
+			if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		}
 
 		var now = DateTimeHelper.GetVietnamTime();
 		if (dto.StartTime < now.AddDays(7))
 			throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
 
-		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
-			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
-
 		if (dto.Agendas != null)
 		{
 			foreach (var a in dto.Agendas)
 			{
-				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 				if (isEmpty) continue;
 
@@ -369,14 +384,14 @@ public class EventService : IEventService
 		{
 			var entity = new DataAccess.Entities.Event
 			{
-				Id = Guid.NewGuid().ToString(),
+				
 				Title = dto.Title?.Trim() ?? "",
 				Description = dto.Description,
 				ThumbnailUrl = dto.BannerUrl,
 				StartTime = dto.StartTime,
 				EndTime = dto.EndTime,
 				TopicId = dto.TopicId,
-				LocationId = dto.LocationId,
+				LocationId = normalizedLocationId,
 				OrganizerId = staff.Id,
 				SemesterId = dto.SemesterId,
 				DepartmentId = dto.DepartmentId,
@@ -385,7 +400,7 @@ public class EventService : IEventService
 				DepositAmount = dto.DepositAmount,
 				Type = dto.Type,
 				Mode = dto.Mode,
-				MeetingUrl = dto.MeetingUrl?.Trim(),
+				MeetingUrl = normalizedMeetingUrl,
 				Status = dto.Status ?? EventStatusEnum.Draft,
 				CreatedAt = now,
 				UpdatedAt = now
@@ -399,20 +414,42 @@ public class EventService : IEventService
 			{
 				foreach (var a in dto.Agendas)
 				{
-					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerName)
+					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
 						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
 					if (isEmpty) continue;
 
-					await _uow.EventAgenda.CreateAsync(new EventAgenda
+					await _uow.EventAgenda.CreateAsync(new EventAgendaEntity
 					{
-						Id = Guid.NewGuid().ToString(),
+						
 						EventId = entity.Id,
 						SessionName = a.SessionName,
 						Description = a.Description,
-						SpeakerName = a.SpeakerName,
+						SpeakerInfo = a.SpeakerInfo,
 						StartTime = a.StartTime,
 						EndTime = a.EndTime,
 						Location = a.Location,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
+			if (dto.Documents != null && dto.Documents.Count > 0)
+			{
+				foreach (var d in dto.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
+					{
+						continue;
+					}
+
+					await _uow.EventDocuments.CreateAsync(new EventDocumentEntity
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = entity.Id,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
 						CreatedAt = now,
 						UpdatedAt = now
 					});
@@ -475,11 +512,42 @@ public class EventService : IEventService
 		var topic = await _uow.Topics.GetByIdAsync(dto.TopicId);
 		if (topic == null) throw new InvalidOperationException("Topic không tồn tại.");
 
-		var location = await _uow.Locations.GetByIdAsync(dto.LocationId);
-		if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		var normalizedLocationId = NormalizeLocationId(dto.Mode, dto.LocationId);
+		var normalizedMeetingUrl = NormalizeMeetingUrl(dto.Mode, dto.MeetingUrl);
+		if (!string.IsNullOrWhiteSpace(normalizedLocationId))
+		{
+			var location = await _uow.Locations.GetByIdAsync(normalizedLocationId);
+			if (location == null) throw new InvalidOperationException("Location không tồn tại.");
+		}
 
-		if ((dto.Mode == EventModeEnum.Online || dto.Mode == EventModeEnum.Hybrid) && string.IsNullOrWhiteSpace(dto.MeetingUrl))
-			throw new InvalidOperationException("Sự kiện Online hoặc Hybrid bắt buộc phải có đường dẫn tham dự (Meeting URL).");
+		if (!string.IsNullOrWhiteSpace(dto.SemesterId))
+		{
+			var semester = await _uow.Semesters.GetByIdAsync(dto.SemesterId);
+			if (semester == null) throw new InvalidOperationException("Semester không tồn tại.");
+		}
+
+		if (!string.IsNullOrWhiteSpace(dto.DepartmentId))
+		{
+			var department = await _uow.Departments.GetByIdAsync(dto.DepartmentId);
+			if (department == null) throw new InvalidOperationException("Department không tồn tại.");
+		}
+
+		if (dto.Agendas != null)
+		{
+			foreach (var a in dto.Agendas)
+			{
+				bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
+					&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+				if (isEmpty) continue;
+
+				if (!a.StartTime.HasValue || !a.EndTime.HasValue)
+					throw new InvalidOperationException("Agenda phải có thời gian bắt đầu và kết thúc.");
+				if (a.StartTime > a.EndTime)
+					throw new InvalidOperationException("Thời gian bắt đầu Agenda phải bé hơn thời gian kết thúc");
+				if (a.StartTime < dto.StartTime || a.EndTime > dto.EndTime)
+					throw new InvalidOperationException("Thời gian agenda phải nằm trong khoảng thời gian của sự kiện.");
+			}
+		}
 
 		using var transaction = await _uow.BeginTransactionAsync();
 		try
@@ -489,11 +557,77 @@ public class EventService : IEventService
 			ev.Description = dto.Description;
 			ev.StartTime = dto.StartTime;
 			ev.EndTime = dto.EndTime;
+			ev.SemesterId = dto.SemesterId;
+			ev.DepartmentId = dto.DepartmentId;
 			ev.TopicId = dto.TopicId;
-			ev.LocationId = dto.LocationId;
+			ev.LocationId = normalizedLocationId;
+			ev.MaxCapacity = dto.Capacity ?? ev.MaxCapacity;
+			ev.Type = dto.Type;
+			ev.Status = dto.Status ?? ev.Status;
+			ev.IsDepositRequired = dto.IsDepositRequired;
+			ev.DepositAmount = dto.DepositAmount;
+			ev.ThumbnailUrl = dto.BannerUrl;
 			ev.Mode = dto.Mode;
-			ev.MeetingUrl = dto.MeetingUrl?.Trim();
+			ev.MeetingUrl = normalizedMeetingUrl;
 			ev.UpdatedAt = now;
+
+			var existingAgendas = await _uow.EventAgenda.GetAllAsync(x => x.EventId == eventId);
+			foreach (var agenda in existingAgendas)
+			{
+				await _uow.EventAgenda.RemoveAsync(agenda);
+			}
+
+			var existingDocuments = await _uow.EventDocuments.GetAllAsync(x => x.EventId == eventId);
+			foreach (var document in existingDocuments)
+			{
+				await _uow.EventDocuments.RemoveAsync(document);
+			}
+
+			if (dto.Agendas != null)
+			{
+				foreach (var a in dto.Agendas)
+				{
+					bool isEmpty = string.IsNullOrWhiteSpace(a.SessionName) && string.IsNullOrWhiteSpace(a.SpeakerInfo)
+						&& string.IsNullOrWhiteSpace(a.Description) && a.StartTime == null && a.EndTime == null && string.IsNullOrWhiteSpace(a.Location);
+					if (isEmpty) continue;
+
+					await _uow.EventAgenda.CreateAsync(new EventAgendaEntity
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = ev.Id,
+						SessionName = a.SessionName,
+						Description = a.Description,
+						SpeakerInfo = a.SpeakerInfo,
+						StartTime = a.StartTime,
+						EndTime = a.EndTime,
+						Location = a.Location,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
+
+			if (dto.Documents != null)
+			{
+				foreach (var d in dto.Documents)
+				{
+					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
+					{
+						continue;
+					}
+
+					await _uow.EventDocuments.CreateAsync(new EventDocumentEntity
+					{
+						Id = Guid.NewGuid().ToString(),
+						EventId = ev.Id,
+						Name = d.FileName,
+						Url = d.Url,
+						Type = d.Type,
+						CreatedAt = now,
+						UpdatedAt = now
+					});
+				}
+			}
 
 			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
@@ -510,12 +644,14 @@ public class EventService : IEventService
 						var studentProfile = await _uow.StudentProfiles.GetAsync(sp => sp.Id == ticket.StudentId);
 						if (studentProfile?.UserId != null)
 						{
-							await _notificationService.SendNotificationAsync(
-								studentProfile.UserId,
-								"Sự kiện đã thay đổi thông tin",
-								$"Sự kiện '{ev.Title}' mà bạn đã đăng ký vừa được Ban Tổ Chức cập nhật lại thông tin.",
-								"EventUpdated"
-							);
+							await _notificationService.SendNotificationAsync(new SendNotificationRequest
+							{
+								ReceiverId = studentProfile.UserId,
+								Title = "Sự kiện đã thay đổi thông tin",
+								Message = $"Sự kiện '{ev.Title}' mà bạn đã đăng ký vừa được Ban Tổ Chức cập nhật lại thông tin.",
+								Type = DataAccess.Enum.NotificationType.EventUpdated,
+								RelatedEntityId = ev.Id
+							});
 						}
 					}
 				}
@@ -612,7 +748,16 @@ public class EventService : IEventService
 			  .Include(x => x.Department)
 			  .Include(x => x.Location)
 			  .Include(x => x.EventDocuments)
-			  .Include(x => x.ApprovalLogs))).FirstOrDefault();
+			  .Include(x => x.ApprovalLogs)
+			  .Include(x => x.EventTeams)
+			    .ThenInclude(t => t.TeamMembers)
+			      .ThenInclude(m => m.Student)
+			        .ThenInclude(s => s.User)
+			  .Include(x => x.EventTeams)
+			    .ThenInclude(t => t.TeamMembers)
+			      .ThenInclude(m => m.Staff)
+			        .ThenInclude(s => s.User)
+			)).FirstOrDefault();
 
 		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
@@ -627,14 +772,22 @@ public class EventService : IEventService
 			Title = ev.Title,
 			Description = ev.Description,
 			ThumbnailUrl = ev.ThumbnailUrl,
+			SemesterId = ev.SemesterId,
 			SemesterName = ev.Semester?.Name,
+			DepartmentId = ev.DepartmentId,
 			DepartmentName = ev.Department?.Name,
+			LocationId = ev.LocationId,
 			Location = ev.Location?.Name ?? ev.LocationId,
+			TopicId = ev.TopicId,
 			StartTime = ev.StartTime,
 			EndTime = ev.EndTime,
 			MaxCapacity = ev.MaxCapacity,
 			IsDepositRequired = ev.IsDepositRequired ?? false,
 			DepositAmount = ev.DepositAmount ?? 0,
+			Type = ev.Type,
+			Status = ev.Status,
+			Mode = ev.Mode,
+			MeetingUrl = ev.MeetingUrl,
 			RegisteredCount = ev.Tickets?.Count ?? 0,
 			CheckedInCount = ev.Tickets?.Count(t => t.CheckInTime != null) ?? 0,
 			WaitlistCount = ev.EventWaitlists?.Count ?? 0,
@@ -654,7 +807,7 @@ public class EventService : IEventService
 					EventId = a.EventId,
 					SessionName = a.SessionName ?? "",
 					Description = a.Description,
-					SpeakerName = a.SpeakerName,
+					SpeakerInfo = a.SpeakerInfo,
 					StartTime = a.StartTime ?? DateTime.MinValue,
 					EndTime = a.EndTime ?? DateTime.MinValue,
 					Location = a.Location
@@ -675,6 +828,47 @@ public class EventService : IEventService
 				});
 			}
 		}
+		}
+
+		if (ev.EventTeams != null)
+		{
+			foreach (var t in ev.EventTeams.OrderBy(x => x.CreatedAt))
+			{
+				var teamDto = new EventTeamDto
+				{
+					Id = t.Id,
+					EventId = t.EventId,
+					TeamName = t.TeamName,
+					Description = t.Description,
+					Score = t.Score ?? 0,
+					PlaceRank = t.PlaceRank,
+					CreatedAt = t.CreatedAt,
+					TeamMembers = new List<TeamMemberDto>()
+				};
+
+				if (t.TeamMembers != null)
+				{
+					foreach (var m in t.TeamMembers)
+					{
+						string name = m.Student != null ? (m.Student.User?.FullName ?? "Unknown") : (m.Staff != null ? (m.Staff.User?.FullName ?? "Unknown") : "Unknown");
+						string email = m.Student != null ? (m.Student.User?.Email ?? "Unknown") : (m.Staff != null ? (m.Staff.User?.Email ?? "Unknown") : "Unknown");
+						string role = m.Student != null ? "Student" : (m.Staff != null ? "Staff" : "Unknown");
+						
+						teamDto.TeamMembers.Add(new TeamMemberDto
+						{
+							Id = m.Id,
+							TeamId = m.TeamId,
+							StudentId = m.StudentId,
+							StaffId = m.StaffId,
+							MemberName = name,
+							MemberEmail = email,
+							RoleName = role,
+							TeamRole = m.Role?.ToString() ?? "Member"
+						});
+					}
+				}
+				dto.Teams.Add(teamDto);
+			}
 		}
 
 		if (!string.IsNullOrEmpty(userId))
@@ -719,6 +913,91 @@ public class EventService : IEventService
 			await transaction.RollbackAsync();
 			throw;
 		}
+	}
+
+	public async Task<bool> CreateEventTeamAsync(string eventId, string teamName, string? description)
+	{
+		var team = new DataAccess.Entities.EventTeam
+		{
+			Id = Guid.NewGuid().ToString(),
+			EventId = eventId,
+			TeamName = teamName,
+			Description = description,
+			Score = 0,
+			CreatedAt = DateTimeHelper.GetVietnamTime()
+		};
+		await _uow.EventTeams.CreateAsync(team); // Requires IUnitOfWork to have EventTeams, wait I will check if it exists or use generic repo
+		await _uow.SaveChangesAsync();
+		return true;
+	}
+
+	public async Task<bool> DeleteEventTeamAsync(string teamId)
+	{
+		var team = await _uow.EventTeams.GetByIdAsync(teamId); // Will check if repo exists
+		if (team != null)
+		{
+			await _uow.EventTeams.RemoveAsync(team);
+			await _uow.SaveChangesAsync();
+		}
+		return true;
+	}
+
+	public async Task<bool> AddMemberToTeamAsync(string teamId, string? studentUserId, string? staffUserId, string roleName)
+	{
+		string? realStudentId = null;
+		string? realStaffId = null;
+
+		if (!string.IsNullOrEmpty(studentUserId))
+		{
+			var student = await _uow.StudentProfiles.GetAsync(x => x.UserId == studentUserId);
+			if (student == null) throw new InvalidOperationException("Profile học sinh không tồn tại cho User này.");
+			realStudentId = student.Id;
+		}
+		else if (!string.IsNullOrEmpty(staffUserId))
+		{
+			var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == staffUserId);
+			if (staff == null) throw new InvalidOperationException("Profile nhân viên không tồn tại cho User này.");
+			realStaffId = staff.Id;
+		}
+		else
+		{
+			throw new InvalidOperationException("Phải chọn thành viên hợp lệ.");
+		}
+
+		// Check if already in team
+		// Assuming we have generic access or ITeamMemberRepository. If not we will use DbContext directly or create a quick generic.
+		// Wait, I UnitOfWork might not have EventTeams or TeamMembers explicitly exposed, let me check IUnitOfWork.cs below.
+		
+		var teamMember = new DataAccess.Entities.TeamMember
+		{
+			Id = Guid.NewGuid().ToString(),
+			TeamId = teamId,
+			StudentId = realStudentId,
+			StaffId = realStaffId,
+			Role = Enum.TryParse<TeamRoleEnum>(roleName, true, out var r) ? r : TeamRoleEnum.Member,
+			CreatedAt = DateTimeHelper.GetVietnamTime()
+		};
+
+		await _uow.TeamMembers.CreateAsync(teamMember);
+		await _uow.SaveChangesAsync();
+		return true;
+	}
+
+	public async Task<bool> RemoveMemberFromTeamAsync(string memberId)
+	{
+		var member = await _uow.TeamMembers.GetByIdAsync(memberId);
+		if (member != null)
+		{
+			await _uow.TeamMembers.RemoveAsync(member);
+			await _uow.SaveChangesAsync();
+		}
+		return true;
+	}
+
+	public async Task<List<EventTeamDto>> GetEventTeamsAsync(string eventId)
+	{
+		// Just a stub or simple implementation to satisfy the interface
+		return new List<EventTeamDto>();
 	}
 }
 

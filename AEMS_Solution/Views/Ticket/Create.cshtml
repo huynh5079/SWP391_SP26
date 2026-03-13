@@ -1,0 +1,39 @@
+@model AEMS_Solution.Models.Organizer.Manage.CreateTicketViewModel
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Create Ticket";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container mt-4">
+    <h2>Create Ticket</h2>
+    <form asp-controller="Ticket" asp-action="Create" method="post" class="mt-3">
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+
+        <div class="mb-3">
+            <label asp-for="EventId" class="form-label"></label>
+            <input asp-for="EventId" class="form-control" />
+            <span asp-validation-for="EventId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="StudentId" class="form-label"></label>
+            <input asp-for="StudentId" class="form-control" />
+            <span asp-validation-for="StudentId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="TicketCode" class="form-label"></label>
+            <input asp-for="TicketCode" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" asp-items="Html.GetEnumSelectList<TicketStatusEnum>()" class="form-select"></select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a asp-controller="Ticket" asp-action="Index" class="btn btn-secondary">Back</a>
+    </form>
+</div>

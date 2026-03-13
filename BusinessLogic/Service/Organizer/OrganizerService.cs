@@ -1,6 +1,6 @@
 ﻿using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.Role.Organizer;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;

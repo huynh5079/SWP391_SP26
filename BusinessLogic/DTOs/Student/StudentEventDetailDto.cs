@@ -27,6 +27,9 @@ namespace BusinessLogic.DTOs.Student
         public string? SemesterName { get; set; }
         public string? DepartmentName { get; set; }
         public string? OrganizerName { get; set; }
+        public string? OrganizerUserId { get; set; }
+        public string? OrganizerAvatarUrl { get; set; }
+        public string? OrganizerPosition { get; set; }
 
         // Computed for the action button
         public bool IsRegistered { get; set; }
@@ -35,5 +38,12 @@ namespace BusinessLogic.DTOs.Student
 
         // Ticket id for cancel action
         public string? TicketId { get; set; }
+
+        // Waitlist state
+        public bool IsInWaitlist { get; set; }
+        public int? WaitlistPosition { get; set; }
+        public DataAccess.Enum.EventWaitlistStatusEnum? WaitlistStatus { get; set; }
+        public string? WaitlistStudentProfileId { get; set; }
     }
+
 }

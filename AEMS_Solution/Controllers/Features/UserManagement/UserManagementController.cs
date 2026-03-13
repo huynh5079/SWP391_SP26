@@ -1,4 +1,5 @@
 using BusinessLogic.DTOs;
+using BusinessLogic.DTOs.Role;
 using BusinessLogic.Service.User;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
@@ -48,24 +49,41 @@ namespace AEMS_Solution.Controllers.Features.UserManagement
         }
 
         [HttpPost]
-        public async Task<IActionResult> Ban(string id)
+        public async Task<IActionResult> Ban(AdminSoftDeleteLimitDTO request)
+        {
+            if (string.IsNullOrEmpty(request.Id)) return BadRequest();
+
+            try
+            {
+                var result = await _userService.SetUserLockAsync(request);
+                if (!result)
+                {
+                    TempData["Error"] = "Failed to update user status.";
+                }
+                else
+                {
+                    TempData["Success"] = request.ReactivateAt.HasValue
+                        ? $"Đã khóa tài khoản đến {request.ReactivateAt.Value:dd/MM/yyyy HH:mm}."
+                        : "Đã khóa tài khoản vô thời hạn.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Unban(string id)
         {
             if (string.IsNullOrEmpty(id)) return BadRequest();
 
             var result = await _userService.ToggleBanUserAsync(id);
-            if (!result)
-            {
-                TempData["Error"] = "Failed to update user status.";
-            }
-            else
-            {
-                // Get updated state to show correct message
-                var user = await _userService.GetUserDetailAsync(id);
-                var isBanned = user?.IsBanned == true;
-                TempData["Success"] = isBanned 
-                    ? "Đã khóa tài khoản thành công." 
-                    : "Đã mở khóa tài khoản thành công.";
-            }
+            TempData[result ? "Success" : "Error"] = result
+                ? "Đã mở khóa tài khoản thành công."
+                : "Failed to update user status.";
 
             return RedirectToAction(nameof(Index));
         }

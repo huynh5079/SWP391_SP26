@@ -1,32 +1,40 @@
-﻿using System.Drawing.Printing;
+using System.Drawing.Printing;
 using System.Linq;
 using System.Net.NetworkInformation;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
 using AEMS_Solution.Models.Organizer;
+using AEMS_Solution.Models.Organizer.Manage;
 using AutoMapper;
+using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Organizer;
-using BusinessLogic.Service.ValiDate.ValidationDataforEvent;
+using BusinessLogic.Service.ValidationData.Event;
 using CloudinaryDotNet;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Helper;
+using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
+using BusinessLogic.Service.Event;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-
-
-
 [Authorize(Roles = "Organizer")] 
 	public class OrganizerController : BaseController
 	{
 	private readonly IOrganizerService _organizerService;
 	    private readonly IMapper _mapper;
-		public OrganizerController(IOrganizerService organizerService, IMapper mapper)
+	    private readonly ILocationService _locationService;
+	    private readonly IUnitOfWork _unitOfWork;
+		private readonly IEventService _eventService;
+
+		public OrganizerController(IOrganizerService organizerService, IEventService eventService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork)
 		{
 			_organizerService = organizerService;
+			_eventService = eventService;
 			_mapper = mapper;
+			_locationService = locationService;
+			_unitOfWork = unitOfWork;
 		}
         [HttpGet]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, int page = 1, int pageSize = 10)
@@ -261,13 +269,49 @@ using Microsoft.EntityFrameworkCore;
 		//load drop down for event
 		private async Task LoadDropdowns(CreateEventViewModel vm)
 		{
-			// Use service to get dropdowns (keeps controller free from direct DB queries)
 			var dto = await _organizerService.GetCreateEventDropdownsAsync();
+			_mapper.Map(dto, vm);
+		}
 
-			vm.Semesters = dto.Semesters.Select(s => new SelectListItem { Value = s.Id, Text = s.Text }).ToList();
-			vm.Departments = dto.Departments.Select(d => new SelectListItem { Value = d.Id, Text = d.Text }).ToList();
-			vm.Locations = dto.Locations.Select(l => new SelectListItem { Value = l.Id, Text = l.Text }).ToList();
-			vm.Topics = dto.Topics.Select(t => new SelectListItem { Value = t.Id, Text = t.Text }).ToList();
+		[HttpGet]
+		public async Task<IActionResult> GetAvailableLocations(DateTime startTime, DateTime endTime)
+		{
+			if (endTime <= startTime)
+			{
+				return Json(new List<object>());
+			}
+
+			var locations = await _locationService.GetAvailableLocationsAsync(startTime, endTime);
+			return Json(locations.Select(x => new
+			{
+				id = x.LocationId,
+				name = x.Name,
+				address = x.Address,
+				building = ExtractAddressPart(x.Address, "Building"),
+				floor = ExtractAddressPart(x.Address, "Floor"),
+				room = ExtractAddressPart(x.Address, "Room"),
+				capacity = x.Capacity,
+				type = x.Type?.ToString()
+			}));
+		}
+
+		private static string ExtractAddressPart(string? address, string label)
+		{
+			if (string.IsNullOrWhiteSpace(address))
+			{
+				return string.Empty;
+			}
+
+			var segment = address
+				.Split(" - ", StringSplitOptions.RemoveEmptyEntries)
+				.FirstOrDefault(x => x.StartsWith(label + " ", StringComparison.OrdinalIgnoreCase));
+
+			if (string.IsNullOrWhiteSpace(segment))
+			{
+				return string.Empty;
+			}
+
+			return segment.Substring(label.Length).Trim();
 		}
 
 		
@@ -299,6 +343,35 @@ using Microsoft.EntityFrameworkCore;
 
 			if (!vm.IsDepositRequired)
 				vm.DepositAmount = 0;
+
+			if (string.IsNullOrWhiteSpace(vm.LocationId))
+			{
+				ModelState.AddModelError(nameof(vm.LocationId), "Vui lòng chọn phòng hợp lệ.");
+			}
+			else
+			{
+				var selectedLocation = await _locationService.GetLocationByIdAsync(vm.LocationId);
+				if (selectedLocation == null)
+				{
+					ModelState.AddModelError(nameof(vm.LocationId), "Phòng đã chọn không tồn tại.");
+				}
+				else
+				{
+					if (vm.MaxCapacity > selectedLocation.Capacity)
+					{
+						ModelState.AddModelError(nameof(vm.MaxCapacity), $"Sức chứa sự kiện phải nhỏ hơn hoặc bằng sức chứa phòng ({selectedLocation.Capacity}).");
+					}
+
+					if (vm.EndTime > vm.StartTime)
+					{
+						var availableLocations = await _locationService.GetAvailableLocationsAsync(vm.StartTime, vm.EndTime);
+						if (!availableLocations.Any(x => x.LocationId == vm.LocationId))
+						{
+							ModelState.AddModelError(nameof(vm.LocationId), "Phòng đã chọn không còn khả dụng trong khoảng thời gian này.");
+						}
+					}
+				}
+			}
 
 			if (!ModelState.IsValid)
 			{
@@ -350,61 +423,32 @@ using Microsoft.EntityFrameworkCore;
 			try
 			{
 				var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
-				var vm = new AEMS_Solution.Models.Event.EventDetailsViewModel
+				var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
+				
+				vm.Teams = dto.Teams.Select(t => new AEMS_Solution.Models.Event.EventTeamVm
 				{
-					EventId = dto.EventId,
-					Title = dto.Title,
-					Description = dto.Description,
-					ThumbnailUrl = dto.ThumbnailUrl,
-					SemesterName = dto.SemesterName,
-					DepartmentName = dto.DepartmentName,
-					Location = dto.Location,
-					StartTime = dto.StartTime,
-					EndTime = dto.EndTime,
-					MaxCapacity = dto.MaxCapacity,
-					IsDepositRequired = dto.IsDepositRequired,
-					DepositAmount = dto.DepositAmount,
-					RegisteredCount = dto.RegisteredCount,
-					CheckedInCount = dto.CheckedInCount,
-					WaitlistCount = dto.WaitlistCount,
-					AvgRating = dto.AvgRating,
-					LastApprovalAction = dto.LastApprovalAction,
-					LastApprovalComment = dto.LastApprovalComment,
-					LastApprovalAt = dto.LastApprovalAt
-				};
-
-				foreach (var a in dto.Agendas)
-				{
-					vm.Agendas.Add(new AEMS_Solution.Models.Event.EventAgendaVm
+					Id = t.Id,
+					EventId = t.EventId,
+					TeamName = t.TeamName,
+					Description = t.Description,
+					Score = t.Score,
+					PlaceRank = t.PlaceRank,
+					CreatedAt = t.CreatedAt,
+					TeamMembers = t.TeamMembers.Select(m => new AEMS_Solution.Models.Event.TeamMemberVm
 					{
-						Id = a.Id,
-						EventId = a.EventId,
-						SessionName = a.SessionName,
-						Description = a.Description,
-						SpeakerName = a.SpeakerName,
-						StartTime = a.StartTime,
-						EndTime = a.EndTime,
-						Location = a.Location
-					});
-				}
+						Id = m.Id,
+						TeamId = m.TeamId,
+						StudentId = m.StudentId,
+						StaffId = m.StaffId,
+						MemberName = m.MemberName,
+						MemberEmail = m.MemberEmail,
+						RoleName = m.RoleName,
+						TeamRole = m.TeamRole
+					}).ToList()
+				}).ToList();
 
-			if (dto.Documents != null)
-			{
-				foreach (var d in dto.Documents)
-				{
-					vm.Documents.Add(new AEMS_Solution.Models.Event.EventDocumentVm
-					{
-						Id = d.Id,
-						EventId = d.EventId,
-						FileName = d.FileName ?? d.Url ?? "",
-						Url = d.Url ?? "",
-						Type = d.Type
-					});
-				}
-			}
-
-				vm.CanEdit = dto.CanEdit;
-				vm.CanSendForApproval = dto.CanSendForApproval;
+				var dropdowns = await _organizerService.GetCreateEventDropdownsAsync();
+				ViewBag.Locations = dropdowns.Locations;
 
 				return View("~/Views/Event/DetailEvent.cshtml", vm);
 			}
@@ -414,6 +458,237 @@ using Microsoft.EntityFrameworkCore;
 			}
 		}
 		// POST detail handler removed — use Manage POST if needed
+
+		// My Participated Events: Events where staff is a Team Member or Speaker
+		[HttpGet]
+		public async Task<IActionResult> MyParticipatedEvents()
+		{
+			if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+			// Resolve StaffProfile from UserId
+			var staffProfile = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == CurrentUserId);
+			if (staffProfile == null)
+			{
+				SetError("Không tìm thấy hồ sơ nhân sự.");
+				return RedirectToAction(nameof(Index));
+			}
+
+			// Fetch events where this staff is a team member or a speaker
+			var events = await _unitOfWork.Events.GetAllAsync(
+				e => e.DeletedAt == null && (
+				     e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id)) ||
+				     e.EventAgenda.Any(a => a.StaffSpeakerId == staffProfile.Id && a.DeletedAt == null)),
+				q => q.Include(x => x.Location)
+				      .Include(x => x.Topic)
+				      .Include(x => x.Semester)
+				      .Include(x => x.EventTeams)
+				        .ThenInclude(et => et.TeamMembers)
+				      .Include(x => x.EventAgenda));
+
+			var vm = events
+				.OrderBy(e => e.StartTime)
+				.Select(e => new
+				{
+					EventId = e.Id,
+					Title = e.Title,
+					Status = e.Status.ToString(),
+					StartTime = e.StartTime,
+					EndTime = e.EndTime,
+					Location = e.Location?.Address ?? e.LocationId,
+					Role = e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id))
+						? "Ban tổ chức"
+						: "Diễn giả"
+				})
+				.ToList();
+
+			return View("~/Views/Organizer/MyParticipatedEvents.cshtml", vm);
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateEventTeamFromDetail(string EventId, string TeamName, string Description)
+		{
+			if (string.IsNullOrWhiteSpace(EventId) || string.IsNullOrWhiteSpace(TeamName)) return BadRequest();
+			try
+			{
+				await _eventService.CreateEventTeamAsync(EventId, TeamName, Description);
+				SetSuccess("Đã tạo nhóm thành công.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> DeleteEventTeamFromDetail(string TeamId, string EventId)
+		{
+			if (string.IsNullOrWhiteSpace(TeamId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.DeleteEventTeamAsync(TeamId);
+				SetSuccess("Đã xóa nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> AddMemberToTeam(string TeamId, string EventId, string? StudentId, string? StaffId, string RoleName)
+		{
+			if (string.IsNullOrWhiteSpace(TeamId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.AddMemberToTeamAsync(TeamId, StudentId, StaffId, RoleName);
+				SetSuccess("Đã thêm thành viên vào nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> RemoveMemberFromTeam(string MemberId, string EventId)
+		{
+			if (string.IsNullOrWhiteSpace(MemberId) || string.IsNullOrWhiteSpace(EventId)) return BadRequest();
+			try
+			{
+				await _eventService.RemoveMemberFromTeamAsync(MemberId);
+				SetSuccess("Đã xóa thành viên khỏi nhóm.");
+			}
+			catch (Exception ex)
+			{
+				SetError(ex.Message);
+			}
+			return RedirectToAction(nameof(DetailEvent), new { id = EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateAgendaFromDetail(CreateDetailAgendaViewModel model)
+		{
+			if (string.IsNullOrWhiteSpace(model.EventId))
+			{
+				SetError("Event id không hợp lệ.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (string.IsNullOrWhiteSpace(CurrentUserId))
+			{
+				return RedirectToAction("Login", "Auth");
+			}
+
+			if (!ModelState.IsValid)
+			{
+				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu agenda không hợp lệ.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
+			if (eventEntity == null)
+			{
+				SetError("Không tìm thấy sự kiện để thêm agenda.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (model.StartTime >= model.EndTime)
+			{
+				SetError("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			if (model.StartTime < eventEntity.StartTime || model.EndTime > eventEntity.EndTime)
+			{
+				SetError("Thời gian agenda phải nằm trong thời gian của event.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var agenda = new DataAccess.Entities.EventAgenda
+			{
+				EventId = model.EventId,
+				SessionName = model.SessionName.Trim(),
+				SpeakerInfo = model.SpeakerInfo?.Trim(),
+				Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
+				StartTime = model.StartTime,
+				EndTime = model.EndTime,
+				Location = string.IsNullOrWhiteSpace(model.Location) ? null : model.Location.Trim(),
+				UpdatedAt = DateTimeHelper.GetVietnamTime()
+			};
+
+			if (!string.IsNullOrEmpty(model.SpeakerUserId))
+			{
+				if (model.SpeakerUserRole == "Student")
+				{
+					var student = await _unitOfWork.StudentProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
+					if (student != null) agenda.StudentSpeakerId = student.Id;
+				}
+				else if (model.SpeakerUserRole == "Staff")
+				{
+					var staff = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
+					if (staff != null) agenda.StaffSpeakerId = staff.Id;
+				}
+			}
+
+			await _unitOfWork.EventAgenda.CreateAsync(agenda);
+			await _unitOfWork.SaveChangesAsync();
+
+			SetSuccess("Tạo agenda thành công.");
+			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CreateDocumentFromDetail(CreateDetailDocumentViewModel model)
+		{
+			if (string.IsNullOrWhiteSpace(model.EventId))
+			{
+				SetError("Event id không hợp lệ.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			if (string.IsNullOrWhiteSpace(CurrentUserId))
+			{
+				return RedirectToAction("Login", "Auth");
+			}
+
+			if (!ModelState.IsValid)
+			{
+				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu tài liệu không hợp lệ.");
+				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+			}
+
+			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
+			if (eventEntity == null)
+			{
+				SetError("Không tìm thấy sự kiện để thêm tài liệu.");
+				return RedirectToAction(nameof(MyEvents));
+			}
+
+			var document = new DataAccess.Entities.EventDocument
+			{
+				EventId = model.EventId,
+				Name = model.Name.Trim(),
+				Url = model.Url.Trim(),
+				Type = string.IsNullOrWhiteSpace(model.Type) ? null : model.Type.Trim(),
+				UpdatedAt = DateTimeHelper.GetVietnamTime()
+			};
+
+			await _unitOfWork.EventDocuments.CreateAsync(document);
+			await _unitOfWork.SaveChangesAsync();
+
+			SetSuccess("Tạo document thành công.");
+			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
+		}
+
 		[HttpGet]
 		public async Task<IActionResult> MyEvents(string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 		{
@@ -424,52 +699,16 @@ using Microsoft.EntityFrameworkCore;
 			{
 				var paged = await _organizerService.GetMyEventsAsync(userId, search, status, semesterId, page, pageSize);
 
-				var vm = new MyEventsViewModel();
-				var now = DateTimeHelper.GetVietnamTime();
-				foreach (var e in paged.Items)
+				var vm = new MyEventsViewModel
 				{
-					string displayStatus = e.Status.ToString();
-					if (string.Equals(displayStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Cancelled";
-					else if (string.Equals(displayStatus, "Pending", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Pending";
-					else if (string.Equals(displayStatus, "Draft", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now > e.EndTime ? "Completed" : "Draft";
-					else if (string.Equals(displayStatus, "Published", StringComparison.OrdinalIgnoreCase) || string.Equals(displayStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-					else
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-
-					vm.Events.Add(new OrganizerEventCardVm
-					{
-						EventId = e.EventId,
-						Title = e.Title,
-						ThumbnailUrl = e.ThumbnailUrl,
-						SemesterId = e.SemesterId,
-						SemesterName = e.SemesterName,
-						DepartmentId = e.DepartmentId,
-						DepartmentName = e.DepartmentName,
-						Location = e.Location,
-						StartTime = e.StartTime,
-						EndTime = e.EndTime,
-						MaxCapacity = e.MaxCapacity,
-						Status = e.Status,
-						RegisteredCount = e.RegisteredCount,
-						CheckedInCount = e.CheckedInCount,
-						WaitlistCount = e.WaitlistCount,
-						AvgRating = e.AvgRating,
-						Mode = e.Mode,
-					    MeetingUrl = e.MeetingUrl,
-					
-					});
-				}
-
-				vm.Page = paged.Page;
-				vm.PageSize = paged.PageSize;
-				vm.TotalItems = paged.Total;
-				vm.Search = search;
-				vm.Status = status;
-				vm.SemesterId = semesterId;
+					Events = _mapper.Map<List<OrganizerEventCardVm>>(paged.Items),
+					Page = paged.Page,
+					PageSize = paged.PageSize,
+					TotalItems = paged.Total,
+					Search = search,
+					Status = status,
+					SemesterId = semesterId
+				};
 
 				return View("~/Views/Event/MyEvent.cshtml", vm);
 			}
@@ -493,52 +732,16 @@ using Microsoft.EntityFrameworkCore;
 			{
 				var paged = await _organizerService.GetMyDeletedEventsAsync(userId, search, status, semesterId, page, pageSize);
 
-				var vm = new MyEventsViewModel();
-				var now = DateTimeHelper.GetVietnamTime();
-				foreach (var e in paged.Items)
+				var vm = new MyEventsViewModel
 				{
-					string displayStatus = e.Status.ToString();
-					if (string.Equals(displayStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Cancelled";
-					else if (string.Equals(displayStatus, "Pending", StringComparison.OrdinalIgnoreCase))
-						displayStatus = "Pending";
-					else if (string.Equals(displayStatus, "Draft", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now > e.EndTime ? "Completed" : "Draft";
-					else if (string.Equals(displayStatus, "Published", StringComparison.OrdinalIgnoreCase) || string.Equals(displayStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-					else
-						displayStatus = now < e.StartTime ? "Upcoming" : now >= e.StartTime && now <= e.EndTime ? "Happening" : "Completed";
-
-					vm.Events.Add(new OrganizerEventCardVm
-					{
-						EventId = e.EventId,
-						Title = e.Title,
-						ThumbnailUrl = e.ThumbnailUrl,
-						SemesterId = e.SemesterId,
-						SemesterName = e.SemesterName,
-						DepartmentId = e.DepartmentId,
-						DepartmentName = e.DepartmentName,
-						Location = e.Location,
-						StartTime = e.StartTime,
-						EndTime = e.EndTime,
-						MaxCapacity = e.MaxCapacity,
-						Status = e.Status,
-						RegisteredCount = e.RegisteredCount,
-						CheckedInCount = e.CheckedInCount,
-						WaitlistCount = e.WaitlistCount,
-						AvgRating = e.AvgRating,
-						Mode = e.Mode,
-						MeetingUrl = e.MeetingUrl,
-
-					});
-				}
-
-				vm.Page = paged.Page;
-				vm.PageSize = paged.PageSize;
-				vm.TotalItems = paged.Total;
-				vm.Search = search;
-				vm.Status = status;
-				vm.SemesterId = semesterId;
+					Events = _mapper.Map<List<OrganizerEventCardVm>>(paged.Items),
+					Page = paged.Page,
+					PageSize = paged.PageSize,
+					TotalItems = paged.Total,
+					Search = search,
+					Status = status,
+					SemesterId = semesterId
+				};
 
 				return View("~/Views/Event/MyEventDelete.cshtml", vm);
 			}
@@ -568,41 +771,7 @@ using Microsoft.EntityFrameworkCore;
 				
 				var dto = await _organizerService.GetDashboardAsync(userId);
 
-				var vm = new OrganizerDashboardViewModel();
-				vm.Stats.TotalEvents = dto.TotalEvents;
-				vm.Stats.UpcomingEvents = dto.UpcomingEvents;
-				vm.Stats.DraftEvents = dto.DraftEvents;
-
-                // Extensions for charts and cards
-                vm.RegistrationsToday = dto.RegistrationsToday;
-                vm.DepositCollectedThisMonth = dto.DepositCollectedThisMonth;
-                vm.RegistrationTrendLabels = dto.RegistrationTrendLabels;
-                vm.RegistrationTrendData = dto.RegistrationTrendData;
-                vm.EventStatusDistribution = dto.EventStatusDistribution;
-                
-                if (dto.RecentFeedbacks != null && dto.RecentFeedbacks.Any())
-                {
-                    vm.RecentFeedbacks = dto.RecentFeedbacks.Select(f => new EventFeedbackSummaryVm
-                    {
-                        EventId = f.EventId,
-                        EventTitle = f.EventTitle,
-                        Rating = f.Rating,
-                        Comment = f.Comment,
-                        CreatedAt = f.CreatedAt,
-                        StudentId = f.StudentId,
-                        StudentCode = f.StudentCode
-                    }).ToList();
-                }
-
-				vm.RecentEvents = dto.UpcomingList
-					.Select(x => new OrganizerEventCardVm
-					{
-						EventId = x.Id,
-						Title = x.Title,
-						StartTime = x.StartTime,
-					    Status = x.Status,
-					})
-					.ToList();
+				var vm = _mapper.Map<OrganizerDashboardViewModel>(dto);
 
 				return View(vm);
 			}

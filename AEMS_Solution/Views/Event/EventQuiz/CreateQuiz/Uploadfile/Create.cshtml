@@ -1,0 +1,123 @@
+﻿@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Create Quiz from File";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Create Quiz from File</h1>
+            <p class="text-muted small mb-0">Upload a quiz file after entering the quiz information.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil-square me-1"></i>Switch to Manual
+            </a>
+            <a asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-collection me-1"></i>Switch to Question Bank
+            </a>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="alert alert-light border d-flex align-items-start gap-2 mb-4">
+                <i class="bi bi-upload text-primary"></i>
+                <div>Create the quiz and upload a file in one step. Supported formats: PDF, DOCX, TXT.</div>
+            </div>
+
+            <form asp-action="Create" asp-route-mode="upload" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label class="form-label">Event</label>
+                    <select asp-for="EventId" asp-items="Model.Events" class="form-select">
+                        <option value="">Select event</option>
+                    </select>
+                    <span asp-validation-for="EventId" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Topic</label>
+                    <select asp-for="TopicId" asp-items="Model.Topics" class="form-select">
+                        <option value="">Select topic</option>
+                    </select>
+                    <span asp-validation-for="TopicId" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input asp-for="Quiz.Title" class="form-control" />
+                    <span asp-validation-for="Quiz.Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Type</label>
+                    <select asp-for="Quiz.Type" class="form-select js-quiz-type">
+                        <option value="0">Practice</option>
+                        <option value="1">Exam</option>
+                        <option value="2">Survey</option>
+                        <option value="3">LiveQuiz</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Passing Score</label>
+                    <input asp-for="Quiz.PassingScore" class="form-control" type="number" min="0" />
+                </div>
+
+                <div class="mb-3 d-none js-live-quiz-link-group">
+                    <label asp-for="Quiz.LiveQuizLink" class="form-label">Live quiz link</label>
+                    <input asp-for="Quiz.LiveQuizLink" class="form-control js-live-quiz-link-input" type="url" placeholder="https://..." />
+                    <span asp-validation-for="Quiz.LiveQuizLink" class="text-danger"></span>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                    <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" />
+                    <label asp-for="Quiz.AllowReview" class="form-check-label">Cho phép học sinh xem đáp án sau khi nộp bài</label>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Quiz.SharingStatus" class="form-label">Question bank visibility</label>
+                    <select asp-for="Quiz.SharingStatus" class="form-select">
+                        <option value="@((int)QuizSetVisibilityEnum.Private)">Private</option>
+                        <option value="@((int)QuizSetVisibilityEnum.Public)">Public (Community)</option>
+                    </select>
+                    <div class="form-text">`Private` chỉ dùng nội bộ. `Public (Community)` sẽ chia sẻ cho community.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Upload quiz file (PDF, DOCX, TXT)</label>
+                    <input asp-for="FileUpload" class="form-control" type="file" accept=".pdf,.docx,.txt" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Create Quiz</button>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts{
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const typeSelect = document.querySelector('.js-quiz-type');
+            const liveLinkGroup = document.querySelector('.js-live-quiz-link-group');
+            const liveLinkInput = document.querySelector('.js-live-quiz-link-input');
+
+            function toggleLiveQuizLink() {
+                const isLiveQuiz = typeSelect && typeSelect.value === '3';
+                liveLinkGroup?.classList.toggle('d-none', !isLiveQuiz);
+
+                if (liveLinkInput) {
+                    liveLinkInput.required = isLiveQuiz;
+                    if (!isLiveQuiz) {
+                        liveLinkInput.value = '';
+                    }
+                }
+            }
+
+            typeSelect?.addEventListener('change', toggleLiveQuizLink);
+            toggleLiveQuizLink();
+        });
+    </script>
+}

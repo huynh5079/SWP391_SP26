@@ -1,0 +1,135 @@
+@{
+    ViewData["Title"] = "Sự kiện tham gia";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var now = DateTime.Now;
+    var model = (dynamic)Model;
+    bool isApprover = User.IsInRole("Approver");
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2 text-primary"></i>Sự kiện tôi tham gia</h4>
+            <small class="text-muted">Các sự kiện bạn được phân công làm ban tổ chức hoặc diễn giả</small>
+        </div>
+        @if (!isApprover)
+        {
+            <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-outline-primary">
+                <i class="bi bi-calendar-check me-1"></i> Sự kiện của tôi
+            </a>
+        }
+        else
+        {
+            <a asp-controller="Approver" asp-action="PendingApprovals" class="btn btn-outline-warning">
+                <i class="bi bi-check2-circle me-1"></i> Phê duyệt
+            </a>
+        }
+    </div>
+
+    @if (((IEnumerable<dynamic>)model).Any())
+    {
+        var upcoming = ((IEnumerable<dynamic>)model).Where(e => e.StartTime > now).OrderBy(e => e.StartTime).ToList();
+        var past     = ((IEnumerable<dynamic>)model).Where(e => e.StartTime <= now).OrderByDescending(e => e.StartTime).ToList();
+
+        @if (upcoming.Any())
+        {
+            <h6 class="text-muted fw-bold mb-3">
+                <i class="bi bi-arrow-right-circle me-1 text-success"></i>
+                Sắp diễn ra (@upcoming.Count)
+            </h6>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
+                @foreach (var ev in upcoming)
+                {
+                    <div class="col">
+                        @{
+                            string detailUrl = isApprover
+                                ? Url.Action("Detail", "Approver", new { id = ev.EventId })
+                                : Url.Action("DetailEvent", "Organizer", new { id = ev.EventId });
+                        }
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                 style="height:100px;">
+                                <i class="bi bi-calendar-event text-muted" style="font-size:2.2rem;"></i>
+                            </div>
+                            <div class="card-body pb-1">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="badge bg-secondary">@ev.Status</span>
+                                    <span class="badge bg-warning text-dark">@ev.Role</span>
+                                </div>
+                                <h6 class="card-title fw-bold mb-1 text-truncate" title="@ev.Title">@ev.Title</h6>
+                                <div class="small text-muted">
+                                    <i class="bi bi-clock me-1"></i>@(((DateTime)ev.StartTime).ToString("dd/MM/yyyy HH:mm"))
+                                </div>
+                                @if (ev.Location != null)
+                                {
+                                    <div class="small text-muted text-truncate">
+                                        <i class="bi bi-geo-alt me-1"></i>@ev.Location
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-footer bg-transparent border-0 pt-0">
+                                <a href="@detailUrl" class="btn btn-sm btn-outline-primary w-100">
+                                    Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (past.Any())
+        {
+            <h6 class="text-muted fw-bold mb-3">
+                <i class="bi bi-clock-history me-1 text-secondary"></i>
+                Đã qua (@past.Count)
+            </h6>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                @foreach (var ev in past)
+                {
+                    <div class="col">
+                        @{
+                            string detailUrlPast = isApprover
+                                ? Url.Action("Detail", "Approver", new { id = ev.EventId })
+                                : Url.Action("DetailEvent", "Organizer", new { id = ev.EventId });
+                        }
+                        <div class="card h-100 shadow-sm border-0 text-muted">
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                                 style="height:100px; opacity:.65;">
+                                <i class="bi bi-calendar-event" style="font-size:2.2rem;"></i>
+                            </div>
+                            <div class="card-body pb-1">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="badge bg-secondary">@ev.Status</span>
+                                    <span class="badge bg-warning text-dark">@ev.Role</span>
+                                </div>
+                                <h6 class="card-title fw-bold mb-1 text-truncate" title="@ev.Title">@ev.Title</h6>
+                                <div class="small">
+                                    <i class="bi bi-clock me-1"></i>@(((DateTime)ev.StartTime).ToString("dd/MM/yyyy HH:mm"))
+                                </div>
+                                @if (ev.Location != null)
+                                {
+                                    <div class="small text-truncate">
+                                        <i class="bi bi-geo-alt me-1"></i>@ev.Location
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-footer bg-transparent border-0 pt-0">
+                                <a href="@detailUrlPast" class="btn btn-sm btn-outline-secondary w-100">
+                                    Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+            <p class="mt-2 fs-6">Bạn chưa được phân công tham gia sự kiện nào.</p>
+        </div>
+    }
+</div>

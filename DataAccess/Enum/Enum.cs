@@ -129,10 +129,10 @@ namespace DataAccess.Enum
 
 	public enum LocationStatusEnum
 	{
-		Available,
-		Maintenance,
-		Occupied,
-		Closed
+		Available,    // phòng trống
+		Maintenance,  // đang bảo trì
+		Occupied,     // đang có người dùng
+		Closed        // phòng bị đóng / không cho sử dụng
 	}
 
 	public enum LocationTypeEnum
@@ -150,8 +150,7 @@ namespace DataAccess.Enum
 		Offline,
 		Online,
 		Hybrid
-	}
-	public enum EventWaitlistStatusEnum
+	}public enum EventWaitlistStatusEnum
 	{
 		Waiting, //đang chờ
 
@@ -163,8 +162,64 @@ namespace DataAccess.Enum
 
 		Cancelled, //người dùng tự rời
 	}
+	
 	public enum EventStatusAvailableEnum { 
 		Available,
 		NA //not available
+	}
+	public enum QuestionSetEnum
+	{
+		Available,
+		NA //not available
+	}
+	public enum QuizTypeEnum
+	{
+	    Practice,
+		Exam,
+		Survey,
+		LiveQuiz
+	}
+	public enum QuizStatusEnum
+	{
+		Draft, //nháp
+		Published,//đang làm bài
+		Closed//đã xong
+	}
+	public enum QuizSetVisibilityEnum
+	{
+		Private,
+		Public
+	}
+	public enum QuizTimeTypeEvent { 
+		AfterEvent,
+		InEvent,
+		BeforeEvent
+	}
+	public enum QuestionTypeOptionEnum
+	{
+		SingleChoice,
+		MultipleChoice,
+		TrueFalse,
+		ShortAnswer
+	}
+
+	public enum QuestionDifficultyEnum
+	{
+		Easy,
+		Medium,
+		Hard
+	}
+
+	public enum StudentQuizScoreStatusEnum
+	{
+		NotStarted,
+		InProgress,
+		Submitted,
+		Graded
+	}
+	public enum QuizBankSourceTypeEnum
+	{
+		Organizer,
+		Community
 	}
 }

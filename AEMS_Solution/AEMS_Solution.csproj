@@ -7,9 +7,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <Compile Remove="AutoMapper\Admin\**" />
+    <Compile Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <Compile Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <Compile Remove="Views\EventforOrganizer\**" />
+    <Content Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <Content Remove="AutoMapper\Admin\**" />
+    <Content Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <Content Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <Content Remove="Views\EventforOrganizer\**" />
+    <EmbeddedResource Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <EmbeddedResource Remove="AutoMapper\Admin\**" />
+    <EmbeddedResource Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <EmbeddedResource Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <EmbeddedResource Remove="Views\EventforOrganizer\**" />
+    <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <None Remove="AutoMapper\Admin\**" />
+    <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
+    <None Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <None Remove="Views\EventforOrganizer\**" />
   </ItemGroup>
 
@@ -20,13 +36,15 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.1.0" />
+    <PackageReference Include="DotNetSeleniumExtras.WaitHelpers" Version="3.11.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.7" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.7">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.7" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.7">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -34,10 +52,10 @@
 
   <ItemGroup>
     <Folder Include="AutoMapper\Admin\" />
-    <Folder Include="Controllers\BaseAction%28ValidateInController%29\Admin\" />
-    <Folder Include="Controllers\BaseAction%28ValidateInController%29\Event\" />
-    <Folder Include="Controllers\BaseAction%28ValidateInController%29\User\" />
-    <Folder Include="Controllers\BaseAction%28ValidateInController%29\Organizer\" />
+    <Folder Include="AutoMapper\Chat\Chatbot\" />
+    <Folder Include="AutoMapper\Chat\ChatwithUser\" />
+    <Folder Include="AutoMapper\User\" />
+    <Folder Include="BaseAction%28ValidforController%29\Organizer\Event\Ticket\" />
   </ItemGroup>
 
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.schemastore.org/azure-iot-edgeagent-deployment-1.1.json" /></VisualStudio></ProjectExtensions>

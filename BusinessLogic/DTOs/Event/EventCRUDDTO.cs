@@ -50,16 +50,24 @@ public class CreateEventRequestDto
 
 	// ===== 6. Child Collections =====
 	public List<CreateAgendaItemDto> Agendas { get; set; } = new();
+	public List<CreateDocumentDto> Documents { get; set; } = new();
 }
 
 public class CreateAgendaItemDto
 {
     public string? SessionName { get; set; }
     public string? Description { get; set; }
-    public string? SpeakerName { get; set; }
+    public string? SpeakerInfo { get; set; }
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public string? Location { get; set; }
+}
+
+public class CreateDocumentDto
+{
+	public string? FileName { get; set; }
+	public string? Url { get; set; }
+	public string? Type { get; set; }
 }
 
 public class UpdateEventRequestDto
@@ -70,7 +78,7 @@ public class UpdateEventRequestDto
     public DateTime EndTime { get; set; }
 
     public string TopicId { get; set; } = "";
-    public string LocationId { get; set; } = "";
+    public string? LocationId { get; set; }
 
     public EventStatusEnum? Status { get; set; }
 
@@ -90,6 +98,27 @@ public class UpdateEventRequestDto
     public DateTime? RegistrationOpenTime { get; set; }
     public DateTime? RegistrationCloseTime { get; set; }
     public string? LastApprovalComment { get; set; }
+	public List<UpdateAgendaItemDto> Agendas { get; set; } = new();
+	public List<UpdateDocumentDto> Documents { get; set; } = new();
+}
+
+public class UpdateAgendaItemDto
+{
+	public string? Id { get; set; }
+	public string? SessionName { get; set; }
+	public string? Description { get; set; }
+	public string? SpeakerInfo { get; set; }
+	public DateTime? StartTime { get; set; }
+	public DateTime? EndTime { get; set; }
+	public string? Location { get; set; }
+}
+
+public class UpdateDocumentDto
+{
+	public string? Id { get; set; }
+	public string? FileName { get; set; }
+	public string? Url { get; set; }
+	public string? Type { get; set; }
 }
 
 // Soft-delete DTO: toggle availability instead of physical delete

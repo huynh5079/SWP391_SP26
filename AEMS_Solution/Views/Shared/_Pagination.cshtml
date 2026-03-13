@@ -7,15 +7,47 @@
         query["page"] = page.ToString();
         return "?" + string.Join("&", query.Select(x => $"{x.Key}={x.Value}"));
     }
+
+    string GetUrlTemplate() {
+        var query = Context.Request.Query.ToDictionary(k => k.Key, v => v.Value.ToString());
+        query["page"] = "__PAGE__";
+        return "?" + string.Join("&", query.Select(x => $"{x.Key}={x.Value}"));
+    }
 }
 @if (totalPages > 1) {
     <div class="card-footer bg-white border-top-0 py-3">
-        <ul class="pagination justify-content-center mb-0">
-            <li class="page-item @(currentPage == 1 ? "disabled" : "")"><a class="page-link" href="@GetUrl(currentPage - 1)">Trước</a></li>
-            @for (int i = 1; i <= totalPages; i++) {
-                <li class="page-item @(i == currentPage ? "active" : "")"><a class="page-link" href="@GetUrl(i)">@i</a></li>
+        <ul class="pagination justify-content-center mb-0 align-items-center">
+            <li class="page-item @(currentPage <= 1 ? "disabled" : "")"><a class="page-link" href="@GetUrl(currentPage - 1)">Trước</a></li>
+            
+            @if (totalPages <= 6) {
+                @for (int i = 1; i <= totalPages; i++) {
+                    <li class="page-item @(i == currentPage ? "active" : "")"><a class="page-link" href="@GetUrl(i)">@i</a></li>
+                }
+            } else {
+                @for (int i = 1; i <= 3; i++) {
+                    <li class="page-item @(i == currentPage ? "active" : "")"><a class="page-link" href="@GetUrl(i)">@i</a></li>
+                }
+
+                <li class="page-item disabled"><span class="page-link border-0 text-muted bg-transparent">...</span></li>
+                <li class="page-item mx-1">
+                    <input type="number" 
+                           class="form-control text-center text-primary fw-bold" 
+                           style="width: 70px; height: 38px; border-radius: 6px; border: 1px solid #dee2e6;" 
+                           min="1" max="@totalPages" 
+                           value="@(currentPage > 3 && currentPage <= totalPages - 3 ? currentPage : "")" 
+                           placeholder="Trang"
+                           title="Nhập số trang và nhấn Enter"
+                           data-url-template="@GetUrlTemplate()"
+                           onkeypress="if(event.key === 'Enter') { var p = parseInt(this.value); if(p >= 1 && p <= @totalPages) window.location.href = this.getAttribute('data-url-template').replace('__PAGE__', p); }" />
+                </li>
+                <li class="page-item disabled"><span class="page-link border-0 text-muted bg-transparent">...</span></li>
+
+                @for (int i = totalPages - 2; i <= totalPages; i++) {
+                    <li class="page-item @(i == currentPage ? "active" : "")"><a class="page-link" href="@GetUrl(i)">@i</a></li>
+                }
             }
-            <li class="page-item @(currentPage == totalPages ? "disabled" : "")"><a class="page-link" href="@GetUrl(currentPage + 1)">Sau</a></li>
+
+            <li class="page-item @(currentPage >= totalPages ? "disabled" : "")"><a class="page-link" href="@GetUrl(currentPage + 1)">Sau</a></li>
         </ul>
     </div>
 }

@@ -1,0 +1,79 @@
+@model AEMS_Solution.Models.Location.CreateLocationViewModel
+@using DataAccess.Enum
+@{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_Layout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
+    ViewData["Title"] = "Add Location";
+}
+
+<div class="container mt-4">
+    <div class="d-flex align-items-center mb-3 gap-2">
+        <a asp-controller="Location" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="mb-0"><i class="bi bi-geo-alt-fill me-2"></i>Add Location</h2>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form asp-controller="Location" asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Name" class="form-label fw-semibold">Tên địa điểm <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" placeholder="VD: Phòng A101" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Address" class="form-label fw-semibold">Địa chỉ</label>
+                        <input asp-for="Address" class="form-control" placeholder="VD: Tòa A, Tầng 1" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Capacity" class="form-label fw-semibold">Sức chứa <span class="text-danger">*</span></label>
+                        <input asp-for="Capacity" type="number" class="form-control" min="1" />
+                        <span asp-validation-for="Capacity" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Type" class="form-label fw-semibold">Loại phòng <span class="text-danger">*</span></label>
+                        <select asp-for="Type" class="form-select">
+                            <option value="">-- Chọn loại --</option>
+                            @foreach (var type in System.Enum.GetValues<LocationTypeEnum>())
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Type" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Status" class="form-label fw-semibold">Trạng thái</label>
+                        <select asp-for="Status" class="form-select">
+                            @foreach (var status in System.Enum.GetValues<LocationStatusEnum>())
+                            {
+                                <option value="@status">@status</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label fw-semibold">Mô tả</label>
+                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="Mô tả thêm về địa điểm..."></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Lưu
+                    </button>
+                    <a asp-controller="Location" asp-action="Index" class="btn btn-secondary">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

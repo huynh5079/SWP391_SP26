@@ -1,5 +1,7 @@
 using AEMS_Solution.Controllers.Common;
+using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.DTOs.Student;
+using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
 using Microsoft.AspNetCore.Authorization;
@@ -12,11 +14,13 @@ namespace AEMS_Solution.Controllers.Features.Student
     {
         private readonly IStudentEventService _service;
         private readonly ISystemErrorLogService _errorLog;
+        private readonly IEventWaitlistService _waitlistService;
 
-        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog)
+        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog, IEventWaitlistService waitlistService)
         {
             _service = service;
             _errorLog = errorLog;
+            _waitlistService = waitlistService;
         }
 
         // ─── Browse (weekly calendar) ─────────────────────────────────────────
@@ -110,14 +114,14 @@ namespace AEMS_Solution.Controllers.Features.Student
             return RedirectToAction(nameof(Detail), new { id = eventId });
         }
 
-        // ─── My events ────────────────────────────────────────────────────────
+        // ─── My participations ────────────────────────────────────────────────
         [HttpGet]
-        public async Task<IActionResult> MyEvents()
+        public async Task<IActionResult> MyParticipatedEvents()
         {
             if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 
-            var events = await _service.GetMyRegisteredEventsAsync(CurrentUserId);
-            return View(events);
+            var events = await _service.GetMyParticipationsAsync(CurrentUserId);
+            return View("~/Views/StudentEvent/MyEvents.cshtml", events);
         }
 
         // ─── Submit feedback ──────────────────────────────────────────────────
@@ -144,6 +148,91 @@ namespace AEMS_Solution.Controllers.Features.Student
                     ex, CurrentUserId,
                     $"{nameof(StudentEventController)}.{nameof(SubmitFeedback)}");
 
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+        // ─── Join Waitlist ────────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> JoinWaitlist(string id)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                await _service.AddToWaitlistAsync(CurrentUserId, id);
+                SetSuccess("Đã đăng ký vào danh sách chờ. Bạn sẽ được thông báo khi có chỗ trống.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(
+                    ex, CurrentUserId,
+                    $"{nameof(StudentEventController)}.{nameof(JoinWaitlist)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        // ─── Accept Waitlist Offer ────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AcceptWaitlist(string id)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
+                await _waitlistService.RespondToOfferAsync(new RespondOfferRequestDto
+                {
+                    EventId = id,
+                    StudentId = detail.WaitlistStudentProfileId!,
+                    Accept = true
+                });
+                SetSuccess("Đã xác nhận tham gia! Vé của bạn đã được tạo.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(StudentEventController)}.{nameof(AcceptWaitlist)}");
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        // ─── Decline Waitlist Offer ───────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeclineWaitlist(string id)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
+                await _waitlistService.RespondToOfferAsync(new RespondOfferRequestDto
+                {
+                    EventId = id,
+                    StudentId = detail.WaitlistStudentProfileId!,
+                    Accept = false
+                });
+                SetSuccess("Đã từ chối. Chỗ trống sẽ được nhường cho người tiếp theo.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(StudentEventController)}.{nameof(DeclineWaitlist)}");
                 var deepest = ex;
                 while (deepest.InnerException != null) deepest = deepest.InnerException;
                 SetError(deepest.Message);

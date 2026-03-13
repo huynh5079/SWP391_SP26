@@ -1,0 +1,64 @@
+@model AEMS_Solution.Models.Approver.Manage.TopicIndexViewModel
+@{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_Layout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
+    ViewData["Title"] = "Manage Topics";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Manage Topics</h2>
+        <a asp-controller="Topic" asp-action="Create" class="btn btn-primary">Create Topic</a>
+    </div>
+
+    <form method="get" asp-controller="Topic" asp-action="Index" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search topic..." />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">Search</button>
+        </div>
+    </form>
+
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th style="width:120px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Topics.Count == 0)
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No topics found.</td>
+                </tr>
+            }
+            else
+            {
+                foreach (var topic in Model.Topics)
+                {
+                    <tr>
+                        <td>@topic.TopicName</td>
+                        <td>@topic.Description</td>
+                        <td>@topic.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@topic.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a asp-controller="Topic" asp-action="Edit" asp-route-id="@topic.TopicId" class="btn btn-sm btn-warning">Edit</a>
+                                <form asp-controller="Topic" asp-action="Delete" asp-route-id="@topic.TopicId" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xoá Topic này?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,10 +1,13 @@
+using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.User;
 using BusinessLogic.Service.System;
+using BusinessLogic.Service.ValiDateRole.ValiDateforAdmin.LockAndUnlockLimit;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using UserEntity = DataAccess.Entities.User;
 
 namespace BusinessLogic.Service.User
@@ -13,11 +16,16 @@ namespace BusinessLogic.Service.User
     {
         private readonly IUnitOfWork _uow;
         private readonly INotificationService _notificationService;
+        private readonly ILockAndUnlockLimitValidator _lockAndUnlockLimitValidator;
 
-        public UserService(IUnitOfWork uow, INotificationService notificationService)
+        public UserService(
+            IUnitOfWork uow,
+            INotificationService notificationService,
+            ILockAndUnlockLimitValidator lockAndUnlockLimitValidator)
         {
             _uow = uow;
             _notificationService = notificationService;
+            _lockAndUnlockLimitValidator = lockAndUnlockLimitValidator;
         }
 
         public async Task<PaginationResult<UserListDto>> GetUsersAsync(
@@ -27,6 +35,8 @@ namespace BusinessLogic.Service.User
             string? role = null, 
             UserStatusEnum? status = null)
         {
+            await ReactivateExpiredUsersAsync();
+
             // Parse role string to Enum
             RoleEnum? roleEnum = null;
             if (!string.IsNullOrEmpty(role) && Enum.TryParse<RoleEnum>(role, true, out var parsedRole))
@@ -58,6 +68,7 @@ namespace BusinessLogic.Service.User
                     Status = u.Status,
                     AvatarUrl = u.AvatarUrl,
                     IsBanned = u.IsBanned,
+                    ReactivateAt = u.ReactivateAt,
                     CreatedAt = u.CreatedAt
                 })
                 .ToList();
@@ -67,6 +78,8 @@ namespace BusinessLogic.Service.User
 
         public async Task<UserDetailDto?> GetUserDetailAsync(string id)
         {
+            await ReactivateExpiredUsersAsync(id);
+
             Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q
                 .Include(u => u.Role)
                 .Include(u => u.StudentProfile)
@@ -88,6 +101,7 @@ namespace BusinessLogic.Service.User
                 AvatarUrl = user.AvatarUrl,
                 Status = user.Status,
                 IsBanned = user.IsBanned,
+                ReactivateAt = user.ReactivateAt,
                 GoogleId = user.GoogleId,
                 CreatedAt = user.CreatedAt,
                 HasPassword = !string.IsNullOrEmpty(user.PasswordHash)
@@ -122,6 +136,7 @@ namespace BusinessLogic.Service.User
 
             // Toggle IsBanned
             user.IsBanned = !user.IsBanned.GetValueOrDefault();
+            user.ReactivateAt = null;
 
             // Update Status based on IsBanned
             if (user.IsBanned == true)
@@ -134,18 +149,91 @@ namespace BusinessLogic.Service.User
                 user.Status = UserStatusEnum.Active;
             }
 
-            await _uow.Users.UpdateAsync(user);
+            await _uow.SaveChangesAsync();
 
             // Send Realtime Notification
             string notifyTitle = user.IsBanned == true ? "Tài khoản bị cấm" : "Tài khoản được mở khóa";
             string notifyMsg = user.IsBanned == true 
                 ? "Tài khoản của bạn đã bị quản trị viên khóa vô thời hạn." 
                 : "Tài khoản của bạn đã được quản trị viên mở khóa trở lại.";
-            string notifyType = user.IsBanned == true ? "AccountBan" : "AccountUnban";
+            DataAccess.Enum.NotificationType typeEnum = user.IsBanned == true 
+                ? DataAccess.Enum.NotificationType.AccountBan 
+                : DataAccess.Enum.NotificationType.AccountUnban;
 
-            await _notificationService.SendNotificationAsync(id, notifyTitle, notifyMsg, notifyType);
+            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+            {
+                ReceiverId = id,
+                Title = notifyTitle,
+                Message = notifyMsg,
+                Type = typeEnum,
+                RelatedEntityId = id // User ID
+            });
 
             return true;
+        }
+
+        public async Task<bool> SetUserLockAsync(AdminSoftDeleteLimitDTO request)
+        {
+            var user = await _lockAndUnlockLimitValidator.ValidateSetUserLockAsync(request);
+
+            user.Status = UserStatusEnum.Inactive;
+            user.IsBanned = true;
+            user.ReactivateAt = request.ReactivateAt;
+
+            await _uow.SaveChangesAsync();
+
+            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+            {
+                ReceiverId = user.Id,
+                Title = "Tài khoản bị khóa",
+                Message = request.ReactivateAt.HasValue
+                    ? $"Tài khoản của bạn đã bị quản trị viên khóa đến {request.ReactivateAt.Value:dd/MM/yyyy HH:mm}."
+                    : "Tài khoản của bạn đã bị quản trị viên khóa cho đến khi có thông báo mới.",
+                Type = DataAccess.Enum.NotificationType.AccountBan,
+                RelatedEntityId = user.Id
+            });
+
+            return true;
+        }
+
+        public async Task<int> ReactivateExpiredUsersAsync(string? userId = null)
+        {
+            var now = DateTimeHelper.GetVietnamTime();
+            var expiredUsers = (await _uow.Users.GetAllAsync(u =>
+                u.IsBanned == true &&
+                u.Status == UserStatusEnum.Inactive &&
+                u.ReactivateAt.HasValue &&
+                u.ReactivateAt <= now &&
+                (string.IsNullOrEmpty(userId) || u.Id == userId)))
+                .ToList();
+
+            if (expiredUsers.Count == 0)
+            {
+                return 0;
+            }
+
+            foreach (var expiredUser in expiredUsers)
+            {
+                expiredUser.Status = UserStatusEnum.Active;
+                expiredUser.IsBanned = false;
+                expiredUser.ReactivateAt = null;
+            }
+
+            await _uow.SaveChangesAsync();
+
+            foreach (var expiredUser in expiredUsers)
+            {
+                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                {
+                    ReceiverId = expiredUser.Id,
+                    Title = "Tài khoản được mở khóa",
+                    Message = "Tài khoản của bạn đã được tự động mở khóa theo thời gian đã thiết lập.",
+                    Type = DataAccess.Enum.NotificationType.AccountUnban,
+                    RelatedEntityId = expiredUser.Id
+                });
+            }
+
+            return expiredUsers.Count;
         }
 
         public async Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequestDto request)

@@ -9,19 +9,37 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 text-gray-800">Ban Tổ Chức - Bảng Điều Khiển</h1>
-            <p class="text-muted small">Quản lý sự kiện và theo dõi hđ sắp tới</p>
+            <h1 class="h3 mb-0 text-gray-800">Organizer - Dashboard</h1>
+            <p class="text-muted small">Manage events and track upcoming activities</p>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-sm btn-primary shadow-sm">
                 <i class="bi bi-plus-circle"></i> Create Event
             </a>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-primary shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-journal-plus"></i> Create Quiz
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                </ul>
+            </div>
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="myevents" class="btn btn-sm btn-outline-primary shadow-sm">
                 <i class="bi bi-calendar-event"></i> My Events
             </a>
+                <a asp-controller="EventQuiz" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
+                    <i class="bi bi-list-check"></i> Quiz
+                </a>
+            <a asp-controller="Topic" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
+                <i class="bi bi-tags"></i> Topics
+            </a>
+            <a asp-controller="Location" asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
+                <i class="bi bi-geo-alt"></i> Locations
+            </a>
             <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete" class="btn btn-sm btn-outline-primary shadow-sm">
-                <i class="bi bi-calendar-event"></i> Event allready delete
+                <i class="bi bi-trash"></i> Deleted Events
             </a>
         </div>
     </div>
@@ -34,7 +52,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Tổng Sự Kiện</p>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Total Events</p>
                             <h3 class="mb-0 text-primary">@Model.Stats.TotalEvents</h3>
                         </div>
                         <div class="bg-primary bg-opacity-10 p-3 rounded">
@@ -51,7 +69,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Sắp Tới</p>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Upcoming</p>
                             <h3 class="mb-0 text-info">@Model.Stats.UpcomingEvents</h3>
                         </div>
                         <div class="bg-info bg-opacity-10 p-3 rounded">
@@ -68,7 +86,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Đăng Ký Hôm Nay</p>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Registrations Today</p>
                             <h3 class="mb-0 text-success">@Model.RegistrationsToday</h3>
                         </div>
                         <div class="bg-success bg-opacity-10 p-3 rounded">
@@ -85,7 +103,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Nháp</p>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Draft</p>
                             <h3 class="mb-0 text-warning">@Model.Stats.DraftEvents</h3>
                         </div>
                         <div class="bg-warning bg-opacity-10 p-3 rounded">
@@ -104,7 +122,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Tiền Đặt Cọc Thu Được Tháng Này</p>
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Deposit Collected This Month</p>
                             <h2 class="mb-0 text-danger">@Model.DepositCollectedThisMonth.ToString("C")</h2>
                         </div>
                         <div class="bg-danger bg-opacity-10 p-3 rounded">
@@ -122,7 +140,7 @@
         <div class="col-md-8">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-light border-bottom">
-                    <h5 class="mb-0">Xu Hướng Đăng Ký (7 Ngày Gần Nhất)</h5>
+                    <h5 class="mb-0">Registration Trend (Last 7 Days)</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="registrationTrendChart"></canvas>
@@ -134,7 +152,7 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-light border-bottom">
-                    <h5 class="mb-0">Phân Bố Trạng Thái Sự Kiện</h5>
+                    <h5 class="mb-0">Event Status Distribution</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="statusDistributionChart"></canvas>
@@ -148,8 +166,8 @@
         <div class="col-md-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Sự Kiện Gần Đây</h5>
-                    <a asp-controller="Event" asp-action="Index" class="btn btn-sm btn-outline-primary">Xem Tất Cả</a>
+                    <h5 class="mb-0">Recent Events</h5>
+                    <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-sm btn-outline-primary">View All</a>
                 </div>
                 <div class="card-body">
                     @if (Model.RecentEvents != null && Model.RecentEvents.Any())
@@ -158,10 +176,10 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Tên Sự Kiện</th>
-                                        <th>Thời Gian Bắt Đầu</th>
-                                        <th>Trạng Thái</th>
-                                        <th>Hành Động</th>
+                                        <th>Event Name</th>
+                                        <th>Start Time</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -192,7 +210,7 @@
                                             </td>
                                             <td>
                                                 <a asp-controller="Event" asp-action="Edit" asp-route-id="@evt.EventId" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Sửa
+                                                    <i class="bi bi-pencil"></i> Edit
                                                 </a>
                                             </td>
                                         </tr>
@@ -204,8 +222,8 @@
                     else
                     {
                         <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> Bạn chưa có sự kiện nào.
-                            <a asp-controller="Organizer" asp-action="Manage" asp-route-action="create" class="alert-link">Tạo sự kiện mới</a>
+                            <i class="bi bi-info-circle"></i> You don't have any events yet.
+                            <a asp-controller="Organizer" asp-action="Manage" asp-route-action="create" class="alert-link">Create a new event</a>
                         </div>
                     }
                 </div>
@@ -224,7 +242,7 @@
             data: {
                 labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RegistrationTrendLabels)),
                 datasets: [{
-                    label: 'Đăng Ký',
+                    label: 'Registrations',
                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RegistrationTrendData)),
                     borderColor: '#0d6efd',
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',

@@ -19,6 +19,8 @@
         if (status == UserStatusEnum.Active) return "badge bg-success|Hoạt động";
         return "badge bg-secondary|Không hoạt động";
     }
+
+    string ToDateTimeLocalValue(DateTime? value) => value?.ToString("yyyy-MM-ddTHH:mm:ss") ?? string.Empty;
 }
 
 <div class="container-fluid py-4">
@@ -102,28 +104,55 @@
                                         @(user.CreatedAt.HasValue ? user.CreatedAt.Value.ToString("dd/MM/yyyy") : "-")
                                     </td>
                                     <td class="text-center">
-                                        <span class="@statusInfo[0]">@statusInfo[1]</span>
+                                        <div class="d-inline-flex flex-column align-items-center gap-1">
+                                            <span class="@statusInfo[0]">@statusInfo[1]</span>
+                                            @if (user.ReactivateAt.HasValue && user.Status == UserStatusEnum.Inactive)
+                                            {
+                                                <small class="text-muted">Mở khóa lúc: @user.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                                                <small class="text-primary fw-semibold lock-countdown" data-reactivate-at="@user.ReactivateAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></small>
+                                            }
+                                        </div>
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
                                             <a asp-action="Detail" asp-route-id="@user.Id" class="btn btn-sm btn-outline-info" title="Chi tiết">
                                                 <i class="bi bi-eye"></i>
                                             </a>
-                                            
-                                            <form asp-action="Ban" asp-route-id="@user.Id" method="post" style="display:inline;" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn thay đổi trạng thái người dùng này?');">
-                                                @if (user.IsBanned == true)
-                                                {
+
+                                            @if (user.IsBanned == true)
+                                            {
+                                                <form asp-action="Unban" asp-route-id="@user.Id" method="post" style="display:inline;" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn mở khóa tài khoản này?');">
                                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Mở khóa">
                                                         <i class="bi bi-unlock"></i>
                                                     </button>
-                                                }
-                                                else
-                                                {
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cấm">
-                                                        <i class="bi bi-lock"></i>
-                                                    </button>
-                                                }
-                                            </form>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-danger open-lock-modal"
+                                                        title="Khóa thủ công"
+                                                        data-lock-mode="manual"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#lockUserModal"
+                                                        data-user-id="@user.Id"
+                                                        data-user-name="@user.FullName"
+                                                        data-reactivate-at="@ToDateTimeLocalValue(user.ReactivateAt)">
+                                                    <i class="bi bi-lock"></i>
+                                                </button>
+
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-warning open-lock-modal"
+                                                        title="Khóa theo thời gian"
+                                                        data-lock-mode="timed"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#lockUserModal"
+                                                        data-user-id="@user.Id"
+                                                        data-user-name="@user.FullName"
+                                                        data-reactivate-at="@ToDateTimeLocalValue(user.ReactivateAt)">
+                                                    <i class="bi bi-clock-history"></i>
+                                                </button>
+                                            }
                                         </div>
                                     </td>
                                 </tr>
@@ -175,4 +204,224 @@
             }
         </div>
     </div>
+
+<div class="modal fade" id="lockUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="lockUserForm" asp-action="Ban" method="post" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn khóa tài khoản này?');">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="lockModalTitle">Khóa tài khoản</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="lockUserId" name="Id" />
+                    <input type="hidden" name="Status" value="Inactive" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Người dùng</label>
+                        <input type="text" id="lockUserName" class="form-control" readonly />
+                    </div>
+
+                    <div class="mb-2 d-none" id="lockReactivateAtWrapper">
+                        <label for="lockReactivateAt" class="form-label">Mở khóa tự động lúc</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="number" id="lockYear" class="form-control" min="2000" max="9999" placeholder="Năm" />
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="lockMonth" class="form-control" min="1" max="12" placeholder="Tháng" />
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="lockDay" class="form-control" min="1" max="31" placeholder="Ngày" />
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="lockHour" class="form-control" min="0" max="23" placeholder="Giờ" />
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="lockMinute" class="form-control" min="0" max="59" placeholder="Phút" />
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="lockSecond" class="form-control" min="0" max="59" placeholder="Giây" />
+                            </div>
+                        </div>
+                        <input type="hidden" id="lockReactivateAt" name="ReactivateAt" />
+                    </div>
+
+                    <small class="text-muted d-block" id="lockReactivatePreview">Khóa thủ công sẽ chỉ mở khi admin mở khóa.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">Xác nhận khóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const lockModalButtons = document.querySelectorAll('.open-lock-modal');
+            const lockUserForm = document.getElementById('lockUserForm');
+            const lockUserId = document.getElementById('lockUserId');
+            const lockUserName = document.getElementById('lockUserName');
+            const lockModalTitle = document.getElementById('lockModalTitle');
+            const lockReactivateAtWrapper = document.getElementById('lockReactivateAtWrapper');
+            const lockYear = document.getElementById('lockYear');
+            const lockMonth = document.getElementById('lockMonth');
+            const lockDay = document.getElementById('lockDay');
+            const lockHour = document.getElementById('lockHour');
+            const lockMinute = document.getElementById('lockMinute');
+            const lockSecond = document.getElementById('lockSecond');
+            const lockReactivateAt = document.getElementById('lockReactivateAt');
+            const lockReactivatePreview = document.getElementById('lockReactivatePreview');
+            const pad = value => value.toString().padStart(2, '0');
+            const formatDateTimeLocal = value => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+            const formatDateTimeDisplay = value => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+            let currentLockMode = 'manual';
+
+            const setTimedInputs = value => {
+                if (!lockYear || !lockMonth || !lockDay || !lockHour || !lockMinute || !lockSecond) {
+                    return;
+                }
+
+                if (!value) {
+                    lockYear.value = '';
+                    lockMonth.value = '';
+                    lockDay.value = '';
+                    lockHour.value = '';
+                    lockMinute.value = '';
+                    lockSecond.value = '';
+                    return;
+                }
+
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) {
+                    setTimedInputs('');
+                    return;
+                }
+
+                lockYear.value = date.getFullYear();
+                lockMonth.value = date.getMonth() + 1;
+                lockDay.value = date.getDate();
+                lockHour.value = date.getHours();
+                lockMinute.value = date.getMinutes();
+                lockSecond.value = date.getSeconds();
+            };
+
+            const updateTimedLockValue = () => {
+                if (!lockYear || !lockMonth || !lockDay || !lockHour || !lockMinute || !lockSecond || !lockReactivateAt || !lockReactivatePreview) {
+                    return;
+                }
+
+                const years = Number.parseInt(lockYear.value || '0', 10);
+                const months = Number.parseInt(lockMonth.value || '0', 10);
+                const days = Number.parseInt(lockDay.value || '0', 10);
+                const hours = Number.parseInt(lockHour.value || '0', 10);
+                const minutes = Number.parseInt(lockMinute.value || '0', 10);
+                const seconds = Number.parseInt(lockSecond.value || '0', 10);
+
+                if ([years, months, days, hours, minutes, seconds].some(value => Number.isNaN(value) || value < 0)) {
+                    lockReactivateAt.value = '';
+                    lockReactivatePreview.textContent = 'Các giá trị phải lớn hơn hoặc bằng 0.';
+                    return;
+                }
+
+                if (![years, months, days, hours, minutes, seconds].some(value => value > 0)) {
+                    lockReactivateAt.value = '';
+                    lockReactivatePreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                    return;
+                }
+
+                const unlockAt = new Date();
+                unlockAt.setFullYear(unlockAt.getFullYear() + years);
+                unlockAt.setMonth(unlockAt.getMonth() + months);
+                unlockAt.setDate(unlockAt.getDate() + days);
+                unlockAt.setHours(unlockAt.getHours() + hours);
+                unlockAt.setMinutes(unlockAt.getMinutes() + minutes);
+                unlockAt.setSeconds(unlockAt.getSeconds() + seconds);
+
+                lockReactivateAt.value = formatDateTimeLocal(unlockAt);
+                lockReactivatePreview.textContent = `Tài khoản sẽ tự mở khóa lúc ${formatDateTimeDisplay(unlockAt)}.`;
+            };
+
+            const applyLockMode = (mode, reactivateAtValue = '') => {
+                if (!lockReactivateAtWrapper || !lockReactivateAt || !lockReactivatePreview || !lockModalTitle) {
+                    return;
+                }
+
+                currentLockMode = mode;
+
+                if (mode === 'timed') {
+                    lockModalTitle.textContent = 'Khóa tài khoản theo thời gian';
+                    lockReactivateAtWrapper.classList.remove('d-none');
+                    lockReactivateAt.required = true;
+                    setTimedInputs(reactivateAtValue);
+                    updateTimedLockValue();
+                    if (!lockReactivateAt.value) {
+                        lockReactivatePreview.textContent = 'Nhập theo thứ tự năm, tháng, ngày, giờ, phút, giây. Có thể để trống hoặc 0, nhưng ít nhất 1 trường phải lớn hơn 0.';
+                    }
+                    return;
+                }
+
+                lockModalTitle.textContent = 'Khóa tài khoản thủ công';
+                lockReactivateAtWrapper.classList.add('d-none');
+                lockReactivateAt.required = false;
+                lockReactivateAt.value = '';
+                setTimedInputs('');
+                lockReactivatePreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
+            };
+
+            lockModalButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    lockUserId.value = button.dataset.userId;
+                    lockUserName.value = button.dataset.userName;
+                    applyLockMode(button.dataset.lockMode, button.dataset.reactivateAt || '');
+                });
+            });
+
+            [lockYear, lockMonth, lockDay, lockHour, lockMinute, lockSecond].forEach(input => {
+                input?.addEventListener('input', updateTimedLockValue);
+            });
+
+            lockUserForm?.addEventListener('submit', event => {
+                if (currentLockMode === 'timed' && !lockReactivateAt.value) {
+                    event.preventDefault();
+                    lockReactivatePreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                }
+            });
+
+            applyLockMode('manual');
+
+            const countdownElements = document.querySelectorAll('.lock-countdown');
+            const updateCountdown = element => {
+                const unlockAt = new Date(element.dataset.reactivateAt);
+                const remaining = unlockAt.getTime() - Date.now();
+
+                if (Number.isNaN(unlockAt.getTime())) {
+                    element.textContent = '';
+                    return;
+                }
+
+                if (remaining <= 0) {
+                    element.textContent = 'Đang chờ tự mở khóa...';
+                    return;
+                }
+
+                const totalSeconds = Math.floor(remaining / 1000);
+                const days = Math.floor(totalSeconds / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                const dayText = days > 0 ? `${days}d ` : '';
+                element.textContent = `Còn lại: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            };
+
+            countdownElements.forEach(element => {
+                updateCountdown(element);
+                window.setInterval(() => updateCountdown(element), 1000);
+            });
+        })();
+    </script>
+}
 </div>

@@ -1,0 +1,304 @@
+@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@{
+    ViewData["Title"] = "Quiz Details";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Quiz Details</h1>
+            <p class="text-muted small mb-0">Manage quiz file, questions, and student attempts</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+            <a asp-action="Preview" asp-route-quizId="@Model.Quiz.EventQuizId" class="btn btn-sm btn-outline-info">View quiz</a>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Create another quiz
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-eventId="@Model.EventId" asp-route-mode="bank"><i class="bi bi-collection me-2"></i>Question Bank</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Quiz == null)
+    {
+        <div class="alert alert-warning">Quiz information is not available.</div>
+    }
+    else
+    {
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h2 class="h5 mb-1">@Model.Quiz.Title</h2>
+                                <div class="text-muted small">Event: @Model.EventTitle (@Model.EventId)</div>
+                                <div class="text-muted small">Topic: @(string.IsNullOrWhiteSpace(Model.TopicName) ? "-" : Model.TopicName)</div>
+                            </div>
+                            <span class="badge bg-secondary">@Model.Quiz.Status</span>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Question count</div>
+                                    <div class="fs-4 fw-semibold">@Model.Quiz.QuestionCount</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Attempts</div>
+                                    <div class="fs-4 fw-semibold">@Model.Quiz.AttemptCount</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Passed</div>
+                                    <div class="fs-4 fw-semibold">@Model.Quiz.PassedCount</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Passing score</div>
+                                    <div class="fs-4 fw-semibold">@(Model.Quiz.PassingScore?.ToString() ?? "-")</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Question set</div>
+                                    <div class="fs-6 fw-semibold">@Model.Quiz.QuestionSetStatus</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Review mode</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.AllowReview ? "Allowed" : "Hidden")</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Question bank visibility</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private")</div>
+                                    @if (Model.Quiz.SharingStatus != DataAccess.Enum.QuizSetVisibilityEnum.Public)
+                                    {
+                                        <form asp-action="Share" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Public to Community</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Restore" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" class="mt-2">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-warning">Set Private</button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">File quiz</div>
+                                    @if (string.IsNullOrWhiteSpace(Model.Quiz.FileQuiz))
+                                    {
+                                        <div class="fs-6 fw-semibold">-</div>
+                                    }
+                                    else
+                                    {
+                                        <a href="~/@Model.Quiz.FileQuiz" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Open file</a>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Live quiz link</div>
+                                    @if (string.IsNullOrWhiteSpace(Model.Quiz.LiveQuizLink))
+                                    {
+                                        <div class="fs-6 fw-semibold">-</div>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Model.Quiz.LiveQuizLink" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success mt-2">Open live quiz</a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h2 class="h6 mb-0">Upload / replace quiz file</h2>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="UploadFile" asp-route-quizId="@Model.Quiz.EventQuizId" method="post" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-3">
+                                <label asp-for="FileUpload" class="form-label">Quiz file</label>
+                                <input asp-for="FileUpload" class="form-control" type="file" accept=".pdf,.docx,.txt" />
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Upload file</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h2 class="h6 mb-0">Add question manually</h2>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="AddQuestion" asp-route-quizId="@Model.Quiz.EventQuizId" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-3">
+                                <label asp-for="NewQuestion.QuestionText" class="form-label">Question</label>
+                                <textarea asp-for="NewQuestion.QuestionText" class="form-control" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="NewQuestion.Explanation" class="form-label">Explanation</label>
+                                <textarea asp-for="NewQuestion.Explanation" class="form-control" rows="2" placeholder="Giải thích đáp án (không bắt buộc)"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="NewQuestion.Options.OptionA" class="form-label">Option A</label>
+                                <input asp-for="NewQuestion.Options.OptionA" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="NewQuestion.Options.OptionB" class="form-label">Option B</label>
+                                <input asp-for="NewQuestion.Options.OptionB" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="NewQuestion.Options.OptionC" class="form-label">Option C</label>
+                                <input asp-for="NewQuestion.Options.OptionC" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="NewQuestion.Options.OptionD" class="form-label">Option D</label>
+                                <input asp-for="NewQuestion.Options.OptionD" class="form-control" />
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="NewQuestion.CorrectAnswer" class="form-label">Correct answer</label>
+                                    <input asp-for="NewQuestion.CorrectAnswer" class="form-control" placeholder="A/B/C/D" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="NewQuestion.ScorePoint" class="form-label">Score point</label>
+                                    <input asp-for="NewQuestion.ScorePoint" class="form-control" type="number" min="1" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="NewQuestion.Difficulty" class="form-label">Difficulty</label>
+                                    <select asp-for="NewQuestion.Difficulty" class="form-select">
+                                        <option value="0">Easy</option>
+                                        <option value="1">Medium</option>
+                                        <option value="2">Hard</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100 mt-3">Add question</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h2 class="h6 mb-0">Questions</h2>
+            </div>
+            <div class="card-body">
+                @if (Model.Questions == null || !Model.Questions.Any())
+                {
+                    <div class="alert alert-light border mb-0">No questions found.</div>
+                }
+                else
+                {
+                    <div class="accordion" id="quizQuestionsAccordion">
+                        @for (var i = 0; i < Model.Questions.Count; i++)
+                        {
+                            var question = Model.Questions[i];
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading-@i">
+                                    <button class="accordion-button @(i > 0 ? "collapsed" : string.Empty)" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@i">
+                                        <span class="me-2">#@question.OrderIndex</span> @question.QuestionText
+                                    </button>
+                                </h2>
+                                <div id="collapse-@i" class="accordion-collapse collapse @(i == 0 ? "show" : string.Empty)" data-bs-parent="#quizQuestionsAccordion">
+                                    <div class="accordion-body">
+                                        <ul class="list-group mb-3">
+                                            <li class="list-group-item">A. @question.Options.OptionA</li>
+                                            <li class="list-group-item">B. @question.Options.OptionB</li>
+                                            @if (!string.IsNullOrWhiteSpace(question.Options.OptionC))
+                                            {
+                                                <li class="list-group-item">C. @question.Options.OptionC</li>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(question.Options.OptionD))
+                                            {
+                                                <li class="list-group-item">D. @question.Options.OptionD</li>
+                                            }
+                                        </ul>
+                                        <div class="small text-muted">Correct answer: <strong>@question.CorrectAnswer</strong></div>
+                                        <div class="small text-muted">Score point: <strong>@question.ScorePoint</strong></div>
+                                        <div class="small text-muted">Difficulty: <strong>@question.Difficulty</strong></div>
+                                        @if (!string.IsNullOrWhiteSpace(question.Explanation))
+                                        {
+                                            <div class="small text-muted mt-2">Explanation: <strong>@question.Explanation</strong></div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h2 class="h6 mb-0">Student scores</h2>
+            </div>
+            <div class="card-body">
+                @if (Model.Scores == null || !Model.Scores.Any())
+                {
+                    <div class="alert alert-light border mb-0">No attempts yet.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Score</th>
+                                    <th>Status</th>
+                                    <th>Started</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var score in Model.Scores)
+                                {
+                                    <tr>
+                                        <td>@score.StudentId</td>
+                                        <td>@score.Score</td>
+                                        <td>@score.Status</td>
+                                        <td>@(score.StartedAt?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                        <td>@(score.SubmittedAt?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

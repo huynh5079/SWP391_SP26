@@ -6,20 +6,20 @@
 <style>
 .notif-bell-btn {
     position: relative;
-    background: none;
-    border: none;
+    background: rgba(255,255,255,0.1);
+    border: 1.5px solid rgba(255,255,255,0.2);
     padding: 8px 10px;
     border-radius: 50%;
     cursor: pointer;
-    transition: background 0.2s;
-    color: #444;
+    transition: background 0.2s, border-color 0.2s;
+    color: #fff;
     display: flex;
     align-items: center;
 }
-.notif-bell-btn:hover { background: rgba(100,100,255,0.08); }
+.notif-bell-btn:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.4); }
 .notif-bell-btn .bx-bell {
-    font-size: 22px;
-    color: #555;
+    font-size: 20px;
+    color: #fff;
 }
 .notif-badge {
     position: absolute;
@@ -249,7 +249,7 @@
                     else if (item.Type == "SystemError")
                     { iconClass = "type-critical"; iconName = "bx-bug"; }
 
-                    <a href="javascript:;" onclick="markAsReadDropdown('@item.Id', this)" class="notif-item @(item.IsRead == true ? "" : "unread")">
+                    <a href="/Notification/ClickAndRoute?notiId=@item.Id" class="notif-item @(item.IsRead == true ? "" : "unread")">
                         <div class="notif-icon @iconClass">
                             <i class='bx @iconName'></i>
                         </div>

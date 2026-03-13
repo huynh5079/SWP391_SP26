@@ -7,26 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="DTOs\Event\NewFolder\**" />
-    <EmbeddedResource Remove="DTOs\Event\NewFolder\**" />
-    <None Remove="DTOs\Event\NewFolder\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="CloudinaryDotNet" Version="1.27.9" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.2" />
+    <PackageReference Include="OpenXmlPowerTools" Version="4.5.3.2" />
+    <PackageReference Include="PdfPig" Version="0.1.13" />
     <PackageReference Include="QRCoder" Version="1.7.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="DTOs\Event\" />
   </ItemGroup>
 
 </Project>

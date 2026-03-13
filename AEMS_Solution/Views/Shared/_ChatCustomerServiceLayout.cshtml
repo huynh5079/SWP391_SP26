@@ -1,0 +1,90 @@
+﻿@{
+    var displayName = User?.Identity?.Name ?? "Người dùng";
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+    var currentRole = User.IsInRole("Admin") ? "Admin"
+        : User.IsInRole("Staff") ? "Staff"
+        : User.IsInRole("Organizer") ? "Organizer"
+        : User.IsInRole("Approver") || User.IsInRole("Approval") ? "Approver"
+        : User.IsInRole("Student") ? "Student"
+        : "User";
+    var nameParts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var initials = string.Empty;
+
+    for (var i = 0; i < nameParts.Length && i < 2; i++)
+    {
+        initials += char.ToUpperInvariant(nameParts[i][0]);
+    }
+
+    if (string.IsNullOrWhiteSpace(initials))
+    {
+        initials = "U";
+    }
+}
+
+<li class="nav-item messenger-launcher" id="messengerLauncher"
+    data-current-user="@displayName"
+    data-current-user-id="@currentUserId"
+    data-current-role="@currentRole"
+    data-contacts-url="@Url.Action("Contacts", "Chat")"
+    data-conversation-url="@Url.Action("Conversation", "Chat")"
+    data-chat-hub-url="/hub/v1/chat">
+    <button type="button" class="nav-link text-dark messenger-nav-trigger" id="messengerToggle" aria-label="Mở chat giữa người dùng">
+        <span class="messenger-nav-icon">
+            <i class="bi bi-messenger"></i>
+            <span class="messenger-fab-badge d-none" id="messengerFabBadge">0</span>
+        </span>
+        <span class="messenger-nav-text">Chat</span>
+    </button>
+
+    <section class="messenger-panel" id="messengerPanel" aria-hidden="true">
+        <aside class="messenger-sidebar">
+            <div class="messenger-sidebar-header">
+                <div>
+                    <div class="messenger-title">Tin nhắn</div>
+                    <div class="messenger-subtitle">Chat giữa các role</div>
+                </div>
+                <button type="button" class="messenger-close" id="messengerClose" aria-label="Đóng khung chat">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="messenger-search">
+                <input type="text" id="messengerSearch" placeholder="Tìm role hoặc nhóm chat..." autocomplete="off" />
+            </div>
+
+            <div class="messenger-contact-list" id="messengerContactList"></div>
+        </aside>
+
+        <div class="messenger-main">
+            <div class="messenger-main-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="messenger-avatar--lg" id="messengerActiveAvatar" style="background:#4f46e5">@initials</div>
+                    <div>
+                        <div class="messenger-active-name" id="messengerActiveName">Chọn một cuộc trò chuyện</div>
+                        <div class="messenger-active-status" id="messengerActiveStatus">Đang tải danh sách chat...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="messenger-empty" id="messengerEmptyState">
+                <div class="messenger-empty-icon"><i class="bi bi-chat-dots-fill"></i></div>
+                <h5 class="mb-0">Khung chat giữa người với người</h5>
+                <div class="messenger-empty-subtitle">UI này tách riêng với chatbot AI. Chọn một người dùng để bắt đầu chat realtime.</div>
+            </div>
+
+            <div class="messenger-thread d-none" id="messengerThread">
+                <div class="messenger-messages" id="messengerMessages"></div>
+
+                <form class="messenger-composer" id="messengerComposer" onsubmit="return false;">
+                    <button type="button" class="messenger-tool-btn" title="Nút UI đính kèm">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <input type="text" id="messengerInput" placeholder="Nhập tin nhắn..." autocomplete="off" disabled />
+                    <button type="button" class="messenger-send" id="messengerSend" aria-label="Gửi tin nhắn">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+</li>

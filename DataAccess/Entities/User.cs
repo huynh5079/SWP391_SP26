@@ -24,6 +24,8 @@ public partial class User: BaseEntity
 
     public bool? IsBanned { get; set; }
 
+    public DateTime? ReactivateAt { get; set; }
+
     public string? GoogleId { get; set; }
 
     //public DateTime? CreatedAt { get; set; }

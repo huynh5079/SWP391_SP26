@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = "System Error Logs";
-    // Layout = "~/Views/Shared/_AdminLayout.cshtml"; // Ensure this matches your Admin Layout path. 
+    // Layout = "_Layout"; // Ensure this matches your Admin Layout path. 
     // Assuming _Layout is shared or handled by _ViewStart. If Admin area has specific layout, use it.
     // For now, assuming default layout works, or user will adjust.
 }
@@ -101,7 +101,7 @@
                                     <td>
                                         @if(!string.IsNullOrEmpty(log.UserId))
                                         {
-                                             <a href="javascript:void(0)" onclick="openUserDetail('@log.UserId')" class="text-decoration-none">
+                                             <a href="/UserManagement/Detail/@log.UserId" class="text-decoration-none" target="_blank">
                                                 @log.UserId.Substring(0, 8)...
                                              </a>
                                         }

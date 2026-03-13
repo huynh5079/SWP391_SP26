@@ -3,132 +3,913 @@
 @{
     ViewData["Title"] = "Event Details";
     Layout = "_Organizerlayout";
+    var thumbnailUrl = !string.IsNullOrWhiteSpace(Model.ThumbnailUrl)
+        ? Model.ThumbnailUrl
+        : "https://via.placeholder.com/640x360?text=No+Image";
+    var occupancyPercent = Model.MaxCapacity > 0
+        ? Math.Min(100, (int)Math.Round((double)Model.RegisteredCount / Model.MaxCapacity * 100))
+        : 0;
 }
 
-<div class="container mt-4">
+<style>
+    .event-detail-page .detail-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    .event-detail-page .hero-title {
+        font-size: clamp(2rem, 3vw, 2.6rem);
+        font-weight: 700;
+    }
+
+    .event-detail-page .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }
+
+    .event-detail-page .info-tile,
+    .event-detail-page .agenda-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #f8fafc;
+    }
+
+    .event-detail-page .info-tile {
+        padding: 16px;
+    }
+
+    .event-detail-page .info-label,
+    .event-detail-page .agenda-meta-label,
+    .event-detail-page .agenda-index {
+        color: #64748b;
+        font-size: .8rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .event-detail-page .info-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .event-detail-page .description-box {
+        border-radius: 16px;
+        background: #f8fafc;
+        padding: 20px;
+    }
+
+    .event-detail-page .sidebar-stack {
+        display: grid;
+        gap: 20px;
+    }
+
+    .event-detail-page .sidebar-image {
+        width: 100%;
+        height: 240px;
+        object-fit: cover;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+    }
+
+    .event-detail-page .action-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .event-detail-page .document-item {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 14px;
+        background: #f8fafc;
+    }
+
+    .event-detail-page .agenda-card {
+        height: 100%;
+        padding: 18px;
+    }
+
+    .event-detail-page .agenda-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .event-detail-page .agenda-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .event-detail-page .agenda-meta-item,
+    .event-detail-page .agenda-desc {
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+    }
+
+    .event-detail-page .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .event-detail-page .create-box {
+        border: 1px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 16px;
+        background: #f8fafc;
+    }
+
+    .event-detail-page .create-box label {
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+
+    .event-detail-page .create-box .form-control {
+        border-radius: 12px;
+    }
+
+    .event-detail-page .room-info-box {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 16px;
+        background: #fff;
+    }
+
+    .event-detail-page .create-hint {
+        color: #64748b;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
+    @@media (min-width: 1200px) {
+        .event-detail-page .sidebar-stack {
+            position: sticky;
+            top: 24px;
+        }
+    }
+</style>
+
+<div class="container mt-4 event-detail-page">
     <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-sm btn-secondary mb-3">← Back to My Events</a>
 
-    <div class="card mb-3">
-        <div class="row g-0">
-            <div class="col-md-4">
-                @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
-                {
-                    <img src="@Model.ThumbnailUrl" class="img-fluid rounded-start" alt="Thumbnail" />
-                }
-                else
-                {
-                    <img src="https://via.placeholder.com/320x180?text=No+Image" class="img-fluid rounded-start" alt="No image" />
-                }
-            </div>
-            <div class="col-md-8">
-                <div class="card-body">
-                    <h3 class="card-title">@Model.Title</h3>
-                    <p class="text-muted">@Model.Location</p>
-                    <p>
-                        <strong>Semester:</strong> @Model.SemesterName<br />
-                        <strong>Department:</strong> @Model.DepartmentName
-                    </p>
-
-                    <p>
-                        <strong>Time:</strong>
-                        @Model.StartTime.ToString("HH:mm dd/MM/yyyy") &nbsp;→&nbsp; @Model.EndTime.ToString("HH:mm dd/MM/yyyy")
-                    </p>
-
-                    <p>
-                        <strong>Capacity:</strong> @Model.RegisteredCount / @Model.MaxCapacity
-                    </p>
-
-                    <p>
-                        <strong>Status:</strong> @Model.Status
-                    </p>
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="card detail-card h-100">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+                        <div>
+                            <div class="text-uppercase small text-muted fw-semibold mb-2">Event overview</div>
+                            <h1 class="hero-title mb-2">@Model.Title</h1>
+                            <p class="text-muted mb-0">@(Model.Location ?? Model.LocationText ?? "No location")</p>
+                        </div>
+                        <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">@Model.Status</span>
+                    </div>
 
                     @if (!string.IsNullOrWhiteSpace(Model.LastApprovalComment))
                     {
-                        <p class="mb-1"><strong>Approver Comment:</strong></p>
-                        <div class="alert alert-info py-2 px-3">
-                            <div class="small text-muted">@Model.LastApprovalAction @Model.LastApprovalAt?.ToString("dd/MM/yyyy HH:mm")</div>
-                            <div>@Model.LastApprovalComment</div>
+                        <div class="alert alert-info border-0 mb-4">
+                            <div class="small text-muted mb-1">@Model.LastApprovalAction @Model.LastApprovalAt?.ToString("dd/MM/yyyy HH:mm")</div>
+                            <div><strong>Approver Comment:</strong> @Model.LastApprovalComment</div>
                         </div>
                     }
 
-                    <div class="mb-3 d-flex flex-wrap gap-2">
-                        @if (Model.CanEdit)
-                        {
-                            <a asp-action="Edit" asp-route-id="@Model.EventId"
-                               class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Chỉnh sửa</a>
-                        }
+                    <div class="info-grid mb-4">
+                        <div class="info-tile">
+                            <div class="info-label">Semester</div>
+                            <div class="info-value mt-1">@(Model.SemesterName ?? "Not set")</div>
+                        </div>
+                        <div class="info-tile">
+                            <div class="info-label">Department</div>
+                            <div class="info-value mt-1">@(Model.DepartmentName ?? "Not set")</div>
+                        </div>
+                        <div class="info-tile">
+                            <div class="info-label">Start time</div>
+                            <div class="info-value mt-1">@Model.StartTime.ToString("HH:mm dd/MM/yyyy")</div>
+                        </div>
+                        <div class="info-tile">
+                            <div class="info-label">End time</div>
+                            <div class="info-value mt-1">@Model.EndTime.ToString("HH:mm dd/MM/yyyy")</div>
+                        </div>
+                        <div class="info-tile">
+                            <div class="info-label">Mode</div>
+                            <div class="info-value mt-1">@(Model.Mode?.ToString() ?? "Not set")</div>
+                        </div>
+                        <div class="info-tile">
+                            <div class="info-label">Type</div>
+                            <div class="info-value mt-1">@(Model.Type ?? "Not set")</div>
+                        </div>
+                    </div>
 
-                        @if (Model.CanSendForApproval)
-                        {
-                            <form asp-controller="Organizer" asp-action="SendForApproval" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@Model.EventId" />
-                                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-paper-plane"></i> Gửi duyệt</button>
-                            </form>
-                        }
+                    @if (!string.IsNullOrWhiteSpace(Model.MeetingUrl))
+                    {
+                        <div class="mb-4">
+                            <div class="info-label mb-1">Meeting URL</div>
+                            <a href="@Model.MeetingUrl" target="_blank" class="text-primary text-decoration-none fw-semibold">
+                                <i class="bi bi-link-45deg"></i> @Model.MeetingUrl
+                            </a>
+                        </div>
+                    }
 
-                        @* Button to open Check-in Scanner *@
-                        <a asp-controller="CheckIn" asp-action="Scanner" asp-route-eventId="@Model.EventId" 
-                           class="btn btn-sm btn-success">
-                            <i class="fas fa-camera"></i> Bắt đầu Check-in
-                        </a>
+                    <div class="description-box">
+                        <div class="section-head mb-3">
+                            <h4 class="mb-0">Description</h4>
+                            <span class="badge rounded-pill bg-light text-dark border">Main content</span>
+                        </div>
+                        <div>@Html.Raw(Model.Description ?? "<em>No description</em>")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="sidebar-stack">
+                <div class="card detail-card overflow-hidden">
+                    <img src="@thumbnailUrl" class="sidebar-image" alt="Thumbnail" />
+                    <div class="card-body p-4">
+                        <h5 class="mb-3">Event management</h5>
+
+                        <div class="info-tile mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="info-label">Capacity</span>
+                                <span class="info-value">@Model.RegisteredCount / @Model.MaxCapacity</span>
+                            </div>
+                            <div class="progress" role="progressbar" aria-valuenow="@occupancyPercent" aria-valuemin="0" aria-valuemax="100" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: @occupancyPercent%"></div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mb-3">
+                            <div class="info-tile flex-fill text-center p-3">
+                                <div class="info-label mb-1">Waitlist</div>
+                                <div class="info-value fs-5">@Model.WaitlistCount</div>
+                            </div>
+                            <div class="info-tile flex-fill text-center p-3">
+                                <div class="info-label mb-1">Rating</div>
+                                <div class="info-value fs-5">@(Model.AvgRating > 0 ? Model.AvgRating.ToString("0.0") : "N/A")</div>
+                            </div>
+                        </div>
+
+                        <div class="action-list">
+                            @if (Model.CanEdit)
+                            {
+                                <a asp-action="Edit" asp-route-id="@Model.EventId" class="btn btn-warning w-100"><i class="fas fa-edit"></i> Chỉnh sửa</a>
+                            }
+
+                            @if (Model.CanSendForApproval)
+                            {
+                                <form asp-controller="Organizer" asp-action="SendForApproval" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@Model.EventId" />
+                                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-paper-plane"></i> Gửi duyệt</button>
+                                </form>
+                            }
+
+                            <a asp-controller="CheckIn" asp-action="Scanner" asp-route-eventId="@Model.EventId" class="btn btn-success w-100">
+                                <i class="fas fa-camera"></i> Bắt đầu Check-in
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-    <div class="card mt-3">
-        <div class="card-body">
-            <h5>Documents</h5>
-            @if (Model.Documents == null || Model.Documents.Count == 0)
-            {
-                <p class="text-muted">No documents.</p>
-            }
-            else
-            {
-                <ul class="list-group">
-                    @foreach (var d in Model.Documents)
-                    {
-                        <li class="list-group-item">
-                            <strong>@d.FileName</strong>
-                            <div class="text-muted">@d.Type</div>
-                            <div><a href="@d.Url" target="_blank">Open</a></div>
-                        </li>
-                    }
-                </ul>
-            }
-        </div>
-    </div>
+                <div class="card detail-card">
+                    <div class="card-body p-4">
+                        <div class="section-head mb-3">
+                            <div>
+                                <h5 class="mb-0">Documents</h5>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#createDocumentForm" aria-expanded="false" aria-controls="createDocumentForm">
+                                    + Create Document
+                                </button>
+                                <span class="badge rounded-pill bg-light text-dark border">@(Model.Documents?.Count ?? 0)</span>
+                            </div>
+                        </div>
+
+                        <div class="collapse mb-3" id="createDocumentForm">
+                            <form asp-controller="Organizer" asp-action="CreateDocumentFromDetail" method="post" class="create-box">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="EventId" value="@Model.EventId" />
+
+                                <div class="mb-3">
+                                    <label class="form-label">Document Name</label>
+                                    <input name="Name" class="form-control" required />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Type</label>
+                                    <input name="Type" class="form-control" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Url</label>
+                                    <input name="Url" class="form-control" required />
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-sm">Lưu document</button>
+                            </form>
+                        </div>
+
+                        @if (Model.Documents == null || Model.Documents.Count == 0)
+                        {
+                            <p class="text-muted mb-0">No documents.</p>
+                        }
+                        else
+                        {
+                            <div class="d-grid gap-3">
+                                @foreach (var d in Model.Documents)
+                                {
+                                    <div class="document-item">
+                                        <strong>@d.FileName</strong>
+                                        <div class="text-muted small mt-1">@(d.Type ?? "No type")</div>
+                                        <a href="@d.Url" target="_blank" class="btn btn-link px-0 mt-2">Open document</a>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
+</div>
+</div>
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5>Description</h5>
-            <div>@Html.Raw(Model.Description ?? "<em>No description</em>")</div>
-        </div>
-    </div>
+    <div class="card detail-card mt-4">
+        <div class="card-body p-4 p-lg-5">
+            <div class="section-head mb-4">
+                <div>
+                    <h4 class="mb-1">Agendas</h4>
+                    <div class="text-muted">Tách từng agenda thành từng mục nhỏ để dễ theo dõi và quản lí.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#createAgendaForm" aria-expanded="false" aria-controls="createAgendaForm">
+                        + Create Agenda
+                    </button>
+                    <span class="badge rounded-pill bg-light text-dark border">@(Model.Agendas?.Count ?? 0) mục</span>
+                </div>
+            </div>
 
-    <div class="card">
-        <div class="card-body">
-            <h5>Agendas</h5>
+            <div class="collapse mb-4" id="createAgendaForm">
+                <form asp-controller="Organizer" asp-action="CreateAgendaFromDetail" method="post" class="create-box">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="EventId" value="@Model.EventId" />
+                    <input type="hidden" id="createAgendaLocation" name="Location" value="@(Model.Location ?? Model.LocationText ?? string.Empty)" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Session Name</label>
+                            <input name="SessionName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 position-relative">
+                            <label class="form-label d-flex justify-content-between">
+                                Speaker
+                                <span class="badge bg-secondary" id="agendaSpeakerRoleBadge" style="display:none;"></span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" id="agendaSpeakerSearchInput" name="SpeakerInfo" class="form-control" placeholder="Search by name or email..." required autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clearAgendaSpeakerBtn" style="display:none;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Hidden fields to store selected user info -->
+                            <input type="hidden" id="agendaSpeakerUserId" name="SpeakerUserId" value="">
+                            <input type="hidden" id="agendaSpeakerUserRole" name="SpeakerUserRole" value="">
+                            
+                            <!-- Dropdown menu for search results -->
+                            <div id="agendaSpeakerSearchResults" class="dropdown-menu w-100 shadow-sm" style="display:none; max-height: 250px; overflow-y: auto; z-index: 1050;">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Time</label>
+                            <input id="createAgendaStartTime" name="StartTime" type="datetime-local" class="form-control" value="@Model.StartTime.ToString("yyyy-MM-ddTHH:mm")" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Time</label>
+                            <input id="createAgendaEndTime" name="EndTime" type="datetime-local" class="form-control" value="@Model.EndTime.ToString("yyyy-MM-ddTHH:mm")" required />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Location</label>
+                            <select id="createAgendaLocation" name="Location" class="form-select">
+                                <option value="">-- Select Agenda Location --</option>
+                                @if (ViewBag.Locations != null)
+                                {
+                                    @foreach (var loc in ViewBag.Locations)
+                                    {
+                                        <option value="@loc.Text">@loc.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="Description" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm mt-3">Lưu agenda</button>
+                </form>
+            </div>
+
             @if (Model.Agendas == null || Model.Agendas.Count == 0)
             {
-                <p class="text-muted">No agendas.</p>
+                <p class="text-muted mb-0">No agendas.</p>
             }
             else
             {
-                <ul class="list-group">
-                    @foreach (var a in Model.Agendas)
+                <div class="row g-3">
+                    @for (int i = 0; i < Model.Agendas.Count; i++)
                     {
-                        <li class="list-group-item">
-                            <strong>@a.SessionName</strong>
-                            <div class="text-muted">@a.SpeakerName — @a.StartTime.ToString("HH:mm dd/MM/yyyy") → @a.EndTime.ToString("HH:mm dd/MM/yyyy")</div>
-                            <div>@a.Description</div>
-                        </li>
+                        var agenda = Model.Agendas[i];
+
+                        <div class="col-12 col-xl-6">
+                            <div class="agenda-card">
+                                <div class="agenda-card-header">
+                                    <div>
+                                        <div class="agenda-index mb-1">Agenda @(i + 1)</div>
+                                        <h5 class="mb-0">@agenda.SessionName</h5>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(agenda.SpeakerInfo))
+                                    {
+                                        <span class="badge rounded-pill bg-light text-dark border">@agenda.SpeakerInfo</span>
+                                    }
+                                </div>
+
+                                <div class="agenda-meta-grid">
+                                    <div class="agenda-meta-item">
+                                        <div class="agenda-meta-label mb-1">Time</div>
+                                        <div class="fw-semibold">@agenda.StartTime.ToString("HH:mm dd/MM/yyyy")</div>
+                                        <div class="text-muted small mt-1">→ @agenda.EndTime.ToString("HH:mm dd/MM/yyyy")</div>
+                                    </div>
+                                    <div class="agenda-meta-item">
+                                        <div class="agenda-meta-label mb-1">Location</div>
+                                        <div class="fw-semibold">@(agenda.Location ?? Model.Location ?? "No location")</div>
+                                    </div>
+                                </div>
+
+                                <div class="agenda-desc">
+                                    <div class="agenda-meta-label mb-2">Description</div>
+                                    <div>@(!string.IsNullOrWhiteSpace(agenda.Description) ? agenda.Description : "No description.")</div>
+                                </div>
+                            </div>
+                        </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        (function () {
+            const startInput = document.getElementById('createAgendaStartTime');
+            const endInput = document.getElementById('createAgendaEndTime');
+            const locationInput = document.getElementById('createAgendaLocation');
+            const universitySelect = document.getElementById('createAgendaUniversity');
+            const buildingSelect = document.getElementById('createAgendaBuilding');
+            const floorSelect = document.getElementById('createAgendaFloor');
+            const roomSelect = document.getElementById('createAgendaRoom');
+            const locationTypeDisplay = document.getElementById('createAgendaLocationType');
+            const roomCapacityDisplay = document.getElementById('createAgendaRoomCapacity');
+            const locationHint = document.getElementById('createAgendaLocationHint');
+
+            if (!startInput || !endInput || !locationInput || !universitySelect || !buildingSelect || !floorSelect || !roomSelect) {
+                return;
+            }
+
+            let availableLocations = [];
+
+            function setOptions(select, placeholder, values, selectedValue) {
+                select.innerHTML = '';
+
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = placeholder;
+                select.appendChild(placeholderOption);
+
+                values.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    if (value === selectedValue) {
+                        option.selected = true;
                     }
-                </ul>
+                    select.appendChild(option);
+                });
+            }
+
+            function getDistinctValues(items, selector) {
+                return [...new Set(items.map(selector).filter(Boolean))];
+            }
+
+            function getFormattedLocation(location) {
+                if (location?.address) {
+                    return location.address;
+                }
+
+                const parts = [];
+                if (location?.building) parts.push(`Building ${location.building}`);
+                if (location?.floor) parts.push(`Floor ${location.floor}`);
+                if (location?.room) parts.push(`Room ${location.room}`);
+
+                return parts.join(' - ');
+            }
+
+            function syncSelectedLocation() {
+                const selectedLocation = availableLocations.find(x =>
+                    x.name === universitySelect.value &&
+                    x.building === buildingSelect.value &&
+                    x.floor === floorSelect.value &&
+                    x.room === roomSelect.value);
+
+                locationInput.value = selectedLocation ? getFormattedLocation(selectedLocation) : '';
+                locationTypeDisplay.value = selectedLocation?.type ?? '';
+                roomCapacityDisplay.value = selectedLocation?.capacity ?? '';
+            }
+
+            function populateRoomHierarchy(preferredLocationValue) {
+                const selectedLocation = availableLocations.find(x => getFormattedLocation(x) === preferredLocationValue);
+
+                const selectedUniversity = selectedLocation?.name || universitySelect.value;
+                const universities = getDistinctValues(availableLocations, x => x.name);
+                setOptions(universitySelect, '-- Select University --', universities, selectedUniversity);
+
+                const filteredByUniversity = availableLocations.filter(x => x.name === universitySelect.value);
+                const selectedBuilding = selectedLocation?.building || buildingSelect.value;
+                const buildings = getDistinctValues(filteredByUniversity, x => x.building);
+                setOptions(buildingSelect, '-- Select Building --', buildings, selectedBuilding);
+
+                const filteredByBuilding = filteredByUniversity.filter(x => x.building === buildingSelect.value);
+                const selectedFloor = selectedLocation?.floor || floorSelect.value;
+                const floors = getDistinctValues(filteredByBuilding, x => x.floor);
+                setOptions(floorSelect, '-- Select Floor --', floors, selectedFloor);
+
+                const filteredByFloor = filteredByBuilding.filter(x => x.floor === floorSelect.value);
+                const selectedRoom = selectedLocation?.room || roomSelect.value;
+                const rooms = getDistinctValues(filteredByFloor, x => x.room);
+                setOptions(roomSelect, '-- Select Room --', rooms, selectedRoom);
+
+                syncSelectedLocation();
+            }
+
+            async function refreshAvailableLocations() {
+                const startValue = startInput.value;
+                const endValue = endInput.value;
+
+                if (!startValue || !endValue) {
+                    availableLocations = [];
+                    populateRoomHierarchy(locationInput.value);
+                    locationHint.textContent = 'Hãy chọn đủ thời gian bắt đầu và kết thúc để lọc phòng còn trống.';
+                    return;
+                }
+
+                try {
+                    const url = `/Organizer/GetAvailableLocations?startTime=${encodeURIComponent(startValue)}&endTime=${encodeURIComponent(endValue)}`;
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) {
+                        locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                        return;
+                    }
+
+                    let data = await response.json();
+                    console.log('GetAvailableLocations response raw:', data);
+
+                    // normalize: if API wraps result in an object like { data: [...] } or { items: [...] }
+                    if (!Array.isArray(data)) {
+                        if (Array.isArray(data.data)) data = data.data;
+                        else if (Array.isArray(data.items)) data = data.items;
+                        else {
+                            // try to find first array property
+                            const arrProp = Object.values(data).find(v => Array.isArray(v));
+                            if (Array.isArray(arrProp)) data = arrProp;
+                        }
+                    }
+
+                    // attempt to map different property names to our expected shape
+                    function normalizeLocation(item) {
+                        if (!item) return null;
+                        const get = (...keys) => {
+                            for (const k of keys) {
+                                if (item[k] !== undefined && item[k] !== null) return item[k];
+                            }
+                            return '';
+                        };
+
+                        return {
+                            name: get('name', 'university', 'universityName', 'school'),
+                            building: get('building', 'buildingName'),
+                            floor: get('floor', 'floorName'),
+                            room: get('room', 'roomName', 'roomNumber', 'name'),
+                            type: get('type', 'locationType'),
+                            capacity: get('capacity', 'roomCapacity')
+                        };
+                    }
+
+                    if (Array.isArray(data)) {
+                        availableLocations = data.map(normalizeLocation).filter(Boolean);
+                    } else {
+                        availableLocations = [];
+                    }
+
+                    console.log('GetAvailableLocations normalized:', availableLocations);
+
+                    populateRoomHierarchy(locationInput.value);
+                    locationHint.textContent = availableLocations.length > 0
+                        ? `Có ${availableLocations.length} phòng đang khả dụng trong khoảng thời gian agenda đã chọn.`
+                        : 'Không có phòng khả dụng trong khoảng thời gian agenda đã chọn.';
+                    locationHint.style.display = 'block';
+                } catch {
+                    locationHint.textContent = 'Không thể tải danh sách phòng khả dụng.';
+                }
+            }
+
+            startInput.addEventListener('change', refreshAvailableLocations);
+            endInput.addEventListener('change', refreshAvailableLocations);
+            universitySelect.addEventListener('change', () => populateRoomHierarchy(''));
+            buildingSelect.addEventListener('change', () => populateRoomHierarchy(''));
+            floorSelect.addEventListener('change', () => populateRoomHierarchy(''));
+            roomSelect.addEventListener('change', syncSelectedLocation);
+
+            refreshAvailableLocations();
+        })();
+    });
+</script>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+	
+    <div class="card detail-card mt-4 mb-4">
+        <div class="card-body p-4 p-lg-5">
+            <div class="section-head mb-4">
+                <div>
+                    <h4 class="mb-1">Ban Tổ Chức & Đội ngũ</h4>
+                    <div class="text-muted">Quản lý các nhóm và thành viên ban tổ chức hoặc staff.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#createTeamForm" aria-expanded="false" aria-controls="createTeamForm">
+                        + Tạo Nhóm Mới
+                    </button>
+                    <span class="badge rounded-pill bg-light text-dark border">@(Model.Teams?.Count ?? 0) nhóm</span>
+                </div>
+            </div>
+
+            <!-- Create New Team Form -->
+            <div class="collapse mb-4" id="createTeamForm">
+                <form asp-controller="Organizer" asp-action="CreateEventTeamFromDetail" method="post" class="create-box">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="EventId" value="@Model.EventId" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tên nhóm (Team Name)</label>
+                            <input name="TeamName" class="form-control" placeholder="Ví dụ: Ban Hậu cần / Ban Truyền thông" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phân quyền chung</label>
+                            <input name="Description" class="form-control" placeholder="Mô tả công việc" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm mt-3">Tạo Nhóm</button>
+                </form>
+            </div>
+
+            <!-- Teams List -->
+            @if (Model.Teams == null || Model.Teams.Count == 0)
+            {
+                <p class="text-muted mb-0">Chưa có nhóm nào được tạo.</p>
+            }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var team in Model.Teams)
+                    {
+                        <div class="col-12 col-xl-6">
+                            <div class="agenda-card">
+                                <div class="agenda-card-header mb-3">
+                                    <div>
+                                        <h5 class="mb-0 text-primary">@team.TeamName</h5>
+                                        @if(!string.IsNullOrEmpty(team.Description))
+                                        {
+                                            <div class="text-muted small mt-1">@team.Description</div>
+                                        }
+                                    </div>
+                                    <form asp-controller="Organizer" asp-action="DeleteEventTeamFromDetail" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="TeamId" value="@team.Id" />
+                                        <input type="hidden" name="EventId" value="@Model.EventId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Xóa nhóm này?');"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <strong>Thành viên (@team.TeamMembers.Count):</strong>
+                                    @if(team.TeamMembers.Count > 0)
+                                    {
+                                        <ul class="list-group list-group-flush mt-2 border rounded-3 overflow-hidden">
+                                            @foreach(var member in team.TeamMembers)
+                                            {
+                                                <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 bg-light">
+                                                    <div>
+                                                        <div class="fw-semibold">@member.MemberName</div>
+                                                        <small class="text-muted">@member.RoleName</small>
+                                                    </div>
+                                                    <form asp-controller="Organizer" asp-action="RemoveMemberFromTeam" method="post" class="m-0">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="MemberId" value="@member.Id" />
+                                                        <input type="hidden" name="EventId" value="@Model.EventId" />
+                                                        <button type="submit" class="btn btn-link text-danger p-0 m-0 text-decoration-none" title="Xóa"><i class="bi bi-x-circle-fill"></i></button>
+                                                    </form>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <br/><small class="text-muted">Nhóm chưa có thành viên.</small>
+                                    }
+                                </div>
+
+                                <!-- Add Member API Form -->
+                                <div class="create-box p-3 mt-3">
+                                    <label class="small fw-semibold mb-2 text-dark">Thêm Thành Viên mới</label>
+                                    <form asp-controller="Organizer" asp-action="AddMemberToTeam" method="post" class="d-flex align-items-center gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="TeamId" value="@team.Id" />
+                                        <input type="hidden" name="EventId" value="@Model.EventId" />
+                                        <!-- Real values set by JS -->
+                                        <input type="hidden" name="StudentId" class="hidden-student-id-@team.Id" />
+                                        <input type="hidden" name="StaffId" class="hidden-staff-id-@team.Id" />
+                                        
+                                        <div class="position-relative flex-grow-1">
+                                            <input type="text" class="form-control form-control-sm user-search-input" data-team-id="@team.Id" placeholder="Nhập tên/email (>= 3 ký tự)..." autocomplete="off" />
+                                            <div class="user-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                        
+                                        <select name="RoleName" class="form-select form-select-sm" style="width: 100px;">
+                                            <option value="Member">Member</option>
+                                            <option value="Leader">Leader</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-primary btn-sm">Thêm</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
         </div>
     </div>
 </div>
-</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInputs = document.querySelectorAll('.user-search-input');
+        
+        searchInputs.forEach(input => {
+            const teamId = input.getAttribute('data-team-id');
+            const resultsContainer = input.nextElementSibling;
+            const studentIdInput = document.querySelector(`.hidden-student-id-${teamId}`);
+            const staffIdInput = document.querySelector(`.hidden-staff-id-${teamId}`);
+            let debounceTimer;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const query = this.value;
+                if (query.length < 3) {
+                    resultsContainer.style.display = 'none';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/api/v1/userapi/search?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(resp => {
+                            if (!resp.success || !resp.data || resp.data.length === 0) {
+                                resultsContainer.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy ai</div>';
+                                resultsContainer.style.display = 'block';
+                                return;
+                            }
+                            
+                            resultsContainer.innerHTML = resp.data.map(user => `
+                                <div class="p-2 border-bottom user-search-item" style="cursor:pointer;" 
+                                     data-id="${user.id}" data-role="${user.role}" data-name="${user.fullName}">
+                                    <div class="fw-semibold small text-primary">${user.fullName}</div>
+                                    <div class="text-muted" style="font-size:0.75rem;">${user.email} <span class="badge bg-light text-dark">${user.role}</span></div>
+                                </div>
+                            `).join('');
+                            resultsContainer.style.display = 'block';
+                            
+                            // Attach click events
+                            const items = resultsContainer.querySelectorAll('.user-search-item');
+                            items.forEach(item => {
+                                item.addEventListener('click', function() {
+                                    const uid = this.getAttribute('data-id');
+                                    const urole = this.getAttribute('data-role');
+                                    input.value = this.getAttribute('data-name');
+                                    
+                                    if (urole.includes('Student')) {
+                                        studentIdInput.value = uid; // This actually maps to UserID. We'll need backend to map UserID -> StudentID
+                                        staffIdInput.value = '';
+                                    } else {
+                                        staffIdInput.value = uid; // UserID -> StaffID mapping needed backend
+                                        studentIdInput.value = '';
+                                    }
+                                    
+                                    resultsContainer.style.display = 'none';
+                                });
+                            });
+                        });
+                }, 300);
+            });
+            
+            // Hide click outside
+            document.addEventListener('click', function(e) {
+                if(e.target !== input && !resultsContainer.contains(e.target)) {
+                    resultsContainer.style.display = 'none';
+                }
+            });
+        });
+
+        // ================= Agenda Speaker Autocomplete =================
+        const agendaInput = document.getElementById('agendaSpeakerSearchInput');
+        const agendaResults = document.getElementById('agendaSpeakerSearchResults');
+        const agendaUserId = document.getElementById('agendaSpeakerUserId');
+        const agendaUserRole = document.getElementById('agendaSpeakerUserRole');
+        const agendaRoleBadge = document.getElementById('agendaSpeakerRoleBadge');
+        const agendaClearBtn = document.getElementById('clearAgendaSpeakerBtn');
+        let agendaTimer;
+
+        if (agendaInput && agendaResults) {
+            agendaInput.addEventListener('input', function() {
+                clearTimeout(agendaTimer);
+                const query = this.value;
+                
+                if (query.length < 3) {
+                    agendaResults.style.display = 'none';
+                    if (query.length === 0) {
+                        agendaClearBtn.style.display = 'none';
+                        agendaUserId.value = '';
+                        agendaUserRole.value = '';
+                        agendaRoleBadge.style.display = 'none';
+                    }
+                    return;
+                }
+                
+                agendaClearBtn.style.display = 'block';
+
+                agendaTimer = setTimeout(() => {
+                    fetch(`/api/v1/userapi/search?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(resp => {
+                            if (!resp.success || !resp.data || resp.data.length === 0) {
+                                agendaResults.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy ai</div>';
+                                agendaResults.style.display = 'block';
+                                return;
+                            }
+                            
+                            agendaResults.innerHTML = resp.data.map(user => `
+                                <div class="p-2 border-bottom agenda-search-item" style="cursor:pointer;" 
+                                     data-id="${user.id}" data-role="${user.role}" data-name="${user.fullName}">
+                                    <div class="fw-semibold small text-primary">${user.fullName}</div>
+                                    <div class="text-muted" style="font-size:0.75rem;">${user.email} <span class="badge bg-light text-dark">${user.role}</span></div>
+                                </div>
+                            `).join('');
+                            agendaResults.style.display = 'block';
+                            
+                            const items = agendaResults.querySelectorAll('.agenda-search-item');
+                            items.forEach(item => {
+                                item.addEventListener('click', function() {
+                                    agendaUserId.value = this.getAttribute('data-id');
+                                    agendaUserRole.value = this.getAttribute('data-role');
+                                    agendaInput.value = this.getAttribute('data-name');
+                                    agendaRoleBadge.textContent = this.getAttribute('data-role');
+                                    agendaRoleBadge.style.display = 'inline-block';
+                                    agendaResults.style.display = 'none';
+                                });
+                            });
+                        });
+                }, 300);
+            });
+
+            agendaClearBtn.addEventListener('click', function() {
+                agendaInput.value = '';
+                agendaUserId.value = '';
+                agendaUserRole.value = '';
+                agendaRoleBadge.style.display = 'none';
+                this.style.display = 'none';
+            });
+
+            document.addEventListener('click', function(e) {
+                if(e.target !== agendaInput && !agendaResults.contains(e.target)) {
+                    agendaResults.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>

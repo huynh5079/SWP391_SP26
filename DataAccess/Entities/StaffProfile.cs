@@ -23,9 +23,17 @@ public partial class StaffProfile: BaseEntity
 
     public virtual ICollection<CheckInHistory> CheckInHistories { get; set; } = new List<CheckInHistory>();
 
+    public virtual ICollection<QuestionBank> QuestionBanks { get; set; } = new List<QuestionBank>();
+
     public virtual Department? Department { get; set; }
 
     public virtual ICollection<Event> Events { get; set; } = new List<Event>();
+
+    public virtual ICollection<QuizSet> QuizSets { get; set; } = new List<QuizSet>();
+
+    public virtual ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
+
+    public virtual ICollection<EventAgenda> AgendasAsStaffSpeaker { get; set; } = new List<EventAgenda>();
 
     public virtual User? User { get; set; }
 }

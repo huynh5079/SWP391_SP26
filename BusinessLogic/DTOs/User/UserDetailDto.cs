@@ -5,7 +5,6 @@ namespace BusinessLogic.DTOs.User
     public class UserDetailDto : UserListDto
     {
         public string? Phone { get; set; }
-        public string? AvatarUrl { get; set; }
         public string? GoogleId { get; set; }
         
         // Specific Profile Info

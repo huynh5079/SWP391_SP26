@@ -4,6 +4,7 @@ using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
+using System.Data;
 
 using BusinessLogic.Helper;
 using BusinessLogic.Service.System;
@@ -166,6 +167,13 @@ namespace BusinessLogic.Service.Student
             bool isPublic = ev.Status == EventStatusEnum.Published ||
                             ev.Status == EventStatusEnum.Upcoming  ||
                             ev.Status == EventStatusEnum.Happening;
+            //waitlist status
+            var waitlistEntry = await _uow.EventWaitlist.GetAsync(
+                w => w.EventId == eventId && w.StudentId == profile.Id);
+
+            bool isInWaitlist = waitlistEntry != null &&
+                (waitlistEntry.Status == DataAccess.Enum.EventWaitlistStatusEnum.Waiting ||
+                 waitlistEntry.Status == DataAccess.Enum.EventWaitlistStatusEnum.Offered);
 
             return new StudentEventDetailDto
             {
@@ -187,10 +195,18 @@ namespace BusinessLogic.Service.Student
                 SemesterName = ev.Semester?.Name,
                 DepartmentName = ev.Department?.Name,
                 OrganizerName = ev.Organizer?.User?.FullName,
+                OrganizerUserId = ev.Organizer?.UserId,
+                OrganizerAvatarUrl = ev.Organizer?.User?.AvatarUrl,
+                OrganizerPosition = ev.Organizer?.Position,
                 IsRegistered = isRegistered,
-                CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity,
+                CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity && !isInWaitlist,
                 CanCancel = isRegistered && isFuture,
-                TicketId = myTicket?.Id
+                TicketId = myTicket?.Id,
+                //IsFull = registeredCount >= ev.MaxCapacity,
+                IsInWaitlist = isInWaitlist,
+                WaitlistPosition = waitlistEntry?.Position,
+                WaitlistStatus = waitlistEntry?.Status,        // ✅ thêm
+                WaitlistStudentProfileId = waitlistEntry?.StudentId
             };
         }
 
@@ -198,154 +214,133 @@ namespace BusinessLogic.Service.Student
         public async Task RegisterForEventAsync(string studentId, string eventId)
         {
             var profile = await RequireStudentProfileAsync(studentId);
-            var ev = await _uow.Events.GetAsync(e => e.Id == eventId,
-                q => q.Include(x => x.Tickets));
+            Ticket? activeTicket = null;
+            Ticket? reactivatedTicket = null;
+            global::DataAccess.Entities.Event? ev;
 
-            if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
-
-            var now = DateTimeHelper.GetVietnamTime();
-            if (ev.StartTime <= now)
-                throw new InvalidOperationException("Không thể đăng ký event đã diễn ra.");
-
-            if (ev.Status != EventStatusEnum.Published &&
-                ev.Status != EventStatusEnum.Upcoming)
-                throw new InvalidOperationException("Event chưa mở đăng ký.");
-
-            // Check for ANY existing ticket (including cancelled) — DB has a unique index on (EventId, StudentId)
-            var existing = await _uow.Tickets.GetAsync(
-                t => t.EventId == eventId && t.StudentId == profile.Id);
-
-            if (existing != null)
-            {
-                // Active ticket → already registered
-                if (existing.DeletedAt == null && existing.Status != TicketStatusEnum.Cancelled)
-                    throw new InvalidOperationException("Bạn đã đăng ký event này rồi.");
-
-                // Previously cancelled → reactivate instead of inserting new row
-                existing.Status = TicketStatusEnum.Registered;
-                existing.DeletedAt = null;
-                existing.UpdatedAt = DateTimeHelper.GetVietnamTime();
-                using var transaction = await _uow.BeginTransactionAsync();
-                try
-                {
-                    await _uow.Tickets.UpdateAsync(existing);
-                    await _uow.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    
-                    try
-                    {
-                        // Generate QR & send email
-                        string qrPayload = existing.Id;
-                        string qrCodeBase64 = QRCodeGeneratorHelper.GenerateQRCodeBase64(qrPayload);
-                        
-                        // Fetch user info for email
-                        var user = await _uow.Users.GetAsync(u => u.Id == profile.UserId);
-                        if (user != null)
-                        {
-                            string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
-                            
-                            // Send Generic in-app notification
-                            await _notificationService.SendNotificationAsync(
-                                user.Id, 
-                                "Đăng ký thành công", 
-                                $"Bạn đã đăng ký lại thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR.", 
-                                "StudentRegistration"
-                            );
-
-                            await _emailService.SendEventRegistrationEmailAsync(
-                                user.Email,
-                                user.FullName ?? user.Email ?? "Sinh viên",
-                                ev.Title,
-                                ev.StartTime,
-                                locationName,
-                                qrCodeBase64
-                            );
-                        }
-                    }
-                    catch (Exception emailEx)
-                    {
-                        await _errorLogService.LogErrorAsync(emailEx, profile.UserId, "StudentEventService.RegisterForEventAsync (Reactivate)");
-                        // Do not throw; we already registered the student successfully. Email failure shouldn't rollback registration.
-                    }
-                }
-                catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
-                {
-                    await transaction.RollbackAsync();
-                    Exception inner = dbEx;
-                    while (inner.InnerException != null) inner = inner.InnerException;
-                    throw new InvalidOperationException($"Lỗi lưu dữ liệu: {inner.Message}", dbEx);
-                }
-                return;
-            }
-
-            // No existing ticket — create a fresh one
-            int activeCount = ev.Tickets?.Count(t => t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? 0;
-
-            if (activeCount >= ev.MaxCapacity)
-            {
-                // Stub — waitlist not implemented yet
-                await AddToWaitlistAsync(studentId, eventId);
-                return;
-            }
-
-            // Create Ticket — BaseEntity constructor auto-sets Id, CreatedAt, UpdatedAt
-            var ticket = new Ticket
-            {
-                EventId = eventId,
-                StudentId = profile.Id,
-                Status = TicketStatusEnum.Registered,
-                TicketCode = $"TK-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
-            };
-
-            using var newTrans = await _uow.BeginTransactionAsync();
+            using var newTrans = await _uow.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                await _uow.Tickets.CreateAsync(ticket);
-                await _uow.SaveChangesAsync();
-                await newTrans.CommitAsync();
+                ev = await _uow.Events.GetAsync(e => e.Id == eventId);
+                if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
-                try
+                var now = DateTimeHelper.GetVietnamTime();
+                if (ev.StartTime <= now)
+                    throw new InvalidOperationException("Không thể đăng ký event đã diễn ra.");
+
+                if (ev.Status != EventStatusEnum.Published &&
+                    ev.Status != EventStatusEnum.Upcoming)
+                    throw new InvalidOperationException("Event chưa mở đăng ký.");
+
+                var existing = await _uow.Tickets.GetAsync(
+                    t => t.EventId == eventId && t.StudentId == profile.Id);
+
+                if (existing != null)
                 {
-                    // Generate QR & send email
-                    string qrPayload = ticket.Id;
-                    string qrCodeBase64 = QRCodeGeneratorHelper.GenerateQRCodeBase64(qrPayload);
-                    
-                    // Fetch user info for email
-                    var user = await _uow.Users.GetAsync(u => u.Id == profile.UserId);
-                    if (user != null)
+                    if (existing.DeletedAt == null && existing.Status != TicketStatusEnum.Cancelled)
+                        throw new InvalidOperationException("Bạn đã đăng ký event này rồi.");
+
+                    var activeCount = await _uow.Tickets.CountAsync(
+                        t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+                    if (activeCount >= ev.MaxCapacity)
                     {
-                        string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
-
-                        // Send Generic in-app notification
-                        await _notificationService.SendNotificationAsync(
-                            user.Id, 
-                            "Đăng ký thành công", 
-                            $"Bạn đã đăng ký thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR check-in.", 
-                            "StudentRegistration"
-                        );
-
-                        await _emailService.SendEventRegistrationEmailAsync(
-                            user.Email,
-                            user.FullName ?? user.Email ?? "Sinh viên",
-                            ev.Title,
-                            ev.StartTime,
-                            locationName,
-                            qrCodeBase64
-                        );
+                        await newTrans.RollbackAsync();
+                        await AddToWaitlistAsync(studentId, eventId);
+                        return;
                     }
+
+                    existing.Status = TicketStatusEnum.Registered;
+                    existing.DeletedAt = null;
+                    existing.CheckInTime = null;
+                    await _uow.Tickets.UpdateAsync(existing);
+                    await _uow.SaveChangesAsync();
+                    await newTrans.CommitAsync();
+                    reactivatedTicket = existing;
                 }
-                catch (Exception emailEx)
+                else
                 {
-                    await _errorLogService.LogErrorAsync(emailEx, profile.UserId, "StudentEventService.RegisterForEventAsync (New Ticket)");
+                    var activeCount = await _uow.Tickets.CountAsync(
+                        t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+
+                    if (activeCount >= ev.MaxCapacity)
+                    {
+                        await newTrans.RollbackAsync();
+                        await AddToWaitlistAsync(studentId, eventId);
+                        return;
+                    }
+
+                    activeTicket = new Ticket
+                    {
+                        EventId = eventId,
+                        StudentId = profile.Id,
+                        Status = TicketStatusEnum.Registered,
+                        TicketCode = $"TK-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
+                    };
+
+                    await _uow.Tickets.CreateAsync(activeTicket);
+                    await _uow.SaveChangesAsync();
+                    await newTrans.CommitAsync();
                 }
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
             {
                 await newTrans.RollbackAsync();
-                // Unwrap to deepest inner exception for a meaningful message
                 Exception inner = dbEx;
                 while (inner.InnerException != null) inner = inner.InnerException;
                 throw new InvalidOperationException($"Lỗi lưu dữ liệu: {inner.Message}", dbEx);
+            }
+
+            var savedTicket = reactivatedTicket ?? activeTicket;
+            if (savedTicket == null)
+            {
+                return;
+            }
+
+            ev = await _uow.Events.GetAsync(e => e.Id == eventId, q => q.Include(x => x.Location));
+            if (ev == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string qrPayload = savedTicket.Id;
+                string qrCodeBase64 = QRCodeGeneratorHelper.GenerateQRCodeBase64(qrPayload);
+
+                var user = await _uow.Users.GetAsync(u => u.Id == profile.UserId);
+                if (user != null)
+                {
+                    string locationName = ev.Location?.Name ?? ev.LocationId ?? "N/A";
+
+                    await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                    {
+                        ReceiverId = user.Id,
+                        Title = "Đăng ký thành công",
+                        Message = reactivatedTicket == null
+                            ? $"Bạn đã đăng ký thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR check-in."
+                            : $"Bạn đã đăng ký lại thành công sự kiện '{ev.Title}'. Vui lòng kiểm tra email để nhận mã QR.",
+                        Type = DataAccess.Enum.NotificationType.TicketCreated,
+                        RelatedEntityId = savedTicket.Id
+                    });
+
+                    await _emailService.SendEventRegistrationEmailAsync(
+                        user.Email,
+                        user.FullName ?? user.Email ?? "Sinh viên",
+                        ev.Title,
+                        ev.StartTime,
+                        locationName,
+                        qrCodeBase64
+                    );
+                }
+            }
+            catch (Exception emailEx)
+            {
+                await _errorLogService.LogErrorAsync(
+                    emailEx,
+                    profile.UserId,
+                    reactivatedTicket == null
+                        ? "StudentEventService.RegisterForEventAsync (New Ticket)"
+                        : "StudentEventService.RegisterForEventAsync (Reactivate)");
             }
         }
 
@@ -371,39 +366,100 @@ namespace BusinessLogic.Service.Student
             await _uow.Tickets.UpdateAsync(ticket);
             await _uow.SaveChangesAsync();
 
+            // ✅ Offer người tiếp theo trong waitlist
+            try
+            {
+                var nextInLine = (await _uow.EventWaitlist.GetAllAsync(
+                    w => w.EventId == ticket.EventId &&
+                         w.Status == DataAccess.Enum.EventWaitlistStatusEnum.Waiting,
+                    q => q.Include(x => x.Student).ThenInclude(s => s.User)
+                           .OrderBy(x => x.Position))).FirstOrDefault();
+
+                if (nextInLine != null)
+                {
+                    nextInLine.Status = DataAccess.Enum.EventWaitlistStatusEnum.Offered;
+                    nextInLine.OfferedAt = now;
+                    nextInLine.IsNotified = true;
+                    nextInLine.UpdatedAt = now;
+                    await _uow.EventWaitlist.UpdateAsync(nextInLine);
+                    await _uow.SaveChangesAsync();
+
+                    var offeredUser = nextInLine.Student?.User;
+                    if (offeredUser != null)
+                    {
+                        await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                        {
+                            ReceiverId = offeredUser.Id,
+                            Title = "Có chỗ trống cho bạn!",
+                            Message = $"Có một chỗ trống trong sự kiện '{ticket.Event.Title}'. Hãy vào đăng ký ngay!",
+                            Type = DataAccess.Enum.NotificationType.TicketCreated,
+                            RelatedEntityId = ticket.EventId
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.LogErrorAsync(ex, profile.UserId,
+                    "StudentEventService.CancelRegistrationAsync (OfferWaitlist)");
+            }
+
             // Send Generic in-app notification
-            await _notificationService.SendNotificationAsync(
-                profile.UserId, 
-                "Hủy đăng ký", 
-                $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
-                "EventCancel"
-            );
+            await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+            {
+                ReceiverId = profile.UserId, 
+                Title = "Hủy đăng ký", 
+                Message = $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
+                Type = DataAccess.Enum.NotificationType.EventCancel,
+                RelatedEntityId = ticket.EventId
+            });
         }
 
-        // ─── 5. My registered events ──────────────────────────────────────────
-        public async Task<List<StudentEventBrowseDto>> GetMyRegisteredEventsAsync(string studentId)
+        // ─── 5. My participations ─────────────────────────────────────────────
+        public async Task<List<StudentEventBrowseDto>> GetMyParticipationsAsync(string studentId)
         {
             var profile = await RequireStudentProfileAsync(studentId);
 
-            // Fetch active tickets with their events
-            var tickets = await _uow.Tickets.GetAllAsync(
-                t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled,
-                q => q.Include(x => x.Event)
-                        .ThenInclude(e => e.Location)
-                      .Include(x => x.Event)
-                        .ThenInclude(e => e.Topic)
-                      .Include(x => x.Event)
-                        .ThenInclude(e => e.Semester)
-                      .Include(x => x.Event)
-                        .ThenInclude(e => e.Tickets));
+            // Fetch active tickets or where student is team member or speaker
+            var events = await _uow.Events.GetAllAsync(
+                e => e.DeletedAt == null && (
+                     e.Tickets.Any(t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ||
+                     e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id)) ||
+                     e.EventAgenda.Any(a => a.StudentSpeakerId == profile.Id && a.DeletedAt == null)),
+                q => q.Include(x => x.Location)
+                      .Include(x => x.Topic)
+                      .Include(x => x.Semester)
+                      .Include(x => x.Tickets)
+                      .Include(x => x.EventTeams).ThenInclude(et => et.TeamMembers)
+                      .Include(x => x.EventAgenda));
 
-            return tickets
-                .Where(t => t.Event.DeletedAt == null)
-                .OrderBy(t => t.Event.StartTime)
-                .Select(t =>
+            return events
+                .OrderBy(e => e.StartTime)
+                .Select(e =>
                 {
-                    int count = t.Event.Tickets?.Count(tk => tk.DeletedAt == null && tk.Status != TicketStatusEnum.Cancelled) ?? 0;
-                    return MapToBrowseDto(t.Event, count, isRegistered: true);
+                    int count = e.Tickets?.Count(tk => tk.DeletedAt == null && tk.Status != TicketStatusEnum.Cancelled) ?? 0;
+                    
+                    // We mark isRegistered as true if they have an active ticket
+                    bool hasActiveTicket = e.Tickets?.Any(t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? false;
+                    
+                    // Determine Role
+                    string role = "";
+                    if (e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id)))
+                    {
+                        role = "Ban tổ chức";
+                    }
+                    else if (e.EventAgenda.Any(a => a.StudentSpeakerId == profile.Id && a.DeletedAt == null))
+                    {
+                        role = "Diễn giả";
+                    }
+                    else if (hasActiveTicket)
+                    {
+                        role = "Khách tham dự";
+                    }
+
+                    var dto = MapToBrowseDto(e, count, isRegistered: hasActiveTicket);
+                    dto.ParticipationRole = role;
+                    return dto;
                 })
                 .ToList();
         }
@@ -425,6 +481,16 @@ namespace BusinessLogic.Service.Student
                      t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
             if (ticket == null)
                 throw new InvalidOperationException("Bạn chưa đăng ký event này.");
+
+            var checkedIn = ticket.Status == TicketStatusEnum.CheckedIn || ticket.CheckInTime != null;
+            if (!checkedIn)
+            {
+                checkedIn = await _uow.CheckInHistories.GetAsync(
+                    h => h.TicketId == ticket.Id && h.DeletedAt == null && h.ScanType == ScanTypeEnum.CheckIn) != null;
+            }
+
+            if (!checkedIn)
+                throw new InvalidOperationException("Chỉ sinh viên đã check-in mới được gửi feedback.");
 
             // Check duplicate feedback
             var existingFeedback = await _uow.Feedbacks.GetAsync(
@@ -448,20 +514,60 @@ namespace BusinessLogic.Service.Student
             var organizerProfile = await _uow.StaffProfiles.GetAsync(sp => sp.Id == ev.OrganizerId);
             if (organizerProfile?.UserId != null)
             {
-                await _notificationService.SendNotificationAsync(
-                    organizerProfile.UserId,
-                    "Có đánh giá mới",
-                    $"Một sinh viên vừa gửi đánh giá cho sự kiện '{ev.Title}'. Rating: {dto.Rating}/5",
-                    "EventFeedback"
-                );
+                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                {
+                    ReceiverId = organizerProfile.UserId,
+                    Title = "Có đánh giá mới",
+                    Message = $"Một sinh viên vừa gửi đánh giá cho sự kiện '{ev.Title}'. Rating: {dto.Rating}/5",
+                    Type = DataAccess.Enum.NotificationType.EventFeedback,
+                    RelatedEntityId = ev.Id
+                });
             }
         }
 
-        // ─── Waitlist stub (future phase) ─────────────────────────────────────
-        public Task AddToWaitlistAsync(string studentId, string eventId)
+        // ─── Waitlist ─────────────────────────────────────────────────────────
+        public async Task AddToWaitlistAsync(string studentId, string eventId)
         {
-            // TODO: Implement waitlist logic in a future phase.
-            throw new InvalidOperationException("Event đã đầy. Chức năng đăng ký danh sách chờ sẽ sớm được hỗ trợ.");
+            var profile = await RequireStudentProfileAsync(studentId);
+
+            var existing = await _uow.EventWaitlist.GetAsync(
+                w => w.EventId == eventId && w.StudentId == profile.Id && w.DeletedAt == null);
+
+            if (existing != null)
+                throw new InvalidOperationException("Bạn đã có trong danh sách chờ của sự kiện này.");
+
+            var count = await _uow.EventWaitlist.CountAsync(w => w.EventId == eventId && w.DeletedAt == null);
+            var now = DateTimeHelper.GetVietnamTime();
+
+            var entry = new DataAccess.Entities.EventWaitlist
+            {
+                Id = Guid.NewGuid().ToString(),
+                EventId = eventId,
+                StudentId = profile.Id,
+                JoinedAt = now,
+                IsNotified = false,
+                Status = DataAccess.Enum.EventWaitlistStatusEnum.Waiting,
+                Position = count + 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await _uow.EventWaitlist.CreateAsync(entry);
+            await _uow.SaveChangesAsync();
+
+            // Thông báo cho sinh viên
+            var user = await _uow.Users.GetAsync(u => u.Id == studentId);
+            if (user != null)
+            {
+                await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
+                {
+                    ReceiverId = user.Id,
+                    Title = "Đã vào danh sách chờ",
+                    Message = $"Sự kiện đã đầy. Bạn đang ở vị trí #{entry.Position} trong danh sách chờ.",
+                    Type = DataAccess.Enum.NotificationType.TicketCreated,
+                    RelatedEntityId = eventId
+                });
+            }
         }
     }
 }

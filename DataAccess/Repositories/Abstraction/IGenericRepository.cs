@@ -18,6 +18,5 @@ namespace DataAccess.Repositories.Abstraction
         Task UpdateAsync(T entity);
         Task RemoveAsync(T entity);
 		Task<int> CountAsync(Expression<Func<T, bool>> predicate = null);
-
 	}
 }
