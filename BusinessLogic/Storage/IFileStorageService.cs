@@ -1,4 +1,4 @@
-﻿using DataAccess.Enum;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,21 @@ namespace BusinessLogic.Storage
     {
         Task<IReadOnlyList<UploadedFileResult>> UploadManyAsync(
             IEnumerable<IFormFile> files,
+            UploadContext context,
+            string ownerUserId,
+            CancellationToken ct = default
+        );
+
+        Task<UploadedFileResult?> UploadSingleAsync(
+            IFormFile file,
+            UploadContext context,
+            string ownerUserId,
+            CancellationToken ct = default
+        );
+        
+        Task<UploadedFileResult?> UploadSingleAsync(
+            Stream fileStream,
+            string fileName,
             UploadContext context,
             string ownerUserId,
             CancellationToken ct = default

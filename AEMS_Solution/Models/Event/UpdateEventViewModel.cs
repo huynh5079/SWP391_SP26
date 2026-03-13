@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Mvc.Rendering;
 namespace AEMS_Solution.Models.Event
@@ -15,6 +15,7 @@ namespace AEMS_Solution.Models.Event
         public string? Description { get; set; }
 
         public string? ThumbnailUrl { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
 
         [Required(ErrorMessage = "Vui lòng chọn Semester")]
         public string SemesterId { get; set; } = "";
@@ -79,6 +80,7 @@ namespace AEMS_Solution.Models.Event
         public string? FileName { get; set; }
         public string? Url { get; set; }
         public string? Type { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? File { get; set; }
     }
 	public class SoftDeleteEventViewModel
 	{

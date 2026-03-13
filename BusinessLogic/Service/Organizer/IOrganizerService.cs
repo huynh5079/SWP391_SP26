@@ -1,6 +1,7 @@
-﻿using BusinessLogic.DTOs.Role;
+using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.Role.Organizer;
 using DataAccess.Enum;
+using Microsoft.AspNetCore.Http;
 namespace BusinessLogic.Service.Organizer
 {
 	public interface IOrganizerService
@@ -37,5 +38,7 @@ namespace BusinessLogic.Service.Organizer
 		Task<EventDetailsDto> GetEventDetailsAsync(string eventId, string? userId = null);
 
 		Task<CreateEventDropdownsDto> GetCreateEventDropdownsAsync();
+
+        Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId);
 	}
 }

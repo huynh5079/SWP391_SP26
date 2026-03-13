@@ -10,10 +10,12 @@ namespace AEMS_Solution.Controllers.Features.Profile
     public class ProfileController : BaseController
     {
         private readonly IUserService _userService;
+        private readonly BusinessLogic.Service.System.ISystemErrorLogService _systemErrorLogService;
 
-        public ProfileController(IUserService userService)
+        public ProfileController(IUserService userService, BusinessLogic.Service.System.ISystemErrorLogService systemErrorLogService)
         {
             _userService = userService;
+            _systemErrorLogService = systemErrorLogService;
         }
 
         [HttpGet]
@@ -41,6 +43,28 @@ namespace AEMS_Solution.Controllers.Features.Profile
         }
 
         [HttpPost]
+        public async Task<IActionResult> UploadAvatar(IFormFile file)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (file == null || file.Length == 0) return BadRequest("Vui lòng chọn ảnh.");
+
+            try
+            {
+                var newUrl = await _userService.UpdateAvatarAsync(CurrentUserId, file);
+                if (newUrl != null)
+                {
+                    return Json(new { success = true, url = newUrl });
+                }
+                return Json(new { success = false, message = "Không thể tải ảnh lên." });
+            }
+            catch (Exception ex)
+            {
+                await _systemErrorLogService.LogErrorAsync(ex, CurrentUserId, "ProfileController.UploadAvatar");
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
         public async Task<IActionResult> Update(UpdateProfileRequestDto request)
         {
              if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
@@ -53,15 +77,16 @@ namespace AEMS_Solution.Controllers.Features.Profile
              // Skipping detailed upload logic for now to stay focused on Password task 
              // unless user asks for it. But I should at least call service.
              
-             // Mock implementation to avoid compilation error if DTO is missing IFormFile
-             /*
-             if (request.AvatarFile != null) {
-                 // Upload logic
+             try
+             {
+                 await _userService.UpdateProfileAsync(CurrentUserId, request);
+                 SetSuccess("Cập nhật hồ sơ thành công!");
              }
-             */
-             
-             // await _userService.UpdateProfileAsync(CurrentUserId, request);
-             SetSuccess("Cập nhật hồ sơ thành công!");
+             catch(Exception ex)
+             {
+                 await _systemErrorLogService.LogErrorAsync(ex, CurrentUserId, "ProfileController.Update");
+                 SetError("Lỗi khi cập nhật hồ sơ: " + ex.Message);
+             }
              return RedirectToAction(nameof(Index));
         }
     }

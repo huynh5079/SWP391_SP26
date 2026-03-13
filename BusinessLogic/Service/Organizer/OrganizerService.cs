@@ -1,4 +1,4 @@
-﻿using BusinessLogic.DTOs.Role;
+using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
@@ -8,6 +8,7 @@ using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using Microsoft.EntityFrameworkCore;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Dashboard;
+using Microsoft.AspNetCore.Http;
 
 namespace BusinessLogic.Service.Organizer
 {
@@ -85,5 +86,6 @@ namespace BusinessLogic.Service.Organizer
 		public Task OfferNextAsync(string eventId)=>_eventwaitlist.OfferNextAsync(eventId);
 		public Task RespondToOfferAsync(RespondOfferRequestDto dto)=>_eventwaitlist.RespondToOfferAsync(dto);
 
+        public Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId) => _eventService.UpdateThumbnailAsync(eventId, file, userId);
 	}
 }

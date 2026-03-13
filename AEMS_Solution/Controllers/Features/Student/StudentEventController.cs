@@ -116,7 +116,7 @@ namespace AEMS_Solution.Controllers.Features.Student
 
         // ─── My participations ────────────────────────────────────────────────
         [HttpGet]
-        public async Task<IActionResult> MyParticipatedEvents()
+        public async Task<IActionResult> MyEvents()
         {
             if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,7 +19,9 @@ namespace DataAccess.Enum
 		IdentityDocument,   // CCCD/CMND
 		Material,           // Tài liệu học tập
 		LessonVideo,        // Video bài học
-		Chat                // File/hình ảnh trong chat
+		Chat,                // File/hình ảnh trong chat
+		EventThumbnail,
+		EventDocument
 	}
 
 	public enum ApprovalActionEnum

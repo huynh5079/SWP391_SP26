@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Options;
+using BusinessLogic.Options;
 using DataAccess.Enum;
 using Microsoft.Extensions.Options;
 using System;
@@ -34,6 +34,8 @@ namespace BusinessLogic.Storage
                 UploadContext.Material => _opt.Materials,
                 UploadContext.IdentityDocument => _opt.IdentityDocuments,
                 UploadContext.Chat => _opt.Chat,
+                UploadContext.EventThumbnail => "events/thumbnails",
+                UploadContext.EventDocument => "events/documents",
                 _ => "others"
             };
 

@@ -11,11 +11,17 @@
         <div class="col-lg-4 mb-4">
             <div class="card shadow mb-4">
                 <div class="card-body text-center">
-                    <div class="position-relative d-inline-block mb-3">
+                     <div class="position-relative d-inline-block mb-3" id="avatar-container">
                         <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.FullName : Model.AvatarUrl)" 
                              alt="@Model.FullName" 
                              class="rounded-circle img-thumbnail"
                              style="width: 150px; height: 150px; object-fit: cover;">
+                        
+                        <div id="avatar-spinner" class="position-absolute top-50 start-50 translate-middle d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
                         @if (!isReadOnly)
                         {
                             <div class="position-absolute bottom-0 end-0 bg-white rounded-circle p-1 shadow-sm border border-2 border-white" style="cursor: pointer;" onclick="document.getElementById('avatar-input').click();">
@@ -107,8 +113,8 @@
                         <hr />
 
                         <div class="collapse" id="editForm">
-                            <form asp-action="Update" method="post" enctype="multipart/form-data">
-                                <input type="file" name="AvatarFile" id="avatar-input" class="d-none" accept="image/*">
+                            <form asp-action="Update" method="post">
+                                <input type="file" id="avatar-input" class="d-none" accept="image/*">
                             
                             <!-- Hidden read-only fields for binding if needed or just handled by backend -->
                             
@@ -170,13 +176,55 @@
         <partial name="_ValidationScriptsPartial" />
         <script>
             document.getElementById('avatar-input').addEventListener('change', function(event){
-                var reader = new FileReader();
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // 1. Show Preview Immediately (UX)
+                const reader = new FileReader();
+                const output = document.querySelector('.img-thumbnail');
+                const spinner = document.getElementById('avatar-spinner');
+                
                 reader.onload = function(){
-                    var output = document.querySelector('.img-thumbnail');
                     output.src = reader.result;
+                    output.style.opacity = '0.5';
+                    spinner.classList.remove('d-none');
                 };
-                if(event.target.files[0])
-                    reader.readAsDataURL(event.target.files[0]);
+                reader.readAsDataURL(file);
+
+                // 2. AJAX Upload
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('@Url.Action("UploadAvatar", "Profile")', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    output.style.opacity = '1';
+                    spinner.classList.add('d-none');
+                    
+                    if (data.success) {
+                        output.src = data.url;
+                        // Use a global notification if available, else alert
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'success', title: 'Thành công', text: 'Ảnh đại diện đã được cập nhật!', timer: 2000, showConfirmButton: false });
+                        } else {
+                            alert('Cập nhật ảnh đại diện thành công!');
+                        }
+                    } else {
+                        alert('Lỗi: ' + (data.message || 'Không thể tải ảnh lên.'));
+                    }
+                })
+                .catch(error => {
+                    output.style.opacity = '1';
+                    spinner.classList.add('d-none');
+                    console.error('Error:', error);
+                    alert('Đã xảy ra lỗi khi tải ảnh lên.');
+                });
             });
         </script>
     }

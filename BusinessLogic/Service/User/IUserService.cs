@@ -3,6 +3,7 @@ using BusinessLogic.DTOs.Role;
 using BusinessLogic.DTOs.User;
 using DataAccess.Enum;
 using DataAccess.Entities;
+using Microsoft.AspNetCore.Http;
 
 namespace BusinessLogic.Service.User
 {
@@ -18,6 +19,8 @@ namespace BusinessLogic.Service.User
         Task<UserDetailDto?> GetUserDetailAsync(string id);
         
         Task<UserDetailDto?> GetMyProfileAsync(string id);
+        
+        Task<string?> UpdateAvatarAsync(string userId, IFormFile file);
 
         Task<bool> ToggleBanUserAsync(string id);
 

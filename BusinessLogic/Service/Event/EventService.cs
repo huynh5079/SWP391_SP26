@@ -13,6 +13,7 @@ using EventAgendaEntity = DataAccess.Entities.EventAgenda;
 using EventDocumentEntity = DataAccess.Entities.EventDocument;
 using Microsoft.EntityFrameworkCore;
 using BusinessLogic.Service.ValidationData.Event;
+using Microsoft.AspNetCore.Http;
 
 namespace BusinessLogic.Service.Event;
 
@@ -21,6 +22,7 @@ public class EventService : IEventService
 	private readonly IUnitOfWork _uow;
 	private readonly IEventValidator _validator;
 	private readonly INotificationService _notificationService;
+	private readonly BusinessLogic.Storage.IFileStorageService _fileStorageService;
 
 	private static string? NormalizeLocationId(EventModeEnum? mode, string? locationId)
 		=> mode == EventModeEnum.Online || string.IsNullOrWhiteSpace(locationId) ? null : locationId;
@@ -28,11 +30,12 @@ public class EventService : IEventService
 	private static string? NormalizeMeetingUrl(EventModeEnum? mode, string? meetingUrl)
 		=> mode == EventModeEnum.Offline || string.IsNullOrWhiteSpace(meetingUrl) ? null : meetingUrl.Trim();
 
-	public EventService(IUnitOfWork uow, IEventValidator validator, INotificationService notificationService)
+	public EventService(IUnitOfWork uow, IEventValidator validator, INotificationService notificationService, BusinessLogic.Storage.IFileStorageService fileStorageService)
 	{
 		_uow = uow;
 		_validator = validator;
 		_notificationService = notificationService;
+		_fileStorageService = fileStorageService;
 	}
 
 	public async Task CancelEventAsync(string userId, string eventId)
@@ -406,6 +409,16 @@ public class EventService : IEventService
 				UpdatedAt = now
 			};
 
+			// Handle Thumbnail Upload
+			if (dto.ThumbnailFile != null)
+			{
+				var uploadResult = await _fileStorageService.UploadSingleAsync(dto.ThumbnailFile, UploadContext.EventThumbnail, userId);
+				if (uploadResult != null)
+				{
+					entity.ThumbnailUrl = uploadResult.Url;
+				}
+			}
+
 			await _uow.Events.CreateAsync(entity);
 
 			// Validate agendas via validator (skips empty agendas)
@@ -438,6 +451,16 @@ public class EventService : IEventService
 			{
 				foreach (var d in dto.Documents)
 				{
+					if (d.File != null)
+					{
+						var uploadResult = await _fileStorageService.UploadSingleAsync(d.File, UploadContext.EventDocument, userId);
+						if (uploadResult != null)
+						{
+							d.Url = uploadResult.Url;
+							d.FileName = d.File.FileName;
+						}
+					}
+
 					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
 					{
 						continue;
@@ -466,6 +489,35 @@ public class EventService : IEventService
 			throw;
 		}
 	}
+
+    public async Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId)
+    {
+        if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
+
+        var ev = await _uow.Events.GetByIdAsync(eventId);
+        if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+
+        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
+
+        if (ev.OrganizerId != staff.Id)
+            throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
+
+        if (file != null && file.Length > 0)
+        {
+            var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
+            if (uploadResult != null)
+            {
+                ev.ThumbnailUrl = uploadResult.Url;
+                ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                
+                await _uow.Events.UpdateAsync(ev);
+                await _uow.SaveChangesAsync();
+                return uploadResult.Url;
+            }
+        }
+        return null;
+    }
 
 	public async Task RestoreEventAsync(string userId, string eventId)
 	{
@@ -571,6 +623,16 @@ public class EventService : IEventService
 			ev.MeetingUrl = normalizedMeetingUrl;
 			ev.UpdatedAt = now;
 
+			// Handle Thumbnail Upload
+			if (dto.ThumbnailFile != null)
+			{
+				var uploadResult = await _fileStorageService.UploadSingleAsync(dto.ThumbnailFile, UploadContext.EventThumbnail, userId);
+				if (uploadResult != null)
+				{
+					ev.ThumbnailUrl = uploadResult.Url;
+				}
+			}
+
 			var existingAgendas = await _uow.EventAgenda.GetAllAsync(x => x.EventId == eventId);
 			foreach (var agenda in existingAgendas)
 			{
@@ -611,6 +673,16 @@ public class EventService : IEventService
 			{
 				foreach (var d in dto.Documents)
 				{
+					if (d.File != null)
+					{
+						var uploadResult = await _fileStorageService.UploadSingleAsync(d.File, UploadContext.EventDocument, userId);
+						if (uploadResult != null)
+						{
+							d.Url = uploadResult.Url;
+							d.FileName = d.File.FileName;
+						}
+					}
+
 					if (string.IsNullOrWhiteSpace(d.Url) && string.IsNullOrWhiteSpace(d.FileName))
 					{
 						continue;
@@ -999,5 +1071,118 @@ public class EventService : IEventService
 		// Just a stub or simple implementation to satisfy the interface
 		return new List<EventTeamDto>();
 	}
+
+    public async Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto)
+    {
+        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+
+        var ev = await _uow.Events.GetByIdAsync(dto.EventId);
+        if (ev == null) throw new KeyNotFoundException("Event không tồn tại.");
+
+        if (ev.OrganizerId != staff.Id)
+            throw new UnauthorizedAccessException($"Tài khoản {userId} cố gắng truy cập Event {dto.EventId} không thuộc quyền quản lý.");
+
+        if (dto.StartTime >= dto.EndTime)
+            throw new InvalidOperationException("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
+
+        if (dto.StartTime < ev.StartTime || dto.EndTime > ev.EndTime)
+            throw new InvalidOperationException("Thời gian agenda phải nằm trong thời gian của event.");
+
+        var now = DateTimeHelper.GetVietnamTime();
+        var agenda = new EventAgendaEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            EventId = dto.EventId,
+            SessionName = dto.SessionName?.Trim(),
+            SpeakerInfo = dto.SpeakerInfo?.Trim(),
+            Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
+            StartTime = dto.StartTime,
+            EndTime = dto.EndTime,
+            Location = string.IsNullOrWhiteSpace(dto.Location) ? null : dto.Location.Trim(),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        if (!string.IsNullOrEmpty(dto.SpeakerUserId))
+        {
+            if (dto.SpeakerUserRole == "Student")
+            {
+                var student = await _uow.StudentProfiles.GetAsync(x => x.UserId == dto.SpeakerUserId);
+                if (student != null) agenda.StudentSpeakerId = student.Id;
+            }
+            else if (dto.SpeakerUserRole == "Staff")
+            {
+                var speakerStaff = await _uow.StaffProfiles.GetAsync(x => x.UserId == dto.SpeakerUserId);
+                if (speakerStaff != null) agenda.StaffSpeakerId = speakerStaff.Id;
+            }
+        }
+
+        using var transaction = await _uow.BeginTransactionAsync();
+        try
+        {
+            await _uow.EventAgenda.CreateAsync(agenda);
+            await _uow.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return agenda.Id;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto)
+    {
+        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+
+        var ev = await _uow.Events.GetByIdAsync(dto.EventId);
+        if (ev == null) throw new KeyNotFoundException("Event không tồn tại.");
+
+        if (ev.OrganizerId != staff.Id)
+            throw new UnauthorizedAccessException($"Tài khoản {userId} cố gắng truy cập Event {dto.EventId} không thuộc quyền quản lý.");
+
+        var now = DateTimeHelper.GetVietnamTime();
+
+        string? finalUrl = dto.Url;
+        string? finalName = dto.Name;
+
+        if (dto.File != null)
+        {
+            var uploadResult = await _fileStorageService.UploadSingleAsync(dto.File, UploadContext.EventDocument, userId);
+            if (uploadResult != null)
+            {
+                finalUrl = uploadResult.Url;
+                finalName = dto.File.FileName;
+            }
+        }
+
+        var document = new EventDocumentEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            EventId = dto.EventId,
+            Name = finalName?.Trim() ?? "Tài liệu không tên",
+            Url = finalUrl?.Trim() ?? string.Empty,
+            Type = string.IsNullOrWhiteSpace(dto.Type) ? null : dto.Type.Trim(),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        using var transaction = await _uow.BeginTransactionAsync();
+        try
+        {
+            await _uow.EventDocuments.CreateAsync(document);
+            await _uow.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return document.Id;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
 }
 

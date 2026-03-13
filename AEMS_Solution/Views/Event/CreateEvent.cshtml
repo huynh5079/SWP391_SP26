@@ -1,21 +1,10 @@
-﻿@model AEMS_Solution.Models.Event.CreateEventViewModel
+@model AEMS_Solution.Models.Event.CreateEventViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "Create Event";
     Layout = "_OrganizerLayout";
 }
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Create Event</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-        body {
-            font-family: system-ui, Arial;
-            margin: 24px;
-        }
-
+<style>
         .card {
             max-width: 980px;
             margin: 0 auto;
@@ -145,12 +134,12 @@
                 width: auto;
             }
     </style>
-</head>
-<body>
-    <div class="card">
-        <h2 style="margin:0 0 6px;">Create Event</h2>
 
-        <form asp-controller="Organizer" asp-action="Create" method="post" id="createEventForm">
+    <div class="card shadow-sm border-0">
+        <h2 class="mb-4">Create Event</h2>
+
+
+        <form asp-controller="Organizer" asp-action="Create" method="post" id="createEventForm" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             @Html.ValidationSummary(excludePropertyErrors: false, message: "", htmlAttributes: new { @class = "text-danger" })
             <label asp-for="Title">Title *</label>
@@ -189,10 +178,12 @@
             <div class="row">
                 <div class="col">
                     <label asp-for="LocationId">Location *</label>
-                    <select asp-for="LocationId" asp-items="Model.Locations">
-                        <option value="">-- Select Location --</option>
-                    </select>
-                    <span asp-validation-for="LocationId" class="error"></span>
+                    <input type="hidden" asp-for="LocationId" id="LocationId" />
+                    <div class="position-relative">
+                        <input type="text" id="locationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 2 ký tự)..." autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
+                        <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <span asp-validation-for="LocationId" class="error text-danger small"></span>
                 </div>
             </div>
 
@@ -217,7 +208,9 @@
                     <span asp-validation-for="MaxCapacity" class="error"></span>
                 </div>
                 <div class="col">
-                    <label asp-for="ThumbnailUrl">Thumbnail Url</label>
+                    <label asp-for="ThumbnailFile">Thumbnail Image</label>
+                    <input asp-for="ThumbnailFile" type="file" accept="image/*" />
+                    <div class="hint">Or provide a URL below</div>
                     <input asp-for="ThumbnailUrl" placeholder="https://..." />
                 </div>
             </div>
@@ -290,12 +283,12 @@
                                 <input name="Documents[@i].FileName" value="@Model.Documents[i].FileName" />
                             </div>
                             <div class="col">
-                                <label>Type</label>
-                                <input name="Documents[@i].Type" value="@Model.Documents[i].Type" />
+                                <label>Upload File</label>
+                                <input name="Documents[@i].File" type="file" />
                             </div>
                         </div>
 
-                        <label>Url</label>
+                        <label>Or provide Url</label>
                         <input name="Documents[@i].Url" value="@Model.Documents[i].Url" />
                     </div>
                 }
@@ -349,12 +342,11 @@
                         <div class="row pt-2 pb-2">
                             <div class="col">
                                 <label>Location</label>
-                                <select asp-for="Agendas[@i].Location">
-                                    <option value="">-- Same as Event Location --</option>
-                                    @foreach(var loc in Model.Locations) {
-                                        <option value="@loc.Text">@loc.Text</option>
-                                    }
-                                </select>
+                                <input type="hidden" asp-for="Agendas[@i].Location" class="agenda-location-hidden" />
+                                <div class="position-relative">
+                                    <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" value="@Model.Agendas[@i].Location" />
+                                    <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -404,12 +396,11 @@
             <div class="row pt-2 pb-2">
                 <div class="col">
                     <label>Location</label>
-                    <select name="Agendas[__i__].Location">
-                        <option value="">-- Same as Event Location --</option>
-                        @foreach(var loc in Model.Locations) {
-                            <option value="@loc.Text">@loc.Text</option>
-                        }
-                    </select>
+                    <input type="hidden" name="Agendas[__i__].Location" class="agenda-location-hidden" />
+                    <div class="position-relative">
+                        <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" />
+                        <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -424,21 +415,186 @@
 
             <div class="row">
                 <div class="col">
-                    <label>File name</label>
+                    <label>File name (Optional)</label>
                     <input name="Documents[__i__].FileName" />
                 </div>
                 <div class="col">
-                    <label>Type</label>
-                    <input name="Documents[__i__].Type" />
+                    <label>Upload File</label>
+                    <input name="Documents[__i__].File" type="file" />
                 </div>
             </div>
 
-            <label>Url</label>
+            <label>Or provide Url</label>
             <input name="Documents[__i__].Url" />
         </div>
     </template>
 
+    <style>
+        /* Select2 bootstrap compatibility fixes */
+        .select2-container--default .select2-selection--single {
+            border-radius: 10px;
+            height: 42px;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 30px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+        }
+    </style>
+@section Scripts {
     <script>
+        $(document).ready(function() {
+            // Setup autocomplete for main location
+            function setupLocationAutocomplete(inputId, resultsId, hiddenId, isMain = true) {
+                const input = document.getElementById(inputId);
+                const results = document.getElementById(resultsId);
+                const hidden = document.getElementById(hiddenId);
+                let timer;
+
+                if (input && results) {
+                    input.addEventListener('input', function() {
+                        clearTimeout(timer);
+                        const query = this.value;
+                        if (query.length < 2) {
+                            results.style.display = 'none';
+                            if (query.length === 0) hidden.value = '';
+                            return;
+                        }
+
+                        timer = setTimeout(() => {
+                            fetch(`/api/v1/lookup/locations?q=${encodeURIComponent(query)}`)
+                                .then(res => res.json())
+                                .then(resp => {
+                                    if (!resp.success || !resp.data || resp.data.length === 0) {
+                                        results.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy địa điểm</div>';
+                                        results.style.display = 'block';
+                                        return;
+                                    }
+                                    
+                                    results.innerHTML = resp.data.map(loc => `
+                                        <div class="p-2 border-bottom loc-search-item text-dark" style="cursor:pointer;" 
+                                             data-id="${loc.id}" data-name="${loc.name}">
+                                            <div class="fw-semibold small">${loc.name}</div>
+                                            <div class="text-muted" style="font-size:0.75rem;">
+                                                ${loc.address ? loc.address + ' - ' : ''}Sức chứa: ${loc.capacity}
+                                            </div>
+                                        </div>
+                                    `).join('');
+                                    results.style.display = 'block';
+                                    
+                                    const items = results.querySelectorAll('.loc-search-item');
+                                    items.forEach(item => {
+                                        item.addEventListener('click', function() {
+                                            const locId = this.getAttribute('data-id');
+                                            const locName = this.getAttribute('data-name');
+                                            input.value = locName;
+                                            hidden.value = isMain ? locId : locName;
+                                            results.style.display = 'none';
+                                        });
+                                    });
+                                });
+                        }, 300);
+                    });
+
+                    document.addEventListener('click', function(e) {
+                        if(e.target !== input && !results.contains(e.target)) {
+                            results.style.display = 'none';
+                        }
+                    });
+                }
+            }
+
+            setupLocationAutocomplete('locationSearchInput', 'locationSearchResults', 'LocationId', true);
+
+            // Setup autocomplete for dynamic agendas
+            document.addEventListener('input', function(e) {
+                if (e.target.classList.contains('agenda-location-search-input')) {
+                    const input = e.target;
+                    const container = input.closest('.col');
+                    const results = container.querySelector('.agenda-location-search-results');
+                    const hidden = container.querySelector('.agenda-location-hidden');
+                    
+                    clearTimeout(input.dataset.timer);
+                    
+                    const query = input.value;
+                    if (query.length < 2) {
+                        results.style.display = 'none';
+                        if (query.length === 0) hidden.value = '';
+                        return;
+                    }
+
+                    input.dataset.timer = setTimeout(() => {
+                        fetch(`/api/v1/lookup/locations?q=${encodeURIComponent(query)}`)
+                            .then(res => res.json())
+                            .then(resp => {
+                                if (!resp.success || !resp.data || resp.data.length === 0) {
+                                    results.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy địa điểm</div>';
+                                    results.style.display = 'block';
+                                    return;
+                                }
+                                
+                                results.innerHTML = resp.data.map(loc => `
+                                    <div class="p-2 border-bottom loc-search-item text-dark" style="cursor:pointer;" 
+                                         data-name="${loc.name}">
+                                        <div class="fw-semibold small">${loc.name}</div>
+                                        <div class="text-muted" style="font-size:0.75rem;">
+                                            ${loc.address ? loc.address + ' - ' : ''}Sức chứa: ${loc.capacity}
+                                        </div>
+                                    </div>
+                                `).join('');
+                                results.style.display = 'block';
+                                
+                                const items = results.querySelectorAll('.loc-search-item');
+                                items.forEach(item => {
+                                    item.addEventListener('click', function() {
+                                        const locName = this.getAttribute('data-name');
+                                        input.value = locName;
+                                        hidden.value = locName;
+                                        results.style.display = 'none';
+                                    });
+                                });
+                            });
+                    }, 300);
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('agenda-location-search-input') && !e.target.closest('.agenda-location-search-results')) {
+                    document.querySelectorAll('.agenda-location-search-results').forEach(el => el.style.display = 'none');
+                }
+            });
+
+            // Initialize Select2 for Topic
+            $('#TopicId').select2({
+                placeholder: "-- Select Topic --",
+                allowClear: true,
+                ajax: {
+                    url: '/api/v1/lookup/topics',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { q: params.term };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.data.map(item => ({
+                                id: item.id,
+                                text: item.name
+                            }))
+                        };
+                    },
+                    cache: true
+                }
+            });
+
+            // Re-apply Select2 to newly added agenda locations if needed
+            // Currently agenda locations are simple text-based or pre-loaded. 
+            // If they need to be searchable too, we can initialize them here.
+        });
+
         (function () {
             const agendaContainer = document.getElementById("agendaContainer");
             const tpl = document.getElementById("agendaTemplate");
@@ -564,7 +720,7 @@
                 if (btn) removeAgenda(btn);
             });
 
-            if (existingAgendaItems.length === 0) {
+            if (typeof existingAgendaItems !== 'undefined' && existingAgendaItems.length === 0) {
                 addAgenda();
             } 
             const typeSelect = document.querySelector("select[name='Type']");
@@ -614,7 +770,5 @@
             }
         })();
     </script>
-
-     <partial name="_ValidationScriptsPartial" /> 
-</body>
-</html>
+    <partial name="_ValidationScriptsPartial" /> 
+}
