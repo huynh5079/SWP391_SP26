@@ -33,11 +33,11 @@ namespace AEMS_Solution.Models.Event
         [Required]
         public string EventId { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Vui lòng nhập tên tài liệu")]
-        public string Name { get; set; } = string.Empty;
+        public string? Name { get; set; }
 
-        [Required(ErrorMessage = "Vui lòng nhập link tài liệu")]
-        public string Url { get; set; } = string.Empty;
+        public string? Url { get; set; }
+
+        public List<Microsoft.AspNetCore.Http.IFormFile>? Files { get; set; }
 
         public string? Type { get; set; }
     }

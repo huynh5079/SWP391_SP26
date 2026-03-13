@@ -27,14 +27,16 @@ using Microsoft.EntityFrameworkCore;
 	    private readonly ILocationService _locationService;
 	    private readonly IUnitOfWork _unitOfWork;
 		private readonly IEventService _eventService;
+		private readonly BusinessLogic.Storage.IFileStorageService _fileStorageService;
 
-		public OrganizerController(IOrganizerService organizerService, IEventService eventService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork)
+		public OrganizerController(IOrganizerService organizerService, IEventService eventService, IMapper mapper, ILocationService locationService, IUnitOfWork unitOfWork, BusinessLogic.Storage.IFileStorageService fileStorageService)
 		{
 			_organizerService = organizerService;
 			_eventService = eventService;
 			_mapper = mapper;
 			_locationService = locationService;
 			_unitOfWork = unitOfWork;
+			_fileStorageService = fileStorageService;
 		}
         [HttpGet]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, string? id, string? search = null, string? status = null, string? semesterId = null, int page = 1, int pageSize = 10)
@@ -92,7 +94,29 @@ using Microsoft.EntityFrameworkCore;
 		}
 	}
 
-	[HttpPost]
+	        [HttpPost]
+        public async Task<IActionResult> UploadThumbnail(string id, IFormFile file)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (string.IsNullOrEmpty(id)) return BadRequest("Event Id không hợp lệ.");
+            if (file == null || file.Length == 0) return BadRequest("Vui lòng chọn ảnh.");
+
+            try
+            {
+                var newUrl = await _organizerService.UpdateThumbnailAsync(id, file, CurrentUserId);
+                if (newUrl != null)
+                {
+                    return Json(new { success = true, url = newUrl });
+                }
+                return Json(new { success = false, message = "Không thể tải ảnh lên." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, CreateEventViewModel vm, string? id)
         {
@@ -587,61 +611,47 @@ using Microsoft.EntityFrameworkCore;
 				return RedirectToAction("Login", "Auth");
 			}
 
+            var currentStaff = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == CurrentUserId);
+            if (currentStaff == null)
+            {
+                SetError("Chưa thiết lập hồ sơ nhân viên (StaffProfile).");
+                return RedirectToAction(nameof(MyEvents));
+            }
+
 			if (!ModelState.IsValid)
 			{
 				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu agenda không hợp lệ.");
 				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
 			}
 
-			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
-			if (eventEntity == null)
-			{
-				SetError("Không tìm thấy sự kiện để thêm agenda.");
-				return RedirectToAction(nameof(MyEvents));
-			}
+            var dto = new BusinessLogic.DTOs.Role.Organizer.CreateEventAgendaDto
+            {
+                EventId = model.EventId,
+                SessionName = model.SessionName,
+                SpeakerInfo = model.SpeakerInfo,
+                SpeakerUserId = model.SpeakerUserId,
+                SpeakerUserRole = model.SpeakerUserRole,
+                Description = model.Description,
+                StartTime = model.StartTime,
+                EndTime = model.EndTime,
+                Location = model.Location
+            };
 
-			if (model.StartTime >= model.EndTime)
-			{
-				SetError("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
-				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
-			}
+            try
+            {
+                await _eventService.CreateEventAgendaAsync(CurrentUserId, dto);
+                SetSuccess("Tạo agenda thành công.");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // Rethrow to let Global Exception Handler log it and show 500 error page
+                throw;
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
 
-			if (model.StartTime < eventEntity.StartTime || model.EndTime > eventEntity.EndTime)
-			{
-				SetError("Thời gian agenda phải nằm trong thời gian của event.");
-				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
-			}
-
-			var agenda = new DataAccess.Entities.EventAgenda
-			{
-				EventId = model.EventId,
-				SessionName = model.SessionName.Trim(),
-				SpeakerInfo = model.SpeakerInfo?.Trim(),
-				Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim(),
-				StartTime = model.StartTime,
-				EndTime = model.EndTime,
-				Location = string.IsNullOrWhiteSpace(model.Location) ? null : model.Location.Trim(),
-				UpdatedAt = DateTimeHelper.GetVietnamTime()
-			};
-
-			if (!string.IsNullOrEmpty(model.SpeakerUserId))
-			{
-				if (model.SpeakerUserRole == "Student")
-				{
-					var student = await _unitOfWork.StudentProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
-					if (student != null) agenda.StudentSpeakerId = student.Id;
-				}
-				else if (model.SpeakerUserRole == "Staff")
-				{
-					var staff = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == model.SpeakerUserId);
-					if (staff != null) agenda.StaffSpeakerId = staff.Id;
-				}
-			}
-
-			await _unitOfWork.EventAgenda.CreateAsync(agenda);
-			await _unitOfWork.SaveChangesAsync();
-
-			SetSuccess("Tạo agenda thành công.");
 			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
 		}
 
@@ -660,32 +670,79 @@ using Microsoft.EntityFrameworkCore;
 				return RedirectToAction("Login", "Auth");
 			}
 
+            var staff = await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == CurrentUserId);
+            if (staff == null)
+            {
+                SetError("Chưa thiết lập hồ sơ nhân viên (StaffProfile).");
+                return RedirectToAction(nameof(MyEvents));
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Url) && (model.Files == null || !model.Files.Any()))
+            {
+                ModelState.AddModelError("", "Vui lòng cung cấp Link tài liệu hoặc Tải file lên.");
+            }
+
 			if (!ModelState.IsValid)
 			{
 				SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu tài liệu không hợp lệ.");
 				return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
 			}
 
-			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == model.EventId && x.OrganizerId == CurrentUserId && x.DeletedAt == null);
-			if (eventEntity == null)
-			{
-				SetError("Không tìm thấy sự kiện để thêm tài liệu.");
-				return RedirectToAction(nameof(MyEvents));
-			}
+            int successCount = 0;
 
-			var document = new DataAccess.Entities.EventDocument
-			{
-				EventId = model.EventId,
-				Name = model.Name.Trim(),
-				Url = model.Url.Trim(),
-				Type = string.IsNullOrWhiteSpace(model.Type) ? null : model.Type.Trim(),
-				UpdatedAt = DateTimeHelper.GetVietnamTime()
-			};
+            try
+            {
+                if (model.Files != null && model.Files.Any())
+                {
+                    foreach (var file in model.Files)
+                    {
+                        var uploadResult = await _fileStorageService.UploadSingleAsync(
+                            file,
+                            DataAccess.Enum.UploadContext.Material, // Documents/Materials
+                            CurrentUserId);
 
-			await _unitOfWork.EventDocuments.CreateAsync(document);
-			await _unitOfWork.SaveChangesAsync();
+                        if (uploadResult != null)
+                        {
+                            var dto = new BusinessLogic.DTOs.Role.Organizer.CreateEventDocumentDto
+                            {
+                                EventId = model.EventId,
+                                Name = string.IsNullOrWhiteSpace(model.Name) ? file.FileName : (model.Files.Count > 1 ? $"{model.Name} - {file.FileName}" : model.Name),
+                                Url = uploadResult.Url,
+                                Type = model.Type
+                            };
+                            await _eventService.CreateEventDocumentAsync(CurrentUserId, dto);
+                            successCount++;
+                        }
+                    }
+                }
 
-			SetSuccess("Tạo document thành công.");
+                if (!string.IsNullOrWhiteSpace(model.Url))
+                {
+                    var dto = new BusinessLogic.DTOs.Role.Organizer.CreateEventDocumentDto
+                    {
+                        EventId = model.EventId,
+                        Name = string.IsNullOrWhiteSpace(model.Name) ? "External Document" : model.Name,
+                        Url = model.Url.Trim(),
+                        Type = model.Type
+                    };
+                    await _eventService.CreateEventDocumentAsync(CurrentUserId, dto);
+                    successCount++;
+                }
+
+                if (successCount > 0)
+                {
+                    SetSuccess($"Tạo thành công {successCount} document(s).");
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                SetError("Có lỗi xảy ra: " + ex.Message);
+            }
+
 			return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
 		}
 

@@ -1,22 +1,11 @@
-﻿@model AEMS_Solution.Models.Event.UpdateEventViewModel
+@model AEMS_Solution.Models.Event.UpdateEventViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "Edit Event";
     Layout = "_OrganizerLayout";
 }
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Edit Event - @Model.Title</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
+<style>
         /* Giữ nguyên Style của bản Create để đồng bộ UI */
-        body {
-            font-family: system-ui, Arial;
-            margin: 24px;
-        }
-
         .card {
             max-width: 980px;
             margin: 0 auto;
@@ -132,9 +121,7 @@
             margin-bottom: 10px;
         }
     </style>
-</head>
-<body>
-    <div class="card">
+    <div class="card shadow-sm border-0">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <h2 style="margin:0 0 6px;">Edit Event</h2>
@@ -143,7 +130,7 @@
             <a href="@Url.Action("MyEvents", "Organizer")" class="btn btn-secondary" style="text-decoration: none; font-size: 14px;">← Back to List</a>
         </div>
 
-        <form asp-controller="Event" asp-action="Edit" method="post" id="editEventForm">
+        <form asp-controller="Event" asp-action="Edit" method="post" id="editEventForm" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             @* Hidden EventId; Status được xử lý theo điều kiện bên dưới *@
             <input type="hidden" asp-for="EventId" />
@@ -177,10 +164,12 @@
             <div class="row">
                 <div class="col">
                     <label asp-for="LocationId">Location *</label>
-                    <select asp-for="LocationId" asp-items="Model.Locations">
-                        <option value="">-- Select Location --</option>
-                    </select>
-                    <span asp-validation-for="LocationId" class="error"></span>
+                    <input type="hidden" asp-for="LocationId" id="LocationId" />
+                    <div class="position-relative">
+                        <input type="text" id="locationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 2 ký tự)..." autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
+                        <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <span asp-validation-for="LocationId" class="error text-danger small"></span>
                 </div>
 
                 <div class="col">
@@ -210,7 +199,9 @@
                     <input asp-for="MaxCapacity" type="number" min="1" />
                 </div>
                 <div class="col">
-                    <label asp-for="ThumbnailUrl">Thumbnail Url</label>
+                    <label asp-for="ThumbnailFile">Thumbnail Image</label>
+                    <input asp-for="ThumbnailFile" type="file" accept="image/*" />
+                    <div class="hint">Or provide a URL below</div>
                     <input asp-for="ThumbnailUrl" placeholder="https://..." />
                 </div>
             </div>
@@ -249,6 +240,41 @@
                     <input asp-for="DepositAmount" type="number" min="0" step="0.01" />
                     <span asp-validation-for="DepositAmount" class="error"></span>
                 </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row" style="align-items:center; justify-content:space-between;">
+                <h3 style="margin:0;">Event Documents</h3>
+                <button type="button" class="btn btn-secondary" id="btnAddDocument">+ Add document</button>
+            </div>
+
+            <div id="documentsContainer">
+                @for (int i = 0; i < (Model.Documents?.Count ?? 0); i++)
+                {
+                    <div class="agenda-item" data-index="@i">
+                        <div class="agenda-head">
+                            <div class="agenda-title">Document #@(i + 1)</div>
+                            <button type="button" class="btn btn-danger btnRemoveDocument">Remove</button>
+                        </div>
+
+                        <input type="hidden" name="Documents[@i].Id" value="@Model.Documents[i].Id" />
+
+                        <div class="row">
+                            <div class="col">
+                                <label>File name</label>
+                                <input name="Documents[@i].FileName" value="@Model.Documents[i].FileName" />
+                            </div>
+                            <div class="col">
+                                <label>Upload File</label>
+                                <input name="Documents[@i].File" type="file" />
+                            </div>
+                        </div>
+
+                        <label>Or provide Url</label>
+                        <input name="Documents[@i].Url" value="@Model.Documents[i].Url" />
+                    </div>
+                }
             </div>
 
             <div class="divider"></div>
@@ -295,14 +321,14 @@
                             </div>
                         </div>
 
-                        <label>Location (agenda)</label>
-                        <select asp-for="Agendas[i].Location">
-                            <option value="">-- Select agenda room --</option>
-                            @foreach (var location in Model.Locations)
-                            {
-                                <option value="@location.Text">@location.Text</option>
-                            }
-                        </select>
+                        <div class="col">
+                            <label>Location (agenda)</label>
+                            <input type="hidden" asp-for="Agendas[i].Location" class="agenda-location-hidden" />
+                            <div class="position-relative">
+                                <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" value="@Model.Agendas[i].Location" />
+                                <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
                     </div>
                 }
             </div>
@@ -315,6 +341,31 @@
     </div>
 
     @* Template cho Agenda mới (giống hệt Create nhưng thêm hidden Id rỗng) *@
+    <template id="documentTemplate">
+        <div class="agenda-item" data-index="__i__">
+            <div class="agenda-head">
+                <div class="agenda-title">Document #__n__</div>
+                <button type="button" class="btn btn-danger btnRemoveDocument">Remove</button>
+            </div>
+
+            <input type="hidden" name="Documents[__i__].Id" value="" />
+
+            <div class="row">
+                <div class="col">
+                    <label>File name (Optional)</label>
+                    <input name="Documents[__i__].FileName" />
+                </div>
+                <div class="col">
+                    <label>Upload File</label>
+                    <input name="Documents[__i__].File" type="file" />
+                </div>
+            </div>
+
+            <label>Or provide Url</label>
+            <input name="Documents[__i__].Url" />
+        </div>
+    </template>
+
     <template id="agendaTemplate">
         <div class="agenda-item" data-index="__i__">
             <div class="agenda-head">
@@ -349,18 +400,179 @@
                 </div>
             </div>
 
-            <label>Location (agenda)</label>
-            <select name="Agendas[__i__].Location">
-                <option value="">-- Select agenda room --</option>
-                @foreach (var location in Model.Locations)
-                {
-                    <option value="@location.Text">@location.Text</option>
-                }
-            </select>
+            <div class="col">
+                <label>Location (agenda)</label>
+                <input type="hidden" name="Agendas[__i__].Location" class="agenda-location-hidden" />
+                <div class="position-relative">
+                    <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" />
+                    <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                </div>
+            </div>
         </div>
     </template>
 
+    <style>
+        /* Select2 bootstrap compatibility fixes */
+        .select2-container--default .select2-selection--single {
+            border-radius: 10px;
+            height: 42px;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 30px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+        }
+    </style>
+@section Scripts {
     <script>
+        $(document).ready(function() {
+            // Setup autocomplete for main location
+            function setupLocationAutocomplete(inputId, resultsId, hiddenId, isMain = true) {
+                const input = document.getElementById(inputId);
+                const results = document.getElementById(resultsId);
+                const hidden = document.getElementById(hiddenId);
+                let timer;
+
+                if (input && results) {
+                    input.addEventListener('input', function() {
+                        clearTimeout(timer);
+                        const query = this.value;
+                        if (query.length < 2) {
+                            results.style.display = 'none';
+                            if (query.length === 0) hidden.value = '';
+                            return;
+                        }
+
+                        timer = setTimeout(() => {
+                            fetch(`/api/v1/lookup/locations?q=${encodeURIComponent(query)}`)
+                                .then(res => res.json())
+                                .then(resp => {
+                                    if (!resp.success || !resp.data || resp.data.length === 0) {
+                                        results.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy địa điểm</div>';
+                                        results.style.display = 'block';
+                                        return;
+                                    }
+                                    
+                                    results.innerHTML = resp.data.map(loc => `
+                                        <div class="p-2 border-bottom loc-search-item text-dark" style="cursor:pointer;" 
+                                             data-id="${loc.id}" data-name="${loc.name}">
+                                            <div class="fw-semibold small">${loc.name}</div>
+                                            <div class="text-muted" style="font-size:0.75rem;">
+                                                ${loc.address ? loc.address + ' - ' : ''}Sức chứa: ${loc.capacity}
+                                            </div>
+                                        </div>
+                                    `).join('');
+                                    results.style.display = 'block';
+                                    
+                                    const items = results.querySelectorAll('.loc-search-item');
+                                    items.forEach(item => {
+                                        item.addEventListener('click', function() {
+                                            const locId = this.getAttribute('data-id');
+                                            const locName = this.getAttribute('data-name');
+                                            input.value = locName;
+                                            hidden.value = isMain ? locId : locName;
+                                            results.style.display = 'none';
+                                        });
+                                    });
+                                });
+                        }, 300);
+                    });
+
+                    document.addEventListener('click', function(e) {
+                        if(e.target !== input && !results.contains(e.target)) {
+                            results.style.display = 'none';
+                        }
+                    });
+                }
+            }
+
+            setupLocationAutocomplete('locationSearchInput', 'locationSearchResults', 'LocationId', true);
+
+            // Setup autocomplete for dynamic agendas
+            document.addEventListener('input', function(e) {
+                if (e.target.classList.contains('agenda-location-search-input')) {
+                    const input = e.target;
+                    const container = input.closest('.col');
+                    const results = container.querySelector('.agenda-location-search-results');
+                    const hidden = container.querySelector('.agenda-location-hidden');
+                    
+                    clearTimeout(input.dataset.timer);
+                    
+                    const query = input.value;
+                    if (query.length < 2) {
+                        results.style.display = 'none';
+                        if (query.length === 0) hidden.value = '';
+                        return;
+                    }
+
+                    input.dataset.timer = setTimeout(() => {
+                        fetch(`/api/v1/lookup/locations?q=${encodeURIComponent(query)}`)
+                            .then(res => res.json())
+                            .then(resp => {
+                                if (!resp.success || !resp.data || resp.data.length === 0) {
+                                    results.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy địa điểm</div>';
+                                    results.style.display = 'block';
+                                    return;
+                                }
+                                
+                                results.innerHTML = resp.data.map(loc => `
+                                    <div class="p-2 border-bottom loc-search-item text-dark" style="cursor:pointer;" 
+                                         data-name="${loc.name}">
+                                        <div class="fw-semibold small">${loc.name}</div>
+                                        <div class="text-muted" style="font-size:0.75rem;">
+                                            ${loc.address ? loc.address + ' - ' : ''}Sức chứa: ${loc.capacity}
+                                        </div>
+                                    </div>
+                                `).join('');
+                                results.style.display = 'block';
+                                
+                                const items = results.querySelectorAll('.loc-search-item');
+                                items.forEach(item => {
+                                    item.addEventListener('click', function() {
+                                        const locName = this.getAttribute('data-name');
+                                        input.value = locName;
+                                        hidden.value = locName;
+                                        results.style.display = 'none';
+                                    });
+                                });
+                            });
+                    }, 300);
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('agenda-location-search-input') && !e.target.closest('.agenda-location-search-results')) {
+                    document.querySelectorAll('.agenda-location-search-results').forEach(el => el.style.display = 'none');
+                }
+            });
+
+            // Initialize Select2 for Topic
+            $('#TopicId').select2({
+                placeholder: "-- Select Topic --",
+                allowClear: true,
+                ajax: {
+                    url: '/api/v1/lookup/topics',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { q: params.term };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.data.map(item => ({
+                                id: item.id,
+                                text: item.name
+                            }))
+                        };
+                    },
+                    cache: true
+                }
+            });
+        });
+
         (function () {
             const agendaContainer = document.getElementById("agendaContainer");
             const tpl = document.getElementById("agendaTemplate");
@@ -432,9 +644,53 @@
             if (agendaContainer.querySelectorAll(".agenda-item").length === 0) {
                 addAgenda();
             }
+            // Documents UI Logic
+            const docsContainer = document.getElementById("documentsContainer");
+            const btnAddDoc = document.getElementById("btnAddDocument");
+            const docTpl = document.getElementById("documentTemplate");
+
+            function renumberDocs() {
+                const items = docsContainer.querySelectorAll(".agenda-item");
+                items.forEach((item, i) => {
+                    item.dataset.index = i;
+                    const title = item.querySelector(".agenda-title");
+                    if (title) title.textContent = `Document #${i + 1}`;
+
+                    item.querySelectorAll("input").forEach(el => {
+                        if (el.name) {
+                            el.name = el.name.replace(/Documents\[\d+\]/, `Documents[${i}]`);
+                        }
+                    });
+                });
+            }
+
+            function addDocument() {
+                const i = docsContainer.querySelectorAll(".agenda-item").length;
+                let html = docTpl.innerHTML.replace(/__i__/g, i).replace(/__n__/g, i + 1);
+                const wrapper = document.createElement("div");
+                wrapper.innerHTML = html.trim();
+                docsContainer.appendChild(wrapper.firstElementChild);
+            }
+
+            if (btnAddDoc) {
+                btnAddDoc.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    addDocument();
+                });
+            }
+
+            if (docsContainer) {
+                docsContainer.addEventListener("click", function (e) {
+                    if (e.target.classList.contains("btnRemoveDocument")) {
+                        e.preventDefault();
+                        e.target.closest(".agenda-item").remove();
+                        renumberDocs();
+                    }
+                });
+            }
+
         })(); // Kết thúc IIFE
     </script>
 
     <partial name="_ValidationScriptsPartial" />
-</body>
-</html>
+}
