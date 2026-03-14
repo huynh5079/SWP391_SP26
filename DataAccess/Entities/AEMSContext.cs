@@ -150,6 +150,10 @@ public partial class AEMSContext : DbContext
 
 	public virtual DbSet<ChatMessage> ChatMessages { get; set; }
 
+	public virtual DbSet<ChatbotSession> ChatbotSessions { get; set; }
+
+	public virtual DbSet<ChatbotMessage> ChatbotMessages { get; set; }
+
 	public virtual DbSet<CheckInHistory> CheckInHistories { get; set; }
 
 	public virtual DbSet<Department> Departments { get; set; }
@@ -282,7 +286,7 @@ public partial class AEMSContext : DbContext
 			// Indexes
 			entity.HasIndex(e => e.SessionId, "IX_ChatMessage_SessionId");
 			entity.HasIndex(e => new { e.SessionId, e.CreatedAt }, "IX_ChatMessage_SessionId_CreatedAt");
-
+			
 			entity.Property(e => e.SessionId).HasMaxLength(450);
 			entity.Property(e => e.Sender).HasMaxLength(20);
 			entity.Property(e => e.Status)
@@ -303,6 +307,51 @@ public partial class AEMSContext : DbContext
 				.WithMany(p => p.InverseReplyToMessage)
 				.HasForeignKey(d => d.ReplyToMessageId)
 				.OnDelete(DeleteBehavior.Restrict); // Prevent cycles on delete
+		});
+
+		modelBuilder.Entity<ChatbotSession>(entity =>
+		{
+			entity.ToTable("ChatbotSession");
+
+			entity.HasIndex(e => e.UserId, "IX_ChatbotSession_UserId");
+          
+			entity.Property(e => e.UserId).HasMaxLength(450);
+            entity.Property(e => e.StartedAt).HasColumnType("datetime2");
+			entity.Property(e => e.EndedAt).HasColumnType("datetime2");
+			entity.Property(e => e.Status)
+				.HasMaxLength(50)
+              .HasDefaultValue(ChatSessionStatus.Active)
+				.HasConversion<string>();
+
+			entity.HasMany(d => d.Messages)
+				.WithOne(p => p.Session)
+				.HasForeignKey(p => p.SessionId)
+				.OnDelete(DeleteBehavior.Cascade);
+		});
+
+		modelBuilder.Entity<ChatbotMessage>(entity =>
+		{
+			entity.ToTable("ChatbotMessage");
+
+			entity.HasIndex(e => e.SessionId, "IX_ChatbotMessage_SessionId");
+			entity.HasIndex(e => new { e.SessionId, e.CreatedAt }, "IX_ChatbotMessage_SessionId_CreatedAt");
+          entity.Property(e => e.Role)
+				.HasMaxLength(50)
+				.HasConversion<string>();
+			entity.Property(e => e.SessionId).HasMaxLength(450);
+			entity.Property(e => e.Sender).HasMaxLength(20);
+          entity.Property(e => e.Content).HasColumnType("nvarchar(max)");
+			entity.Property(e => e.CreatedAt).HasColumnType("datetime2");
+			entity.Property(e => e.Status)
+				.HasMaxLength(50)
+				.HasDefaultValue(ChatMessageStatus.Streaming)
+				.HasConversion<string>();
+			entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+
+			entity.HasOne(d => d.Session)
+				.WithMany(p => p.Messages)
+				.HasForeignKey(d => d.SessionId)
+				.OnDelete(DeleteBehavior.Cascade);
 		});
 
 		modelBuilder.Entity<CheckInHistory>(entity =>

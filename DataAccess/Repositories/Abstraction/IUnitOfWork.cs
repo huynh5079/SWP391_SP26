@@ -21,6 +21,8 @@ namespace DataAccess.Repositories.Abstraction
         IGenericRepository<Role> Roles { get; }
         IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
 		IGenericRepository<Notification> Notifications { get; }
+		IGenericRepository<ChatbotSession> ChatbotSessions { get; }
+		IGenericRepository<ChatbotMessage> ChatbotMessages { get; }
 
 		// OrganizerService
 		IGenericRepository<Event> Events { get; }
