@@ -5,7 +5,9 @@ using BusinessLogic.Service.ValiDateRole.ValiDateforAdmin.LockAndUnlockLimit;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using UserEntity = DataAccess.Entities.User;
@@ -17,15 +19,24 @@ namespace BusinessLogic.Service.User
         private readonly IUnitOfWork _uow;
         private readonly INotificationService _notificationService;
         private readonly ILockAndUnlockLimitValidator _lockAndUnlockLimitValidator;
+        private readonly BusinessLogic.Storage.IFileStorageService _fileStorageService;
+        private readonly ILogger<UserService> _logger;
+        private readonly ISystemErrorLogService _systemErrorLogService;
 
         public UserService(
             IUnitOfWork uow,
             INotificationService notificationService,
-            ILockAndUnlockLimitValidator lockAndUnlockLimitValidator)
+            ILockAndUnlockLimitValidator lockAndUnlockLimitValidator,
+            BusinessLogic.Storage.IFileStorageService fileStorageService,
+            ILogger<UserService> logger,
+            ISystemErrorLogService systemErrorLogService)
         {
             _uow = uow;
             _notificationService = notificationService;
             _lockAndUnlockLimitValidator = lockAndUnlockLimitValidator;
+            _fileStorageService = fileStorageService;
+            _logger = logger;
+            _systemErrorLogService = systemErrorLogService;
         }
 
         public async Task<PaginationResult<UserListDto>> GetUsersAsync(
@@ -250,53 +261,100 @@ namespace BusinessLogic.Service.User
 			return totalUnlocked;
         }
 
+        public async Task<string?> UpdateAvatarAsync(string userId, IFormFile file)
+        {
+            try
+            {
+                var user = await _uow.Users.GetByIdAsync(userId);
+                if (user == null) return null;
+
+                if (file != null && file.Length > 0)
+                {
+                    _logger.LogInformation("[UpdateAvatarAsync] Received file: {FileName}, Length: {Length}", file.FileName, file.Length);
+                    var uploadResult = await _fileStorageService.UploadSingleAsync(
+                        file,
+                        DataAccess.Enum.UploadContext.Avatar,
+                        userId);
+
+                    if (uploadResult != null)
+                    {
+                        _logger.LogInformation("[UpdateAvatarAsync] Upload success: {Url}", uploadResult.Url);
+                        user.AvatarUrl = uploadResult.Url;
+                        
+                        await _uow.Users.UpdateAsync(user);
+                        await _uow.SaveChangesAsync();
+                        
+                        return uploadResult.Url;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[UpdateAvatarAsync] UploadResult was null");
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[UpdateAvatarAsync] Error updating avatar for user {UserId}", userId);
+                await _systemErrorLogService.LogErrorAsync(ex, userId, "UserService.UpdateAvatarAsync");
+                throw;
+            }
+        }
+
         public async Task<bool> UpdateProfileAsync(string userId, UpdateProfileRequestDto request)
         {
-            Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q
-              .Include(u => u.Role)
-              .Include(u => u.StudentProfile)
-              .Include(u => u.StaffProfile);
-
-            var user = await _uow.Users.GetAsync(u => u.Id == userId, includes);
-            if (user == null) return false;
-
-            // 1. Update Common User Fields
-            user.FullName = request.FullName;
-            user.Phone = request.Phone;
-            
-            // Allow updating avatar URL if provided (client upload handled in Controller)
-            if (!string.IsNullOrEmpty(request.AvatarUrl))
+            try 
             {
-                user.AvatarUrl = request.AvatarUrl;
-            }
+                Func<IQueryable<UserEntity>, IQueryable<UserEntity>> includes = q => q
+                  .Include(u => u.Role)
+                  .Include(u => u.StudentProfile)
+                  .Include(u => u.StaffProfile);
 
-            // 2. Update Specific Role Fields
-            if (user.Role.RoleName == RoleEnum.Student)
-            {
-                if (user.StudentProfile == null)
-                {
-                    // Should theoretically exist if role is correct, but safe to check or create
-                     // user.StudentProfile = new StudentProfile { UserId = userId }; // If creating on fly needed
-                }
+                var user = await _uow.Users.GetAsync(u => u.Id == userId, includes);
+                if (user == null) return false;
+
+                // 1. Update Common User Fields
+                user.FullName = request.FullName;
+                user.Phone = request.Phone;
                 
-                if (user.StudentProfile != null)
+                // Allow updating avatar URL if provided
+                if (!string.IsNullOrEmpty(request.AvatarUrl))
                 {
-                   // Note: StudentCode might be read-only business-wise, but allowing edit if requested
-                   if(!string.IsNullOrEmpty(request.StudentCode)) user.StudentProfile.StudentCode = request.StudentCode;
-                   if(!string.IsNullOrEmpty(request.CurrentSemester)) user.StudentProfile.CurrentSemester = request.CurrentSemester;
+                    user.AvatarUrl = request.AvatarUrl;
                 }
-            }
-            else if (user.Role.RoleName == RoleEnum.Organizer || user.Role.RoleName == RoleEnum.Approver || user.Role.RoleName == RoleEnum.Admin)
-            {
-                if (user.StaffProfile != null)
-                {
-                     if(!string.IsNullOrEmpty(request.StaffCode)) user.StaffProfile.StaffCode = request.StaffCode;
-                     if(!string.IsNullOrEmpty(request.Position)) user.StaffProfile.Position = request.Position;
-                }
-            }
 
-            await _uow.Users.UpdateAsync(user);
-            return true;
+                // 2. Update Specific Role Fields
+                if (user.Role?.RoleName == RoleEnum.Student)
+                {
+                    if (user.StudentProfile != null)
+                    {
+                        if (!string.IsNullOrEmpty(request.StudentCode)) user.StudentProfile.StudentCode = request.StudentCode;
+                        if (!string.IsNullOrEmpty(request.CurrentSemester)) user.StudentProfile.CurrentSemester = request.CurrentSemester;
+                        user.StudentProfile.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                    }
+                }
+                else if (user.Role?.RoleName == RoleEnum.Organizer || user.Role?.RoleName == RoleEnum.Approver || user.Role?.RoleName == RoleEnum.Admin)
+                {
+                    if (user.StaffProfile != null)
+                    {
+                        if (!string.IsNullOrEmpty(request.StaffCode)) user.StaffProfile.StaffCode = request.StaffCode;
+                        if (!string.IsNullOrEmpty(request.Position)) user.StaffProfile.Position = request.Position;
+                        user.StaffProfile.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                    }
+                }
+
+                await _uow.Users.UpdateAsync(user);
+                await _uow.SaveChangesAsync();
+                
+                _logger.LogInformation("[UpdateProfileAsync] Changes saved for user: {Email}. Final AvatarUrl: {AvatarUrl}", user.Email, user.AvatarUrl);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[UpdateProfileAsync] Error updating profile for user {UserId}", userId);
+                await _systemErrorLogService.LogErrorAsync(ex, userId, "UserService.UpdateProfileAsync");
+                throw;
+            }
         }
     }
 }

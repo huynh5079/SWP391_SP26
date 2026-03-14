@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Options;
+using BusinessLogic.Options;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using DataAccess.Enum;
@@ -32,57 +32,80 @@ namespace BusinessLogic.Storage
             var results = new List<UploadedFileResult>();
             foreach (var f in files)
             {
-                if (f == null || f.Length == 0) continue;
-
-                var kind = StoragePathResolver.InferKind(f.ContentType, f.FileName);
-                var folder = _resolver.Resolve(context, kind, ownerUserId);
-
-                using var s = f.OpenReadStream();
-                UploadResult res = kind switch
+                var result = await UploadSingleAsync(f, context, ownerUserId, ct);
+                if (result != null)
                 {
-                    FileKind.Image => await _cloud.UploadAsync(new ImageUploadParams
-                    {
-                        File = new FileDescription(f.FileName, s),
-                        Folder = folder,
-                        UseFilename = true,
-                        UniqueFilename = true,
-                        Overwrite = false
-                    }, ct),
-
-                    FileKind.Video or FileKind.Audio => await _cloud.UploadAsync(new VideoUploadParams
-                    {
-                        File = new FileDescription(f.FileName, s),
-                        Folder = folder,
-                        UseFilename = true,
-                        UniqueFilename = true,
-                        Overwrite = false
-                    }, ResourceType.Video.ToString(), ct),
-
-                    // PDF/DOC/TXT/ZIP và các loại khác:
-                    _ => await _cloud.UploadAsync(new RawUploadParams
-                    {
-                        File = new FileDescription(f.FileName, s),
-                        Folder = folder,
-                        UseFilename = true,
-                        UniqueFilename = true,
-                        Overwrite = false
-                    }, ResourceType.Raw.ToString(), ct)
-                };
-
-                if (res.StatusCode is not (System.Net.HttpStatusCode.OK or System.Net.HttpStatusCode.Created))
-                    throw new InvalidOperationException($"Upload fail: {res.Error?.Message}");
-
-                results.Add(new UploadedFileResult
-                {
-                    Url = res.SecureUrl?.ToString() ?? res.Url?.ToString() ?? "",
-                    FileName = f.FileName,
-                    ContentType = f.ContentType ?? "application/octet-stream",
-                    FileSize = f.Length,
-                    Kind = kind,
-                    ProviderPublicId = res.PublicId
-                });
+                    results.Add(result);
+                }
             }
             return results;
+        }
+
+        public async Task<UploadedFileResult?> UploadSingleAsync(IFormFile? f, UploadContext context, string ownerUserId, CancellationToken ct = default)
+        {
+            if (f == null || f.Length == 0) return null;
+
+            using var s = f.OpenReadStream();
+            return await UploadSingleInternalAsync(s, f.FileName, f.ContentType, context, ownerUserId, ct);
+        }
+
+        public async Task<UploadedFileResult?> UploadSingleAsync(Stream fileStream, string fileName, UploadContext context, string ownerUserId, CancellationToken ct = default)
+        {
+            if (fileStream == null || fileStream.Length == 0) return null;
+            
+            // Infer content type from extension for streams if not provided
+            var contentType = "application/octet-stream";
+            return await UploadSingleInternalAsync(fileStream, fileName, contentType, context, ownerUserId, ct);
+        }
+
+        private async Task<UploadedFileResult?> UploadSingleInternalAsync(Stream s, string fileName, string? contentType, UploadContext context, string ownerUserId, CancellationToken ct)
+        {
+            var kind = StoragePathResolver.InferKind(contentType, fileName);
+            var folder = _resolver.Resolve(context, kind, ownerUserId);
+
+            UploadResult res = kind switch
+            {
+                FileKind.Image => await _cloud.UploadAsync(new ImageUploadParams
+                {
+                    File = new FileDescription(fileName, s),
+                    Folder = folder,
+                    UseFilename = true,
+                    UniqueFilename = true,
+                    Overwrite = false
+                }, ct),
+
+                FileKind.Video or FileKind.Audio => await _cloud.UploadAsync(new VideoUploadParams
+                {
+                    File = new FileDescription(fileName, s),
+                    Folder = folder,
+                    UseFilename = true,
+                    UniqueFilename = true,
+                    Overwrite = false
+                }, ResourceType.Video.ToString(), ct),
+
+                // PDF/DOC/TXT/ZIP and others:
+                _ => await _cloud.UploadAsync(new RawUploadParams
+                {
+                    File = new FileDescription(fileName, s),
+                    Folder = folder,
+                    UseFilename = true,
+                    UniqueFilename = true,
+                    Overwrite = false
+                }, ResourceType.Raw.ToString(), ct)
+            };
+
+            if (res.StatusCode is not (System.Net.HttpStatusCode.OK or System.Net.HttpStatusCode.Created))
+                throw new InvalidOperationException($"Upload fail: {res.Error?.Message}");
+
+            return new UploadedFileResult
+            {
+                Url = res.SecureUrl?.ToString() ?? res.Url?.ToString() ?? "",
+                FileName = fileName,
+                ContentType = contentType ?? "application/octet-stream",
+                FileSize = s.Length,
+                Kind = kind,
+                ProviderPublicId = res.PublicId
+            };
         }
 
         /// <summary>

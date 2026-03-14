@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using DataAccess.Enum;
 
 namespace BusinessLogic.DTOs.Role.Organizer;
@@ -12,7 +12,8 @@ public class CreateEventRequestDto
 	[MaxLength(4000)]
 	public string Description { get; set; } = "";
 
-	public string? BannerUrl { get; set; } //*
+	public string? BannerUrl { get; set; }
+	public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
 
 	// ===== 2. Time =====
 	public DateTime StartTime { get; set; }
@@ -68,6 +69,7 @@ public class CreateDocumentDto
 	public string? FileName { get; set; }
 	public string? Url { get; set; }
 	public string? Type { get; set; }
+    public Microsoft.AspNetCore.Http.IFormFile? File { get; set; }
 }
 
 public class UpdateEventRequestDto
@@ -92,6 +94,7 @@ public class UpdateEventRequestDto
     public decimal? DepositAmount { get; set; }
 
     public string? BannerUrl { get; set; }
+    public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
     public string? MeetingUrl { get; set; }
     public EventModeEnum? Mode { get; set; }
 
@@ -119,6 +122,7 @@ public class UpdateDocumentDto
 	public string? FileName { get; set; }
 	public string? Url { get; set; }
 	public string? Type { get; set; }
+	public Microsoft.AspNetCore.Http.IFormFile? File { get; set; }
 }
 
 // Soft-delete DTO: toggle availability instead of physical delete
@@ -130,5 +134,27 @@ public class SoftDeleteEventRequestDto
     // NotAvailable = soft delete; Available = restore
     [Required]
     public EventStatusAvailableEnum StatusEventAvailable { get; set; }
+}
+
+public class CreateEventAgendaDto
+{
+    public string EventId { get; set; } = "";
+    public string? SessionName { get; set; }
+    public string? Description { get; set; }
+    public string? SpeakerInfo { get; set; }
+    public string? SpeakerUserId { get; set; }
+    public string? SpeakerUserRole { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    public string? Location { get; set; }
+}
+
+public class CreateEventDocumentDto
+{
+    public string EventId { get; set; } = "";
+    public string? Name { get; set; }
+    public string? Url { get; set; }
+    public string? Type { get; set; }
+    public Microsoft.AspNetCore.Http.IFormFile? File { get; set; }
 }
 

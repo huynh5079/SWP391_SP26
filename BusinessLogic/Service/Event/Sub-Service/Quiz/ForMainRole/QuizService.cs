@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,11 +28,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 	{
 		private readonly IUnitOfWork _uow;
 		private readonly IQuizValidator _validator;
+		private readonly BusinessLogic.Storage.IFileStorageService _fileStorageService;
 
-		public QuizService(IUnitOfWork uow, IQuizValidator validator)
+		public QuizService(IUnitOfWork uow, IQuizValidator validator, BusinessLogic.Storage.IFileStorageService fileStorageService)
 		{
 			_uow = uow;
 			_validator = validator;
+			_fileStorageService = fileStorageService;
 		}
 
 		private static QuizQuestionOptionContract GetQuestionOptions(QuizQuestionContract dto)
@@ -1172,17 +1174,24 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (!allowExt.Contains(ext))
 				throw new InvalidOperationException("Chỉ cho phép file PDF, TXT hoặc DOCX");
 
-			var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "quiz");
-			Directory.CreateDirectory(uploadsRoot);
-			var safeFileName = $"{quizSet.Id}_{Path.GetFileName(request.FileName)}";
-			var fullPath = Path.Combine(uploadsRoot, safeFileName);
-			await File.WriteAllBytesAsync(fullPath, request.FileContent);
+			// 1. Upload to Cloudinary using the new Stream-based method
+			using var ms = new MemoryStream(request.FileContent);
+			var uploadResult = await _fileStorageService.UploadSingleAsync(
+				ms,
+				request.FileName,
+				DataAccess.Enum.UploadContext.Material, // Using Material context for Quiz files
+				organizer.UserId);
 
+			if (uploadResult == null)
+				throw new InvalidOperationException("Lỗi khi upload file lên Cloudinary.");
+
+			// 2. Parse content from memory (no local file saving needed)
+			ms.Position = 0; // Reset stream position for reading
 			string textContent = ext switch
 			{
-				".txt" => await File.ReadAllTextAsync(fullPath),
-				".docx" => ReadDocx(fullPath),
-				".pdf" => ReadPdf(fullPath),
+				".txt" => await new StreamReader(ms).ReadToEndAsync(),
+				".docx" => ReadDocxFromStream(ms),
+				".pdf" => ReadPdfFromStream(ms),
 				_ => string.Empty
 			};
 
@@ -1190,7 +1199,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (!questions.Any())
 				throw new InvalidOperationException("Không đọc được câu hỏi hợp lệ từ file quiz.");
 
-			var relative = Path.Combine("uploads", "quiz", safeFileName).Replace('\\', '/');
+			var relative = uploadResult.Url;
 			quizSet.FileQuiz = relative;
 			quizSet.TopicId ??= quiz.Event?.TopicId;
 			quizSet.OrganizerId ??= organizer.Id;
@@ -1219,9 +1228,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			}
 		}
 
-		private string ReadDocx(string path)
+		private string ReadDocxFromStream(Stream stream)
 		{
-			using var doc = WordprocessingDocument.Open(path, false);
+			using var doc = WordprocessingDocument.Open(stream, false);
 			var body = doc.MainDocumentPart?.Document?.Body;
 			if (body == null)
 			{
@@ -1235,10 +1244,10 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			return string.Join(Environment.NewLine, paragraphs);
 		}
 
-		private string ReadPdf(string path)
+		private string ReadPdfFromStream(Stream stream)
 		{
 			var text = new StringBuilder();
-			using var pdf = PdfDocument.Open(path);
+			using var pdf = PdfDocument.Open(stream);
 			foreach (var page in pdf.GetPages())
 			{
 				text.AppendLine(page.Text);
@@ -1256,8 +1265,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			text = NormalizeQuizText(text);
 
+			// Improved questionRegex to better split questions
 			var questionRegex = new Regex(
-				@"(?im)(?:câu|question|q)?\s*\d+\s*[:\.\-\)]\s*(?<body>.+?)(?=(?:câu|question|q)?\s*\d+\s*[:\.\-\)]|\z)",
+				@"(?im)(?:câu|question|q|#)?\s*(\d+)\s*[:\.\-\)]\s*(?<body>.+?)(?=(?:(?:câu|question|q|#)?\s*\d+\s*[:\.\-\)])|\z)",
 				RegexOptions.Singleline);
 
 			var optionRegex = new Regex(
@@ -1265,32 +1275,42 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				RegexOptions.Multiline);
 
 			var answerRegex = new Regex(
-				@"(?im)(?:đáp án|answer|correct)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)");
+				@"(?im)(?:đáp án|answer|correct|ans)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)");
 
 			var scoreRegex = new Regex(
-				@"(?im)(?:score|điểm)\s*[:\-]?\s*(\d+)");
+				@"(?im)(?:score|point|điểm)\s*[:\-]?\s*(\d+(?:\.\d+)?)");
 
 			var explanationRegex = new Regex(
-				@"(?im)(?:explanation|giải thích)\s*[:\-]?\s*(.+)");
+				@"(?im)(?:explanation|giải thích|note)\s*[:\-]?\s*(.+)");
 
 			var matches = questionRegex.Matches(text);
 
 			foreach (Match match in matches)
 			{
 				var body = match.Groups["body"].Value.Trim();
+				if (string.IsNullOrWhiteSpace(body)) continue;
 
+				// Find options
 				var optionMatches = optionRegex.Matches(body);
 				if (optionMatches.Count < 2)
 					continue;
 
+				// Question text is everything before the first option
 				var questionText = body.Substring(0, optionMatches[0].Index).Trim();
+				if (string.IsNullOrWhiteSpace(questionText)) continue;
 
 				var options = new QuizQuestionOptionContract();
-
 				foreach (Match option in optionMatches)
 				{
 					var key = option.Groups[1].Value.ToUpper();
 					var value = option.Groups[2].Value.Trim();
+
+					// If an option contains an answer marker, strip it
+					var ansMatchInOption = answerRegex.Match(value);
+					if (ansMatchInOption.Success)
+					{
+						value = value.Substring(0, ansMatchInOption.Index).Trim();
+					}
 
 					switch (key)
 					{
@@ -1301,24 +1321,24 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					}
 				}
 
-				if (string.IsNullOrWhiteSpace(options.OptionA) ||
-					string.IsNullOrWhiteSpace(options.OptionB))
+				if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB))
 					continue;
 
+				// Find Answer
 				var answer = "";
 				var answerMatch = answerRegex.Match(body);
 				if (answerMatch.Success)
 				{
-					answer = answerMatch.Groups[1].Value
-						.Replace(" ", "")
-						.ToUpper();
+					answer = answerMatch.Groups[1].Value.Replace(" ", "").ToUpper();
 				}
 
-				int score = 1;
+				// Find Score
+				double score = 1.0;
 				var scoreMatch = scoreRegex.Match(body);
 				if (scoreMatch.Success)
-					int.TryParse(scoreMatch.Groups[1].Value, out score);
+					double.TryParse(scoreMatch.Groups[1].Value, out score);
 
+				// Find Explanation
 				string explanation = null;
 				var expMatch = explanationRegex.Match(body);
 				if (expMatch.Success)
@@ -1329,7 +1349,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					QuestionText = questionText,
 					Options = options,
 					CorrectAnswer = answer,
-					ScorePoint = score,
+					ScorePoint = (int)Math.Max(1, Math.Round(score)),
 					Explanation = explanation,
 					Difficulty = QuestionDifficultyEnum.Medium
 				});

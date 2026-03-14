@@ -1,5 +1,6 @@
 using BusinessLogic.DTOs.Role.Organizer;
 using DataAccess.Enum;
+using Microsoft.AspNetCore.Http;
 
 namespace BusinessLogic.Service.Event
 {
@@ -33,5 +34,11 @@ namespace BusinessLogic.Service.Event
 
 		// Paged deleted events (soft-deleted)
 		Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
+		
+		// Agendas and Documents
+		Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto);
+		Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto);
+
+        Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId);
 	}
 }
