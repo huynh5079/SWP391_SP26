@@ -3,6 +3,7 @@ using AutoMapper;
 using BusinessLogic.DTOs.Role.Organizer;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using AEMS_Solution.Models.Organizer;
+using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 
 namespace AEMS_Solution.AutoMapper.Organizer.Event
 {

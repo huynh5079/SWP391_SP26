@@ -238,4 +238,10 @@ namespace DataAccess.Enum
 		FourStar = 4,
 		FiveStar = 5,
 	}
+	public enum AppriciateEventEnum
+	{
+		Positive,
+		Neutral,
+		Negative
+	}
 }
