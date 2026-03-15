@@ -83,6 +83,42 @@ namespace AEMS_Solution.Controllers.Api.Chatbot
         }
 
         /// <summary>
+        /// Danh sách phiên chat để người dùng chọn lại như ChatGPT.
+        /// </summary>
+        [HttpGet("sessions")]
+        public async Task<IActionResult> Sessions([FromQuery] int limit = 20)
+        {
+            try
+            {
+                var sessions = await _chatbotService.GetConversationSessionsAsync(limit);
+                return Success(sessions, "Thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in ChatbotController.Sessions: {ex.Message}", ex);
+                return Error($"Lỗi: {ex.Message}", 500);
+            }
+        }
+
+        /// <summary>
+        /// Tạo phiên chat mới (làm mới đoạn chat hiện tại).
+        /// </summary>
+        [HttpPost("sessions/new")]
+        public async Task<IActionResult> NewSession([FromBody] NewChatbotSessionRequest? request)
+        {
+            try
+            {
+                var sessionId = await _chatbotService.StartNewConversationAsync(request?.CurrentSessionId);
+                return Success(new { sessionId }, "Thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in ChatbotController.NewSession: {ex.Message}", ex);
+                return Error($"Lỗi: {ex.Message}", 500);
+            }
+        }
+
+        /// <summary>
         /// Kiểm tra trạng thái RAG API server
         /// </summary>
         [HttpGet("health")]
@@ -105,6 +141,11 @@ namespace AEMS_Solution.Controllers.Api.Chatbot
                 return Error($"Lỗi: {ex.Message}", 500);
             }
         }
+    }
+
+    public class NewChatbotSessionRequest
+    {
+        public string? CurrentSessionId { get; set; }
     }
 
     

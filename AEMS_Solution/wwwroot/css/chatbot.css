@@ -160,6 +160,67 @@
     overflow: hidden;
 }
 
+.chatbot-sessions {
+    display: none;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    max-height: 180px;
+    overflow: hidden;
+}
+
+.chatbot-sessions.open {
+    display: block;
+}
+
+.chatbot-sessions-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    padding: 10px 12px 8px;
+}
+
+.chatbot-sessions-list {
+    max-height: 130px;
+    overflow-y: auto;
+    padding: 0 8px 8px;
+}
+
+.chatbot-session-item {
+    width: 100%;
+    text-align: left;
+    border: 1px solid #dbe1e8;
+    background: #fff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chatbot-session-item:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.chatbot-session-item.active {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.chatbot-session-title {
+    font-size: 12px;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chatbot-session-time {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
 .chatbot-log {
     flex: 1;
     overflow-y: auto;

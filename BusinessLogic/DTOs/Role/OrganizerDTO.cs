@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 
 namespace BusinessLogic.DTOs.Role.Organizer;
 
@@ -20,16 +21,7 @@ public class OrganizerDto
     public List<EventFeedbackSummaryDto> RecentFeedbacks { get; set; } = new();
 }
 
-public class EventFeedbackSummaryDto
-{
-    public string EventId { get; set; } = "";
-    public string EventTitle { get; set; } = "";
-    public int Rating { get; set; }
-    public string? Comment { get; set; }
-    public DateTime? CreatedAt { get; set; }
-    public string? StudentId { get; set; }
-    public string? StudentCode { get; set; }
-}
+
 
 // Simple paged result used by services
 public class PagedResult<T>
