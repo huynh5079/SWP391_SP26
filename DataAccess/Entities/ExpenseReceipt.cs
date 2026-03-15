@@ -12,7 +12,7 @@ public partial class ExpenseReceipt : BaseEntity
 
     public string? Title { get; set; }
 
-    public decimal Amount { get; set; }
+    public decimal ActualAmount { get; set; }
 
     public string? ReceiptImageUrl { get; set; }
 

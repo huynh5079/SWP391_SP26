@@ -237,22 +237,40 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("BudgetProposal");
 
-			entity.Property(e => e.ActualAmount)
-				.HasDefaultValue(0m)
-				.HasColumnType("decimal(18, 2)");
-			entity.Property(e => e.EventId).HasMaxLength(450);
-			entity.Property(e => e.Note).HasMaxLength(500);
-			entity.Property(e => e.PlannedAmount).HasColumnType("decimal(18, 2)");
-			entity.Property(e => e.Status)
-				.HasMaxLength(50)
-				.HasConversion<string>();
-			entity.Property(e => e.Title).HasMaxLength(255);
 
-			entity.HasOne(d => d.Event).WithMany(p => p.BudgetProposals)
-				.HasForeignKey(d => d.EventId)
-				.OnDelete(DeleteBehavior.ClientSetNull)
-				.HasConstraintName("FK__BudgetPro__Event__7F2BE32F");
-		});
+            // Event FK and basic props
+            entity.Property(e => e.EventId).HasMaxLength(450);
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+
+            // monetary fields
+            entity.Property(e => e.PlannedAmount).HasColumnType("decimal(18, 2)");
+
+            // Status enum stored as string
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+				.HasDefaultValue(ProposalStatusEnum.Pending) // default to Pending
+                .HasConversion<string>();
+
+            entity.Property(e => e.Note).HasMaxLength(500);
+
+            // New approval fields
+            entity.Property(e => e.ApprovedBy).HasMaxLength(450);
+            entity.Property(e => e.ApprovedAt).HasColumnType("datetime2");
+
+            // Relationships
+            entity.HasOne(d => d.Event).WithMany(p => p.BudgetProposals)
+                .HasForeignKey(d => d.EventId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__BudgetPro__Event__7F2BE32F");
+
+            // Approver relationship (nullable)
+            entity.HasOne(d => d.Approver)
+                .WithMany() // no collection navigation on User
+                .HasForeignKey(d => d.ApprovedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_BudgetProposal_Approver");
+        });
 
 		modelBuilder.Entity<ChatSession>(entity =>
 		{
@@ -562,7 +580,7 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("ExpenseReceipt");
 
-			entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+			entity.Property(e => e.ActualAmount).HasColumnType("decimal(18, 2)");
 			entity.Property(e => e.BudgetProposalId).HasMaxLength(450);
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)
