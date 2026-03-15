@@ -64,4 +64,11 @@ namespace BusinessLogic.DTOs.Chat.Chatbot
 		public string? SessionId { get; set; }
 		public List<ChatbotHistoryMessageDto> Messages { get; set; } = new();
 	}
+
+	public class ChatbotSessionSummaryDto
+	{
+		public string SessionId { get; set; } = string.Empty;
+		public string Title { get; set; } = string.Empty;
+		public DateTime LastMessageAt { get; set; }
+	}
 }

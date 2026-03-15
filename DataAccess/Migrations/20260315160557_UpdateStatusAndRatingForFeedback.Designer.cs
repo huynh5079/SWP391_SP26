@@ -4,6 +4,7 @@ using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(AEMSContext))]
-    partial class AEMSContextModelSnapshot : ModelSnapshot
+    [Migration("20260315160557_UpdateStatusAndRatingForFeedback")]
+    partial class UpdateStatusAndRatingForFeedback
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -82,12 +85,10 @@ namespace DataAccess.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ApprovedBy")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<decimal?>("ActualAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18, 2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -100,8 +101,7 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("EventId")
                         .IsRequired()
@@ -122,10 +122,8 @@ namespace DataAccess.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasDefaultValue("Pending");
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Title")
                         .HasMaxLength(255)
@@ -139,8 +137,6 @@ namespace DataAccess.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ApprovedBy");
 
                     b.HasIndex("EventId");
 
@@ -1110,7 +1106,7 @@ namespace DataAccess.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<decimal>("ActualAmount")
+                    b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<string>("BudgetProposalId")
@@ -2202,19 +2198,11 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("DataAccess.Entities.BudgetProposal", b =>
                 {
-                    b.HasOne("DataAccess.Entities.User", "Approver")
-                        .WithMany()
-                        .HasForeignKey("ApprovedBy")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_BudgetProposal_Approver");
-
                     b.HasOne("DataAccess.Entities.Event", "Event")
                         .WithMany("BudgetProposals")
                         .HasForeignKey("EventId")
                         .IsRequired()
                         .HasConstraintName("FK__BudgetPro__Event__7F2BE32F");
-
-                    b.Navigation("Approver");
 
                     b.Navigation("Event");
                 });
