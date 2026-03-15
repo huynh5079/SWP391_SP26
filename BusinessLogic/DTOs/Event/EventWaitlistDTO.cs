@@ -10,6 +10,7 @@ public class EventWaitlistDto
     public string EventId { get; set; } = "";
     public string EventTitle { get; set; } = "";
     public DateTime? EventStartTime { get; set; }
+    public string? LocationName { get; set; }
 
     public string StudentId { get; set; } = "";
     public string? StudentName { get; set; }

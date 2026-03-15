@@ -282,4 +282,32 @@ public class EventWaitlistService : IEventWaitlistService
             await OfferNextAsync(dto.EventId);
         }
     }
+    // card student waitlist của tôi
+
+    public async Task<List<EventWaitlistDto>> GetMyWaitlistAsync(string userId)
+    {
+        var profile = await _uow.StudentProfiles.GetAsync(s => s.UserId == userId);
+        if (profile == null) return new List<EventWaitlistDto>();
+
+        var entries = await _uow.EventWaitlist.GetAllAsync(
+            w => w.StudentId == profile.Id &&
+                 (w.Status == DataAccess.Enum.EventWaitlistStatusEnum.Waiting ||
+                  w.Status == DataAccess.Enum.EventWaitlistStatusEnum.Offered),
+            q => q.Include(x => x.Event)
+                  .ThenInclude(e => e.Location));
+
+        return entries.Select(w => new EventWaitlistDto
+        {
+            Id = w.Id,
+            EventId = w.EventId,
+            EventTitle = w.Event?.Title ?? "",
+            EventStartTime = w.Event?.StartTime,
+            LocationName = w.Event?.Location?.Name,
+            StudentId = w.StudentId,
+            Position = w.Position,
+            Status = w.Status,
+            JoinedAt = w.JoinedAt,
+            OfferedAt = w.OfferedAt
+        }).ToList();
+    }
 }

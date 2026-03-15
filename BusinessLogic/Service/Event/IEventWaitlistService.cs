@@ -10,4 +10,5 @@ public interface IEventWaitlistService
     Task OfferNextAsync(string eventId);
     Task NotifyOfferedStudentAsync(string eventId, string studentId);
     Task RespondToOfferAsync(RespondOfferRequestDto dto);
+    Task<List<EventWaitlistDto>> GetMyWaitlistAsync(string userId);
 }
