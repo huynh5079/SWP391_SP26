@@ -73,6 +73,7 @@
     <Folder Include="AutoMapper\Event\Sub-Event\Approver\" />
     <Folder Include="AutoMapper\Event\Sub-Event\Student\" />
     <Folder Include="AutoMapper\Event\Sub-Event\Organizer\" />
+    <Folder Include="BaseAction%28ValidforController%29\Chat\" />
   </ItemGroup>
 
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.schemastore.org/azure-iot-edgeagent-deployment-1.1.json" /></VisualStudio></ProjectExtensions>

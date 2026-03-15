@@ -1,8 +1,9 @@
+using BusinessLogic.DTOs.Chat.Chatbot;
 using BusinessLogic.Service;
 using BusinessLogic.Service.Chat;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Api
+namespace AEMS_Solution.Controllers.Api.Chatbot
 {
     [ApiController]
     [Route("api/v1/[controller]")]
@@ -37,7 +38,11 @@ namespace AEMS_Solution.Controllers.Api
 
             try
             {
-                var response = await _chatbotService.AskQuestionAsync(request.Question, request.TopK ?? 5);
+                var response = await _chatbotService.AskQuestionAsync(
+                    request.Question,
+                    request.TopK ?? 5,
+                    request.SessionId
+                );
 
                 if (!response.Success)
                 {
@@ -47,6 +52,7 @@ namespace AEMS_Solution.Controllers.Api
 
                 return Success(new
                 {
+                    response.SessionId,
                     response.Answer,
                     response.Sources
                 }, response.Message ?? "Thành công");
@@ -54,6 +60,24 @@ namespace AEMS_Solution.Controllers.Api
             catch (Exception ex)
             {
                 _logger.LogError($"Error in ChatbotController.Ask: {ex.Message}", ex);
+                return Error($"Lỗi: {ex.Message}", 500);
+            }
+        }
+
+        /// <summary>
+        /// Lấy lịch sử hội thoại theo session hiện tại để giữ nội dung khi reload trang.
+        /// </summary>
+        [HttpGet("history")]
+        public async Task<IActionResult> History([FromQuery] string? sessionId, [FromQuery] int limit = 100)
+        {
+            try
+            {
+                var history = await _chatbotService.GetConversationHistoryAsync(sessionId, limit);
+                return Success(history, "Thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in ChatbotController.History: {ex.Message}", ex);
                 return Error($"Lỗi: {ex.Message}", 500);
             }
         }
@@ -83,9 +107,5 @@ namespace AEMS_Solution.Controllers.Api
         }
     }
 
-    public class AskChatbotRequest
-    {
-        public string? Question { get; set; }
-        public int? TopK { get; set; } = 5;
-    }
+    
 }

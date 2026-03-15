@@ -1,0 +1,6 @@
+{
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "llm_model": "llama-3.3-70b-versatile",
+  "kb_chunks": 447,
+  "updated_at": "2026-03-15T15:01:31.162781"
+}

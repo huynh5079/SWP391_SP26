@@ -11,7 +11,8 @@ namespace BusinessLogic.Service.Chat
 {
 	public interface IChatbotService
 	{
-		Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5);
+		Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null);
+       Task<ChatbotConversationHistoryDto> GetConversationHistoryAsync(string? sessionId = null, int limit = 100);
 		Task<HealthStatusDto> CheckHealthAsync();
 		
 	}

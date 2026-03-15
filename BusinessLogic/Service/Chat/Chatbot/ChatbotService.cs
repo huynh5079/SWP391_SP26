@@ -10,6 +10,7 @@ using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
@@ -45,11 +46,13 @@ namespace BusinessLogic.Service.Chat
 		/// <summary>
 		/// Gửi câu hỏi tới RAG API và lấy câu trả lời
 		/// </summary>
-		public async Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5)
+		public async Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null)
 		{
 			try
 			{
                 var userId = GetCurrentUserId();
+                var userRole = GetCurrentUserRole();
+				var userProfileContext = await BuildRequesterProfileContextAsync(userId, userRole);
 
 				if (string.IsNullOrWhiteSpace(question))
 				{
@@ -61,9 +64,21 @@ namespace BusinessLogic.Service.Chat
 					};
 				}
 
-				_logger.LogInformation($"[ChatbotService] Asking question: '{question}', topK: {topK}, RAG URL: {_ragApiBaseUrl}/ask");
+				var activeSession = await GetOrCreateActiveSessionAsync(userId, sessionId);
+				var effectiveSessionId = activeSession.Id;
 
-				var request = new { question, top_k = topK, role = "user" };
+				_logger.LogInformation($"[ChatbotService] Asking question: '{question}', topK: {topK}, sessionId: {effectiveSessionId}, RAG URL: {_ragApiBaseUrl}/ask");
+
+				var request = new
+				{
+					question,
+					top_k = topK,
+					role = MapRoleForRag(userRole),
+					session_id = effectiveSessionId,
+					user_id = userId,
+					user_profile_context = userProfileContext,
+					save_to_db = false
+				};
 				var json = JsonSerializer.Serialize(request);
 				var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -77,11 +92,12 @@ namespace BusinessLogic.Service.Chat
 				{
 					var errorContent = await response.Content.ReadAsStringAsync();
 					_logger.LogError($"[ChatbotService] RAG API error {response.StatusCode}: {errorContent}");
-                   await SaveConversationAsync(userId, question, "Lỗi khi gọi RAG API", ChatMessageStatus.Error, errorContent);
+                   await SaveConversationAsync(effectiveSessionId, userId, userRole, question, "Lỗi khi gọi RAG API", ChatMessageStatus.Error, errorContent);
 					return new ChatbotResponseDto
 					{
 						Success = false,
 						Message = "Lỗi khi gọi RAG API",
+						SessionId = effectiveSessionId,
 						Answer = null
 					};
 				}
@@ -94,11 +110,12 @@ namespace BusinessLogic.Service.Chat
 				if (apiResponse == null)
 				{
 					_logger.LogError("[ChatbotService] Failed to deserialize RAG API response");
-                   await SaveConversationAsync(userId, question, "Không nhận được dữ liệu từ RAG API", ChatMessageStatus.Error, "Deserialize response failed");
+                   await SaveConversationAsync(effectiveSessionId, userId, userRole, question, "Không nhận được dữ liệu từ RAG API", ChatMessageStatus.Error, "Deserialize response failed");
 					return new ChatbotResponseDto
 					{
 						Success = false,
 						Message = "Không nhận được dữ liệu từ RAG API",
+						SessionId = effectiveSessionId,
 						Answer = null
 					};
 				}
@@ -108,11 +125,12 @@ namespace BusinessLogic.Service.Chat
 				if (!string.IsNullOrWhiteSpace(apiResponse.Error))
 				{
 					_logger.LogWarning($"[ChatbotService] RAG API returned error: {apiResponse.Error}");
-                   await SaveConversationAsync(userId, question, apiResponse.Error, ChatMessageStatus.Error, apiResponse.Error);
+                   await SaveConversationAsync(effectiveSessionId, userId, userRole, question, apiResponse.Error, ChatMessageStatus.Error, apiResponse.Error);
 					return new ChatbotResponseDto
 					{
 						Success = false,
 						Message = apiResponse.Error,
+						SessionId = apiResponse.SessionId ?? effectiveSessionId,
 						Answer = null
 					};
 				}
@@ -122,12 +140,16 @@ namespace BusinessLogic.Service.Chat
 					: apiResponse.Answer;
 
 				_logger.LogInformation($"[ChatbotService] Final answer: '{finalAnswer.Substring(0, Math.Min(100, finalAnswer.Length))}...'");
-				await SaveConversationAsync(userId, question, finalAnswer, ChatMessageStatus.Final);
+				var returnedSessionId = string.IsNullOrWhiteSpace(apiResponse.SessionId)
+					? effectiveSessionId
+					: apiResponse.SessionId!;
+				await SaveConversationAsync(returnedSessionId, userId, userRole, question, finalAnswer, ChatMessageStatus.Final);
 
 				return new ChatbotResponseDto
 				{
 					Success = true,
 					Message = "Thành công",
+					SessionId = returnedSessionId,
 					Answer = finalAnswer,
 					Sources = apiResponse.Sources != null ? apiResponse.Sources.Select(s => new SourceDto
 					{
@@ -140,11 +162,14 @@ namespace BusinessLogic.Service.Chat
 			{
 				_logger.LogError($"[ChatbotService] Error in AskQuestionAsync: {ex.Message}\n{ex.StackTrace}", ex);
                var userId = GetCurrentUserId();
-				await SaveConversationAsync(userId, question, $"Lỗi: {ex.Message}", ChatMessageStatus.Error, ex.Message);
+				var userRole = GetCurrentUserRole();
+				var fallbackSession = await GetOrCreateActiveSessionAsync(userId, sessionId);
+				await SaveConversationAsync(fallbackSession.Id, userId, userRole, question, $"Lỗi: {ex.Message}", ChatMessageStatus.Error, ex.Message);
 				return new ChatbotResponseDto
 				{
 					Success = false,
 					Message = $"Lỗi: {ex.Message}",
+					SessionId = fallbackSession.Id,
 					Answer = null
 				};
 			}
@@ -153,6 +178,53 @@ namespace BusinessLogic.Service.Chat
 		/// <summary>
 		/// Kiểm tra trạng thái RAG API server
 		/// </summary>
+       public async Task<ChatbotConversationHistoryDto> GetConversationHistoryAsync(string? sessionId = null, int limit = 100)
+		{
+			var userId = GetCurrentUserId();
+			var safeLimit = Math.Clamp(limit, 1, 200);
+
+			ChatbotSession? session = null;
+			if (!string.IsNullOrWhiteSpace(sessionId))
+			{
+				session = await _unitOfWork.ChatbotSessions.GetAsync(
+					s => s.Id == sessionId && s.UserId == userId && s.Status == ChatSessionStatus.Active);
+			}
+
+			if (session == null)
+			{
+				session = await _unitOfWork.ChatbotSessions.GetAsync(
+					s => s.UserId == userId && s.Status == ChatSessionStatus.Active,
+					q => q.OrderByDescending(s => s.StartedAt));
+			}
+
+			if (session == null)
+			{
+				return new ChatbotConversationHistoryDto
+				{
+					SessionId = null,
+					Messages = new List<ChatbotHistoryMessageDto>()
+				};
+			}
+
+			var messages = (await _unitOfWork.ChatbotMessages.GetAllAsync(
+				m => m.SessionId == session.Id,
+				q => q.OrderByDescending(m => m.CreatedAt).Take(safeLimit)))
+				.OrderBy(m => m.CreatedAt)
+				.Select(m => new ChatbotHistoryMessageDto
+				{
+					Sender = m.Sender,
+					Content = m.Content,
+					CreatedAt = m.CreatedAt
+				})
+				.ToList();
+
+			return new ChatbotConversationHistoryDto
+			{
+				SessionId = session.Id,
+				Messages = messages
+			};
+		}
+
 		public async Task<HealthStatusDto> CheckHealthAsync()
 		{
 			try
@@ -222,26 +294,141 @@ namespace BusinessLogic.Service.Chat
 				: RoleEnum.Student;
 		}
 
-		private async Task SaveConversationAsync(string userId, string question, string answer, ChatMessageStatus assistantStatus, string? errorMessage = null)
+		private static string MapRoleForRag(RoleEnum role)
+		{
+			return role switch
+			{
+				RoleEnum.Admin => "admin",
+				RoleEnum.Organizer => "staff",
+				RoleEnum.Approver => "staff",
+				_ => "user",
+			};
+		}
+
+		private async Task<string> BuildRequesterProfileContextAsync(string userId, RoleEnum role)
+		{
+			if (string.IsNullOrWhiteSpace(userId) || userId == "anonymous")
+			{
+				return string.Empty;
+			}
+
+			try
+			{
+				var user = await _unitOfWork.Users.GetAsync(
+					u => u.Id == userId,
+					q => q
+						.Include(u => u.Role)
+						.Include(u => u.StudentProfile)
+							.ThenInclude(sp => sp!.Department)
+						.Include(u => u.StaffProfile)
+							.ThenInclude(sp => sp!.Department)
+				);
+
+				if (user == null)
+				{
+					return string.Empty;
+				}
+
+				var lines = new List<string>
+				{
+					$"- Họ tên: {user.FullName}",
+					$"- Vai trò hệ thống: {role}",
+					$"- Email: {user.Email}",
+				};
+
+				if (!string.IsNullOrWhiteSpace(user.Phone))
+				{
+					lines.Add($"- Số điện thoại: {user.Phone}");
+				}
+
+				if (user.StudentProfile != null)
+				{
+					lines.Add("- Nhóm người dùng: Student");
+					if (!string.IsNullOrWhiteSpace(user.StudentProfile.StudentCode))
+					{
+						lines.Add($"- Mã sinh viên: {user.StudentProfile.StudentCode}");
+					}
+					if (!string.IsNullOrWhiteSpace(user.StudentProfile.CurrentSemester))
+					{
+						lines.Add($"- Học kỳ hiện tại: {user.StudentProfile.CurrentSemester}");
+					}
+					if (!string.IsNullOrWhiteSpace(user.StudentProfile.Department?.Name))
+					{
+						lines.Add($"- Khoa/Bộ môn: {user.StudentProfile.Department.Name}");
+					}
+				}
+
+				if (user.StaffProfile != null)
+				{
+					lines.Add("- Nhóm người dùng: Staff");
+					if (!string.IsNullOrWhiteSpace(user.StaffProfile.StaffCode))
+					{
+						lines.Add($"- Mã nhân sự: {user.StaffProfile.StaffCode}");
+					}
+					if (!string.IsNullOrWhiteSpace(user.StaffProfile.Position))
+					{
+						lines.Add($"- Chức vụ: {user.StaffProfile.Position}");
+					}
+					if (!string.IsNullOrWhiteSpace(user.StaffProfile.Department?.Name))
+					{
+						lines.Add($"- Khoa/Bộ môn: {user.StaffProfile.Department.Name}");
+					}
+				}
+
+				return string.Join("\n", lines);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogWarning($"[ChatbotService] Failed to build requester profile context: {ex.Message}");
+				return string.Empty;
+			}
+		}
+
+		private async Task<ChatbotSession> GetOrCreateActiveSessionAsync(string userId, string? requestedSessionId)
+		{
+			ChatbotSession? session = null;
+
+			if (!string.IsNullOrWhiteSpace(requestedSessionId))
+			{
+				session = await _unitOfWork.ChatbotSessions.GetAsync(
+					s => s.Id == requestedSessionId && s.UserId == userId && s.Status == ChatSessionStatus.Active);
+			}
+
+			if (session == null)
+			{
+				session = await _unitOfWork.ChatbotSessions.GetAsync(
+					s => s.UserId == userId && s.Status == ChatSessionStatus.Active,
+					q => q.OrderByDescending(s => s.StartedAt));
+			}
+
+			if (session != null)
+			{
+				return session;
+			}
+
+			session = new ChatbotSession
+			{
+				Id = string.IsNullOrWhiteSpace(requestedSessionId) ? Guid.NewGuid().ToString() : requestedSessionId,
+				UserId = userId,
+				StartedAt = DateTime.UtcNow,
+				Status = ChatSessionStatus.Active
+			};
+
+			await _unitOfWork.ChatbotSessions.CreateAsync(session);
+			await _unitOfWork.SaveChangesAsync();
+			return session;
+		}
+
+		private async Task SaveConversationAsync(string sessionId, string userId, RoleEnum userRole, string question, string answer, ChatMessageStatus assistantStatus, string? errorMessage = null)
 		{
 			try
 			{
-               var userRole = GetCurrentUserRole();
-
 				var session = await _unitOfWork.ChatbotSessions.GetAsync(
-					s => s.UserId == userId && s.Status == ChatSessionStatus.Active,
-					q => q.OrderByDescending(s => s.StartedAt));
+					s => s.Id == sessionId && s.UserId == userId && s.Status == ChatSessionStatus.Active);
 
 				if (session == null)
 				{
-					session = new ChatbotSession
-					{
-						UserId = userId,
-						StartedAt = DateTime.UtcNow,
-						Status = ChatSessionStatus.Active
-					};
-
-					await _unitOfWork.ChatbotSessions.CreateAsync(session);
+					session = await GetOrCreateActiveSessionAsync(userId, sessionId);
 				}
 
 				var userMessage = new ChatbotMessage
