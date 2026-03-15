@@ -2,7 +2,9 @@ import json
 import os
 import re
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from decimal import Decimal
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, AsyncGenerator
@@ -47,6 +49,7 @@ class AskRequest(BaseModel):
     role: str = Field(default="user")
     session_id: Optional[str] = Field(default=None, description="Session ID for conversation tracking")
     user_id: Optional[str] = Field(default=None, description="User ID to save conversation to database")
+    user_profile_context: Optional[str] = Field(default=None, description="Requester profile context for personalization")
     save_to_db: bool = Field(default=True, description="Whether to save conversation to database")
     
 
@@ -697,30 +700,67 @@ class RagEngine:
         self._index = index
         self._last_reload = datetime.now().isoformat()
 
-        faiss.write_index(index, str(self.index_path))
-        with self.chunks_path.open("w", encoding="utf-8") as f:
-            json.dump([{"text": c.text, "meta": c.meta} for c in chunks], f, ensure_ascii=False)
-        with self.meta_path.open("w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "embedding_model": self.embedding_model_name,
-                    "llm_model": self.llm_model_name,
-                    "kb_chunks": len(chunks),
-                    "updated_at": self._last_reload,
-                },
-                f,
-                ensure_ascii=False,
-                indent=2,
-            )
+        self._write_index_atomic(index)
+        self._write_json_atomic(
+            self.chunks_path,
+            [{"text": c.text, "meta": self._to_json_compatible(c.meta)} for c in chunks],
+        )
+        self._write_json_atomic(
+            self.meta_path,
+            {
+                "embedding_model": self.embedding_model_name,
+                "llm_model": self.llm_model_name,
+                "kb_chunks": len(chunks),
+                "updated_at": self._last_reload,
+            },
+            indent=2,
+        )
+
+    def _write_json_atomic(self, path: Path, payload: Any, *, indent: int | None = None) -> None:
+        tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+        with tmp_path.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=indent)
+        tmp_path.replace(path)
+
+    def _to_json_compatible(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: self._to_json_compatible(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._to_json_compatible(item) for item in value]
+        if isinstance(value, tuple):
+            return [self._to_json_compatible(item) for item in value]
+        if isinstance(value, Decimal):
+            return int(value) if value == value.to_integral_value() else float(value)
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value
+
+    def _write_index_atomic(self, index: faiss.IndexFlatIP) -> None:
+        tmp_path = self.index_path.with_suffix(f"{self.index_path.suffix}.tmp")
+        faiss.write_index(index, str(tmp_path))
+        tmp_path.replace(self.index_path)
+
+    def _discard_persisted_index(self, reason: str) -> None:
+        print(f"[RAG] Persisted KB cache is invalid: {reason}. Rebuilding from database.")
+        for path in (self.index_path, self.chunks_path, self.meta_path):
+            try:
+                if path.exists():
+                    path.unlink()
+            except OSError as exc:
+                print(f"[RAG] Failed to remove stale cache file {path.name}: {exc}")
 
     def _load_index_if_exists(self) -> bool:
         if not (self.index_path.exists() and self.chunks_path.exists()):
             return False
 
-        index = faiss.read_index(str(self.index_path))
-        with self.chunks_path.open("r", encoding="utf-8") as f:
-            raw_chunks = json.load(f)
-        chunks = [Chunk(text=item["text"], meta=item["meta"]) for item in raw_chunks]
+        try:
+            index = faiss.read_index(str(self.index_path))
+            with self.chunks_path.open("r", encoding="utf-8") as f:
+                raw_chunks = json.load(f)
+            chunks = [Chunk(text=item["text"], meta=item["meta"]) for item in raw_chunks]
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, RuntimeError) as exc:
+            self._discard_persisted_index(str(exc))
+            return False
 
         self._index = index
         self._chunks = chunks
@@ -817,6 +857,68 @@ class RagEngine:
         
         return "\n".join(context_lines)
 
+    def _load_session_context_from_db(self, session_id: Optional[str], user_id: Optional[str]) -> None:
+        """Load persisted chatbot messages into current in-memory session if needed."""
+        if not session_id or not user_id or not self.db_service:
+            return
+        if session_id in self._sessions and self._sessions[session_id]:
+            return
+
+        try:
+            rows = self.db_service.get_session_history(
+                session_id=session_id,
+                user_id=user_id,
+                limit_messages=12,
+            )
+            if not rows:
+                return
+
+            hydrated_messages: list[ConversationMessage] = []
+            for row in rows:
+                sender = str(row.get("sender", "")).lower()
+                role = "assistant" if sender == "assistant" else "user"
+                raw_timestamp = row.get("created_at")
+                timestamp = raw_timestamp.isoformat() if isinstance(raw_timestamp, datetime) else str(raw_timestamp)
+                hydrated_messages.append(
+                    ConversationMessage(
+                        role=role,
+                        content=str(row.get("content", "")),
+                        timestamp=timestamp,
+                    )
+                )
+
+            self._sessions[session_id] = hydrated_messages
+        except Exception as exc:
+            print(f"[RAG] Failed to hydrate session from DB: {exc}")
+
+    def _get_user_personal_history_context(self, user_id: Optional[str], current_session_id: Optional[str]) -> str:
+        """Get cross-session user context for personalized responses."""
+        if not user_id or not self.db_service:
+            return ""
+
+        try:
+            rows = self.db_service.get_user_recent_history(
+                user_id=user_id,
+                limit_messages=8,
+                exclude_session_id=current_session_id,
+            )
+            if not rows:
+                return ""
+
+            context_lines = []
+            for row in rows:
+                sender = str(row.get("sender", "")).lower()
+                role_text = "Người dùng" if sender == "user" else "Cố vấn"
+                content = str(row.get("content", "")).strip()
+                if not content:
+                    continue
+                context_lines.append(f"{role_text}: {content[:260]}")
+
+            return "\n".join(context_lines)
+        except Exception as exc:
+            print(f"[RAG] Failed to load user personalized history: {exc}")
+            return ""
+
     def retrieve(self, question: str, top_k: int, role: str) -> list[dict[str, Any]]:
         if self._index is None or not self._chunks:
             self.warmup()
@@ -884,7 +986,7 @@ class RagEngine:
             "- Khi đang ở chế độ fallback, chất lượng tổng hợp ngữ nghĩa có thể thấp hơn chế độ LLM đầy đủ."
         )
 
-    def answer(self, question: str, top_k: int, role: str, session_id: Optional[str] = None, user_id: Optional[str] = None, save_to_db: bool = True) -> tuple[str, list[dict[str, Any]], str]:
+    def answer(self, question: str, top_k: int, role: str, session_id: Optional[str] = None, user_id: Optional[str] = None, user_profile_context: Optional[str] = None, save_to_db: bool = True) -> tuple[str, list[dict[str, Any]], str]:
         """
         Answer a question with RAG and conversation context.
         Returns: (answer, sources, session_id)
@@ -903,12 +1005,30 @@ class RagEngine:
         elif session_id not in self._sessions:
             self._sessions[session_id] = []
 
+        if save_to_db and user_id and self.db_service:
+            try:
+                session_id = self.db_service.ensure_chat_session(user_id=user_id, session_id=session_id)
+            except Exception as exc:
+                print(f"[RAG] Failed to ensure DB chatbot session: {exc}")
+
+        self._load_session_context_from_db(session_id=session_id, user_id=user_id)
+        if session_id not in self._sessions:
+            self._sessions[session_id] = []
+
         # Build context with conversation history
         context = "\n\n".join(
             [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
         )
         
         conversation_history = self._get_session_context(session_id)
+        user_personal_history = self._get_user_personal_history_context(
+            user_id=user_id,
+            current_session_id=session_id,
+        )
+        user_personal_history = self._get_user_personal_history_context(
+            user_id=user_id,
+            current_session_id=session_id,
+        )
 
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
@@ -955,6 +1075,21 @@ class RagEngine:
         if conversation_history:
             user_prompt += (
                 f"Lịch sử hội thoại:\n{conversation_history}\n\n"
+            )
+
+        if user_personal_history:
+            user_prompt += (
+                f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
+            )
+
+        if user_profile_context:
+            user_prompt += (
+                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
+            )
+
+        if user_personal_history:
+            user_prompt += (
+                f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
             )
         
         user_prompt += (
@@ -984,12 +1119,14 @@ class RagEngine:
             # Save to database if requested
             if save_to_db and user_id and self.db_service:
                 try:
-                    self.db_service.save_conversation_batch(
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
                         user_id=user_id,
                         question=question,
                         answer=answer,
-                        title=None,
+                        session_id=session_id,
+                        role=normalized_role,
                     )
+                    session_id = saved_session_id
                 except Exception as e:
                     print(f"[RAG] Failed to save conversation to DB: {e}")
             
@@ -1007,18 +1144,20 @@ class RagEngine:
             # Save to database if requested
             if save_to_db and user_id and self.db_service:
                 try:
-                    self.db_service.save_conversation_batch(
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
                         user_id=user_id,
                         question=question,
                         answer=fallback_answer,
-                        title=None,
+                        session_id=session_id,
+                        role=normalized_role,
                     )
+                    session_id = saved_session_id
                 except Exception as e:
                     print(f"[RAG] Failed to save fallback conversation to DB: {e}")
             
             return fallback_answer, retrieved, session_id
 
-    async def answer_stream(self, question: str, top_k: int, role: str, session_id: Optional[str] = None, user_id: Optional[str] = None, save_to_db: bool = True) -> AsyncGenerator[str, None]:
+    async def answer_stream(self, question: str, top_k: int, role: str, session_id: Optional[str] = None, user_id: Optional[str] = None, user_profile_context: Optional[str] = None, save_to_db: bool = True) -> AsyncGenerator[str, None]:
         """
         Answer a question with streaming tokens.
         Yields: JSON lines with streaming content
@@ -1041,12 +1180,26 @@ class RagEngine:
         elif session_id not in self._sessions:
             self._sessions[session_id] = []
 
+        if save_to_db and user_id and self.db_service:
+            try:
+                session_id = self.db_service.ensure_chat_session(user_id=user_id, session_id=session_id)
+            except Exception as exc:
+                print(f"[RAG] Failed to ensure DB chatbot session: {exc}")
+
+        self._load_session_context_from_db(session_id=session_id, user_id=user_id)
+        if session_id not in self._sessions:
+            self._sessions[session_id] = []
+
         # Build context
         context = "\n\n".join(
             [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
         )
         
         conversation_history = self._get_session_context(session_id)
+        user_personal_history = self._get_user_personal_history_context(
+            user_id=user_id,
+            current_session_id=session_id,
+        )
 
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
@@ -1093,6 +1246,16 @@ class RagEngine:
         if conversation_history:
             user_prompt += (
                 f"Lịch sử hội thoại:\n{conversation_history}\n\n"
+            )
+
+        if user_personal_history:
+            user_prompt += (
+                f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
+            )
+
+        if user_profile_context:
+            user_prompt += (
+                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
             )
         
         user_prompt += (
@@ -1151,12 +1314,14 @@ class RagEngine:
             # Save to database if requested
             if save_to_db and user_id and self.db_service:
                 try:
-                    self.db_service.save_conversation_batch(
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
                         user_id=user_id,
                         question=question,
                         answer=full_answer,
-                        title=None,
+                        session_id=session_id,
+                        role=normalized_role,
                     )
+                    session_id = saved_session_id
                 except Exception as e:
                     print(f"[RAG] Failed to save streaming conversation to DB: {e}")
 
@@ -1178,12 +1343,14 @@ class RagEngine:
             # Save to database if requested
             if save_to_db and user_id and self.db_service:
                 try:
-                    self.db_service.save_conversation_batch(
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
                         user_id=user_id,
                         question=question,
                         answer=fallback_answer,
-                        title=None,
+                        session_id=session_id,
+                        role=normalized_role,
                     )
+                    session_id = saved_session_id
                 except Exception as e:
                     print(f"[RAG] Failed to save error fallback to DB: {e}")
             
@@ -1205,26 +1372,25 @@ class RagEngine:
             "last_reload": self._last_reload,
         }
 
-
-app = FastAPI(title="AEMS Smart Event Chatbot API", version="2.0.0")
 engine = RagEngine()
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize the engine and start auto-reload"""
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    """Initialize and clean up the engine lifecycle."""
     print("[RAG] Starting up...")
     engine.warmup()
     engine.start_auto_reload()
     print("[RAG] Startup complete. Auto-reload is active.")
+    try:
+        yield
+    finally:
+        print("[RAG] Shutting down...")
+        engine.stop_auto_reload()
+        print("[RAG] Shutdown complete.")
 
 
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Stop auto-reload task on shutdown"""
-    print("[RAG] Shutting down...")
-    engine.stop_auto_reload()
-    print("[RAG] Shutdown complete.")
+app = FastAPI(title="AEMS Smart Event Chatbot API", version="2.0.0", lifespan=lifespan)
 
 
 @app.get("/health")
@@ -1296,6 +1462,7 @@ def ask(request: AskRequest) -> dict[str, Any]:
             role=request.role,
             session_id=request.session_id,
             user_id=request.user_id,
+            user_profile_context=request.user_profile_context,
             save_to_db=request.save_to_db,
         )
         return {
@@ -1332,6 +1499,7 @@ async def ask_stream(request: AskRequest) -> StreamingResponse:
                 role=request.role,
                 session_id=request.session_id,
                 user_id=request.user_id,
+                user_profile_context=request.user_profile_context,
                 save_to_db=request.save_to_db,
             ):
                 yield chunk
@@ -1376,4 +1544,4 @@ def clear_conversation(session_id: str) -> dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("rag_api_server:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

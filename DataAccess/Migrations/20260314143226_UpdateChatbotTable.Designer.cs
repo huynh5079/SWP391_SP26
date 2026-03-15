@@ -4,6 +4,7 @@ using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(AEMSContext))]
-    partial class AEMSContextModelSnapshot : ModelSnapshot
+    [Migration("20260314143226_UpdateChatbotTable")]
+    partial class UpdateChatbotTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -268,6 +271,7 @@ namespace DataAccess.Migrations
             modelBuilder.Entity("DataAccess.Entities.ChatbotMessage", b =>
                 {
                     b.Property<string>("Id")
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Content")
@@ -287,11 +291,6 @@ namespace DataAccess.Migrations
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -335,6 +334,7 @@ namespace DataAccess.Migrations
             modelBuilder.Entity("DataAccess.Entities.ChatbotSession", b =>
                 {
                     b.Property<string>("Id")
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")

@@ -2,6 +2,12 @@
 class ChatbotManager {
     constructor() {
         this.apiUrl = '/api/v1/chatbot';
+        this.storageKey = 'aems_chatbot_session_id';
+        this.sessionId = sessionStorage.getItem(this.storageKey) || localStorage.getItem(this.storageKey) || null;
+        if (this.sessionId) {
+            sessionStorage.setItem(this.storageKey, this.sessionId);
+            localStorage.removeItem(this.storageKey);
+        }
         this.isLoading = false;
         this.conversationHistory = [];
         this.init();
@@ -27,6 +33,7 @@ class ChatbotManager {
         }
 
         this.attachEventListeners();
+        this.loadConversationHistory();
         this.checkHealthStatus();
     }
 
@@ -103,7 +110,8 @@ class ChatbotManager {
                 },
                 body: JSON.stringify({
                     question: question,
-                    topK: 5  // Will be mapped to TopK by API
+                    topK: 5,  // Will be mapped to TopK by API
+                    sessionId: this.sessionId
                 })
             });
 
@@ -115,6 +123,12 @@ class ChatbotManager {
             const data = await response.json();
 
             if (data.success) {
+                const returnedSessionId = data.data.sessionId || data.data.SessionId;
+                if (returnedSessionId && returnedSessionId !== this.sessionId) {
+                    this.sessionId = returnedSessionId;
+                    sessionStorage.setItem(this.storageKey, returnedSessionId);
+                }
+
                 // Hiển thị câu trả lời
                 const answer = data.data.answer || 'Không có câu trả lời';
                 this.addMessageToLog(answer, 'bot', data.data.sources);
@@ -132,6 +146,52 @@ class ChatbotManager {
             this.isLoading = false;
             this.setLoadingState(false);
             this.focusInput();
+        }
+    }
+
+    async loadConversationHistory() {
+        try {
+            const query = this.sessionId ? `?sessionId=${encodeURIComponent(this.sessionId)}&limit=100` : '?limit=100';
+            const response = await fetch(`${this.apiUrl}/history${query}`);
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            if (!data?.success || !data?.data) {
+                return;
+            }
+
+            const historySessionId = data.data.sessionId || data.data.SessionId;
+            if (historySessionId) {
+                this.sessionId = historySessionId;
+                sessionStorage.setItem(this.storageKey, historySessionId);
+            }
+
+            const messages = data.data.messages || data.data.Messages || [];
+            if (!Array.isArray(messages) || messages.length === 0) {
+                return;
+            }
+
+            this.chatbotLog.innerHTML = '';
+            this.conversationHistory = [];
+
+            messages.forEach(m => {
+                const sender = (m.sender || m.Sender || '').toLowerCase();
+                const content = m.content || m.Content || '';
+                if (!content) return;
+
+                if (sender === 'user') {
+                    this.addMessageToLog(content, 'user');
+                    this.conversationHistory.push({ role: 'user', message: content });
+                } else {
+                    this.addMessageToLog(content, 'bot');
+                    this.conversationHistory.push({ role: 'bot', message: content });
+                }
+            });
+        } catch (error) {
+            console.warn('Không thể tải lịch sử chatbot:', error);
         }
     }
 
