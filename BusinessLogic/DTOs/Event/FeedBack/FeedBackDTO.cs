@@ -18,5 +18,23 @@ namespace BusinessLogic.DTOs.Event.EventFeedbackSummary
 			public string? StudentId { get; set; }
 			public string? StudentCode { get; set; }
 		}
-	
+      public class EventFeedbackAnalysisDto
+		{
+			public string EventId { get; set; } = "";
+			public string EventTitle { get; set; } = "";
+			public int TotalFeedbacks { get; set; }
+			public FeedBackRatingsEnum AverageRating { get; set; }
+		
+			public FeedbackStatusEnum Status { get; set; }
+			
+			public int CommentCount { get; set; }
+			public DateTime? LatestFeedbackAt { get; set; }
+			public AppriciateEventEnum AppriciateLevel { get; set; }
+	}
+		public class EventTopRatingDto
+		{
+			public string EventId { get; set; } = "";
+			public string EventTitle { get; set; } = "";
+			public double AverageRating { get; set; }
+	}
 }
