@@ -8,5 +8,19 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 {
 	internal class IFeedBackService
 	{
+
+		Task<EventFeedbackAnalysisDto> AnalyzeEventFeedback(string eventId);
+		//check spam
+		Task<EventFeedbackSummaryDto> CreateFeedback(string studentId, string eventId, string? comment, double rating);
+		Task<bool> HasStudentFeedback(string studentId, string eventId);
+		Task<List<EventFeedbackSummaryDto>> GetFeedbacksByEvent(string eventId);
+		Task<EventFeedbackSummaryDto> GetEventFeedbackSummary(string eventId);
+		Task DeleteFeedback(string feedbackId);
+		//include rating and comment
+		Task<EventFeedbackSummaryDto>UpdateFeedback(string feedbackId, string? comment, double rating);
+		Task<List<EventTopRatingDto>> GetTopRatedEvents(int top);
+
+
+
 	}
 }
