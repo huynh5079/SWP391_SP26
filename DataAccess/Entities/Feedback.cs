@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using DataAccess.Enum;
 
 namespace DataAccess.Entities;
 
@@ -12,17 +11,13 @@ public partial class Feedback : BaseEntity
 
     public string? StudentId { get; set; }
 
-    public double? Rating { get; set; }
+    public int? Rating { get; set; }
 
     public string? Comment { get; set; }
 
-    public FeedbackStatusEnum Status { get; set; }
+    //public DateTime? CreatedAt { get; set; }
 
-    public FeedBackRatingsEnum RatingEvent { get; set; }
-
-	//public DateTime? CreatedAt { get; set; }
-
-	public virtual Event? Event { get; set; }
+    public virtual Event? Event { get; set; }
 
     public virtual StudentProfile? Student { get; set; }
 }
