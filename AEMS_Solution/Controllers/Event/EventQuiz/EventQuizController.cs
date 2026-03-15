@@ -153,20 +153,10 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             try
             {
                 var userId = EnsureCurrentUserId();
-                var request = new CreateQuizSetRequestDto
-                {
-                    UserId = userId,
-                    EventId = vm.EventId,
-                    SourceQuizSetId = string.IsNullOrWhiteSpace(vm.SelectedQuizSetId) ? null : vm.SelectedQuizSetId,
-                    TopicId = string.IsNullOrWhiteSpace(vm.TopicId) ? null : vm.TopicId,
-                    Title = vm.Quiz?.Title ?? string.Empty,
-                    Type = vm.Quiz?.Type ?? default,
-                    PassingScore = vm.Quiz?.PassingScore,
-                    FileQuiz = vm.Quiz?.FileQuiz,
-                    LiveQuizLink = vm.Quiz?.Type == DataAccess.Enum.QuizTypeEnum.LiveQuiz ? vm.Quiz.LiveQuizLink : null,
-                    AllowReview = vm.Quiz?.AllowReview ?? false,
-                    SharingStatus = vm.Quiz?.SharingStatus ?? DataAccess.Enum.QuizSetVisibilityEnum.Private
-                };
+                var request = _mapper.Map<CreateQuizSetRequestDto>(vm);
+                request.UserId = userId;
+                request.SourceQuizSetId = string.IsNullOrWhiteSpace(request.SourceQuizSetId) ? null : request.SourceQuizSetId;
+                request.TopicId = string.IsNullOrWhiteSpace(request.TopicId) ? null : request.TopicId;
 
                 var created = await _quizService.CreateQuizSetAsync(request);
 
@@ -237,12 +227,8 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     QuizId = quizId
                 });
 
-                vm.Detail = detail;
-                vm.Quiz = detail.Quiz;
-                vm.Questions = detail.Questions;
-                vm.Scores = scores.Scores;
-                vm.EventId = detail.Quiz.EventId;
-                vm.TopicId = detail.Quiz.TopicId ?? string.Empty;
+                vm = _mapper.Map<EventQuizViewModel>(detail);
+                vm.Scores = _mapper.Map<EventQuizViewModel>(scores).Scores;
                 vm.EventTitle = ownerEvent.Title;
                 vm.TopicName = ownerEvent.TopicName ?? string.Empty;
                 vm.NewQuestion.QuizId = quizId;
@@ -281,11 +267,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     throw new InvalidOperationException("Không tìm thấy quiz thuộc organizer hiện tại.");
                 }
 
-                vm.Detail = preview.Preview;
-                vm.Quiz = preview.Preview.Quiz;
-                vm.Questions = preview.Preview.Questions;
-                vm.EventId = preview.Preview.Quiz.EventId;
-                vm.TopicId = preview.Preview.Quiz.TopicId ?? string.Empty;
+                vm = _mapper.Map<EventQuizViewModel>(preview.Preview);
                 vm.EventTitle = ownerEvent.Title;
                 vm.TopicName = ownerEvent.TopicName ?? string.Empty;
             }

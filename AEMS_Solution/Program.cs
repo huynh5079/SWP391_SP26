@@ -73,7 +73,7 @@ builder.Services.AddScoped<IChatPermissionService, ChatPermissionService>();
 builder.Services.AddScoped<IChatUserService, ChatUserService>();
 
 // RAG/Chatbot Services
-builder.Services.AddScoped<BusinessLogic.Service.IChatbotService, BusinessLogic.Service.ChatbotService>();
+builder.Services.AddScoped<BusinessLogic.Service.Chat.IChatbotService, BusinessLogic.Service.Chat.ChatbotService>();
 
 // Register refactored services
 builder.Services.AddScoped<IEventService, EventService>();

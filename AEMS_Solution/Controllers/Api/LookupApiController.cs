@@ -1,4 +1,4 @@
-using AEMS_Solution.Controllers.Api;
+using AEMS_Solution.Controllers.Api.Chatbot;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

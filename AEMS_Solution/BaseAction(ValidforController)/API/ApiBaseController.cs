@@ -1,7 +1,7 @@
 using BusinessLogic.Helper;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AEMS_Solution.Controllers.Api
+namespace AEMS_Solution.Controllers.Api.Chatbot
 {
     [ApiController]
     [Route("api/v1/[controller]")]

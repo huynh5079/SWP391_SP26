@@ -20,6 +20,8 @@ namespace DataAccess.Repositories
         public IGenericRepository<Role> Roles { get; }
         public IGenericRepository<SystemErrorLog> SystemErrorLogs { get; }
         public IGenericRepository<Notification> Notifications { get; }
+        public IGenericRepository<ChatbotSession> ChatbotSessions { get; }
+		public IGenericRepository<ChatbotMessage> ChatbotMessages { get; }
         public IGenericRepository<Event> Events { get; }
         public IGenericRepository<EventAgenda> EventAgenda { get; }
         public IGenericRepository<EventDocument> EventDocuments { get; }
@@ -56,6 +58,8 @@ namespace DataAccess.Repositories
             Roles = new GenericRepository<Role>(_ctx);
             SystemErrorLogs = new GenericRepository<SystemErrorLog>(_ctx);
             Notifications = new GenericRepository<Notification>(_ctx);
+            ChatbotSessions = new GenericRepository<ChatbotSession>(_ctx);
+			ChatbotMessages = new GenericRepository<ChatbotMessage>(_ctx);
 			// ✅ Update
 			Events = new GenericRepository<Event>(_ctx);
 		    EventAgenda = new GenericRepository<EventAgenda>(_ctx);
