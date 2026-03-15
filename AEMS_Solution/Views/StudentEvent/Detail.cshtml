@@ -7,14 +7,14 @@
     {
         DataAccess.Enum.EventModeEnum.Online => "bi-camera-video",
         DataAccess.Enum.EventModeEnum.Hybrid => "bi-laptop",
-        _                                     => "bi-geo-alt"
+        _ => "bi-geo-alt"
     };
     string statusClass = Model.Status switch
     {
-        DataAccess.Enum.EventStatusEnum.Upcoming  => "bg-info text-dark",
+        DataAccess.Enum.EventStatusEnum.Upcoming => "bg-info text-dark",
         DataAccess.Enum.EventStatusEnum.Happening => "bg-success",
         DataAccess.Enum.EventStatusEnum.Published => "bg-primary",
-        _                                          => "bg-secondary"
+        _ => "bg-secondary"
     };
     var organizerInitials = string.IsNullOrWhiteSpace(Model.OrganizerName)
         ? "OG"
@@ -22,95 +22,745 @@
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Take(2)
             .Select(x => char.ToUpperInvariant(x[0])));
+    var sortedAgendas = Model.Agendas?
+        .OrderBy(a => a.StartTime.HasValue ? a.StartTime.Value : DateTime.MinValue)
+        .ToList();
 }
 
-<div class="container py-4">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-                <a asp-action="Index" asp-controller="StudentEvent">Sự kiện</a>
-            </li>
-            <li class="breadcrumb-item active">@Model.Title</li>
-        </ol>
-    </nav>
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
-    <div class="row g-4">
-        <!-- ── Left: info ──────────────────────────────────────────────── -->
-        <div class="col-lg-8">
-            @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
-            {
-                <img src="@Model.ThumbnailUrl" alt="@Model.Title"
-                     class="img-fluid rounded-3 mb-3 shadow-sm w-100"
-                     style="max-height: 360px; object-fit: cover;">
+    :root {
+        --accent: #5b7cfa;
+        --accent-light: #eef1ff;
+        --accent-dark: #3a5bdb;
+        --warn: #f59e0b;
+        --warn-light: #fef3c7;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --card-bg: #ffffff;
+        --page-bg: #f8fafc;
+        --radius: 16px;
+        --radius-sm: 10px;
+        --shadow: 0 4px 24px rgba(15,23,42,.07);
+        --shadow-md: 0 8px 40px rgba(15,23,42,.12);
+    }
+
+    body {
+        background: var(--page-bg);
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-main);
+    }
+
+    /* ── Breadcrumb ──────────────────────────────────────── */
+    .ev-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: .82rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+        .ev-breadcrumb a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+            .ev-breadcrumb a:hover {
+                text-decoration: underline;
             }
 
-            <h3 class="fw-bold mb-2">@Model.Title</h3>
+        .ev-breadcrumb .sep {
+            opacity: .4;
+        }
 
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="badge @statusClass fs-6">@Model.Status</span>
+    /* ── Hero ────────────────────────────────────────────── */
+    .ev-hero {
+        position: relative;
+        border-radius: var(--radius);
+        overflow: hidden;
+        height: 320px;
+        margin-bottom: 1.75rem;
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #8b5cf6 100%);
+    }
+
+        .ev-hero img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+    .ev-hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(15,23,42,.85) 0%, rgba(15,23,42,.1) 60%, transparent 100%);
+    }
+
+    .ev-hero-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 1.5rem 2rem;
+    }
+
+        .ev-hero-content h1 {
+            font-family: 'Sora',sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 .6rem;
+            line-height: 1.25;
+            text-shadow: 0 2px 12px rgba(0,0,0,.3);
+        }
+
+    .ev-hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .ev-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .28rem .75rem;
+        border-radius: 999px;
+        font-size: .75rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+        backdrop-filter: blur(8px);
+    }
+
+    .ev-badge-primary {
+        background: rgba(91,124,250,.85);
+        color: #fff;
+    }
+
+    .ev-badge-secondary {
+        background: rgba(255,255,255,.18);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.3);
+    }
+
+    .ev-badge-info {
+        background: rgba(6,182,212,.85);
+        color: #fff;
+    }
+
+    .ev-badge-success {
+        background: rgba(16,185,129,.85);
+        color: #fff;
+    }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    .ev-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    @@media(max-width:991px) {
+        .ev-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ── Card base ───────────────────────────────────────── */
+    .ev-card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+
+    .ev-card-header {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: 1rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+        font-family: 'Sora',sans-serif;
+        font-size: .9rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+        .ev-card-header .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem;
+            flex-shrink: 0;
+        }
+
+        .ev-card-header .icon-blue {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .ev-card-header .icon-amber {
+            background: var(--warn-light);
+            color: var(--warn);
+        }
+
+        .ev-card-header .icon-green {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+    .ev-card-body {
+        padding: 1.25rem 1.4rem;
+    }
+
+    /* ── Description ─────────────────────────────────────── */
+    .ev-description {
+        font-size: .93rem;
+        line-height: 1.75;
+        color: #334155;
+        white-space: pre-line;
+    }
+
+    /* ── Timeline (Agenda) ───────────────────────────────── */
+    .ev-timeline {
+        padding: 0;
+        list-style: none;
+        margin: 0;
+    }
+
+    .ev-timeline-item {
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        gap: 0 1rem;
+        position: relative;
+        padding-bottom: 1.25rem;
+    }
+
+        .ev-timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+            .ev-timeline-item:last-child .ev-tl-line {
+                display: none;
+            }
+
+    .ev-tl-time {
+        text-align: right;
+        padding-top: .1rem;
+        font-family: 'Sora',sans-serif;
+        font-size: .75rem;
+        font-weight: 600;
+        color: var(--accent);
+        line-height: 1.3;
+    }
+
+        .ev-tl-time .end {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+    .ev-tl-body {
+        position: relative;
+        padding-left: 1.1rem;
+    }
+
+        .ev-tl-body::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: .45rem;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px var(--accent);
+            z-index: 1;
+        }
+
+    .ev-tl-line {
+        position: absolute;
+        left: 64px;
+        top: .9rem;
+        bottom: -1.25rem;
+        width: 1px;
+        margin-left: calc(1rem + 4px);
+        background: linear-gradient(to bottom, var(--accent) 0%, var(--border) 100%);
+        opacity: .35;
+    }
+
+    .ev-tl-session {
+        font-family: 'Sora',sans-serif;
+        font-size: .88rem;
+        font-weight: 600;
+        color: var(--text-main);
+        margin-bottom: .2rem;
+    }
+
+    .ev-tl-desc {
+        font-size: .83rem;
+        color: var(--text-muted);
+        margin-bottom: .3rem;
+        line-height: 1.5;
+    }
+
+    .ev-tl-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .ev-tl-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        font-size: .75rem;
+        color: var(--text-muted);
+        background: #f1f5f9;
+        border-radius: 6px;
+        padding: .15rem .5rem;
+    }
+
+    /* ── Info card (right) ───────────────────────────────── */
+    .ev-info-card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border);
+        position: sticky;
+        top: 80px;
+        overflow: hidden;
+    }
+
+    .ev-info-card-head {
+        padding: 1.1rem 1.4rem;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+        color: #fff;
+    }
+
+        .ev-info-card-head h6 {
+            font-family: 'Sora',sans-serif;
+            font-size: .85rem;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            opacity: .8;
+            margin: 0 0 .75rem;
+        }
+
+    .ev-info-rows {
+        padding: .75rem 1.4rem 0;
+    }
+
+    .ev-info-row {
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        padding: .6rem 0;
+        border-bottom: 1px solid var(--border);
+        font-size: .85rem;
+    }
+
+        .ev-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .ev-info-row .ri {
+            color: var(--accent);
+            font-size: .9rem;
+            margin-top: .1rem;
+            flex-shrink: 0;
+        }
+
+        .ev-info-row .label {
+            color: var(--text-muted);
+            font-weight: 500;
+            flex-shrink: 0;
+            min-width: 72px;
+        }
+
+        .ev-info-row .val {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+    /* ── Action area ─────────────────────────────────────── */
+    .ev-action {
+        padding: 1rem 1.4rem 1.25rem;
+    }
+
+    .ev-btn-register {
+        width: 100%;
+        padding: .7rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-family: 'Sora',sans-serif;
+        font-size: .9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+    }
+
+    .ev-btn-primary {
+        background: linear-gradient(135deg,var(--accent),var(--accent-dark));
+        color: #fff;
+    }
+
+        .ev-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(91,124,250,.4);
+        }
+
+    .ev-btn-danger {
+        background: #fff;
+        color: var(--danger);
+        border: 1.5px solid var(--danger) !important;
+    }
+
+        .ev-btn-danger:hover {
+            background: var(--danger-light);
+        }
+
+    .ev-btn-warning {
+        background: linear-gradient(135deg,#f59e0b,#d97706);
+        color: #fff;
+    }
+
+        .ev-btn-warning:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(245,158,11,.35);
+        }
+
+    .ev-btn-success {
+        background: linear-gradient(135deg,#10b981,#059669);
+        color: #fff;
+    }
+
+        .ev-btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(16,185,129,.35);
+        }
+
+    .ev-btn-outline-danger {
+        background: #fff;
+        color: var(--danger);
+        border: 1.5px solid var(--danger);
+    }
+
+    .ev-btn-disabled {
+        background: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .ev-status-pill {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .6rem .9rem;
+        border-radius: var(--radius-sm);
+        font-size: .84rem;
+        font-weight: 500;
+        margin-bottom: .75rem;
+    }
+
+    .ev-status-success {
+        background: var(--success-light);
+        color: #065f46;
+    }
+
+    .ev-status-warning {
+        background: var(--warn-light);
+        color: #92400e;
+    }
+
+    .ev-status-wait {
+        background: var(--accent-light);
+        color: #1e3a8a;
+    }
+
+    /* ── Organizer card ──────────────────────────────────── */
+    .ev-organizer {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.4rem;
+    }
+
+    .ev-org-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Sora',sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg,var(--accent),#8b5cf6);
+    }
+
+        .ev-org-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 14px;
+        }
+
+    .ev-org-info .name {
+        font-family: 'Sora',sans-serif;
+        font-size: .92rem;
+        font-weight: 600;
+    }
+
+    .ev-org-info .role {
+        font-size: .78rem;
+        color: var(--text-muted);
+        margin-bottom: .5rem;
+    }
+
+    .ev-org-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .ev-org-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .3rem .75rem;
+        border-radius: 8px;
+        font-size: .78rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all .15s;
+        border: 1.5px solid;
+    }
+
+    .ev-org-btn-outline {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: #fff;
+    }
+
+        .ev-org-btn-outline:hover {
+            background: var(--accent-light);
+        }
+
+    .ev-org-btn-fill {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+    }
+
+        .ev-org-btn-fill:hover {
+            background: var(--accent-dark);
+        }
+
+    /* ── Feedback ────────────────────────────────────────── */
+    .ev-feedback {
+        padding: 1rem 1.4rem 1.25rem;
+        border-top: 1px solid var(--border);
+    }
+
+        .ev-feedback h6 {
+            font-family: 'Sora',sans-serif;
+            font-size: .85rem;
+            font-weight: 600;
+            margin-bottom: .75rem;
+        }
+
+        .ev-feedback .form-control, .ev-feedback .form-select {
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border);
+            font-size: .84rem;
+            padding: .45rem .75rem;
+        }
+
+            .ev-feedback .form-control:focus, .ev-feedback .form-select:focus {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px rgba(91,124,250,.15);
+            }
+
+    /* ── Capacity bar ────────────────────────────────────── */
+    .cap-bar-wrap {
+        margin-top: .4rem;
+    }
+
+    .cap-bar {
+        height: 5px;
+        border-radius: 99px;
+        background: #e2e8f0;
+        overflow: hidden;
+    }
+
+    .cap-bar-fill {
+        height: 100%;
+        border-radius: 99px;
+        transition: width .5s;
+    }
+</style>
+
+<div class="container py-4" style="max-width:1100px;">
+
+    <!-- Breadcrumb -->
+    <div class="ev-breadcrumb">
+        <a asp-action="Index" asp-controller="StudentEvent"><i class="bi bi-calendar3 me-1"></i>Sự kiện</a>
+        <span class="sep">/</span>
+        <span>@Model.Title</span>
+    </div>
+
+    <!-- Hero -->
+    <div class="ev-hero">
+        @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
+        {
+            <img src="@Model.ThumbnailUrl" alt="@Model.Title" />
+        }
+        <div class="ev-hero-overlay"></div>
+        <div class="ev-hero-content">
+            <h1>@Model.Title</h1>
+            <div class="ev-hero-badges">
+                <span class="ev-badge ev-badge-primary">@Model.Status</span>
                 @if (!string.IsNullOrEmpty(Model.TopicName))
                 {
-                    <span class="badge bg-light border text-dark">@Model.TopicName</span>
+                    <span class="ev-badge ev-badge-secondary">@Model.TopicName</span>
                 }
                 @if (!string.IsNullOrEmpty(Model.SemesterName))
                 {
-                    <span class="badge bg-light border text-dark">@Model.SemesterName</span>
+                    <span class="ev-badge ev-badge-secondary">@Model.SemesterName</span>
                 }
             </div>
+        </div>
+    </div>
 
-            @if (!string.IsNullOrEmpty(Model.Description))
-            {
-                <div class="card shadow-sm mb-3">
-                    <div class="card-body">
-                        <h6 class="fw-bold mb-2"><i class="bi bi-file-text me-1 text-primary"></i>Mô tả</h6>
-                        <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
-                    </div>
+    <!-- Main layout -->
+    <div class="ev-layout">
+
+        <!-- ── LEFT COLUMN ─────────────────────────────────────── -->
+        <div>
+
+            <!-- Mô tả + Chương trình gộp chung -->
+            <div class="ev-card">
+                <div class="ev-card-header">
+                    <div class="icon icon-blue"><i class="bi bi-file-text-fill"></i></div>
+                    Mô tả &amp; Chương trình
                 </div>
-            }
+                <div class="ev-card-body">
 
-            <!-- ── Organizer info ──────────────────────────────────────── -->
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <p class="ev-description mb-4">@Model.Description</p>
+                    }
+
+                    @if (sortedAgendas != null && sortedAgendas.Any())
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div style="height:1px;flex:1;background:var(--border);"></div>
+                            <span style="font-family:'Sora',sans-serif;font-size:.78rem;font-weight:600;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;">
+                                <i class="bi bi-list-task me-1"></i>Lịch trình
+                            </span>
+                            <div style="height:1px;flex:1;background:var(--border);"></div>
+                        </div>
+
+                        <ul class="ev-timeline">
+                            @foreach (var ag in sortedAgendas)
+                            {
+                                <li class="ev-timeline-item">
+                                    <div class="ev-tl-line"></div>
+                                    <div class="ev-tl-time">
+                                        @if (ag.StartTime.HasValue)
+                                        {
+                                            <div>@ag.StartTime.Value.ToString("HH:mm")</div>
+                                        }
+                                        @if (ag.EndTime.HasValue)
+                                        {
+                                            <div class="end">@ag.EndTime.Value.ToString("HH:mm")</div>
+                                        }
+                                    </div>
+                                    <div class="ev-tl-body">
+                                        <div class="ev-tl-session">
+                                            @(!string.IsNullOrWhiteSpace(ag.SessionName) ? ag.SessionName : "Phiên")
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(ag.Description))
+                                        {
+                                            <div class="ev-tl-desc">@ag.Description</div>
+                                        }
+                                        <div class="ev-tl-meta">
+                                            @if (!string.IsNullOrWhiteSpace(ag.SpeakerName))
+                                            {
+                                                <span class="ev-tl-tag"><i class="bi bi-person-fill"></i>@ag.SpeakerName</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(ag.Location))
+                                            {
+                                                <span class="ev-tl-tag"><i class="bi bi-geo-alt-fill"></i>@ag.Location</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (string.IsNullOrEmpty(Model.Description) && (sortedAgendas == null || !sortedAgendas.Any()))
+                    {
+                        <p class="text-muted small mb-0">Chưa có thông tin mô tả hoặc chương trình.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Tổ chức bởi — CUỐI trang trái -->
             @if (!string.IsNullOrEmpty(Model.OrganizerName))
             {
-                <div class="card shadow-sm border-0 bg-light-subtle mb-3">
-                    <div class="card-body d-flex flex-column flex-md-row align-items-md-center gap-3">
-                        @if (!string.IsNullOrWhiteSpace(Model.OrganizerAvatarUrl))
-                        {
-                            <img src="@Model.OrganizerAvatarUrl" alt="@Model.OrganizerName"
-                                 class="rounded-circle border"
-                                 style="width: 72px; height: 72px; object-fit: cover;" />
-                        }
-                        else
-                        {
-                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold"
-                                 style="width: 72px; height: 72px; background: linear-gradient(135deg, #2563eb, #4f46e5); font-size: 1.25rem;">
-                                @organizerInitials
-                            </div>
-                        }
-
-                        <div class="flex-grow-1">
-                            <div class="text-muted small mb-1">Tổ chức bởi</div>
-                            <h6 class="fw-bold mb-1">@Model.OrganizerName</h6>
-                            @if (!string.IsNullOrWhiteSpace(Model.OrganizerPosition))
+                <div class="ev-card">
+                    <div class="ev-card-header">
+                        <div class="icon icon-blue"><i class="bi bi-building"></i></div>
+                        Tổ chức bởi
+                    </div>
+                    <div class="ev-organizer">
+                        <div class="ev-org-avatar">
+                            @if (!string.IsNullOrWhiteSpace(Model.OrganizerAvatarUrl))
                             {
-                                <div class="text-muted small mb-2">@Model.OrganizerPosition</div>
+                                <img src="@Model.OrganizerAvatarUrl" alt="@Model.OrganizerName" />
                             }
-
-                            <div class="d-flex flex-wrap gap-2">
+                            else
+                            {
+                                @organizerInitials
+                            }
+                        </div>
+                        <div class="ev-org-info">
+                            <div class="name">@Model.OrganizerName</div>
+                            <div class="role">@(string.IsNullOrWhiteSpace(Model.OrganizerPosition) ? "Organizer" : Model.OrganizerPosition)</div>
+                            <div class="ev-org-actions">
                                 @if (!string.IsNullOrWhiteSpace(Model.OrganizerUserId))
                                 {
-                                    <a asp-controller="Profile"
-                                       asp-action="ViewUser"
-                                       asp-route-id="@Model.OrganizerUserId"
-                                       class="btn btn-outline-primary btn-sm">
-                                        <i class="bi bi-person-vcard me-1"></i> View Organizer Profile
+                                    <a asp-controller="Profile" asp-action="ViewUser" asp-route-id="@Model.OrganizerUserId"
+                                       class="ev-org-btn ev-org-btn-outline">
+                                        <i class="bi bi-person-vcard"></i> View Profile
                                     </a>
-
-                                    <button type="button"
-                                            class="btn btn-primary btn-sm js-chat-organizer"
-                                            data-organizer-user-id="@Model.OrganizerUserId"
-                                            data-organizer-name="@Model.OrganizerName"
+                                    <button type="button" class="ev-org-btn ev-org-btn-fill"
                                             onclick="window.aemsMessengerLayout?.openChatWith('@Model.OrganizerUserId'); return false;">
-                                        <i class="bi bi-chat-dots me-1"></i> Chat với organizer
+                                        <i class="bi bi-chat-dots"></i> Chat
                                     </button>
                                 }
                             </div>
@@ -120,74 +770,101 @@
             }
         </div>
 
-        <!-- ── Right: action card ──────────────────────────────────────── -->
-        <div class="col-lg-4">
-            <div class="card shadow-sm position-sticky" style="top: 80px;">
-                <div class="card-body">
-                    <!-- Time -->
-                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-info-circle me-1"></i>Thông tin</h6>
-                    <ul class="list-unstyled small">
-                        <li class="mb-2">
-                            <i class="bi bi-clock me-2 text-primary"></i>
-                            <strong>Bắt đầu:</strong> @Model.StartTime.ToString("HH:mm, dd/MM/yyyy")
-                        </li>
-                        <li class="mb-2">
-                            <i class="bi bi-clock-history me-2 text-danger"></i>
-                            <strong>Kết thúc:</strong> @Model.EndTime.ToString("HH:mm, dd/MM/yyyy")
-                        </li>
-                        <li class="mb-2">
-                            <i class="bi @modeIcon me-2 text-secondary"></i>
-                            <strong>Hình thức:</strong> @(Model.Mode?.ToString() ?? "Chưa xác định")
+        <!-- ── RIGHT COLUMN ────────────────────────────────────── -->
+        <div>
+            <div class="ev-info-card">
+
+                <!-- Header gradient -->
+                <div class="ev-info-card-head">
+                    <h6><i class="bi bi-info-circle me-1"></i>Thông tin sự kiện</h6>
+                    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                        @{
+                            var capPct = Model.MaxCapacity > 0
+                            ? (int)Math.Round((double)Model.RegisteredCount / Model.MaxCapacity * 100)
+                            : 0;
+                            var capColor = capPct >= 100 ? "#ef4444" : capPct >= 75 ? "#f59e0b" : "#10b981";
+                        }
+                        <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:.4rem .8rem;font-size:.82rem;font-weight:600;">
+                            <i class="bi bi-people me-1"></i>
+                            @Model.RegisteredCount / @Model.MaxCapacity chỗ
+                        </div>
+                        @if (Model.IsFull)
+                        {
+                            <div style="background:rgba(239,68,68,.3);border-radius:10px;padding:.4rem .8rem;font-size:.82rem;font-weight:600;">
+                                <i class="bi bi-x-circle me-1"></i>Hết chỗ
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="background:rgba(16,185,129,.3);border-radius:10px;padding:.4rem .8rem;font-size:.82rem;font-weight:600;">
+                                <i class="bi bi-check-circle me-1"></i>@Model.AvailableSeats còn trống
+                            </div>
+                        }
+                    </div>
+                    <div class="cap-bar-wrap mt-2">
+                        <div class="cap-bar">
+                            <div class="cap-bar-fill" style="width:@capPct%;background:@capColor;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info rows -->
+                <div class="ev-info-rows">
+                    <div class="ev-info-row">
+                        <i class="bi bi-play-circle ri"></i>
+                        <span class="label">Bắt đầu</span>
+                        <span class="val">@Model.StartTime.ToString("HH:mm, dd/MM/yyyy")</span>
+                    </div>
+                    <div class="ev-info-row">
+                        <i class="bi bi-stop-circle ri" style="color:var(--danger);"></i>
+                        <span class="label">Kết thúc</span>
+                        <span class="val">@Model.EndTime.ToString("HH:mm, dd/MM/yyyy")</span>
+                    </div>
+                    <div class="ev-info-row">
+                        <i class="bi @modeIcon ri"></i>
+                        <span class="label">Hình thức</span>
+                        <span class="val">
+                            @(Model.Mode?.ToString() ?? "Chưa xác định")
                             @if (!string.IsNullOrEmpty(Model.MeetingUrl))
                             {
                                 <br />
-                                <a href="@Model.MeetingUrl" target="_blank" class="ms-4 small">
+                                <a href="@Model.MeetingUrl" target="_blank" style="color:var(--accent);font-size:.8rem;">
                                     <i class="bi bi-link-45deg"></i> Tham gia online
                                 </a>
                             }
-                        </li>
-                        @if (!string.IsNullOrEmpty(Model.Location))
-                        {
-                            <li class="mb-2">
-                                <i class="bi bi-geo-alt me-2 text-danger"></i>
-                                <strong>Địa điểm:</strong> @Model.Location
-                            </li>
-                        }
-                        @if (!string.IsNullOrEmpty(Model.DepartmentName))
-                        {
-                            <li class="mb-2">
-                                <i class="bi bi-building me-2 text-secondary"></i>
-                                <strong>Khoa/Phòng:</strong> @Model.DepartmentName
-                            </li>
-                        }
-                        <li class="mb-2">
-                            <i class="bi bi-people me-2 text-info"></i>
-                            <strong>Sức chứa:</strong>
-                            @Model.RegisteredCount / @Model.MaxCapacity
-                            @if (!Model.IsFull)
-                            {
-                                <span class="text-success ms-1">(@Model.AvailableSeats còn trống)</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-danger ms-1">Hết chỗ</span>
-                            }
-                        </li>
-                        @if (Model.IsDepositRequired == true)
-                        {
-                            <li class="mb-2">
-                                <i class="bi bi-credit-card me-2 text-warning"></i>
-                                <strong>Đặt cọc:</strong>
-                                @Model.DepositAmount?.ToString("N0") VNĐ
-                            </li>
-                        }
-                    </ul>
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Location))
+                    {
+                        <div class="ev-info-row">
+                            <i class="bi bi-geo-alt ri" style="color:var(--danger);"></i>
+                            <span class="label">Địa điểm</span>
+                            <span class="val">@Model.Location</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.DepartmentName))
+                    {
+                        <div class="ev-info-row">
+                            <i class="bi bi-building ri"></i>
+                            <span class="label">Khoa/Phòng</span>
+                            <span class="val">@Model.DepartmentName</span>
+                        </div>
+                    }
+                    @if (Model.IsDepositRequired == true)
+                    {
+                        <div class="ev-info-row">
+                            <i class="bi bi-credit-card ri" style="color:var(--warn);"></i>
+                            <span class="label">Đặt cọc</span>
+                            <span class="val" style="color:var(--warn);font-weight:600;">@Model.DepositAmount?.ToString("N0") VNĐ</span>
+                        </div>
+                    }
+                </div>
 
-                    <hr />
-                    <!-- ── Action buttons ──────────────────────────────── -->
+                <!-- Action area -->
+                <div class="ev-action">
                     @if (Model.IsRegistered)
                     {
-                        <div class="alert alert-success py-2 d-flex align-items-center gap-2 mb-2">
+                        <div class="ev-status-pill ev-status-success mb-3">
                             <i class="bi bi-check-circle-fill"></i>
                             <span>Bạn đã đăng ký sự kiện này.</span>
                         </div>
@@ -197,32 +874,33 @@
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="ticketId" value="@Model.TicketId" />
                                 <input type="hidden" name="eventId" value="@Model.EventId" />
-                                <button type="submit" class="btn btn-outline-danger w-100"
+                                <button type="submit" class="ev-btn-register ev-btn-danger"
                                         onclick="return confirm('Bạn chắc chắn muốn hủy đăng ký?')">
-                                    <i class="bi bi-x-circle me-1"></i> Hủy đăng ký
+                                    <i class="bi bi-x-circle"></i> Hủy đăng ký
                                 </button>
                             </form>
                         }
                     }
                     else if (Model.WaitlistStatus == DataAccess.Enum.EventWaitlistStatusEnum.Offered)
                     {
-                        // ✅ Ưu tiên cao nhất — được mời tham gia
-                        <div class="alert alert-warning py-2 mb-3">
-                            <i class="bi bi-bell-fill me-1"></i>
-                            <strong>Bạn được mời tham gia sự kiện này!</strong>
-                            <div class="text-muted small mt-1">Xác nhận trước khi chỗ trống được nhường cho người khác.</div>
+                        <div class="ev-status-pill ev-status-warning mb-3" style="flex-direction:column;align-items:flex-start;gap:.2rem;">
+                            <div style="display:flex;align-items:center;gap:.4rem;font-weight:600;">
+                                <i class="bi bi-bell-fill"></i> Bạn được mời tham gia!
+                            </div>
+                            <div style="font-size:.8rem;opacity:.75;">Xác nhận trước khi chỗ trống được nhường cho người khác.</div>
                         </div>
                         <form asp-action="AcceptWaitlist" asp-route-id="@Model.EventId" method="post" class="mb-2">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-success w-100 fw-bold">
-                                <i class="bi bi-check-circle me-1"></i> Xác nhận tham gia
+                            <button type="submit" class="ev-btn-register ev-btn-success">
+                                <i class="bi bi-check-circle"></i> Xác nhận tham gia
                             </button>
                         </form>
                         <form asp-action="DeclineWaitlist" asp-route-id="@Model.EventId" method="post">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-danger w-100"
+                            <button type="submit" class="ev-btn-register ev-btn-outline-danger"
+                                    style="border:1.5px solid var(--danger);"
                                     onclick="return confirm('Bạn chắc chắn muốn từ chối?')">
-                                <i class="bi bi-x-circle me-1"></i> Từ chối
+                                <i class="bi bi-x-circle"></i> Từ chối
                             </button>
                         </form>
                     }
@@ -230,14 +908,14 @@
                     {
                         <form asp-action="Register" asp-route-id="@Model.EventId" method="post">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-primary w-100 fw-bold">
-                                <i class="bi bi-ticket-detailed me-1"></i> Đăng ký ngay
+                            <button type="submit" class="ev-btn-register ev-btn-primary">
+                                <i class="bi bi-ticket-detailed"></i> Đăng ký ngay
                             </button>
                         </form>
                     }
                     else if (Model.IsInWaitlist)
                     {
-                        <div class="alert alert-warning py-2 d-flex align-items-center gap-2 mb-2">
+                        <div class="ev-status-pill ev-status-wait">
                             <i class="bi bi-hourglass-split"></i>
                             <span>Bạn đang ở vị trí <strong>#@Model.WaitlistPosition</strong> trong danh sách chờ.</span>
                         </div>
@@ -246,32 +924,31 @@
                     {
                         <form asp-action="JoinWaitlist" asp-route-id="@Model.EventId" method="post">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-warning w-100 fw-bold">
-                                <i class="bi bi-hourglass me-1"></i> Đăng ký chờ
+                            <button type="submit" class="ev-btn-register ev-btn-warning mb-2">
+                                <i class="bi bi-hourglass"></i> Đăng ký chờ
                             </button>
                         </form>
-                        <div class="text-muted small text-center mt-1">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Sự kiện đã đầy. Bạn sẽ được ưu tiên khi có chỗ trống.
-                        </div>
+                        <p class="text-center" style="font-size:.78rem;color:var(--text-muted);margin:0;">
+                            <i class="bi bi-info-circle me-1"></i>Sự kiện đã đầy. Bạn sẽ được ưu tiên khi có chỗ trống.
+                        </p>
                     }
                     else
                     {
-                        <button class="btn btn-secondary w-100" disabled>
-                            <i class="bi bi-lock me-1"></i> Không thể đăng ký
+                        <button class="ev-btn-register ev-btn-disabled" disabled>
+                            <i class="bi bi-lock"></i> Không thể đăng ký
                         </button>
                     }
+                </div>
 
-                    <!-- ── Feedback form (only after event ends) ───────── -->
-                    @if (Model.IsRegistered && Model.EndTime < DateTime.Now)
-                    {
-                        <hr />
-                        <h6 class="fw-bold"><i class="bi bi-star me-1 text-warning"></i>Đánh giá</h6>
+                <!-- Feedback -->
+                @if (Model.IsRegistered && Model.EndTime < DateTime.Now)
+                {
+                    <div class="ev-feedback">
+                        <h6><i class="bi bi-star-fill text-warning me-1"></i>Đánh giá sự kiện</h6>
                         <form asp-action="SubmitFeedback" asp-route-id="@Model.EventId" method="post">
                             @Html.AntiForgeryToken()
                             <div class="mb-2">
-                                <label class="form-label small">Rating (1-5)</label>
-                                <select name="Rating" class="form-select form-select-sm">
+                                <select name="Rating" class="form-select">
                                     <option value="5">⭐⭐⭐⭐⭐ Xuất sắc</option>
                                     <option value="4">⭐⭐⭐⭐ Tốt</option>
                                     <option value="3">⭐⭐⭐ Bình thường</option>
@@ -280,16 +957,18 @@
                                 </select>
                             </div>
                             <div class="mb-2">
-                                <textarea name="Comment" class="form-control form-control-sm"
-                                          rows="3" placeholder="Nhận xét (tuỳ chọn)" maxlength="1000"></textarea>
+                                <textarea name="Comment" class="form-control" rows="3"
+                                      placeholder="Nhận xét (tuỳ chọn)" maxlength="1000"></textarea>
                             </div>
-                            <button type="submit" class="btn btn-warning btn-sm w-100">
-                                <i class="bi bi-send me-1"></i> Gửi feedback
+                            <button type="submit" class="ev-btn-register ev-btn-warning">
+                                <i class="bi bi-send"></i> Gửi feedback
                             </button>
                         </form>
-                    }
-                </div>
+                    </div>
+                }
+
             </div>
         </div>
+        <!-- end right -->
     </div>
 </div>

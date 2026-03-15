@@ -150,7 +150,11 @@ namespace BusinessLogic.Service.Student
                        .Include(x => x.Semester)
                        .Include(x => x.Department)
                        .Include(x => x.Organizer).ThenInclude(o => o!.User)
-                       .Include(x => x.Tickets))).FirstOrDefault();
+                       .Include(x => x.Tickets)
+           // Include agendas and speaker profiles/users for richer agenda info
+           .Include(x => x.EventAgenda).ThenInclude(ag => ag.StudentSpeaker).ThenInclude(s => s.User)
+           .Include(x => x.EventAgenda).ThenInclude(ag => ag.StaffSpeaker).ThenInclude(s => s.User)
+)).FirstOrDefault();
 
             if (ev == null)
                 throw new InvalidOperationException("Event không tồn tại.");
@@ -174,6 +178,22 @@ namespace BusinessLogic.Service.Student
             bool isInWaitlist = waitlistEntry != null &&
                 (waitlistEntry.Status == DataAccess.Enum.EventWaitlistStatusEnum.Waiting ||
                  waitlistEntry.Status == DataAccess.Enum.EventWaitlistStatusEnum.Offered);
+
+            // agendas details
+            var agendas = ev.EventAgenda?
+    .Where(a => a.DeletedAt == null)
+    .OrderBy(a => a.StartTime)
+    .Select(a => new EventAgendaItemDto
+    {
+        SessionName = a.SessionName,
+        Description = a.Description,
+        SpeakerName = a.StudentSpeaker?.User?.FullName ?? a.StaffSpeaker?.User?.FullName ?? a.SpeakerInfo,
+        StartTime = a.StartTime,
+        EndTime = a.EndTime,
+        Location = a.Location
+    })
+    .ToList();
+
 
             return new StudentEventDetailDto
             {
@@ -206,7 +226,8 @@ namespace BusinessLogic.Service.Student
                 IsInWaitlist = isInWaitlist,
                 WaitlistPosition = waitlistEntry?.Position,
                 WaitlistStatus = waitlistEntry?.Status,        // ✅ thêm
-                WaitlistStudentProfileId = waitlistEntry?.StudentId
+                WaitlistStudentProfileId = waitlistEntry?.StudentId,
+                Agendas = agendas
             };
         }
 
@@ -387,6 +408,7 @@ namespace BusinessLogic.Service.Student
                     var offeredUser = nextInLine.Student?.User;
                     if (offeredUser != null)
                     {
+                        // In-app notification
                         await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
                         {
                             ReceiverId = offeredUser.Id,
@@ -395,6 +417,24 @@ namespace BusinessLogic.Service.Student
                             Type = DataAccess.Enum.NotificationType.TicketCreated,
                             RelatedEntityId = ticket.EventId
                         });
+
+                        // Send email (new) — same style as NotifyOfferedStudentAsync
+                        try
+                        {
+                            await _emailService.SendAsync(
+                                offeredUser.Email,
+                                $"[AEMS] Có chỗ trống – {ticket.Event.Title}",
+                                $@"<p>Xin chào <strong>{offeredUser.FullName}</strong>,</p>
+                                   <p>Một chỗ trống vừa mở trong sự kiện <strong>{ticket.Event.Title}</strong>
+                                      lúc <strong>{ticket.Event.StartTime:HH:mm, dd/MM/yyyy}</strong>.</p>
+                                   <p>Hãy đăng ký ngay trước khi hết chỗ!</p>"
+                            );
+                        }
+                        catch (Exception emailEx)
+                        {
+                            await _errorLogService.LogErrorAsync(emailEx, profile.UserId,
+                                "StudentEventService.CancelRegistrationAsync (NotifyOfferedEmail)");
+                        }
                     }
                 }
             }
@@ -407,9 +447,9 @@ namespace BusinessLogic.Service.Student
             // Send Generic in-app notification
             await _notificationService.SendNotificationAsync(new BusinessLogic.DTOs.SendNotificationRequest
             {
-                ReceiverId = profile.UserId, 
-                Title = "Hủy đăng ký", 
-                Message = $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.", 
+                ReceiverId = profile.UserId,
+                Title = "Hủy đăng ký",
+                Message = $"Bạn đã hủy đăng ký sự kiện '{ticket.Event.Title}'.",
                 Type = DataAccess.Enum.NotificationType.EventCancel,
                 RelatedEntityId = ticket.EventId
             });
