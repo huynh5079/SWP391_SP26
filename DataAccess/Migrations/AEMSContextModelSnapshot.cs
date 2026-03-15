@@ -1185,12 +1185,7 @@ namespace DataAccess.Migrations
                     b.Property<string>("EventId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<decimal?>("Rating")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("decimal(3, 2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<int>("RatingEvent")
+                    b.Property<int?>("Rating")
                         .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
@@ -1198,13 +1193,6 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasDefaultValue("NA");
 
                     b.Property<string>("StudentId")
                         .HasColumnType("nvarchar(450)");

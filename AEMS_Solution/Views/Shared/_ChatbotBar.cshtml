@@ -19,11 +19,8 @@
                 <div class="subtitle">Sẵn sàng hỗ trợ</div>
             </div>
             <div class="chatbot-header-actions ms-auto">
-                <button type="button" class="chatbot-icon-btn ghost" id="chatbotReloadBtn" title="Reset phiên chat" aria-label="Reset phiên chat">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button type="button" class="chatbot-icon-btn ghost" id="chatbotSessionBtn" title="Quản lý phiên chat" aria-label="Quản lý phiên chat">
-                    <i class="bi bi-clock-history"></i>
+                <button type="button" class="chatbot-icon-btn ghost" id="chatbotStartBtn" title="Bắt đầu chat" aria-label="Bắt đầu chat">
+                    <i class="bi bi-pencil-square"></i>
                 </button>
                 <button type="button" class="chatbot-icon-btn ghost" id="chatbotClose" aria-label="Đóng chatbot">
                     <i class="bi bi-x-lg"></i>
@@ -32,10 +29,6 @@
         </div>
 
         <div class="chatbot-body">
-            <div class="chatbot-sessions" id="chatbotSessionsPanel" aria-hidden="true">
-                <div class="chatbot-sessions-title">Lịch sử phiên chat</div>
-                <div class="chatbot-sessions-list" id="chatbotSessionsList"></div>
-            </div>
             <div class="chatbot-log" id="chatbotLog" aria-live="polite">
                 <div class="chatbot-msg bot">
                     <div class="msg-author">Chatbot AEMS</div>

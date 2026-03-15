@@ -90,8 +90,8 @@ public class DashboardService : IDashboardService
         var topFeedbacks = recentFeedbacks
             .OrderByDescending(f => f.CreatedAt)
             .Take(5)
-            .Select(f => new BusinessLogic.DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto
-			{
+            .Select(f => new BusinessLogic.DTOs.Role.Organizer.EventFeedbackSummaryDto
+            {
                 EventId = f.EventId,
                 EventTitle = f.Event!.Title,
                 Rating = f.Rating.GetValueOrDefault(),

@@ -187,7 +187,7 @@ namespace BusinessLogic.Service.Chat
 			if (!string.IsNullOrWhiteSpace(sessionId))
 			{
 				session = await _unitOfWork.ChatbotSessions.GetAsync(
-                  s => s.Id == sessionId && s.UserId == userId);
+					s => s.Id == sessionId && s.UserId == userId && s.Status == ChatSessionStatus.Active);
 			}
 
 			if (session == null)
@@ -223,74 +223,6 @@ namespace BusinessLogic.Service.Chat
 				SessionId = session.Id,
 				Messages = messages
 			};
-		}
-
-		public async Task<List<ChatbotSessionSummaryDto>> GetConversationSessionsAsync(int limit = 20)
-		{
-			var userId = GetCurrentUserId();
-			var safeLimit = Math.Clamp(limit, 1, 100);
-
-			var sessions = (await _unitOfWork.ChatbotSessions.GetAllAsync(
-				s => s.UserId == userId,
-				q => q.OrderByDescending(s => s.UpdatedAt).Take(safeLimit)))
-				.ToList();
-
-			var result = new List<ChatbotSessionSummaryDto>();
-			foreach (var session in sessions)
-			{
-				var previewMessage = await _unitOfWork.ChatbotMessages.GetAsync(
-					m => m.SessionId == session.Id,
-					q => q.OrderByDescending(m => m.CreatedAt));
-
-				var title = previewMessage?.Content;
-				if (string.IsNullOrWhiteSpace(title))
-				{
-					title = "Cuộc trò chuyện mới";
-				}
-				if (title.Length > 80)
-				{
-					title = title[..80] + "...";
-				}
-
-				result.Add(new ChatbotSessionSummaryDto
-				{
-					SessionId = session.Id,
-					Title = title,
-					LastMessageAt = previewMessage?.CreatedAt ?? session.UpdatedAt
-				});
-			}
-
-			return result.OrderByDescending(x => x.LastMessageAt).ToList();
-		}
-
-       public async Task<string> StartNewConversationAsync(string? currentSessionId = null)
-		{
-			var userId = GetCurrentUserId();
-
-			if (!string.IsNullOrWhiteSpace(currentSessionId))
-			{
-				var current = await _unitOfWork.ChatbotSessions.GetAsync(
-					s => s.Id == currentSessionId && s.UserId == userId && s.Status == ChatSessionStatus.Active);
-
-				if (current != null)
-				{
-					current.Status = ChatSessionStatus.Archived;
-					current.EndedAt = DateTime.UtcNow;
-					await _unitOfWork.ChatbotSessions.UpdateAsync(current);
-				}
-			}
-
-			var session = new ChatbotSession
-			{
-				Id = Guid.NewGuid().ToString(),
-				UserId = userId,
-				StartedAt = DateTime.UtcNow,
-				Status = ChatSessionStatus.Active
-			};
-
-			await _unitOfWork.ChatbotSessions.CreateAsync(session);
-			await _unitOfWork.SaveChangesAsync();
-			return session.Id;
 		}
 
 		public async Task<HealthStatusDto> CheckHealthAsync()

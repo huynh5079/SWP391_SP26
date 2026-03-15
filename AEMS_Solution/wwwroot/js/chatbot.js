@@ -20,10 +20,7 @@ class ChatbotManager {
         this.chatbotSend = document.getElementById('chatbotSend');
         this.chatbotInput = document.getElementById('chatbotInput');
         this.chatbotLog = document.getElementById('chatbotLog');
-        this.chatbotReloadBtn = document.getElementById('chatbotReloadBtn');
-        this.chatbotSessionBtn = document.getElementById('chatbotSessionBtn');
-        this.chatbotSessionsPanel = document.getElementById('chatbotSessionsPanel');
-        this.chatbotSessionsList = document.getElementById('chatbotSessionsList');
+        this.chatbotStartBtn = document.getElementById('chatbotStartBtn');
 
         if (!this.chatbotToggle || !this.chatbotPanel) {
             console.warn('Chatbot elements not found');
@@ -44,8 +41,7 @@ class ChatbotManager {
         // Mở/đóng chatbot
         this.chatbotToggle?.addEventListener('click', () => this.togglePanel());
         this.chatbotClose?.addEventListener('click', () => this.closePanel());
-        this.chatbotReloadBtn?.addEventListener('click', () => this.confirmResetSession());
-        this.chatbotSessionBtn?.addEventListener('click', () => this.toggleSessionPanel());
+        this.chatbotStartBtn?.addEventListener('click', () => this.focusInput());
 
         // Gửi tin nhắn
         this.chatbotSend?.addEventListener('click', () => this.sendMessage());
@@ -66,24 +62,15 @@ class ChatbotManager {
         }
     }
 
-    confirmResetSession() {
-        const ok = window.confirm('Bạn muốn reset phiên chat hiện tại? Nội dung đang mở sẽ được xóa khỏi khung chat, nhưng lịch sử vẫn được lưu.');
-        if (ok) {
-            this.startNewSession();
-        }
-    }
-
     openPanel() {
         this.chatbotPanel.setAttribute('aria-hidden', 'false');
         this.chatbotPanel.classList.add('open');
-        this.loadSessions();
         this.focusInput();
     }
 
     closePanel() {
         this.chatbotPanel.setAttribute('aria-hidden', 'true');
         this.chatbotPanel.classList.remove('open');
-        this.chatbotSessionsPanel?.classList.remove('open');
     }
 
     focusInput() {
@@ -203,116 +190,9 @@ class ChatbotManager {
                     this.conversationHistory.push({ role: 'bot', message: content });
                 }
             });
-
-            this.loadSessions();
         } catch (error) {
             console.warn('Không thể tải lịch sử chatbot:', error);
         }
-    }
-
-    async loadSessions() {
-        if (!this.chatbotSessionsList) {
-            return;
-        }
-
-        try {
-            const response = await fetch(`${this.apiUrl}/sessions?limit=20`);
-            if (!response.ok) {
-                return;
-            }
-
-            const data = await response.json();
-            if (!data?.success || !Array.isArray(data?.data)) {
-                return;
-            }
-
-            this.chatbotSessionsList.innerHTML = '';
-
-            data.data.forEach(s => {
-                const id = s.sessionId || s.SessionId;
-                const title = s.title || s.Title || 'Cuộc trò chuyện';
-                const timeRaw = s.lastMessageAt || s.LastMessageAt;
-
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = `chatbot-session-item ${id === this.sessionId ? 'active' : ''}`;
-                btn.innerHTML = `
-                    <div class="chatbot-session-title">${this.escapeHtml(title)}</div>
-                    <div class="chatbot-session-time">${timeRaw ? this.formatDateTime(timeRaw) : ''}</div>
-                `;
-                btn.addEventListener('click', () => this.selectSession(id));
-                this.chatbotSessionsList.appendChild(btn);
-            });
-        } catch (error) {
-            console.warn('Không thể tải danh sách phiên chat:', error);
-        }
-    }
-
-    async startNewSession() {
-        try {
-            const response = await fetch(`${this.apiUrl}/sessions/new`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    currentSessionId: this.sessionId
-                })
-            });
-            if (!response.ok) {
-                throw new Error('Không tạo được phiên chat mới');
-            }
-
-            const data = await response.json();
-            const newSessionId = data?.data?.sessionId || data?.data?.SessionId;
-            if (!newSessionId) {
-                throw new Error('Không nhận được session mới');
-            }
-
-            this.sessionId = newSessionId;
-            sessionStorage.setItem(this.storageKey, this.sessionId);
-            this.chatbotSessionsPanel?.classList.remove('open');
-            this.chatbotLog.innerHTML = '';
-            this.conversationHistory = [];
-            this.addMessageToLog('Sẵn sàng hỗ trợ bạn tra cứu lịch sự kiện, vé và thông tin chung.', 'bot');
-            this.loadSessions();
-            this.focusInput();
-        } catch (error) {
-            console.warn('Không thể tạo phiên chat mới:', error);
-        }
-    }
-
-    toggleSessionPanel() {
-        if (!this.chatbotSessionsPanel) {
-            return;
-        }
-        this.chatbotSessionsPanel.classList.toggle('open');
-        if (this.chatbotSessionsPanel.classList.contains('open')) {
-            this.loadSessions();
-        }
-    }
-
-    async selectSession(sessionId) {
-        if (!sessionId) {
-            return;
-        }
-
-        this.sessionId = sessionId;
-        sessionStorage.setItem(this.storageKey, sessionId);
-        await this.loadConversationHistory();
-    }
-
-    formatDateTime(value) {
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) {
-            return '';
-        }
-        return d.toLocaleString('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
     }
 
     addMessageToLog(content, role, sources = null) {
