@@ -121,6 +121,8 @@ namespace AEMS_Solution.Controllers.Features.Student
             if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 
             var events = await _service.GetMyParticipationsAsync(CurrentUserId);
+            var waitlist = await _waitlistService.GetMyWaitlistAsync(CurrentUserId); // ← thêm
+            ViewBag.Waitlist = waitlist;
             return View("~/Views/StudentEvent/MyEvents.cshtml", events);
         }
 
