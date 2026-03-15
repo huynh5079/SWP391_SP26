@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 {
-	internal class FeedbackService
+	public class FeedbackService : IFeedbackService
 	{
-<<<<<<< HEAD
-=======
+
 		public Task<EventFeedbackAnalysisDto> AnalyzeEventFeedback(string eventId)
 		{
 			throw new NotImplementedException();

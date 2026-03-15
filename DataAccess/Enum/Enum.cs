@@ -224,8 +224,7 @@ namespace DataAccess.Enum
 		Organizer,
 		Community
 	}
-<<<<<<< HEAD
-=======
+
 	public enum FeedbackStatusEnum
 	{
 	    NA, 
@@ -246,5 +245,5 @@ namespace DataAccess.Enum
 		Neutral,
 		Negative
 	}
->>>>>>> 63-feat-Feedback-Event
+
 }

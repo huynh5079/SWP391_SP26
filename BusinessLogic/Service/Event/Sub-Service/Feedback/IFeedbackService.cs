@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 {
-	internal class IFeedBackService
+	public interface IFeedBackService
 	{
 
 		Task<EventFeedbackAnalysisDto> AnalyzeEventFeedback(string eventId);
