@@ -13,8 +13,6 @@ namespace BusinessLogic.Service.Chat
 	{
 		Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null);
        Task<ChatbotConversationHistoryDto> GetConversationHistoryAsync(string? sessionId = null, int limit = 100);
-       Task<List<ChatbotSessionSummaryDto>> GetConversationSessionsAsync(int limit = 20);
-       Task<string> StartNewConversationAsync(string? currentSessionId = null);
 		Task<HealthStatusDto> CheckHealthAsync();
 		
 	}
