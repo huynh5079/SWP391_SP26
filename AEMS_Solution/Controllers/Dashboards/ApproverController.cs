@@ -400,7 +400,8 @@ namespace AEMS_Solution.Controllers.Dashboards
                 MaxCapacity = dto.MaxCapacity,
                 Status = dto.Status,
                 OrganizerName = dto.OrganizerName,
-                OrganizerEmail = dto.OrganizerEmail
+                OrganizerEmail = dto.OrganizerEmail,
+                Location = dto.Location
             };
 
             foreach (var l in dto.ApprovalLogs)

@@ -16,13 +16,16 @@ namespace AEMS_Solution.AutoMapper.Organizer.Event
 				.ForMember(dest => dest.Capacity,
 						   opt => opt.MapFrom(src => src.MaxCapacity))
 				.ForMember(dest => dest.BannerUrl,
-						   opt => opt.MapFrom(src => src.ThumbnailUrl));
+						   opt => opt.MapFrom(src => src.ThumbnailUrl))
+				.ForMember(dest => dest.BannerFiles,
+						   opt => opt.MapFrom(src => src.BannerFiles));
 
 			CreateMap<CreateAgendaItemVm, CreateAgendaItemDto>();
 			CreateMap<CreateDocumentVm, CreateDocumentDto>();
 			CreateMap<UpdateEventViewModel, UpdateEventRequestDto>()
 				.ForMember(dest => dest.Capacity, opt => opt.MapFrom(src => src.MaxCapacity))
-				.ForMember(dest => dest.BannerUrl, opt => opt.MapFrom(src => src.ThumbnailUrl));
+				.ForMember(dest => dest.BannerUrl, opt => opt.MapFrom(src => src.ThumbnailUrl))
+				.ForMember(dest => dest.BannerFiles, opt => opt.MapFrom(src => src.BannerFiles));
 			CreateMap<UpdateAgendaItemVm, UpdateAgendaItemDto>();
 			CreateMap<UpdateDocumentVm, UpdateDocumentDto>();
 			CreateMap<SelectItemDto, SelectListItem>()

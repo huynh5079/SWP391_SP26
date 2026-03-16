@@ -16,6 +16,7 @@ namespace AEMS_Solution.Models.Event
 
         public string? ThumbnailUrl { get; set; }
         public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
+        public List<Microsoft.AspNetCore.Http.IFormFile>? BannerFiles { get; set; }
 
         [Required(ErrorMessage = "Vui lòng chọn Semester")]
         public string SemesterId { get; set; } = "";

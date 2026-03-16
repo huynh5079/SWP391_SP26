@@ -14,6 +14,7 @@ public class CreateEventRequestDto
 
 	public string? BannerUrl { get; set; }
 	public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
+	public List<Microsoft.AspNetCore.Http.IFormFile>? BannerFiles { get; set; }
 
 	// ===== 2. Time =====
 	public DateTime StartTime { get; set; }
@@ -95,6 +96,7 @@ public class UpdateEventRequestDto
 
     public string? BannerUrl { get; set; }
     public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
+    public List<Microsoft.AspNetCore.Http.IFormFile>? BannerFiles { get; set; }
     public string? MeetingUrl { get; set; }
     public EventModeEnum? Mode { get; set; }
 

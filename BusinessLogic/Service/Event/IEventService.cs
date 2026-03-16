@@ -40,5 +40,7 @@ namespace BusinessLogic.Service.Event
 		Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto);
 
         Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId);
+        Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId);
+        Task RemoveEventImageAsync(string eventId, string imageUrl, string userId);
 	}
 }

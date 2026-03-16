@@ -11,6 +11,7 @@ namespace BusinessLogic.DTOs.Student
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
         public string? ThumbnailUrl { get; set; }
+        public List<string> ImageUrls { get; set; } = new();
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public string? Location { get; set; }

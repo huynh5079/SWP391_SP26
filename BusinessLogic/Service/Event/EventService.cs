@@ -191,12 +191,13 @@ public class EventService : IEventService
 			{
 				EventId = e.Id,
 				Title = e.Title,
-				ThumbnailUrl = e.ThumbnailUrl,
+				ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
+				ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
 				SemesterId = e.SemesterId,
 				SemesterName = e.Semester?.Name,
 				DepartmentId = e.DepartmentId,
 				DepartmentName = e.Department?.Name,
-				Location = e.Location?.Name ?? e.LocationId,
+				Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
 				StartTime = e.StartTime,
 				EndTime = e.EndTime,
 				MaxCapacity = e.MaxCapacity,
@@ -256,12 +257,13 @@ public class EventService : IEventService
 			{
 				EventId = e.Id,
 				Title = e.Title,
-				ThumbnailUrl = e.ThumbnailUrl,
+				ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
+				ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
 				SemesterId = e.SemesterId,
 				SemesterName = e.Semester?.Name,
 				DepartmentId = e.DepartmentId,
 				DepartmentName = e.Department?.Name,
-				Location = e.Location?.Name ?? e.LocationId,
+				Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
 				StartTime = e.StartTime,
 				EndTime = e.EndTime,
 				MaxCapacity = e.MaxCapacity,
@@ -409,14 +411,28 @@ public class EventService : IEventService
 				UpdatedAt = now
 			};
 
-			// Handle Thumbnail Upload
+			// Handle Multiple Image Uploads
+			var imageUrls = new List<string>();
+			if (!string.IsNullOrWhiteSpace(dto.BannerUrl)) imageUrls.Add(dto.BannerUrl);
+
 			if (dto.ThumbnailFile != null)
 			{
 				var uploadResult = await _fileStorageService.UploadSingleAsync(dto.ThumbnailFile, UploadContext.EventThumbnail, userId);
-				if (uploadResult != null)
+				if (uploadResult != null) imageUrls.Add(uploadResult.Url);
+			}
+
+			if (dto.BannerFiles != null && dto.BannerFiles.Count > 0)
+			{
+				foreach (var file in dto.BannerFiles)
 				{
-					entity.ThumbnailUrl = uploadResult.Url;
+					var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
+					if (uploadResult != null) imageUrls.Add(uploadResult.Url);
 				}
+			}
+
+			if (imageUrls.Count > 0)
+			{
+				entity.ThumbnailUrl = string.Join("|", imageUrls);
 			}
 
 			await _uow.Events.CreateAsync(entity);
@@ -508,7 +524,11 @@ public class EventService : IEventService
             var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
             if (uploadResult != null)
             {
-                ev.ThumbnailUrl = uploadResult.Url;
+                var urls = ev.ThumbnailUrl?.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList() ?? new List<string>();
+                if (urls.Count > 0) urls[0] = uploadResult.Url;
+                else urls.Add(uploadResult.Url);
+
+                ev.ThumbnailUrl = string.Join("|", urls);
                 ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 
                 await _uow.Events.UpdateAsync(ev);
@@ -517,6 +537,64 @@ public class EventService : IEventService
             }
         }
         return null;
+    }
+
+    public async Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId)
+    {
+        if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
+
+        var ev = await _uow.Events.GetByIdAsync(eventId);
+        if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+
+        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
+
+        if (ev.OrganizerId != staff.Id)
+            throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
+
+        if (file == null || file.Length == 0) throw new InvalidOperationException("File không hợp lệ.");
+
+        var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
+        if (uploadResult == null) throw new InvalidOperationException("Upload ảnh thất bại.");
+
+        var urls = string.IsNullOrEmpty(ev.ThumbnailUrl) 
+            ? new List<string>() 
+            : ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        urls.Add(uploadResult.Url);
+        ev.ThumbnailUrl = string.Join("|", urls);
+        ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+        await _uow.Events.UpdateAsync(ev);
+        await _uow.SaveChangesAsync();
+
+        return uploadResult.Url;
+    }
+
+    public async Task RemoveEventImageAsync(string eventId, string imageUrl, string userId)
+    {
+        if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
+
+        var ev = await _uow.Events.GetByIdAsync(eventId);
+        if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+
+        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
+
+        if (ev.OrganizerId != staff.Id)
+            throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
+
+        if (string.IsNullOrEmpty(ev.ThumbnailUrl)) return;
+
+        var urls = ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (urls.Remove(imageUrl))
+        {
+            ev.ThumbnailUrl = string.Join("|", urls);
+            ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+            await _uow.Events.UpdateAsync(ev);
+            await _uow.SaveChangesAsync();
+        }
     }
 
 	public async Task RestoreEventAsync(string userId, string eventId)
@@ -618,20 +696,36 @@ public class EventService : IEventService
 			ev.Status = dto.Status ?? ev.Status;
 			ev.IsDepositRequired = dto.IsDepositRequired;
 			ev.DepositAmount = dto.DepositAmount;
-			ev.ThumbnailUrl = dto.BannerUrl;
-			ev.Mode = dto.Mode;
-			ev.MeetingUrl = normalizedMeetingUrl;
-			ev.UpdatedAt = now;
-
-			// Handle Thumbnail Upload
+			// Handle Multiple Image Uploads
+			var imageUrls = ev.ThumbnailUrl?.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList() ?? new List<string>();
+			
 			if (dto.ThumbnailFile != null)
 			{
 				var uploadResult = await _fileStorageService.UploadSingleAsync(dto.ThumbnailFile, UploadContext.EventThumbnail, userId);
-				if (uploadResult != null)
+				if (uploadResult != null) imageUrls.Add(uploadResult.Url);
+			}
+
+			if (dto.BannerFiles != null && dto.BannerFiles.Count > 0)
+			{
+				foreach (var file in dto.BannerFiles)
 				{
-					ev.ThumbnailUrl = uploadResult.Url;
+					var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
+					if (uploadResult != null) imageUrls.Add(uploadResult.Url);
 				}
 			}
+
+			if (imageUrls.Count > 0)
+			{
+				ev.ThumbnailUrl = string.Join("|", imageUrls.Distinct());
+			}
+			else if (!string.IsNullOrWhiteSpace(dto.BannerUrl))
+			{
+				ev.ThumbnailUrl = dto.BannerUrl;
+			}
+
+			ev.Mode = dto.Mode;
+			ev.MeetingUrl = normalizedMeetingUrl;
+			ev.UpdatedAt = now;
 
 			var existingAgendas = await _uow.EventAgenda.GetAllAsync(x => x.EventId == eventId);
 			foreach (var agenda in existingAgendas)
@@ -843,13 +937,14 @@ public class EventService : IEventService
 			EventId = ev.Id,
 			Title = ev.Title,
 			Description = ev.Description,
-			ThumbnailUrl = ev.ThumbnailUrl,
+			ThumbnailUrl = ev.ThumbnailUrl?.Split('|')[0],
+			ImageUrls = string.IsNullOrEmpty(ev.ThumbnailUrl) ? new List<string>() : ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
 			SemesterId = ev.SemesterId,
 			SemesterName = ev.Semester?.Name,
 			DepartmentId = ev.DepartmentId,
 			DepartmentName = ev.Department?.Name,
 			LocationId = ev.LocationId,
-			Location = ev.Location?.Name ?? ev.LocationId,
+			Location = !string.IsNullOrEmpty(ev.Location?.Address) ? ev.Location.Address : (ev.Location?.Name ?? ev.LocationId),
 			TopicId = ev.TopicId,
 			StartTime = ev.StartTime,
 			EndTime = ev.EndTime,
@@ -885,6 +980,7 @@ public class EventService : IEventService
 					Location = a.Location
 				});
 			}
+		}
 
 		if (ev.EventDocuments != null)
 		{
@@ -899,7 +995,6 @@ public class EventService : IEventService
 					Type = d.Type
 				});
 			}
-		}
 		}
 
 		if (ev.EventTeams != null)

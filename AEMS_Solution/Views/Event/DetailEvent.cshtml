@@ -66,14 +66,53 @@
         gap: 20px;
     }
 
-    .event-detail-page .sidebar-image {
+    .event-detail-page .sidebar-image,
+    .event-detail-page .carousel-item img {
         width: 100%;
-        height: 240px;
+        height: 300px;
         object-fit: cover;
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
-        background-color: #f1f5f9; /* Fallback color for missing image */
+        background-color: #f1f5f9;
         display: block;
+    }
+
+    .event-detail-page .image-management-overlay {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 100;
+        display: flex;
+        gap: 8px;
+    }
+
+    .event-detail-page .image-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        color: #ef4444;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .event-detail-page .image-btn:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    .event-detail-page .add-image-btn {
+        background: #4f46e5;
+        color: white;
+    }
+
+    .event-detail-page .add-image-btn:hover {
+        background: #4338ca;
     }
 
     .event-detail-page .action-list {
@@ -236,21 +275,58 @@
             <div class="sidebar-stack">
                 <div class="card detail-card overflow-hidden">
                     <div class="position-relative">
-                        <img src="@thumbnailUrl" class="sidebar-image" alt="Thumbnail" id="event-thumbnail-img" />
-                        <div id="thumbnail-spinner" class="position-absolute top-50 start-50 translate-middle d-none">
-                            <div class="spinner-border text-light" role="status">
+                        @if (Model.ImageUrls != null && Model.ImageUrls.Count > 0)
+                        {
+                            <div id="eventImagesCarousel" class="carousel slide" data-bs-ride="carousel">
+                                <div class="carousel-inner">
+                                    @for (int i = 0; i < Model.ImageUrls.Count; i++)
+                                    {
+                                        <div class="carousel-item @(i == 0 ? "active" : "")">
+                                            <img src="@Model.ImageUrls[i]" class="d-block w-100" alt="Event Image @(i + 1)">
+                                            @if (Model.CanEdit)
+                                            {
+                                                <div class="image-management-overlay">
+                                                    <button type="button" class="image-btn" onclick="removeEventImage('@Model.ImageUrls[i]')" title="Xóa ảnh này">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                @if (Model.ImageUrls.Count > 1)
+                                {
+                                    <button class="carousel-control-prev" type="button" data-bs-target="#eventImagesCarousel" data-bs-slide="prev">
+                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Previous</span>
+                                    </button>
+                                    <button class="carousel-control-next" type="button" data-bs-target="#eventImagesCarousel" data-bs-slide="next">
+                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Next</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <img src="@thumbnailUrl" class="sidebar-image" alt="Thumbnail" id="event-thumbnail-img" />
+                        }
+
+                        <div id="image-upload-spinner" class="position-absolute top-50 start-50 translate-middle d-none" style="z-index: 1000;">
+                            <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
+
                         @if (Model.CanEdit)
                         {
                             <div class="position-absolute bottom-0 end-0 bg-primary rounded-circle p-2 m-2 shadow border border-2 border-white" 
                                  style="cursor: pointer; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; z-index: 10; background-color: #4f46e5 !important;" 
-                                 onclick="document.getElementById('thumbnail-input').click();"
-                                 title="Thay đổi ảnh đại diện">
-                                <i class="bi bi-camera-fill text-white" style="font-size: 1.2rem;"></i>
+                                 onclick="document.getElementById('add-image-input').click();"
+                                 title="Thêm ảnh vào slideshow">
+                                <i class="bi bi-plus-lg text-white" style="font-size: 1.2rem;"></i>
                             </div>
-                            <input type="file" id="thumbnail-input" class="d-none" accept="image/*">
+                            <input type="file" id="add-image-input" class="d-none" accept="image/*">
                         }
                     </div>
                     <div class="card-body p-4">
@@ -988,58 +1064,77 @@
             });
         }
 
-        // ================= Standalone Thumbnail Upload =================
-        const thumbInput = document.getElementById('thumbnail-input');
-        if (thumbInput) {
-            thumbInput.addEventListener('change', function(event) {
+        // ================= Multi-Image Slideshow Management =================
+        const addImageInput = document.getElementById('add-image-input');
+        const uploadSpinner = document.getElementById('image-upload-spinner');
+
+        if (addImageInput) {
+            addImageInput.addEventListener('change', function(event) {
                 const file = event.target.files[0];
                 if (!file) return;
 
-                const output = document.getElementById('event-thumbnail-img');
-                const spinner = document.getElementById('thumbnail-spinner');
-                
-                // 1. Preview
-                const reader = new FileReader();
-                reader.onload = function() {
-                    output.src = reader.result;
-                    output.style.opacity = '0.5';
-                    spinner.classList.remove('d-none');
-                };
-                reader.readAsDataURL(file);
+                if (uploadSpinner) uploadSpinner.classList.remove('d-none');
 
-                // 2. AJAX Upload
                 const formData = new FormData();
-                formData.append('id', '@Model.EventId');
+                formData.append('eventId', '@Model.EventId');
                 formData.append('file', file);
 
-                fetch('@Url.Action("UploadThumbnail", "Organizer")', {
+                // Add CSRF token
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                fetch('@Url.Action("AddEventImage", "Organizer")', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': token
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
-                    output.style.opacity = '1';
-                    spinner.classList.add('d-none');
-                    
+                    if (uploadSpinner) uploadSpinner.classList.add('d-none');
                     if (data.success) {
-                        output.src = data.url;
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({ icon: 'success', title: 'Thành công', text: 'Thumbnail đã được cập nhật!', timer: 2000, showConfirmButton: false });
-                        } else {
-                            alert('Cập nhật Thumbnail thành công!');
-                        }
+                        location.reload(); // Quickest way to update the carousel and list
                     } else {
                         alert('Lỗi: ' + (data.message || 'Không thể tải ảnh lên.'));
                     }
                 })
                 .catch(error => {
-                    output.style.opacity = '1';
-                    spinner.classList.add('d-none');
+                    if (uploadSpinner) uploadSpinner.classList.add('d-none');
                     console.error('Error:', error);
                     alert('Đã xảy ra lỗi khi tải ảnh lên.');
                 });
             });
         }
+
+        window.removeEventImage = function(url) {
+            if (!confirm('Bạn có chắc chắn muốn xóa ảnh này khỏi slideshow?')) return;
+
+            const formData = new FormData();
+            formData.append('eventId', '@Model.EventId');
+            formData.append('imageUrl', url);
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+            fetch('@Url.Action("RemoveEventImage", "Organizer")', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'RequestVerificationToken': token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể xóa ảnh.'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Đã xảy ra lỗi khi xóa ảnh.');
+            });
+        };
     });
 </script>
 }

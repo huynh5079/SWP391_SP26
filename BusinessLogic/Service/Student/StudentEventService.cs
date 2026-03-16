@@ -41,10 +41,11 @@ namespace BusinessLogic.Service.Student
             {
                 EventId = e.Id,
                 Title = e.Title,
-                ThumbnailUrl = e.ThumbnailUrl,
+                ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
+                ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
                 StartTime = e.StartTime,
                 EndTime = e.EndTime,
-                Location = e.Location?.Name ?? e.LocationId,
+                Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
                 Status = e.Status,
                 MaxCapacity = e.MaxCapacity,
                 RegisteredCount = registeredCount,
@@ -200,10 +201,11 @@ namespace BusinessLogic.Service.Student
                 EventId = ev.Id,
                 Title = ev.Title,
                 Description = ev.Description,
-                ThumbnailUrl = ev.ThumbnailUrl,
+                ThumbnailUrl = ev.ThumbnailUrl?.Split('|')[0],
+                ImageUrls = string.IsNullOrEmpty(ev.ThumbnailUrl) ? new List<string>() : ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
                 StartTime = ev.StartTime,
                 EndTime = ev.EndTime,
-                Location = ev.Location?.Name ?? ev.LocationId,
+                Location = !string.IsNullOrEmpty(ev.Location?.Address) ? ev.Location.Address : (ev.Location?.Name ?? ev.LocationId),
                 MeetingUrl = ev.MeetingUrl,
                 Mode = ev.Mode,
                 Status = ev.Status,
@@ -463,15 +465,15 @@ namespace BusinessLogic.Service.Student
             // Fetch active tickets or where student is team member or speaker
             var events = await _uow.Events.GetAllAsync(
                 e => e.DeletedAt == null && (
-                     e.Tickets.Any(t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ||
-                     e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id)) ||
-                     e.EventAgenda.Any(a => a.StudentSpeakerId == profile.Id && a.DeletedAt == null)),
+                     e.Tickets.Any(t => (t.StudentId == profile.Id || (t.Student != null && t.Student.UserId == studentId)) && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ||
+                     e.EventTeams.Any(et => et.DeletedAt == null && et.TeamMembers.Any(tm => tm.StudentId == profile.Id || (tm.Student != null && tm.Student.UserId == studentId))) ||
+                     e.EventAgenda.Any(a => (a.StudentSpeakerId == profile.Id || (a.StudentSpeaker != null && a.StudentSpeaker.UserId == studentId)) && a.DeletedAt == null)),
                 q => q.Include(x => x.Location)
                       .Include(x => x.Topic)
                       .Include(x => x.Semester)
-                      .Include(x => x.Tickets)
-                      .Include(x => x.EventTeams).ThenInclude(et => et.TeamMembers)
-                      .Include(x => x.EventAgenda));
+                      .Include(x => x.Tickets).ThenInclude(t => t.Student)
+                      .Include(x => x.EventTeams).ThenInclude(et => et.TeamMembers).ThenInclude(tm => tm.Student)
+                      .Include(x => x.EventAgenda).ThenInclude(a => a.StudentSpeaker));
 
             return events
                 .OrderBy(e => e.StartTime)
@@ -480,15 +482,15 @@ namespace BusinessLogic.Service.Student
                     int count = e.Tickets?.Count(tk => tk.DeletedAt == null && tk.Status != TicketStatusEnum.Cancelled) ?? 0;
                     
                     // We mark isRegistered as true if they have an active ticket
-                    bool hasActiveTicket = e.Tickets?.Any(t => t.StudentId == profile.Id && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? false;
+                    bool hasActiveTicket = e.Tickets?.Any(t => (t.StudentId == profile.Id || (t.Student != null && t.Student.UserId == studentId)) && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? false;
                     
                     // Determine Role
                     string role = "";
-                    if (e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id)))
+                    if (e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StudentId == profile.Id || (tm.Student != null && tm.Student.UserId == studentId))))
                     {
                         role = "Ban tổ chức";
                     }
-                    else if (e.EventAgenda.Any(a => a.StudentSpeakerId == profile.Id && a.DeletedAt == null))
+                    else if (e.EventAgenda.Any(a => (a.StudentSpeakerId == profile.Id || (a.StudentSpeaker != null && a.StudentSpeaker.UserId == studentId)) && a.DeletedAt == null))
                     {
                         role = "Diễn giả";
                     }

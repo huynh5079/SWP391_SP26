@@ -118,6 +118,41 @@ using Microsoft.EntityFrameworkCore;
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddEventImage(string eventId, IFormFile file)
+        {
+            if (string.IsNullOrEmpty(eventId)) return Json(new { success = false, message = "Event ID không hợp lệ." });
+            if (file == null || file.Length == 0) return Json(new { success = false, message = "Vui lòng chọn ảnh." });
+
+            try
+            {
+                var url = await _organizerService.AddEventImageAsync(eventId, file, CurrentUserId);
+                return Json(new { success = true, url = url });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveEventImage(string eventId, string imageUrl)
+        {
+            if (string.IsNullOrEmpty(eventId) || string.IsNullOrEmpty(imageUrl)) return Json(new { success = false, message = "Dữ liệu không hợp lệ." });
+
+            try
+            {
+                await _organizerService.RemoveEventImageAsync(eventId, imageUrl, CurrentUserId);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Manage(string? operation, string? legacyAction, CreateEventViewModel vm, string? id)
         {
             var op = (operation ?? legacyAction)?.Trim();
@@ -471,6 +506,8 @@ using Microsoft.EntityFrameworkCore;
 					}).ToList()
 				}).ToList();
 
+				vm.ImageUrls = dto.ImageUrls;
+
 				var dropdowns = await _organizerService.GetCreateEventDropdownsAsync();
 				ViewBag.Locations = dropdowns.Locations;
 
@@ -500,14 +537,14 @@ using Microsoft.EntityFrameworkCore;
 			// Fetch events where this staff is a team member or a speaker
 			var events = await _unitOfWork.Events.GetAllAsync(
 				e => e.DeletedAt == null && (
-				     e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id)) ||
-				     e.EventAgenda.Any(a => a.StaffSpeakerId == staffProfile.Id && a.DeletedAt == null)),
+				     e.EventTeams.Any(et => et.DeletedAt == null && et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id || (tm.Staff != null && tm.Staff.UserId == CurrentUserId))) ||
+				     e.EventAgenda.Any(a => (a.StaffSpeakerId == staffProfile.Id || (a.StaffSpeaker != null && a.StaffSpeaker.UserId == CurrentUserId)) && a.DeletedAt == null)),
 				q => q.Include(x => x.Location)
 				      .Include(x => x.Topic)
 				      .Include(x => x.Semester)
 				      .Include(x => x.EventTeams)
-				        .ThenInclude(et => et.TeamMembers)
-				      .Include(x => x.EventAgenda));
+				        .ThenInclude(et => et.TeamMembers).ThenInclude(tm => tm.Staff)
+				      .Include(x => x.EventAgenda).ThenInclude(a => a.StaffSpeaker));
 
 			var vm = events
 				.OrderBy(e => e.StartTime)
@@ -519,7 +556,7 @@ using Microsoft.EntityFrameworkCore;
 					StartTime = e.StartTime,
 					EndTime = e.EndTime,
 					Location = e.Location?.Address ?? e.LocationId,
-					Role = e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id))
+					Role = e.EventTeams.Any(et => et.DeletedAt == null && et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id || (tm.Staff != null && tm.Staff.UserId == CurrentUserId)))
 						? "Ban tổ chức"
 						: "Diễn giả"
 				})
