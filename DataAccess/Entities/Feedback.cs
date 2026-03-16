@@ -12,7 +12,7 @@ public partial class Feedback : BaseEntity
 
     public string? StudentId { get; set; }
 
-    public double? Rating { get; set; }
+    public double? Rating { get; set; } //total rating
 
     public string? Comment { get; set; }
 
