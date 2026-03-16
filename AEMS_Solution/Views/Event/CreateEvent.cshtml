@@ -5,12 +5,88 @@
     Layout = "_OrganizerLayout";
 }
 <style>
+        .create-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .create-sidebar {
+            position: sticky;
+            top: 14px;
+            align-self: start;
+            max-height: calc(100vh - 28px);
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
         .card {
-            max-width: 980px;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
             border: 1px solid #ddd;
             border-radius: 12px;
             padding: 18px;
+        }
+
+        .side-panel {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background: #fff;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .side-panel h4 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .side-search {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .side-empty {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .side-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 280px;
+            overflow: auto;
+        }
+
+        .side-list li {
+            border: 1px solid #eef2f7;
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #334155;
+            background: #fafafa;
+        }
+
+        @@media (max-width: 1100px) {
+            .create-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .create-sidebar {
+                position: static;
+                max-height: none;
+                overflow: visible;
+            }
         }
 
         .row {
@@ -135,11 +211,12 @@
             }
     </style>
 
-    <div class="card shadow-sm border-0">
-        <h2 class="mb-4">Create Event</h2>
+    <div class="create-layout">
+        <div class="card shadow-sm border-0">
+            <h2 class="mb-4">Create Event</h2>
 
 
-        <form asp-controller="Organizer" asp-action="Create" method="post" id="createEventForm" enctype="multipart/form-data">
+            <form asp-controller="Organizer" asp-action="Create" method="post" id="createEventForm" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             @Html.ValidationSummary(excludePropertyErrors: false, message: "", htmlAttributes: new { @class = "text-danger" })
             <label asp-for="Title">Title *</label>
@@ -355,11 +432,52 @@
             </div>
 
 
-            <div class="actions">
-                <button type="submit" class="btn btn-primary">Create Event</button>
-                <button type="reset" class="btn btn-danger">Reset</button>
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Create Event</button>
+                    <button type="reset" class="btn btn-danger">Reset</button>
+                </div>
+            </form>
+        </div>
+
+        <aside class="create-sidebar">
+            <div class="side-panel">
+                <h4>Available Topics</h4>
+                <input type="text" class="side-search" data-target="topicList" placeholder="Tìm topic..." autocomplete="off" />
+                <ul class="side-list" id="topicList">
+                    @if (Model.Topics != null && Model.Topics.Any(x => !string.IsNullOrWhiteSpace(x.Value)))
+                    {
+                        foreach (var topic in Model.Topics.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
+                        {
+                            <li>@topic.Text</li>
+                        }
+                    }
+                    else
+                    {
+                        <li>Chưa có topic khả dụng.</li>
+                    }
+                </ul>
+                <div class="side-empty" data-empty-for="topicList">Không tìm thấy topic phù hợp.</div>
             </div>
-        </form>
+
+            <div class="side-panel">
+                <h4>Available Locations</h4>
+                <input type="text" class="side-search" data-target="locationList" placeholder="Tìm location..." autocomplete="off" />
+                <ul class="side-list" id="locationList">
+                    @if (Model.Locations != null && Model.Locations.Any(x => !string.IsNullOrWhiteSpace(x.Value)))
+                    {
+                        foreach (var location in Model.Locations.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
+                        {
+                            <li>@location.Text</li>
+                        }
+                    }
+                    else
+                    {
+                        <li>Chưa có location khả dụng.</li>
+                    }
+                </ul>
+                <div class="side-empty" data-empty-for="locationList">Không tìm thấy location phù hợp.</div>
+            </div>
+        </aside>
     </div>
 
     <template id="agendaTemplate">
@@ -596,6 +714,31 @@
             // Re-apply Select2 to newly added agenda locations if needed
             // Currently agenda locations are simple text-based or pre-loaded. 
             // If they need to be searchable too, we can initialize them here.
+
+            // Filter for right-side topic/location lists
+            document.querySelectorAll('.side-search').forEach(input => {
+                input.addEventListener('input', function () {
+                    const targetId = this.getAttribute('data-target');
+                    const list = document.getElementById(targetId);
+                    if (!list) return;
+
+                    const keyword = (this.value || '').trim().toLowerCase();
+                    const items = list.querySelectorAll('li');
+                    let visibleCount = 0;
+
+                    items.forEach(li => {
+                        const text = (li.textContent || '').trim().toLowerCase();
+                        const match = !keyword || text.includes(keyword);
+                        li.style.display = match ? '' : 'none';
+                        if (match) visibleCount++;
+                    });
+
+                    const empty = document.querySelector(`.side-empty[data-empty-for='${targetId}']`);
+                    if (empty) {
+                        empty.style.display = visibleCount === 0 ? 'block' : 'none';
+                    }
+                });
+            });
         });
 
         (function () {
