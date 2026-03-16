@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Quét thẻ Check-in sự kiện";
+    ViewData["Title"] = "Quét thẻ Check-in/out sự kiện";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var currentEventId = ViewBag.EventId as string;
 }
@@ -13,12 +13,22 @@
             <div class="row mb-3">
                 <div class="col-12 d-flex justify-content-between align-items-center">
                     <div>
-                        <h3 class="font-weight-bold text-primary">Camera Check-in Sự Kiện</h3>
+                        <h3 class="font-weight-bold text-primary">Camera Check-in/out Sự Kiện</h3>
                         <p class="text-muted">Đưa mã QR của học sinh vào khung màu xanh bên dưới.</p>
                     </div>
                     <a href="@Url.Action("Detail", "Event", new { id = currentEventId })" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Quay lại
                     </a>
+                </div>
+            </div>
+
+            <!-- Scan Mode Toggle Switch -->
+            <div class="row mb-4">
+                <div class="col-md-7">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="scan-mode-toggle">
+                        <label class="custom-control-label" for="scan-mode-toggle" id="scan-mode-label" style="font-size: 1.1rem; cursor: pointer;">Chế độ: <span class="font-weight-bold text-primary">Check-in</span></label>
+                    </div>
                 </div>
             </div>
 
@@ -48,7 +58,7 @@
                 <div class="col-md-5 stretch-card grid-margin">
                     <div class="card shadow-sm border-0">
                         <div class="card-body d-flex flex-column">
-                            <h4 class="card-title"><i class="fas fa-history text-secondary"></i> Kết quả Check-in</h4>
+                            <h4 class="card-title"><i class="fas fa-history text-secondary"></i> Kết quả Quét</h4>
                             
                             <!-- State Flags -->
                             <div id="scan-status-alert" class="alert alert-secondary text-center mt-3" role="alert">
@@ -96,27 +106,43 @@
             const resultEmail = document.getElementById('result-email');
             const logList = document.getElementById('scan-log-list');
             
-            // Scanner Configuration
+            // Scanner & Mode Configuration
             let html5QrCode = null;
             let isScanning = false;
             let isProcessing = false;
             let currentCameraId = null;
             let cameras = [];
+            let scanMode = 'checkin'; // 'checkin' or 'checkout'
+
+            // Event listener for the toggle switch
+            const scanModeToggle = document.getElementById('scan-mode-toggle');
+            const scanModeLabelSpan = document.querySelector('#scan-mode-label span');
+
+            scanModeToggle.addEventListener('change', function () {
+                if (this.checked) {
+                    scanMode = 'checkout';
+                    scanModeLabelSpan.textContent = 'Checkout';
+                    scanModeLabelSpan.className = 'font-weight-bold text-danger';
+                    statusAlert.className = "alert alert-danger text-center mt-3";
+                    statusAlert.innerHTML = "Chế độ Checkout đang hoạt động. Sẵn sàng quét thẻ.";
+                } else {
+                    scanMode = 'checkin';
+                    scanModeLabelSpan.textContent = 'Check-in';
+                    scanModeLabelSpan.className = 'font-weight-bold text-primary';
+                    statusAlert.className = "alert alert-primary text-center mt-3";
+                    statusAlert.innerHTML = "Chế độ Check-in đang hoạt động. Sẵn sàng quét thẻ.";
+                }
+            });
 
             // Add log helper
             function addLog(message, isError = false) {
                 const li = document.createElement('li');
                 li.className = "list-group-item px-0 py-2 d-flex justify-content-between align-items-center";
-                
                 const timeStr = new Date().toLocaleTimeString('vi-VN', { hour12: false });
-                
                 let iconHtml = isError 
                     ? `<i class="fas fa-times-circle text-danger mr-2"></i>` 
                     : `<i class="fas fa-check-circle text-success mr-2"></i>`;
-                    
                 li.innerHTML = `<div>${iconHtml}<span class="text-sm font-weight-medium">${message}</span></div><small class="text-muted">${timeStr}</small>`;
-                
-                // Add to top of list
                 logList.insertBefore(li, logList.firstChild);
             }
 
@@ -125,19 +151,23 @@
                 return document.querySelector('input[name="__RequestVerificationToken"]').value;
             }
 
-            // POST to API
-            async function processCheckInPayload(qrPayloadText) {
+            // Generic POST to API for both Check-in and Checkout
+            async function processScan(qrPayloadText) {
                 if(isProcessing) return; // Prevent double scan
                 
                 isProcessing = true;
-                html5QrCode.pause(); // Pause camera while processing to prevent spamming
+                html5QrCode.pause(); // Pause camera while processing
+
+                const isCheckin = scanMode === 'checkin';
+                const endpoint = isCheckin ? '/CheckIn/ProcessQR' : '/CheckIn/ProcessCheckout';
+                const actionText = isCheckin ? 'Check-in' : 'Checkout';
 
                 // Update UI state to loading
                 statusAlert.className = "alert alert-warning text-center mt-3";
-                statusAlert.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang xử lý dữ liệu...`;
+                statusAlert.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang xử lý ${actionText}...`;
 
                 try {
-                    const response = await fetch('/CheckIn/ProcessQR', {
+                    const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -151,48 +181,39 @@
 
                     const data = await response.json();
 
-                    // Show detailed card
                     latestScanCard.style.display = 'block';
 
                     if (data.success) {
-                        // Success 200 OK
                         statusAlert.className = "alert alert-success text-center mt-3";
                         statusAlert.innerHTML = `<i class="fas fa-check-circle lg"></i> <strong>Thành công!</strong>`;
-                        
                         resultTitle.className = "mb-2 font-weight-bold text-success";
-                        resultTitle.innerHTML = data.message; // "Check-in thành công!"
-                        
+                        resultTitle.innerHTML = data.message; // "Check-in/out thành công!"
                         resultName.innerText = data.studentName || "Không rõ tên";
                         resultEmail.innerText = data.studentEmail || "Không có email";
-
-                        addLog(`Check-in: ${data.studentName || 'Unkown'}`, false);
+                        addLog(`${actionText}: ${data.studentName || 'Unknown'}`, false);
                         
-                        // Resume scanner quickly for success (1s)
                         setTimeout(() => {
-                            statusAlert.className = "alert alert-primary text-center mt-3";
-                            statusAlert.innerHTML = "Sẵn sàng quét thẻ tiếp theo...";
+                            const readyClass = isCheckin ? "alert-primary" : "alert-danger";
+                            statusAlert.className = `alert ${readyClass} text-center mt-3`;
+                            statusAlert.innerHTML = `Sẵn sàng quét thẻ tiếp theo...`;
                             latestScanCard.style.display = 'none';
                             html5QrCode.resume();
                             isProcessing = false;
                         }, 2000);
                         
                     } else {
-                        // Failed (Already checked in, Invalid ticket, etc.)
                         statusAlert.className = "alert alert-danger text-center mt-3";
                         statusAlert.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Từ chối</strong>`;
-                        
                         resultTitle.className = "mb-2 font-weight-bold text-danger";
                         resultTitle.innerHTML = data.message; 
-                        
                         resultName.innerText = data.studentName || "Không xác định";
                         resultEmail.innerText = data.studentEmail || "---";
-
                         addLog(data.message, true);
 
-                        // Pause scanner longer for error (3s) so the staff can read the error
                         setTimeout(() => {
-                            statusAlert.className = "alert alert-primary text-center mt-3";
-                            statusAlert.innerHTML = "Sẵn sàng quét thẻ tiếp theo...";
+                            const readyClass = isCheckin ? "alert-primary" : "alert-danger";
+                            statusAlert.className = `alert ${readyClass} text-center mt-3`;
+                            statusAlert.innerHTML = `Sẵn sàng quét thẻ tiếp theo...`;
                             latestScanCard.style.display = 'none';
                             html5QrCode.resume();
                             isProcessing = false;
@@ -200,7 +221,7 @@
                     }
 
                 } catch (error) {
-                    console.error("Lỗi gọi API Checkout:", error);
+                    console.error(`Lỗi gọi API ${actionText}:`, error);
                     statusAlert.className = "alert alert-danger text-center mt-3";
                     statusAlert.innerHTML = "Mất kết nối server. Hãy thử lại.";
                     addLog("Lỗi kết nối", true);
@@ -214,14 +235,11 @@
 
             // QR Success Callback
             function onScanSuccess(decodedText, decodedResult) {
-                // Play a beep sound if desired here
-                // console.log(`Scan matched: ${decodedText}`);
-                processCheckInPayload(decodedText);
+                processScan(decodedText);
             }
 
             function onScanFailure(error) {
-                // This triggers every frame a QR code is NOT detected. 
-                // We ignore it to avoid flooding console.
+                // Ignore this, it fires every frame a QR code is not detected.
             }
 
             // Main Scanner Initialization
@@ -229,30 +247,17 @@
                 try {
                     cameras = await Html5Qrcode.getCameras();
                     if (cameras && cameras.length > 0) {
-                        
-                        // Fallback logic for finding back camera first if available
                         let backCamera = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('rear'));
                         currentCameraId = backCamera ? backCamera.id : cameras[0].id;
 
                         html5QrCode = new Html5Qrcode("qr-reader");
 
-                        const config = { 
-                            fps: 15, 
-                            qrbox: { width: 250, height: 250 },
-                            aspectRatio: 1.0,
-                            disableFlip: false // allow scanning mirrored
-                        };
+                        const config = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0, disableFlip: false };
 
-                        await html5QrCode.start(
-                            currentCameraId, 
-                            config, 
-                            onScanSuccess,
-                            onScanFailure
-                        );
+                        await html5QrCode.start(currentCameraId, config, onScanSuccess, onScanFailure);
 
                         isScanning = true;
                         document.getElementById('btn-stop-camera').style.display = 'inline-block';
-                        
                         if(cameras.length > 1) {
                             document.getElementById('btn-switch-camera').style.display = 'inline-block';
                         }
@@ -271,7 +276,7 @@
                 }
             }
 
-            // Set up button listeners
+            // Button listeners
             document.getElementById('btn-stop-camera').addEventListener('click', () => {
                 if(html5QrCode && isScanning) {
                     html5QrCode.stop().then(() => {
@@ -280,36 +285,20 @@
                         document.getElementById('btn-switch-camera').style.display = 'none';
                         statusAlert.className = "alert alert-secondary text-center mt-3";
                         statusAlert.innerHTML = "Camera đã tắt.";
-                    }).catch(err => {
-                        console.error('Lỗi khi tắt camera:', err);
-                    });
+                    }).catch(err => console.error('Lỗi khi tắt camera:', err));
                 }
             });
 
             document.getElementById('btn-switch-camera').addEventListener('click', () => {
                 if(html5QrCode && isScanning && cameras.length > 1) {
-                    // find current index
                     let idx = cameras.findIndex(c => c.id === currentCameraId);
                     let nxtIdx = (idx + 1) % cameras.length;
-                    let nextCameraId = cameras[nxtIdx].id;
+                    currentCameraId = cameras[nxtIdx].id;
 
-                    html5QrCode.stop().then(async () => {
+                    html5QrCode.stop().then(() => {
                         isScanning = false;
-                        currentCameraId = nextCameraId;
-                        
-                        const config = { 
-                            fps: 15, 
-                            qrbox: { width: 250, height: 250 },
-                            aspectRatio: 1.0
-                        };
-
-                        await html5QrCode.start(
-                            currentCameraId, 
-                            config, 
-                            onScanSuccess, 
-                            onScanFailure
-                        );
-                        isScanning = true;
+                        const config = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+                        html5QrCode.start(currentCameraId, config, onScanSuccess, onScanFailure).then(() => isScanning = true);
                     });
                 }
             });
