@@ -21,6 +21,23 @@ namespace AEMS_Solution.Models.Approver
         
         public List<ApproverEventCardVm> RecentPendingEvents { get; set; } = new();
     }
+    public class AgendaVm
+    {
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public string? Speaker { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? Location { get; set; }
+    }
+
+    public class DocumentVm
+    {
+        public string FileName { get; set; } = "";
+        public string FileUrl { get; set; } = "";
+        public string? Type { get; set; }
+        public long FileSizeBytes { get; set; }
+    }
 
     public class ApproverEventCardVm
     {
@@ -37,6 +54,7 @@ namespace AEMS_Solution.Models.Approver
     public class ApproverEventDetailVm
     {
         public string EventId { get; set; } = "";
+        public string? ThumbnailUrl { get; set; }
         public string Title { get; set; } = "";
         public string? Description { get; set; }
         public DateTime StartTime { get; set; }
@@ -47,7 +65,8 @@ namespace AEMS_Solution.Models.Approver
         public string OrganizerName { get; set; } = "";
         public string OrganizerEmail { get; set; } = "";
         public string? Location { get; set; }
-
+        public List<AgendaVm> Agendas { get; set; } = new();
+        public List<DocumentVm> Documents { get; set; } = new();
         public List<ApprovalLogVm> ApprovalLogs { get; set; } = new();
     }
 

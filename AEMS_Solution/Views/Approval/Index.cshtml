@@ -1,174 +1,549 @@
-@model AEMS_Solution.Models.Approver.ApproverDashboardStatsViewModel
+﻿@model AEMS_Solution.Models.Approver.ApproverDashboardStatsViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "Approver Dashboard";
     Layout = "_Approvallayout";
 }
 
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800">Approver - Dashboard</h1>
-            <p class="text-muted small">Manage event approvals and track statistics</p>
-        </div>
+<style>
+    .dash {
+        padding: 1.75rem 0 3rem;
+    }
 
-        <div class="d-flex gap-2">
-            <a asp-controller="Approver" asp-action="PendingApprovals" class="btn btn-sm btn-primary shadow-sm">
+    /* ── Header ── */
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .dash-header-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 2px;
+    }
+
+    .dash-header-sub {
+        font-size: 0.85rem;
+        color: #9ca3af;
+    }
+
+    .dash-header-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .dash-btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #374151;
+        text-decoration: none;
+        transition: background .15s, border-color .15s;
+        white-space: nowrap;
+    }
+
+        .dash-btn-outline:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+            color: #111827;
+            text-decoration: none;
+        }
+
+    .dash-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        background: #6366f1;
+        color: #fff;
+        border: none;
+        text-decoration: none;
+        transition: background .15s;
+        white-space: nowrap;
+    }
+
+        .dash-btn-primary:hover {
+            background: #4f46e5;
+            color: #fff;
+            text-decoration: none;
+        }
+
+    /* ── Stat cards ── */
+    .dash-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 2rem;
+    }
+
+    .dash-stat-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .dash-stat-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 6px;
+    }
+
+    .dash-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .dash-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .dash-stat-pending .dash-stat-value {
+        color: #d97706;
+    }
+
+    .dash-stat-pending .dash-stat-icon {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .dash-stat-approved .dash-stat-value {
+        color: #059669;
+    }
+
+    .dash-stat-approved .dash-stat-icon {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .dash-stat-rejected .dash-stat-value {
+        color: #dc2626;
+    }
+
+    .dash-stat-rejected .dash-stat-icon {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .dash-stat-action .dash-stat-value {
+        color: #6366f1;
+    }
+
+    .dash-stat-action .dash-stat-icon {
+        background: #ede9fe;
+        color: #6366f1;
+    }
+
+    /* ── Table card ── */
+    .dash-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .dash-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .dash-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .dash-btn-view-all {
+        padding: 5px 14px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #6b7280;
+        text-decoration: none;
+        transition: background .15s;
+    }
+
+        .dash-btn-view-all:hover {
+            background: #f9fafb;
+            color: #111827;
+            text-decoration: none;
+        }
+
+    /* ── Event table ── */
+    .dash-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+        .dash-table th {
+            text-align: left;
+            padding: 10px 16px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: #9ca3af;
+            border-bottom: 1px solid #f3f4f6;
+            background: #fafafa;
+        }
+
+        .dash-table td {
+            padding: 12px 16px;
+            color: #374151;
+            border-bottom: 1px solid #f9fafb;
+            vertical-align: middle;
+        }
+
+        .dash-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .dash-table tr:hover td {
+            background: #fafafa;
+        }
+
+    /* Thumbnail */
+    .dash-thumb {
+        width: 64px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+        display: block;
+        border: 1px solid #e5e7eb;
+    }
+
+    .dash-thumb-placeholder {
+        width: 64px;
+        height: 48px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #d1d5db;
+        font-size: 1.1rem;
+    }
+
+    /* Event name */
+    .dash-event-name {
+        font-weight: 600;
+        color: #111827;
+        font-size: 0.875rem;
+        line-height: 1.4;
+    }
+
+    .dash-event-loc {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 2px;
+    }
+
+    /* Status badge */
+    .dash-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 600;
+    }
+
+    .dash-badge-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .dash-badge-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .dash-badge-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* Action buttons */
+    .dash-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .dash-act-btn {
+        padding: 5px 12px;
+        border-radius: 7px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: opacity .15s;
+        white-space: nowrap;
+    }
+
+        .dash-act-btn:hover {
+            opacity: 0.82;
+            text-decoration: none;
+        }
+
+    .dash-act-approve {
+        background: #059669;
+        color: #fff;
+    }
+
+    .dash-act-reject {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .dash-act-change {
+        background: #d97706;
+        color: #fff;
+    }
+
+    .dash-act-view {
+        background: #6366f1;
+        color: #fff;
+    }
+
+    .dash-act-budget {
+        background: #0ea5e9;
+        color: #fff;
+    }
+
+    /* Empty state */
+    .dash-empty {
+        padding: 2.5rem;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 0.875rem;
+    }
+
+        .dash-empty i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            color: #d1d5db;
+        }
+
+    @@media (max-width: 900px) {
+        .dash-stats {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @@media (max-width: 500px) {
+        .dash-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .dash-header {
+            flex-direction: column;
+        }
+    }
+
+    /* Fix footer spacing */
+    body {
+        min-height: unset !important;
+    }
+
+    .container {
+        padding-bottom: 0 !important;
+    }
+
+    footer.border-top {
+        margin-top: 1rem !important;
+        padding: 0.75rem 0 !important;
+    }
+</style>
+
+<div class="dash">
+
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <p class="dash-header-title">Approver Dashboard</p>
+            <p class="dash-header-sub">Manage event approvals and track statistics</p>
+        </div>
+        <div class="dash-header-actions">
+            <a asp-controller="Approver" asp-action="PendingApprovals" class="dash-btn-primary">
                 <i class="bi bi-list-check"></i> Pending Approvals
             </a>
-            <a asp-controller="Topic" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
+            <a asp-controller="Topic" asp-action="Index" class="dash-btn-outline">
                 <i class="bi bi-tags"></i> Topics
             </a>
-            <a asp-controller="Location" asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
+            <a asp-controller="Location" asp-action="Index" class="dash-btn-outline">
                 <i class="bi bi-geo-alt"></i> Locations
             </a>
-            <a asp-controller="Approver" asp-action="Agenda" class="btn btn-sm btn-outline-info shadow-sm">
+            <a asp-controller="Approver" asp-action="Agenda" class="dash-btn-outline">
                 <i class="bi bi-calendar-range"></i> Agenda
             </a>
         </div>
     </div>
 
-    <!-- Stats Cards Row -->
-    <div class="row mb-4">
-        <!-- Total Pending -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Total Pending</p>
-                            <h3 class="mb-0 text-warning">@Model.TotalEventsPending</h3>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-hourglass-split text-warning" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
+    <!-- Stat cards -->
+    <div class="dash-stats">
+        <div class="dash-stat-card dash-stat-pending">
+            <div>
+                <p class="dash-stat-label">Total Pending</p>
+                <p class="dash-stat-value">@Model.TotalEventsPending</p>
             </div>
+            <div class="dash-stat-icon"><i class="bi bi-hourglass-split"></i></div>
         </div>
-
-        <!-- Total Approved -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Approved</p>
-                            <h3 class="mb-0 text-success">@Model.TotalEventsApproved</h3>
-                        </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-check-circle text-success" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="dash-stat-card dash-stat-approved">
+            <div>
+                <p class="dash-stat-label">Approved</p>
+                <p class="dash-stat-value">@Model.TotalEventsApproved</p>
             </div>
+            <div class="dash-stat-icon"><i class="bi bi-check-circle"></i></div>
         </div>
-
-        <!-- Total Rejected -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Rejected</p>
-                            <h3 class="mb-0 text-danger">@Model.TotalEventsRejected</h3>
-                        </div>
-                        <div class="bg-danger bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-x-circle text-danger" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="dash-stat-card dash-stat-rejected">
+            <div>
+                <p class="dash-stat-label">Rejected</p>
+                <p class="dash-stat-value">@Model.TotalEventsRejected</p>
             </div>
+            <div class="dash-stat-icon"><i class="bi bi-x-circle"></i></div>
         </div>
-
-        <!-- Action Required -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Action Required</p>
-                            <h3 class="mb-0 text-primary">@Model.EventsAwaitingAction</h3>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-bell-fill text-primary" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="dash-stat-card dash-stat-action">
+            <div>
+                <p class="dash-stat-label">Action Required</p>
+                <p class="dash-stat-value">@Model.EventsAwaitingAction</p>
             </div>
+            <div class="dash-stat-icon"><i class="bi bi-bell-fill"></i></div>
         </div>
     </div>
 
+    <!-- Recent Pending Events -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <p class="dash-card-title">Recent Pending Events</p>
+            <a asp-controller="Approver" asp-action="PendingApprovals" class="dash-btn-view-all">View All</a>
+        </div>
 
-    <!-- Recent Pending Events Table -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Recent Pending Events</h5>
-                    <a asp-controller="Approver" asp-action="PendingApprovals" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body">
-                    @if (Model.RecentPendingEvents != null && Model.RecentPendingEvents.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Thumbnail</th>
-                                        <th>Event Name</th>
-                                        <th>Start Time</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var evt in Model.RecentPendingEvents)
+        @if (Model.RecentPendingEvents != null && Model.RecentPendingEvents.Any())
+        {
+            <div class="table-responsive">
+                <table class="dash-table">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">Thumbnail</th>
+                            <th>Event Name</th>
+                            <th style="width:150px;">Start Time</th>
+                            <th style="width:100px;">Status</th>
+                            <th style="width:320px; text-align:center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var evt in Model.RecentPendingEvents)
+                        {
+                            <tr>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(evt.ThumbnailUrl))
                                     {
-                                        <tr>
-                                            <td style="width:80px">
-                                                @if (!string.IsNullOrEmpty(evt.ThumbnailUrl))
-                                                {
-                                                    <img src="@evt.ThumbnailUrl" class="img-fluid rounded" alt="Thumbnail" />
-                                                }
-                                            </td>
-                                            <td class="align-middle">
-                                                <strong>@evt.Title</strong>
-                                            </td>
-                                            <td class="align-middle">
-                                                @evt.StartTime.ToString("dd/MM/yyyy HH:mm")
-                                            </td>
-                                            <td class="align-middle">
-                                                <span class="badge bg-warning text-dark">@evt.Status</span>
-                                            </td>
-                                            <td class="text-center align-middle">
-                                                <div class="d-flex justify-content-center gap-1">
-                                                    <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@evt.EventId" asp-route-operation="approve" class="btn btn-sm btn-success">Approve</a>
-                                                    <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@evt.EventId" asp-route-operation="reject" class="btn btn-sm btn-danger">Reject</a>
-                                                    <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@evt.EventId" asp-route-operation="requestchange" class="btn btn-sm btn-warning">Request Change</a>
-                                                    <a asp-action="Detail" asp-route-id="@evt.EventId" class="btn btn-sm btn-info">View</a>
-                                                    <a asp-controller="BudgetApproval" asp-action="Review"
-                                                       asp-route-eventId="@evt.EventId"
-                                                       class="btn btn-sm btn-success fw-semibold">
-                                                        <i class="bi bi-cash-stack me-1"></i>Budget
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <img src="@evt.ThumbnailUrl" class="dash-thumb" alt="Thumbnail" />
                                     }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> No pending events require approval at the moment.
-                        </div>
-                    }
-                </div>
+                                    else
+                                    {
+                                        <div class="dash-thumb-placeholder">
+                                            <i class="bi bi-image"></i>
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    <p class="dash-event-name">@evt.Title</p>
+                                    @if (!string.IsNullOrWhiteSpace(evt.Location))
+                                    {
+                                        <p class="dash-event-loc"><i class="bi bi-geo-alt me-1"></i>@evt.Location</p>
+                                    }
+                                </td>
+                                <td style="color:#6b7280; font-size:0.82rem;">
+                                    @evt.StartTime.ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td>
+                                    @{
+                                        var (bc, bl) = evt.Status switch
+                                        {
+                                            EventStatusEnum.Approved => ("dash-badge-approved", "Approved"),
+                                            EventStatusEnum.Rejected => ("dash-badge-rejected", "Rejected"),
+                                            _ => ("dash-badge-pending", "Pending")
+                                        };
+                                    }
+                                    <span class="dash-badge @bc">@bl</span>
+                                </td>
+                                <td>
+                                    <div class="dash-actions" style="justify-content:center;">
+                                        <a asp-controller="Approver" asp-action="DescriptAction"
+                                           asp-route-id="@evt.EventId" asp-route-operation="approve"
+                                           class="dash-act-btn dash-act-approve">Approve</a>
+                                        <a asp-controller="Approver" asp-action="DescriptAction"
+                                           asp-route-id="@evt.EventId" asp-route-operation="reject"
+                                           class="dash-act-btn dash-act-reject">Reject</a>
+                                        <a asp-controller="Approver" asp-action="DescriptAction"
+                                           asp-route-id="@evt.EventId" asp-route-operation="requestchange"
+                                           class="dash-act-btn dash-act-change">Request Change</a>
+                                        <a asp-controller="Approver" asp-action="Detail"
+                                           asp-route-id="@evt.EventId"
+                                           class="dash-act-btn dash-act-view">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                        <a asp-controller="BudgetApproval" asp-action="Review"
+                                           asp-route-eventId="@evt.EventId"
+                                           class="dash-act-btn dash-act-budget">
+                                            <i class="bi bi-cash-stack me-1"></i>Budget
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="dash-empty">
+                <i class="bi bi-calendar-check"></i>
+                No pending events require approval at the moment.
+            </div>
+        }
     </div>
+
 </div>

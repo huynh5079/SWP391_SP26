@@ -45,7 +45,7 @@ namespace BusinessLogic.Service.Student
                 ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
                 StartTime = e.StartTime,
                 EndTime = e.EndTime,
-                Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
+                Location = e.Location != null ? $"{e.Location.Name} - {e.Location.Address}" : e.LocationId,
                 Status = e.Status,
                 MaxCapacity = e.MaxCapacity,
                 RegisteredCount = registeredCount,
@@ -152,6 +152,7 @@ namespace BusinessLogic.Service.Student
                        .Include(x => x.Department)
                        .Include(x => x.Organizer).ThenInclude(o => o!.User)
                        .Include(x => x.Tickets)
+                       .Include(x => x.EventDocuments)
            // Include agendas and speaker profiles/users for richer agenda info
            .Include(x => x.EventAgenda).ThenInclude(ag => ag.StudentSpeaker).ThenInclude(s => s.User)
            .Include(x => x.EventAgenda).ThenInclude(ag => ag.StaffSpeaker).ThenInclude(s => s.User)
@@ -205,6 +206,12 @@ namespace BusinessLogic.Service.Student
     })
     .ToList();
 
+            var documents = ev.EventDocuments?.Select(d => new EventDocumentDto
+            {
+                Name = d.Name,
+                Url = d.Url,
+                Type = d.Type
+            }).ToList();
 
             return new StudentEventDetailDto
             {
@@ -215,7 +222,7 @@ namespace BusinessLogic.Service.Student
                 ImageUrls = string.IsNullOrEmpty(ev.ThumbnailUrl) ? new List<string>() : ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
                 StartTime = ev.StartTime,
                 EndTime = ev.EndTime,
-                Location = !string.IsNullOrEmpty(ev.Location?.Address) ? ev.Location.Address : (ev.Location?.Name ?? ev.LocationId),
+                Location = ev.Location != null ? $"{ev.Location.Name} - {ev.Location.Address}" : ev.LocationId,
                 MeetingUrl = ev.MeetingUrl,
                 Mode = ev.Mode,
                 Status = ev.Status,
@@ -273,8 +280,10 @@ namespace BusinessLogic.Service.Student
                     ev.Status != EventStatusEnum.Upcoming)
                     throw new InvalidOperationException("Event chưa mở đăng ký.");
 
+                // Use IgnoreQueryFilters to retrieve even soft-deleted (Cancelled) tickets so we can reactivate them!
                 var existing = await _uow.Tickets.GetAsync(
-                    t => t.EventId == eventId && t.StudentId == profile.Id);
+                    t => t.EventId == eventId && t.StudentId == profile.Id,
+                    q => q.IgnoreQueryFilters());
 
                 if (existing != null)
                 {
@@ -328,6 +337,12 @@ namespace BusinessLogic.Service.Student
                 await newTrans.RollbackAsync();
                 Exception inner = dbEx;
                 while (inner.InnerException != null) inner = inner.InnerException;
+                
+                if (inner.Message.Contains("UIX_Ticket_Event_Student") || inner.Message.Contains("duplicate key"))
+                {
+                    throw new InvalidOperationException("Bạn đã đăng ký event này rồi.");
+                }
+
                 throw new InvalidOperationException($"Lỗi lưu dữ liệu: {inner.Message}", dbEx);
             }
 

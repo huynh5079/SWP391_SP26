@@ -1,50 +1,853 @@
 @model AEMS_Solution.Models.Approver.ApproverEventDetailVm
+@using DataAccess.Enum
 @{
     ViewData["Title"] = "Approval - Event Detail";
     Layout = "_Approvallayout";
 }
 
-<div class="container mt-4">
-    <h2 class="mb-3">Event Detail</h2>
+<style>
+    .edp {
+        padding: 1.5rem 0 3rem;
+    }
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <h4>@Model.Title</h4>
-            <p>@Model.Description</p>
-            <p><strong>Organizer:</strong> @Model.OrganizerName (@Model.OrganizerEmail)</p>
-            <p><strong>Time:</strong> @Model.StartTime.ToString("dd/MM/yyyy HH:mm") → @Model.EndTime.ToString("dd/MM/yyyy HH:mm")</p>
-            <p><strong>Location:</strong> @(Model.Location ?? "No location")</p>
-            <p><strong>Capacity:</strong> @Model.MaxCapacity</p>
-            <p><strong>Status:</strong> <span class="badge bg-info">@Model.Status</span></p>
+    /* ── Back button ── */
+    .edp-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #374151;
+        text-decoration: none;
+        margin-bottom: 1.25rem;
+        transition: background .15s;
+    }
+
+        .edp-back:hover {
+            background: #f3f4f6;
+            color: #111827;
+            text-decoration: none;
+        }
+
+    /* ── 2-col layout ── */
+    .edp-layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 1.25rem;
+        align-items: start;
+    }
+
+    /* ── Left card ── */
+    .edp-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 2rem;
+    }
+
+    .edp-overview-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 0.5rem;
+    }
+
+    .edp-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+
+    .edp-event-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.4;
+        margin-bottom: 0.4rem;
+    }
+
+    .edp-location {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Status badge */
+    .edp-badge {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .edp-badge-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .edp-badge-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .edp-badge-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .edp-badge-draft {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .edp-badge-other {
+        background: #e0f2fe;
+        color: #075985;
+    }
+
+    /* Info grid */
+    .edp-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 1.5rem;
+    }
+
+    .edp-info-item {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 11px 14px;
+    }
+
+    .edp-info-label {
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 4px;
+    }
+
+    .edp-info-value {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .edp-info-muted {
+        font-weight: 400;
+        color: #6b7280;
+        font-size: 0.82rem;
+    }
+
+    /* Description */
+    .edp-desc-heading {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 0.5rem;
+    }
+
+    .edp-desc-text {
+        font-size: 0.9rem;
+        color: #6b7280;
+        line-height: 1.8;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Divider */
+    .edp-hr {
+        border: none;
+        border-top: 1px solid #f0f0f0;
+        margin: 1.5rem 0;
+    }
+
+    /* ── Tabs ── */
+    .edp-tab-nav {
+        display: flex;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1.25rem;
+    }
+
+    .edp-tab-btn {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 8px 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #9ca3af;
+        cursor: pointer;
+        margin-bottom: -1px;
+        transition: color .15s, border-color .15s;
+    }
+
+        .edp-tab-btn.active {
+            color: #111827;
+            border-bottom-color: #111827;
+        }
+
+    .edp-tab-count {
+        margin-left: 6px;
+        background: #f3f4f6;
+        color: #6b7280;
+        border-radius: 10px;
+        padding: 1px 8px;
+        font-size: 0.72rem;
+    }
+
+    .edp-tab-pane {
+        display: none;
+    }
+
+        .edp-tab-pane.active {
+            display: block;
+        }
+
+    /* Section label */
+    .edp-section-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+
+    /* ── Agenda — card grid like Organizer ── */
+    .edp-agenda-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .edp-agenda-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.1rem 1.25rem;
+    }
+
+    .edp-agenda-num {
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+    }
+
+    .edp-agenda-speaker-tag {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #6366f1;
+    }
+
+    .edp-agenda-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.6rem;
+    }
+
+    .edp-agenda-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 0.75rem;
+    }
+
+    .edp-agenda-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 0.75rem;
+    }
+
+    .edp-agenda-meta-box {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 8px 10px;
+    }
+
+    .edp-agenda-meta-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 3px;
+    }
+
+    .edp-agenda-meta-val {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .edp-agenda-meta-sub {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .edp-agenda-desc-box {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 8px 10px;
+    }
+
+    .edp-agenda-desc-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin-bottom: 4px;
+    }
+
+    .edp-agenda-desc-text {
+        font-size: 0.82rem;
+        color: #6b7280;
+        line-height: 1.6;
+    }
+
+    /* ── Documents ── */
+    .edp-doc-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .edp-doc-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px 14px;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color .15s;
+    }
+
+        .edp-doc-item:hover {
+            border-color: #d1d5db;
+            text-decoration: none;
+            color: inherit;
+        }
+
+    .edp-doc-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.62rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .edp-doc-pdf {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .edp-doc-ppt {
+        background: #ffedd5;
+        color: #9a3412;
+    }
+
+    .edp-doc-doc {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .edp-doc-xls {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .edp-doc-img {
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+    .edp-doc-link {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .edp-doc-other {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .edp-doc-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .edp-doc-type {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 2px;
+    }
+
+    .edp-doc-arrow {
+        margin-left: auto;
+        color: #d1d5db;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    /* ── Log table ── */
+    .edp-log-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+        .edp-log-table th {
+            text-align: left;
+            padding: 7px 12px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #9ca3af;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .edp-log-table td {
+            padding: 11px 12px;
+            color: #6b7280;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+        }
+
+        .edp-log-table tr:last-child td {
+            border-bottom: none;
+        }
+
+    .edp-log-approve {
+        color: #059669;
+        font-weight: 600;
+    }
+
+    .edp-log-reject {
+        color: #dc2626;
+        font-weight: 600;
+    }
+
+    .edp-log-change {
+        color: #d97706;
+        font-weight: 600;
+    }
+
+    /* ── Right panel ── */
+    .edp-right {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .edp-thumb-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .edp-thumb-img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .edp-thumb-placeholder {
+        width: 100%;
+        height: 200px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #d1d5db;
+        font-size: 2.5rem;
+    }
+
+    .edp-action-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 1.25rem;
+    }
+
+    .edp-action-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 1rem;
+    }
+
+    .edp-btn {
+        display: block;
+        width: 100%;
+        padding: 11px;
+        border-radius: 9px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        transition: opacity .15s;
+        margin-bottom: 8px;
+    }
+
+        .edp-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .edp-btn:hover {
+            opacity: 0.85;
+            text-decoration: none;
+        }
+
+    .edp-btn-approve {
+        background: #059669;
+        color: #fff;
+    }
+
+    .edp-btn-reject {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .edp-btn-change {
+        background: #d97706;
+        color: #fff;
+    }
+
+    .edp-empty {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+        font-size: 0.85rem;
+    }
+
+    @@media (max-width: 900px) {
+        .edp-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .edp-agenda-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 500px) {
+        .edp-info-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+
+<div class="edp">
+    <a asp-controller="Approver" asp-action="Index" class="edp-back">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <div class="edp-layout">
+
+        <!-- ── LEFT COLUMN ── -->
+        <div class="edp-card">
+
+            <p class="edp-overview-label">Event Overview</p>
+
+            <div class="edp-status-row">
+                <p class="edp-event-title">@Model.Title</p>
+                @{
+                    var (badgeClass, badgeLabel) = Model.Status switch
+                    {
+                        EventStatusEnum.Approved or EventStatusEnum.Published or
+                        EventStatusEnum.Upcoming or EventStatusEnum.Happening or
+                        EventStatusEnum.Completed => ("edp-badge-approved", Model.Status.ToString()),
+                        EventStatusEnum.Rejected or EventStatusEnum.Cancelled
+                        => ("edp-badge-rejected", Model.Status.ToString()),
+                        EventStatusEnum.Draft => ("edp-badge-draft", "Draft"),
+                        EventStatusEnum.Pending => ("edp-badge-pending", "Pending"),
+                        _ => ("edp-badge-other", Model.Status.ToString())
+                    };
+                }
+                <span class="edp-badge @badgeClass" style="flex-shrink:0; margin-top:6px;">@badgeLabel</span>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Location))
+            {
+                <p class="edp-location"><i class="bi bi-geo-alt me-1"></i>@Model.Location</p>
+            }
+
+            <!-- Info grid -->
+            <div class="edp-info-grid">
+                <div class="edp-info-item">
+                    <p class="edp-info-label">Organizer</p>
+                    <p class="edp-info-value">@Model.OrganizerName</p>
+                    <p class="edp-info-muted">@Model.OrganizerEmail</p>
+                </div>
+                <div class="edp-info-item">
+                    <p class="edp-info-label">Start Time</p>
+                    <p class="edp-info-value">@Model.StartTime.ToString("HH:mm dd/MM/yyyy")</p>
+                </div>
+                <div class="edp-info-item">
+                    <p class="edp-info-label">End Time</p>
+                    <p class="edp-info-value">@Model.EndTime.ToString("HH:mm dd/MM/yyyy")</p>
+                </div>
+                <div class="edp-info-item">
+                    <p class="edp-info-label">Capacity</p>
+                    <p class="edp-info-value">@Model.MaxCapacity slots</p>
+                </div>
+            </div>
+
+            <!-- Description -->
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <p class="edp-desc-heading">Description</p>
+                <p class="edp-desc-text">@Model.Description</p>
+            }
+
+            <hr class="edp-hr" />
+
+            <!-- Tabs -->
+            <div class="edp-tab-nav">
+                <button class="edp-tab-btn active" onclick="edpTab('agendas',this)">
+                    Agendas
+                    @if (Model.Agendas.Any())
+                    {
+                        <span class="edp-tab-count">@Model.Agendas.Count</span>
+                    }
+                </button>
+                <button class="edp-tab-btn" onclick="edpTab('documents',this)">
+                    Documents
+                    @if (Model.Documents.Any())
+                    {
+                        <span class="edp-tab-count">@Model.Documents.Count</span>
+                    }
+                </button>
+                <button class="edp-tab-btn" onclick="edpTab('logs',this)">
+                    Approval Logs
+                    @if (Model.ApprovalLogs.Any())
+                    {
+                        <span class="edp-tab-count">@Model.ApprovalLogs.Count</span>
+                    }
+                </button>
+            </div>
+
+            <!-- Tab: Agendas -->
+            <div id="edp-agendas" class="edp-tab-pane active">
+                @if (Model.Agendas.Any())
+                {
+                    <div class="edp-agenda-grid">
+                        @{
+                            int agIdx = 1;
+                        }
+                        @foreach (var a in Model.Agendas.OrderBy(x => x.StartTime))
+                        {
+                            <div class="edp-agenda-card">
+                                <div class="edp-agenda-card-header">
+                                    <span class="edp-agenda-num">Agenda @agIdx</span>
+                                    @if (!string.IsNullOrWhiteSpace(a.Speaker))
+                                    {
+                                        <span class="edp-agenda-speaker-tag">@a.Speaker</span>
+                                    }
+                                </div>
+                                <p class="edp-agenda-title">@a.Title</p>
+                                <div class="edp-agenda-meta-grid">
+                                    <div class="edp-agenda-meta-box">
+                                        <p class="edp-agenda-meta-label">Time</p>
+                                        <p class="edp-agenda-meta-val">@a.StartTime.ToString("HH:mm dd/MM/yyyy")</p>
+                                        <p class="edp-agenda-meta-sub">→ @a.EndTime.ToString("HH:mm dd/MM/yyyy")</p>
+                                    </div>
+                                    <div class="edp-agenda-meta-box">
+                                        <p class="edp-agenda-meta-label">Location</p>
+                                        <p class="edp-agenda-meta-val">@(!string.IsNullOrWhiteSpace(a.Location) ? a.Location : "—")</p>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(a.Description))
+                                {
+                                    <div class="edp-agenda-desc-box">
+                                        <p class="edp-agenda-desc-label">Description</p>
+                                        <p class="edp-agenda-desc-text">@a.Description</p>
+                                    </div>
+                                }
+                            </div>
+                            agIdx++;
+                        }
+                    </div>
+                }
+                else
+                {
+
+                    <p class="edp-empty">No agendas added yet.</p>
+                }
+            </div>
+
+            <!-- Tab: Documents -->
+            <div id="edp-documents" class="edp-tab-pane">
+                @if (Model.Documents.Any())
+                {
+                    <div class="edp-doc-list">
+                        @foreach (var d in Model.Documents)
+                        {
+                            var ext = System.IO.Path.GetExtension(d.FileName)?.TrimStart('.').ToLower() ?? "";
+                            var typeLabel = !string.IsNullOrWhiteSpace(ext) ? ext.ToUpper()
+                            : !string.IsNullOrWhiteSpace(d.Type) ? d.Type.ToUpper() : "FILE";
+                            var iconClass = ext switch
+                            {
+                                "pdf" => "edp-doc-pdf",
+                                "ppt" or "pptx" => "edp-doc-ppt",
+                                "doc" or "docx" => "edp-doc-doc",
+                                "xls" or "xlsx" => "edp-doc-xls",
+                                "png" or "jpg" or "jpeg" or "gif" or "webp" => "edp-doc-img",
+                                _ => d.Type?.ToLower() switch
+                                {
+                                    "pdf" => "edp-doc-pdf",
+                                    "slide" or "ppt" or "pptx" => "edp-doc-ppt",
+                                    "word" or "doc" or "docx" => "edp-doc-doc",
+                                    "excel" or "xls" or "xlsx" => "edp-doc-xls",
+                                    "image" or "img" => "edp-doc-img",
+                                    "link" or "url" => "edp-doc-link",
+                                    _ => "edp-doc-other"
+                                }
+                            };
+                            var displayName = !string.IsNullOrWhiteSpace(d.FileName) ? d.FileName
+                            : !string.IsNullOrWhiteSpace(d.Type) ? d.Type : "Document";
+                            <a href="@d.FileUrl" target="_blank" class="edp-doc-item">
+                                <div class="edp-doc-icon @iconClass">@typeLabel</div>
+                                <div>
+                                    <p class="edp-doc-name">@displayName</p>
+                                    @if (!string.IsNullOrWhiteSpace(d.Type))
+                                    {
+                                        <p class="edp-doc-type">@d.Type</p>
+                                    }
+                                </div>
+                                <i class="bi bi-arrow-up-right edp-doc-arrow"></i>
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+
+                    <p class="edp-empty">No documents attached.</p>
+                }
+            </div>
+
+            <!-- Tab: Approval Logs -->
+            <div id="edp-logs" class="edp-tab-pane">
+                <table class="edp-log-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Approver</th>
+                            <th>Action</th>
+                            <th>Comment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.ApprovalLogs.Any())
+                        {
+                            @foreach (var log in Model.ApprovalLogs.OrderByDescending(l => l.CreatedAt))
+                            {
+                                var (logClass, logLabel) = log.Action switch
+                                {
+                                    ApprovalActionEnum.Approve => ("edp-log-approve", "Approved"),
+                                    ApprovalActionEnum.Reject => ("edp-log-reject", "Rejected"),
+                                    ApprovalActionEnum.RequestChange => ("edp-log-change", "Request Change"),
+                                    _ => ("", log.Action.ToString())
+                                };
+                                <tr>
+                                    <td style="white-space:nowrap;">@log.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@log.ApproverId</td>
+                                    <td><span class="@logClass">@logLabel</span></td>
+                                    <td>@(string.IsNullOrWhiteSpace(log.Comment) ? "—" : log.Comment)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="4" class="edp-empty">No approval actions yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- ── RIGHT COLUMN ── -->
+        <div class="edp-right">
+
+            <!-- Thumbnail -->
+            <div class="edp-thumb-card">
+                @if (!string.IsNullOrWhiteSpace(Model.ThumbnailUrl))
+                {
+                    <img src="@Model.ThumbnailUrl" class="edp-thumb-img" alt="Thumbnail" />
+                }
+                else
+                {
+                    <div class="edp-thumb-placeholder">
+                        <i class="bi bi-image"></i>
+                    </div>
+                }
+            </div>
+
+            <!-- Action panel — Pending only -->
+            @if (Model.Status == EventStatusEnum.Pending)
+            {
+                <div class="edp-action-card">
+                    <p class="edp-action-title">Approval Actions</p>
+                    <a asp-controller="Approver" asp-action="DescriptAction"
+                       asp-route-id="@Model.EventId" asp-route-operation="approve"
+                       class="edp-btn edp-btn-approve">
+                        <i class="bi bi-check-circle me-1"></i>Approve
+                    </a>
+                    <a asp-controller="Approver" asp-action="DescriptAction"
+                       asp-route-id="@Model.EventId" asp-route-operation="reject"
+                       class="edp-btn edp-btn-reject">
+                        <i class="bi bi-x-circle me-1"></i>Reject
+                    </a>
+                    <a asp-controller="Approver" asp-action="DescriptAction"
+                       asp-route-id="@Model.EventId" asp-route-operation="requestchange"
+                       class="edp-btn edp-btn-change">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Request Change
+                    </a>
+                </div>
+            }
+
         </div>
     </div>
-
-    <div class="mb-3">
-        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@Model.EventId" asp-route-operation="approve" class="btn btn-success">Approve</a>
-        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@Model.EventId" asp-route-operation="reject" class="btn btn-danger ms-2">Reject</a>
-        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@Model.EventId" asp-route-operation="requestchange" class="btn btn-warning ms-2">Request Change</a>
-    </div>
-
-    <h5>Approval Logs</h5>
-    <table class="table table-sm">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Approver</th>
-                <th>Action</th>
-                <th>Comment</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var l in Model.ApprovalLogs)
-            {
-                <tr>
-                    <td>@l.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@l.ApproverId</td>
-                    <td>@l.Action</td>
-                    <td>@l.Comment</td>
-                </tr>
-            }
-        </tbody>
-    </table>
 </div>
+
+@section Scripts {
+    <script>
+        function edpTab(name, btn) {
+            document.querySelectorAll('.edp-tab-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.edp-tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('edp-' + name).classList.add('active');
+            btn.classList.add('active');
+        }
+    </script>
+}

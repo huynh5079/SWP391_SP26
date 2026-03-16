@@ -393,6 +393,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             var vm = new ApproverEventDetailVm
             {
                 EventId = dto.EventId,
+                ThumbnailUrl = dto.ThumbnailUrl,
                 Title = dto.Title,
                 Description = dto.Description,
                 StartTime = dto.StartTime,
@@ -401,19 +402,37 @@ namespace AEMS_Solution.Controllers.Dashboards
                 Status = dto.Status,
                 OrganizerName = dto.OrganizerName,
                 OrganizerEmail = dto.OrganizerEmail,
-                Location = dto.Location
-            };
+                Location = dto.Location,
 
-            foreach (var l in dto.ApprovalLogs)
-            {
-                vm.ApprovalLogs.Add(new ApprovalLogVm
+                // Agendas
+                Agendas = dto.Agendas.Select(a => new AgendaVm
+                {
+                    Title = a.Title,
+                    Description = a.Description,
+                    Speaker = a.Speaker,
+                    StartTime = a.StartTime ?? dto.StartTime,
+                    EndTime = a.EndTime ?? dto.EndTime,
+                    Location = a.Location
+                }).ToList(),
+
+                // Documents
+                Documents = dto.Documents.Select(d => new DocumentVm
+                {
+                    FileName = d.FileName,
+                    FileUrl = d.FileUrl,
+                    FileSizeBytes = 0,// EventDocument entity không có SizeBytes
+                    Type = d.Type 
+                }).ToList(),
+
+                // Approval Logs
+                ApprovalLogs = dto.ApprovalLogs.Select(l => new ApprovalLogVm
                 {
                     ApproverId = l.ApproverId,
                     Action = l.Action,
                     Comment = l.Comment,
-                    CreatedAt = l.CreatedAt
-                });
-            }
+                    CreatedAt = l.CreatedAt,
+                }).ToList(),
+            };
 
             return View("~/Views/Approval/Detail.cshtml", vm);
         }

@@ -358,16 +358,16 @@
                         <div class="row">
                             <div class="col">
                                 <label>File name</label>
-                                <input name="Documents[@i].FileName" value="@Model.Documents[i].FileName" />
+                                <input name="Documents[i].FileName" value="@Model.Documents[i].FileName" />
                             </div>
                             <div class="col">
                                 <label>Upload File</label>
-                                <input name="Documents[@i].File" type="file" />
+                                <input name="Documents[i].File" type="file" />
                             </div>
                         </div>
 
                         <label>Or provide Url</label>
-                        <input name="Documents[@i].Url" value="@Model.Documents[i].Url" />
+                        <input name="Documents[i].Url" value="@Model.Documents[i].Url" />
                     </div>
                 }
             </div>
@@ -393,36 +393,36 @@
                         <div class="row">
                             <div class="col">
                                 <label>Session Name</label>
-                                <input asp-for="Agendas[@i].SessionName" required />
-                                <span asp-validation-for="Agendas[@i].SessionName" class="error"></span>
+                                <input asp-for="Agendas[i].SessionName" required />
+                                <span asp-validation-for="Agendas[i].SessionName" class="error"></span>
                             </div>
                             <div class="col">
                                 <label>Speaker</label>
-                                <input asp-for="Agendas[@i].SpeakerInfo" required />
-                                <span asp-validation-for="Agendas[@i].SpeakerInfo" class="error"></span>
+                                <input asp-for="Agendas[i].SpeakerInfo" required />
+                                <span asp-validation-for="Agendas[i].SpeakerInfo" class="error"></span>
                             </div>
                         </div>
 
                         <label>Description</label>
-                        <textarea asp-for="Agendas[@i].Description"></textarea>
+                        <textarea asp-for="Agendas[i].Description"></textarea>
 
                         <div class="row">
                             <div class="col">
                                 <label>Start</label>
-                                <input asp-for="Agendas[@i].StartTime" type="datetime-local" />
+                                <input asp-for="Agendas[i].StartTime" type="datetime-local" />
                             </div>
                             <div class="col">
                                 <label>End</label>
-                                <input asp-for="Agendas[@i].EndTime" type="datetime-local" />
+                                <input asp-for="Agendas[i].EndTime" type="datetime-local" />
                             </div>
                         </div>
 
                         <div class="row pt-2 pb-2">
                             <div class="col">
                                 <label>Location</label>
-                                <input type="hidden" asp-for="Agendas[@i].Location" class="agenda-location-hidden" />
+                                <input type="hidden" asp-for="Agendas[i].Location" class="agenda-location-hidden" />
                                 <div class="position-relative">
-                                    <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" value="@Model.Agendas[@i].Location" />
+                                    <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" value="@Model.Agendas[i].Location" />
                                     <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
                                 </div>
                             </div>
