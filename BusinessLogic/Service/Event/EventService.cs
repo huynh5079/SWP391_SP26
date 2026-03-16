@@ -881,8 +881,8 @@ public class EventService : IEventService
 		if (ev.StartTime <= now)
 			throw new InvalidOperationException("Thời gian bắt đầu phải lớn hơn thời gian hiện tại mới có thể gửi duyệt.");
 
-		if (ev.StartTime - now < TimeSpan.FromDays(5))
-			throw new InvalidOperationException("Cần gửi duyệt trước ít nhất 5 ngày so với thời gian bắt đầu.");
+		//if (ev.StartTime - now < TimeSpan.FromDays(5))
+			//throw new InvalidOperationException("Cần gửi duyệt trước ít nhất 5 ngày so với thời gian bắt đầu.");
 
 		ev.Status = EventStatusEnum.Pending;
 		ev.UpdatedAt = now;
