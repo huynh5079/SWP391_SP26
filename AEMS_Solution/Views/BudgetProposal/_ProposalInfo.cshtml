@@ -1,5 +1,6 @@
 ﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
 @using DataAccess.Enum
+
 @{
     var (badgeClass, badgeIcon) = Model.Status switch
     {
@@ -26,7 +27,7 @@
 
             <div class="d-flex gap-2 flex-wrap">
 
-               
+                
                 @if (Model.CanSend)
                 {
                     <form asp-action="SubmitForApproval"
@@ -43,6 +44,25 @@
                 }
 
                 
+                @if (Model.CanEditProposal)
+                {
+                    <button class="btn btn-warning fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#modalEditProposal">
+                        <i class="bi bi-pencil me-1"></i> Chỉnh sửa
+                    </button>
+                    <form asp-action="DeleteProposal" asp-controller="BudgetProposal"
+                          method="post" class="d-inline"
+                          onsubmit="return confirm('Xóa Proposal này? Hành động không thể hoàn tác.')">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                        <input type="hidden" name="eventId" value="@Model.EventId" />
+                        <button type="submit" class="btn btn-danger fw-semibold">
+                            <i class="bi bi-trash me-1"></i> Xóa
+                        </button>
+                    </form>
+                }
+
+               
                 @if (Model.CanApprove)
                 {
                     <button class="btn btn-success fw-semibold"

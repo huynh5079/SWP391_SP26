@@ -166,5 +166,85 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
 
             return RedirectToAction(nameof(Review), new { eventId });
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateReceiptStatus(
+    string receiptId, string eventId, ExpenseStatusEnum status)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                await _service.UpdateReceiptStatusAsync(CurrentUserId, receiptId, status);
+                SetSuccess(status == ExpenseStatusEnum.Accepted
+                    ? "Đã xác nhận biên lai."
+                    : "Đã từ chối biên lai.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetApprovalController)}.{nameof(UpdateReceiptStatus)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Review), new { eventId });
+        }
+    
+    // Accepted
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AcceptReceipt(string receiptId, string eventId)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+            try
+            {
+                await _service.UpdateReceiptStatusAsync(
+                    CurrentUserId, receiptId, ExpenseStatusEnum.Accepted);
+                SetSuccess("Đã xác nhận biên lai.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetApprovalController)}.{nameof(AcceptReceipt)}");
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+            return RedirectToAction(nameof(Review), new { eventId });
+        }
+
+        // Rejected + gửi thông báo
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectReceipt(
+            string receiptId, string eventId, string note)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            if (string.IsNullOrWhiteSpace(note))
+            {
+                SetError("Vui lòng nhập lý do từ chối.");
+                return RedirectToAction(nameof(Review), new { eventId });
+            }
+
+            try
+            {
+                await _service.RejectReceiptAsync(CurrentUserId, receiptId, eventId, note);
+                SetSuccess("Đã từ chối biên lai và thông báo cho Organizer.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetApprovalController)}.{nameof(RejectReceipt)}");
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+            return RedirectToAction(nameof(Review), new { eventId });
+        }
     }
 }

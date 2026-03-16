@@ -14,6 +14,8 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
         Task SubmitForApprovalAsync(string organizerId, string proposalId);
         Task ApproveAsync(string approverId, string proposalId, string? note);
         Task RejectAsync(string approverId, string proposalId, string note);
+        Task EditProposalAsync(string organizerId, string proposalId, string? title, string? description);
+        Task DeleteProposalAsync(string organizerId, string proposalId);
 
         // BudgetItem
         Task<BudgetItemDto> AddItemAsync(string organizerId, string proposalId, CreateBudgetItemDto dto);
@@ -23,6 +25,10 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
         // ExpenseReceipt
         Task<ExpenseReceiptDto> AddReceiptAsync(string organizerId, string proposalId, CreateExpenseReceiptDto dto);
         Task<List<ExpenseReceiptDto>> GetReceiptsByProposalAsync(string proposalId);
+        Task UpdateReceiptStatusAsync(string approverId, string receiptId, ExpenseStatusEnum status);
+        Task RejectReceiptAsync(string approverId, string receiptId, string eventId, string note);
+        Task EditReceiptAsync(string organizerId, string receiptId, string? title, decimal actualAmount);
+        Task DeleteReceiptAsync(string organizerId, string receiptId);
 
         // Báo cáo quyết toán
         Task<BudgetSummaryDto> GetSummaryAsync(string proposalId);

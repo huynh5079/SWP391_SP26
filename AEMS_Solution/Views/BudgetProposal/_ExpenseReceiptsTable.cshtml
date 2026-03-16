@@ -42,13 +42,17 @@
                             <th>Trạng thái</th>
                             <th>Ngày nộp</th>
                             <th class="text-center">Hóa đơn</th>
+                            @if (Model.CanReviewReceipts || Model.CanEditReceipts)
+                            {
+                                <th class="text-center">Thao tác</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var r in Model.Receipts)
                         {
                             <tr>
-                                <td class="fw-bold align-middle">@r.Title</td>
+                                <td class="align-middle fw-bold">@r.Title</td>
                                 <td class="text-end align-middle">
                                     @r.ActualAmount.ToString("N0")đ
                                 </td>
@@ -81,6 +85,58 @@
                                         <span class="text-muted">—</span>
                                     }
                                 </td>
+
+                        
+                                @if (Model.CanReviewReceipts)
+                                {
+                                    <td class="text-center align-middle">
+                                        @if (r.Status != ExpenseStatusEnum.Accepted)
+                                        {
+                                            <form asp-action="AcceptReceipt"
+                                                  asp-controller="BudgetApproval"
+                                                  method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                                <input type="hidden" name="eventId" value="@Model.EventId" />
+                                                <button type="submit"
+                                                        class="btn btn-success btn-sm fw-semibold me-1">
+                                                    <i class="bi bi-check-lg"></i> Accept
+                                                </button>
+                                            </form>
+                                        }
+                                        @if (r.Status != ExpenseStatusEnum.Rejected)
+                                        {
+                                            <button class="btn btn-danger btn-sm fw-semibold"
+                                                    onclick="openRejectReceiptModal('@r.ReceiptId', '@r.Title')">
+                                                <i class="bi bi-x-lg"></i> Reject
+                                            </button>
+                                        }
+                                    </td>
+                                }
+
+                                @if (Model.CanEditReceipts)
+                                {
+                                    <td class="text-center align-middle">
+                                        @if (r.Status == ExpenseStatusEnum.Rejected)
+                                        {
+                                            <button class="btn btn-warning btn-sm me-1"
+                                                    onclick="openEditReceiptModal('@r.ReceiptId','@r.Title',@r.ActualAmount)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <form asp-action="DeleteReceipt"
+                                                  asp-controller="BudgetProposal"
+                                                  method="post" class="d-inline"
+                                                  onsubmit="return confirm('Xóa biên lai này?')">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                                <input type="hidden" name="eventId" value="@Model.EventId" />
+                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>
@@ -90,7 +146,7 @@
                             <td class="text-end fw-bold @(Model.IsOverBudget ? "text-danger" : "text-success")">
                                 @Model.ActualAmount.ToString("N0")đ
                             </td>
-                            <td colspan="3"></td>
+                            <td colspan="@(Model.CanReviewReceipts || Model.CanEditReceipts ? 4 : 3)"></td>
                         </tr>
                     </tfoot>
                 </table>

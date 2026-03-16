@@ -1,4 +1,5 @@
 ﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+@using DataAccess.Enum
 
 
 @if (!Model.HasProposal && !Model.IsApprover)
@@ -220,6 +221,160 @@
                         </button>
                         <button type="submit" class="btn btn-success fw-semibold">
                             <i class="bi bi-check-lg me-1"></i> Thêm biên lai
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+
+@if (Model.CanEditProposal)
+{
+    <div class="modal fade" id="modalEditProposal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="EditProposal" asp-controller="BudgetProposal" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-pencil me-2"></i>Chỉnh sửa Proposal
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Tiêu đề <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="Title" class="form-control"
+                                   value="@Model.Title" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Mô tả</label>
+                            <textarea name="Description" class="form-control"
+                                  rows="3">@Model.Description</textarea>
+                        </div>
+                        @if (Model.Status == ProposalStatusEnum.Rejected)
+                        {
+                            <div class="alert alert-info small mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Sau khi chỉnh sửa, Proposal sẽ chuyển về trạng thái
+                                <strong>Draft</strong> để bạn gửi duyệt lại.
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-warning fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Lưu thay đổi
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+
+@if (Model.CanReviewReceipts)
+{
+    <div class="modal fade" id="modalRejectReceipt" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="RejectReceipt" asp-controller="BudgetApproval" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="rejectReceiptId" name="receiptId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold text-danger">
+                            <i class="bi bi-x-circle me-2"></i>Từ chối biên lai
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Biên lai: <strong id="rejectReceiptTitle"></strong>
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Lý do từ chối <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="note" class="form-control" rows="3"
+                                  placeholder="Nhập lý do từ chối..." required></textarea>
+                            <div class="form-text">
+                                Lý do sẽ được gửi thông báo đến Organizer.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-danger fw-semibold">
+                            <i class="bi bi-x-lg me-1"></i> Xác nhận từ chối
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+
+@if (Model.CanEditReceipts)
+{
+    <div class="modal fade" id="modalEditReceipt" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="EditReceipt" asp-controller="BudgetProposal" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="editReceiptId" name="receiptId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-pencil me-2"></i>Chỉnh sửa biên lai
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Sau khi lưu, biên lai sẽ chuyển về trạng thái
+                            <strong>Pending</strong> để Approver xem xét lại.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Tên khoản chi <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="editReceiptTitle" name="Title"
+                                   class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Số tiền thực tế <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" id="editReceiptAmount" name="ActualAmount"
+                                       class="form-control" min="1000" step="1000" required />
+                                <span class="input-group-text">đ</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-warning fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Lưu & gửi lại
                         </button>
                     </div>
                 </form>

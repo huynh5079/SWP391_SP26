@@ -166,6 +166,63 @@ namespace AEMS_Solution.Controllers.Features.Organizer
 
             return RedirectToAction(nameof(Detail), new { eventId = dto.EventId });
         }
+        // ─── Edit Proposal ────────────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditProposal(string proposalId, string eventId,
+            string? Title, string? Description)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            if (string.IsNullOrWhiteSpace(Title))
+            {
+                SetError("Tiêu đề không được để trống.");
+                return RedirectToAction(nameof(Detail), new { eventId });
+            }
+
+            try
+            {
+                await _service.EditProposalAsync(CurrentUserId, proposalId, Title, Description);
+                SetSuccess("Đã cập nhật Proposal. Bạn có thể thêm hạng mục và gửi duyệt lại!");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetProposalController)}.{nameof(EditProposal)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { eventId });
+        }
+
+        // ─── Delete Proposal ──────────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteProposal(string proposalId, string eventId)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                await _service.DeleteProposalAsync(CurrentUserId, proposalId);
+                SetSuccess("Đã xóa Budget Proposal thành công.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetProposalController)}.{nameof(DeleteProposal)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            // Sau khi xóa → quay về MyEvents vì Proposal không còn tồn tại
+            return RedirectToAction("Manage", "Organizer", new { operation = "myevents" });
+        }
 
         // ─── 3. Thêm BudgetItem ───────────────────────────────────────────────
         [HttpPost]
@@ -307,6 +364,48 @@ namespace AEMS_Solution.Controllers.Features.Organizer
                 SetError(deepest.Message);
             }
 
+            return RedirectToAction(nameof(Detail), new { eventId });
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditReceipt(
+        string receiptId, string eventId, string? Title, decimal ActualAmount)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+            try
+            {
+                await _service.EditReceiptAsync(CurrentUserId, receiptId, Title, ActualAmount);
+                SetSuccess("Đã cập nhật biên lai. Trạng thái chuyển về Pending.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetProposalController)}.{nameof(EditReceipt)}");
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+            return RedirectToAction(nameof(Detail), new { eventId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteReceipt(string receiptId, string eventId)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+            try
+            {
+                await _service.DeleteReceiptAsync(CurrentUserId, receiptId);
+                SetSuccess("Đã xóa biên lai.");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetProposalController)}.{nameof(DeleteReceipt)}");
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
             return RedirectToAction(nameof(Detail), new { eventId });
         }
     }
