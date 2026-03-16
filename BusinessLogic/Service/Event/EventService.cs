@@ -180,8 +180,15 @@ public class EventService : IEventService
 			double avg = 0;
 			if (e.Feedbacks != null && e.Feedbacks.Count > 0)
 			{
-				var ratings = e.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).ToList();
-				if (ratings.Count > 0) avg = ratings.Average();
+				var ratings = e.Feedbacks
+	               .Where(f => f.RatingEvent != null)
+	               .Select(f => (int)f.RatingEvent!.Value)
+	               .ToList();
+
+				if (ratings.Count > 0)
+				{
+					avg = ratings.Average();
+				}
 			}
 
 			// Determine last approval action from logs (if any)
@@ -247,8 +254,7 @@ public class EventService : IEventService
 			double avg = 0;
 			if (e.Feedbacks != null && e.Feedbacks.Count > 0)
 			{
-				var ratings = e.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).ToList();
-				if (ratings.Count > 0) avg = ratings.Average();
+               avg = e.Feedbacks.Average(f => (int)f.RatingEvent);
 			}
 
 			var lastApproval = e.ApprovalLogs?.Where(l => l.DeletedAt == null).OrderByDescending(l => l.CreatedAt).FirstOrDefault();
@@ -958,7 +964,9 @@ public class EventService : IEventService
 			RegisteredCount = ev.Tickets?.Count ?? 0,
 			CheckedInCount = ev.Tickets?.Count(t => t.CheckInTime != null) ?? 0,
 			WaitlistCount = ev.EventWaitlists?.Count ?? 0,
-			AvgRating = (ev.Feedbacks != null && ev.Feedbacks.Count > 0) ? ev.Feedbacks.Where(f => f.Rating != null).Select(f => f.Rating!.Value).DefaultIfEmpty(0).Average() : 0,
+            AvgRating = (ev.Feedbacks != null && ev.Feedbacks.Count > 0)
+				? ev.Feedbacks.Average(f => (double)(int)f.RatingEvent)
+				: 0,
 			LastApprovalAction = lastApproval?.Action,
 			LastApprovalComment = lastApproval?.Comment,
 			LastApprovalAt = lastApproval?.CreatedAt

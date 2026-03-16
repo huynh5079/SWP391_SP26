@@ -10,7 +10,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 	public interface IFeedBackService
 	{
 
-		Task<EventFeedbackAnalysisDto> AnalyzeEventFeedback(string eventId);
+		
 		//check spam
 		Task<EventFeedbackSummaryDto> CreateFeedback(string studentId, string eventId, string? comment, double rating);
 		Task<bool> HasStudentFeedback(string studentId, string eventId);

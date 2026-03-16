@@ -207,3 +207,5 @@ Python/find_func.py
 Python/kb/faiss.index
 CHATBOT_GUIDE.md
 test_api.bat
+results
+.venv1/
