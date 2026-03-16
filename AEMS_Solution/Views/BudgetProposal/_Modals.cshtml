@@ -1,0 +1,308 @@
+﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+
+
+@if (!Model.HasProposal && !Model.IsApprover)
+{
+    <div class="modal fade" id="modalCreateProposal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Create" asp-controller="BudgetProposal" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="EventId" value="@Model.EventId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-file-earmark-plus me-2"></i>Tạo Budget Proposal
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Tiêu đề <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="Title" class="form-control"
+                                   placeholder="VD: Ngân sách Hội thảo Khoa học 2026" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Mô tả</label>
+                            <textarea name="Description" class="form-control" rows="3"
+                                  placeholder="Mô tả mục đích sử dụng ngân sách..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-success fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Tạo Proposal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+
+@if (Model.CanAddItem)
+{
+    <div class="modal fade" id="modalAddItem" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="AddItem" asp-controller="BudgetProposal" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-plus-circle me-2"></i>Thêm hạng mục
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Hạng mục <span class="text-danger">*</span>
+                            </label>
+                            <select name="dto.Category" class="form-select" required>
+                                <option value="">-- Chọn hạng mục --</option>
+                                <option value="Địa điểm">Địa điểm</option>
+                                <option value="In ấn">In ấn</option>
+                                <option value="Ăn uống">Ăn uống</option>
+                                <option value="Khách mời">Khách mời</option>
+                                <option value="Trang thiết bị">Trang thiết bị</option>
+                                <option value="Dự phòng">Dự phòng</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Mô tả <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="dto.Description" class="form-control"
+                                   placeholder="VD: Thuê hội trường tầng 3" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Số tiền dự kiến <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" name="dto.EstimatedAmount"
+                                       class="form-control" placeholder="0"
+                                       min="1000" step="1000" required />
+                                <span class="input-group-text">đ</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-success fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Thêm
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditItem" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="UpdateItem" asp-controller="BudgetProposal" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="editItemId" name="itemId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-pencil me-2"></i>Sửa hạng mục
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Hạng mục <span class="text-danger">*</span>
+                            </label>
+                            <select id="editCategory" name="dto.Category" class="form-select" required>
+                                <option value="">-- Chọn hạng mục --</option>
+                                <option value="Địa điểm">Địa điểm</option>
+                                <option value="In ấn">In ấn</option>
+                                <option value="Ăn uống">Ăn uống</option>
+                                <option value="Khách mời">Khách mời</option>
+                                <option value="Trang thiết bị">Trang thiết bị</option>
+                                <option value="Dự phòng">Dự phòng</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Mô tả <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="editDescription" name="dto.Description"
+                                   class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Số tiền dự kiến <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" id="editAmount" name="dto.EstimatedAmount"
+                                       class="form-control" min="1000" step="1000" required />
+                                <span class="input-group-text">đ</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-warning fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Lưu thay đổi
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+{{!-- Modal: Thêm ExpenseReceipt --}}
+@if (Model.CanAddReceipt)
+{
+    <div class="modal fade" id="modalAddReceipt" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="AddReceipt" asp-controller="BudgetProposal" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-receipt me-2"></i>Thêm biên lai chi phí
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Tên khoản chi <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="dto.Title" class="form-control"
+                                   placeholder="VD: Hóa đơn thuê hội trường" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Số tiền thực tế <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" name="dto.ActualAmount"
+                                       class="form-control" placeholder="0"
+                                       min="1000" step="1000" required />
+                                <span class="input-group-text">đ</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">URL hóa đơn đính kèm</label>
+                            <input type="url" name="dto.ReceiptImageUrl"
+                                   class="form-control" placeholder="https://..." />
+                            <div class="form-text">Link ảnh hoặc PDF hóa đơn (tuỳ chọn)</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-success fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Thêm biên lai
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+
+@if (Model.CanApprove)
+{
+    <div class="modal fade" id="modalApprove" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Approve" asp-controller="BudgetApproval" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold text-success">
+                            <i class="bi bi-check-circle me-2"></i>Xác nhận duyệt
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            Bạn đang duyệt Proposal <strong>@Model.Title</strong>
+                            với tổng ngân sách
+                            <strong class="text-primary">@Model.PlannedAmount.ToString("N0")đ</strong>.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ghi chú (tuỳ chọn)</label>
+                            <textarea name="note" class="form-control" rows="2"
+                                  placeholder="Ghi chú thêm nếu cần..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-success fw-semibold">
+                            <i class="bi bi-check-lg me-1"></i> Xác nhận duyệt
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalReject" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Reject" asp-controller="BudgetApproval" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold text-danger">
+                            <i class="bi bi-x-circle me-2"></i>Xác nhận từ chối
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Lý do từ chối <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="note" class="form-control" rows="3"
+                                  placeholder="Nhập lý do từ chối..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-danger fw-semibold">
+                            <i class="bi bi-x-lg me-1"></i> Xác nhận từ chối
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

@@ -126,13 +126,21 @@
                             <a class="btn btn-sm btn-secondary fw-semibold action-pill" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId">Waitlist</a>
                             @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
                             {
+                                <a class="btn btn-sm btn-success fw-semibold action-pill"
+                                   asp-controller="BudgetProposal" asp-action="Detail"
+                                   asp-route-eventId="@e.EventId">
+                                    <i class="bi bi-cash-stack me-1"></i>Budget
+                                </a>
+                            }
+                            
+                            
                                 <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="operation" value="cancel" />
                                     <input type="hidden" name="id" value="@e.EventId" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold action-pill">Cancel</button>
                                 </form>
-                            }
+                            
                             <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="operation" value="softdelete" />

@@ -1,0 +1,40 @@
+﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body py-3">
+                <div class="text-muted small mb-1">
+                    <i class="bi bi-calculator me-1"></i>Ngân sách dự kiến
+                </div>
+                <div class="fw-bold fs-5 text-primary">
+                    @Model.PlannedAmount.ToString("N0")đ
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body py-3">
+                <div class="text-muted small mb-1">
+                    <i class="bi bi-receipt me-1"></i>Thực tế đã chi
+                </div>
+                <div class="fw-bold fs-5 @(Model.IsOverBudget ? "text-danger" : "text-success")">
+                    @Model.ActualAmount.ToString("N0")đ
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center h-100">
+            <div class="card-body py-3">
+                <div class="text-muted small mb-1">
+                    <i class="bi bi-bar-chart me-1"></i>Chênh lệch
+                </div>
+                <div class="fw-bold fs-5 @(Model.IsOverBudget ? "text-danger" : "text-success")">
+                    @(Model.IsOverBudget ? "−" : "+")@Math.Abs(Model.Variance).ToString("N0")đ
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

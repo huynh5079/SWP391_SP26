@@ -1,0 +1,86 @@
+﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+@{
+    ViewData["Title"] = "Budget Proposal";
+    Layout = "_OrganizerLayout";
+}
+
+<div class="container mt-4">
+
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">
+                <i class="bi bi-cash-stack me-2 text-success"></i>Budget Proposal
+            </h4>
+            <small class="text-muted">@Model.EventTitle</small>
+        </div>
+        <a asp-controller="Organizer" asp-action="Manage"
+           asp-route-operation="myevents"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại My Events
+        </a>
+    </div>
+
+    
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+   
+    @if (!Model.HasProposal)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-file-earmark-plus text-muted" style="font-size:3rem;"></i>
+                <p class="mt-3 text-muted fs-6">Sự kiện này chưa có Budget Proposal.</p>
+                @if (!Model.IsApprover)
+                {
+                    <button class="btn btn-success"
+                            data-bs-toggle="modal" data-bs-target="#modalCreateProposal">
+                        <i class="bi bi-plus-circle me-1"></i> Tạo Budget Proposal
+                    </button>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        @await Html.PartialAsync("_ProposalInfo", Model)
+        @await Html.PartialAsync("_BudgetSummaryCards", Model)
+        @await Html.PartialAsync("_BudgetItemsTable", Model)
+        @await Html.PartialAsync("_ExpenseReceiptsTable", Model)
+        @await Html.PartialAsync("_SettlementTable", Model)
+    }
+</div>
+
+@await Html.PartialAsync("_Modals", Model)
+
+@section Scripts {
+    <script>
+        function openEditItem(itemId, category, description, amount) {
+            document.getElementById('editItemId').value = itemId;
+            document.getElementById('editDescription').value = description;
+            document.getElementById('editAmount').value = amount;
+
+            const select = document.getElementById('editCategory');
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === category) {
+                    select.selectedIndex = i;
+                    break;
+                }
+            }
+            new bootstrap.Modal(document.getElementById('modalEditItem')).show();
+        }
+    </script>
+}
