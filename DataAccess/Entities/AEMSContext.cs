@@ -658,6 +658,16 @@ public partial class AEMSContext : DbContext
 			entity.HasOne(d => d.Student).WithMany(p => p.Feedbacks)
 				.HasForeignKey(d => d.StudentId)
 				.HasConstraintName("FK__Feedback__Studen__0F624AF8");
+<<<<<<< HEAD
+=======
+			entity.Property(x => x.Rating)
+				.HasDefaultValue(0.0)
+				.HasColumnType("decimal(3, 2)");
+			entity.Property(x => x.Status)
+				.HasMaxLength(50)
+				.HasConversion<string>()
+				.HasDefaultValue(FeedbackStatusEnum.NA);
+>>>>>>> 63-feat-Feedback-Event
 		});
 
 		modelBuilder.Entity<Notification>(entity =>
