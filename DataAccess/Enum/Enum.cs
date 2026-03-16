@@ -109,7 +109,7 @@ namespace DataAccess.Enum
 		Registered, // Đã đăng ký thành công
 		CheckedIn,  // Đã điểm danh (tham gia sự kiện)
 		Cancelled,   // Đã hủy vé
-		Used
+		Used        // Đã sử dụng (sau khi checkout)
 	}
 
 	public enum UserStatusEnum
