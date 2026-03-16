@@ -109,12 +109,8 @@ namespace DataAccess.Enum
 		Registered, // Đã đăng ký thành công
 		CheckedIn,  // Đã điểm danh (tham gia sự kiện)
 		Cancelled,   // Đã hủy vé
-<<<<<<< HEAD
 		Used        // Đã sử dụng (sau khi checkout)
-=======
-		Used
->>>>>>> 66-feat-manage-event-for-organizer
-	}
+			}
 
 	public enum UserStatusEnum
 	{
