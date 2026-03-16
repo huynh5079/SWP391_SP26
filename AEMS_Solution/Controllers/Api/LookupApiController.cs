@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AEMS_Solution.Controllers.Api
 {
     [Authorize]
-    [Route("api/v1/[controller]")]
+    [Route("api/v1/lookup")]
     public class LookupApiController : ApiBaseController
     {
         private readonly IUnitOfWork _unitOfWork;
@@ -20,7 +20,7 @@ namespace AEMS_Solution.Controllers.Api
         [HttpGet("users")]
         public async Task<IActionResult> SearchUsers([FromQuery] string q)
         {
-            if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+            if (string.IsNullOrWhiteSpace(q) || q.Length < 1)
             {
                 return Success(new List<object>());
             }

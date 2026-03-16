@@ -15,6 +15,7 @@
     gap: 8px;
     font-weight: 600;
     position: relative;
+    color: #fff !important;
 }
 
 .messenger-nav-icon {
@@ -31,7 +32,7 @@
 }
 
 .messenger-nav-trigger:hover {
-    color: #4f46e5 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .messenger-nav-text {
