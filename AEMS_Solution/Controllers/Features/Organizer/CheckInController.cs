@@ -60,5 +60,34 @@ namespace AEMS_Solution.Controllers.Features.Organizer
                 return Json(new { success = false, message = "Có lỗi hệ thống xảy ra: " + ex.Message });
             }
         }
+
+        // POST: /CheckIn/ProcessCheckout
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ProcessCheckout([FromBody] CheckInRequestDto request)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Json(new { success = false, message = "Không tìm thấy thông tin đăng nhập." });
+                }
+
+                var result = await _checkInService.ProcessCheckoutAsync(request, userId);
+
+                return Json(new 
+                { 
+                    success = result.IsSuccess, 
+                    message = result.Message,
+                    studentName = result.StudentName,
+                    studentEmail = result.StudentEmail
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Có lỗi hệ thống xảy ra: " + ex.Message });
+            }
+        }
     }
 }
