@@ -251,48 +251,84 @@ namespace BusinessLogic.Service.Approval
 			}
 		}
 
-		// =========================
-		// Existing: detail
-		// =========================
-		public async Task<ApproverEventDetailDto?> GetEventDetailAsync(string eventId)
-		{
-			var eventDetail = await _uow.Events.GetAsync(
-				e => e.Id == eventId,
-				q => q.Include(e => e.Organizer).ThenInclude(sp => sp.User)
-					  .Include(e => e.ApprovalLogs)
-					  .Include(e => e.Location)
-			);
+        // =========================
+        // Existing: detail
+        // =========================
+        public async Task<ApproverEventDetailDto?> GetEventDetailAsync(string eventId)
+        {
+            var eventDetail = await _uow.Events.GetAsync(
+                e => e.Id == eventId,
+                q => q
+                    .Include(e => e.Organizer).ThenInclude(sp => sp.User)
+                    .Include(e => e.ApprovalLogs)
+                    .Include(e => e.Location)
+                    .Include(e => e.EventAgenda)           // <-- thêm
+                    .Include(e => e.EventDocuments)        // <-- thêm
+            );
 
-			if (eventDetail == null) return null;
+            if (eventDetail == null) return null;
 
-			return new ApproverEventDetailDto
-			{
-				EventId = eventDetail.Id,
-				Title = eventDetail.Title,
-				Description = eventDetail.Description,
-				StartTime = eventDetail.StartTime,
-				EndTime = eventDetail.EndTime,
-				MaxCapacity = eventDetail.MaxCapacity,
-				Status = eventDetail.Status,
-				Location = eventDetail.Location != null 
-					? (!string.IsNullOrWhiteSpace(eventDetail.Location.Address) ? eventDetail.Location.Address : eventDetail.Location.Name) 
-					: null,
-				OrganizerId = eventDetail.OrganizerId ?? "",
-				OrganizerName = eventDetail.Organizer?.User?.FullName ?? "",
-				OrganizerEmail = eventDetail.Organizer?.User?.Email ?? "",
-				ApprovalLogs = eventDetail.ApprovalLogs
-					.Where(l => l.DeletedAt == null)
-					.OrderByDescending(l => l.CreatedAt)
-					.Select(log => new ApprovalLogDto
-					{
-						EventId = log.EventId,
-						ApproverId = log.ApproverId ?? "",
-						Action = log.Action, // ✅ không cần ?? default nếu DB/Entity đã NOT NULL
-						Comment = log.Comment,
-						CreatedAt = log.CreatedAt,
-					}).ToList()
-			};
-		}
+            return new ApproverEventDetailDto
+            {
+                EventId = eventDetail.Id,
+                ThumbnailUrl = eventDetail.ThumbnailUrl,
+                Title = eventDetail.Title,
+                Description = eventDetail.Description,
+                StartTime = eventDetail.StartTime,
+                EndTime = eventDetail.EndTime,
+                MaxCapacity = eventDetail.MaxCapacity,
+                Status = eventDetail.Status,
+                Location = eventDetail.Location != null
+                    ? (!string.IsNullOrWhiteSpace(eventDetail.Location.Address)
+                        ? eventDetail.Location.Address
+                        : eventDetail.Location.Name)
+                    : null,
+                OrganizerId = eventDetail.OrganizerId ?? "",
+                OrganizerName = eventDetail.Organizer?.User?.FullName ?? "",
+                OrganizerEmail = eventDetail.Organizer?.User?.Email ?? "",
 
-	}
+                // Agendas
+                Agendas = eventDetail.EventAgenda
+                    .Where(a => a.DeletedAt == null)
+                    .OrderBy(a => a.StartTime ?? DateTime.MaxValue)
+                    .Select(a => new AgendaDetailDto
+                    {
+                        Title = a.SessionName ?? "",
+					    
+                        Description = a.Description,
+                        Speaker = a.SpeakerInfo,
+                        StartTime = a.StartTime,
+                        EndTime = a.EndTime,
+                        Location = a.Location
+                    })
+                    .ToList(),
+
+                // Documents
+                Documents = eventDetail.EventDocuments
+                    .Where(d => d.DeletedAt == null)
+                    .Select(d => new DocumentDetailDto
+                    {
+                        FileName = d.Name ?? "",
+                        FileUrl = d.Url ?? "",
+                        Type = d.Type,
+                    })
+                    .ToList(),
+
+                // Approval Logs
+                ApprovalLogs = eventDetail.ApprovalLogs
+                    .Where(l => l.DeletedAt == null)
+                    .OrderByDescending(l => l.CreatedAt)
+                    .Select(l => new ApprovalLogDto
+                    {
+                        EventId = l.EventId,
+                        ApproverId = l.ApproverId ?? "",
+                        Action = l.Action,
+                        Comment = l.Comment,
+                        CreatedAt = l.CreatedAt,
+                    })
+                    .ToList()
+            };
+        }
+
+    }
 }
