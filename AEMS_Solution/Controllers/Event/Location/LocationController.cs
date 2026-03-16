@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AEMS_Solution.Controllers.Event.Location
 {
-    [Authorize(Roles = "Approver,Admin")]
+    [Authorize(Roles = "Approver,Admin,Organizer")]
     public class LocationController : BaseController
     {
         private readonly ILocationService _locationService;
@@ -69,12 +69,14 @@ namespace AEMS_Solution.Controllers.Event.Location
             return View("~/Views/Location/Index.cshtml", vm);
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpGet]
         public IActionResult Create()
         {
             return View("~/Views/Location/Create.cshtml", new CreateLocationViewModel());
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateLocationViewModel vm)
@@ -110,6 +112,7 @@ namespace AEMS_Solution.Controllers.Event.Location
             return View("~/Views/Location/Create.cshtml", vm);
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
@@ -136,6 +139,7 @@ namespace AEMS_Solution.Controllers.Event.Location
             });
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UpdateLocationViewModel vm)
@@ -177,6 +181,7 @@ namespace AEMS_Solution.Controllers.Event.Location
             return View("~/Views/Location/Edit.cshtml", vm);
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
