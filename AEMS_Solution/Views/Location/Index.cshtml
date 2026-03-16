@@ -2,6 +2,7 @@
 @using DataAccess.Enum
 @{
     var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    var canManage = role == "Admin" || role == "Approver";
     if (role == "Admin") { Layout = "_Layout"; }
     else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
     else { Layout = "_Approvallayout"; }
@@ -11,9 +12,12 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2><i class="bi bi-geo-alt me-2"></i>Manage Locations</h2>
-        <a asp-controller="Location" asp-action="Create" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-1"></i> Add Location
-        </a>
+        @if (canManage)
+        {
+            <a asp-controller="Location" asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Add Location
+            </a>
+        }
     </div>
 
     <form method="get" asp-controller="Location" asp-action="Index" class="row g-2 mb-3">
@@ -55,14 +59,17 @@
                         <th>Type</th>
                         <th>Status</th>
                         <th>Updated</th>
-                        <th style="width:150px;">Actions</th>
+                        @if (canManage)
+                        {
+                            <th style="width:150px;">Actions</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Locations.Count == 0)
                     {
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-3">
+                            <td colspan="@(canManage ? 7 : 6)" class="text-center text-muted py-3">
                                 <i class="bi bi-inbox me-1"></i>No locations found.
                             </td>
                         </tr>
@@ -92,25 +99,28 @@
                                     <span class="badge @badgeClass">@loc.Status</span>
                                 </td>
                                 <td>@loc.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>
-                                    <div class="d-flex gap-1">
-                                        <a asp-controller="Location" asp-action="Edit" asp-route-id="@loc.LocationId"
-                                           class="btn btn-sm btn-warning">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        @{
-                                            var deleteUrl = Url.Action("Delete", "Location", new { id = loc.LocationId });
-                                            var confirmMsg = $"Bạn có chắc chắn muốn xoá địa điểm \"{loc.Name}\"?";
-                                        }
-                                        <form action="@deleteUrl" method="post"
-                                              onsubmit="return confirm('@Html.Raw(confirmMsg.Replace("'", "\\'"))');">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
+                                @if (canManage)
+                                {
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <a asp-controller="Location" asp-action="Edit" asp-route-id="@loc.LocationId"
+                                               class="btn btn-sm btn-warning">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            @{
+                                                var deleteUrl = Url.Action("Delete", "Location", new { id = loc.LocationId });
+                                                var confirmMsg = $"Bạn có chắc chắn muốn xoá địa điểm \"{loc.Name}\"?";
+                                            }
+                                            <form action="@deleteUrl" method="post"
+                                                  onsubmit="return confirm('@Html.Raw(confirmMsg.Replace("'", "\\'"))');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                }
                             </tr>
                         }
                     }
