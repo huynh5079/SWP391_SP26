@@ -1,7 +1,10 @@
-using System.Text.Json.Serialization;
+using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
+using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event;
+using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
 using AEMS_Solution.Configurations;
 using AEMS_Solution.Hubs;
 using AEMS_Solution.Services;
+using BusinessLogic.Service.Admin;
 using BusinessLogic.Service.Admin;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
@@ -10,12 +13,11 @@ using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
-using BusinessLogic.Service.Admin;
+using BusinessLogic.Service.Event.Sub_Service.Quiz;
 using BusinessLogic.Service.Event.Sub_Service.Ticket;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
-using BusinessLogic.Service.Event.Sub_Service.Quiz;
-using BusinessLogic.Service.ValidationData.Quiz;
 using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.Organizer.BudgetProposal;
 using BusinessLogic.Service.Organizer.CheckIn;
 using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
@@ -24,11 +26,9 @@ using BusinessLogic.Service.ValiDateRole.ValiDateforAdmin.LockAndUnlockLimit;
 using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.ValidationData.Event;
 using BusinessLogic.Service.ValidationData.Loction;
+using BusinessLogic.Service.ValidationData.Quiz;
 using BusinessLogic.Service.ValidationData.Ticket;
 using BusinessLogic.Service.ValidationData.Topic;
-using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event;
-using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
-using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories;
@@ -37,6 +37,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 using ISystemErrorLogService = BusinessLogic.Service.System.ISystemErrorLogService;
 using SystemErrorLogService = BusinessLogic.Service.System.SystemErrorLogService;
 var builder = WebApplication.CreateBuilder(args);
@@ -73,8 +74,8 @@ builder.Services.AddScoped<IChatPermissionService, ChatPermissionService>();
 builder.Services.AddScoped<IChatUserService, ChatUserService>();
 
 // RAG/Chatbot Services
+// RAG/Chatbot Services
 builder.Services.AddScoped<BusinessLogic.Service.Chat.IChatbotService, BusinessLogic.Service.Chat.ChatbotService>();
-
 // Register refactored services
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IDropdownService, DropdownService>();
@@ -120,7 +121,10 @@ builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies
 builder.Services.AddHttpClient();
 
 // SignalR
-builder.Services.AddSignalR(); 
+builder.Services.AddSignalR();
+
+//Budget
+builder.Services.AddScoped<IBudgetProposalService, BudgetProposalService>();
 
 // Authentication (Cookie)
 var authBuilder = builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

@@ -91,7 +91,7 @@ namespace AEMS_Solution.Controllers.Api.Chatbot
             try
             {
                 var health = await _chatbotService.CheckHealthAsync();
-                
+
                 if (!health.IsHealthy)
                 {
                     return Error(health.Message ?? "Lỗi không xác định", 503);
@@ -107,5 +107,5 @@ namespace AEMS_Solution.Controllers.Api.Chatbot
         }
     }
 
-    
+
 }

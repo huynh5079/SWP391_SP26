@@ -47,8 +47,11 @@ namespace DataAccess.Repositories
 		// Teams
 		public IGenericRepository<EventTeam> EventTeams { get; }
 		public IGenericRepository<TeamMember> TeamMembers { get; }
-		// Expose Events as EventRepository for backward compatibility
-		public UnitOfWork(AEMSContext ctx, IUserRepository users, IChatRepository chatRepository)
+        public IGenericRepository<BudgetProposal> BudgetProposals { get; }
+        public IGenericRepository<BudgetItem> BudgetItems { get; }
+        public IGenericRepository<ExpenseReceipt> ExpenseReceipts { get; }
+        // Expose Events as EventRepository for backward compatibility
+        public UnitOfWork(AEMSContext ctx, IUserRepository users, IChatRepository chatRepository)
         {
             _ctx = ctx;
             Users = users;
@@ -82,8 +85,11 @@ namespace DataAccess.Repositories
 			StudentAnswers = new GenericRepository<StudentAnswer>(_ctx);
 			EventTeams = new GenericRepository<EventTeam>(_ctx);
 			TeamMembers = new GenericRepository<TeamMember>(_ctx);
-			//
-		}
+            BudgetProposals = new GenericRepository<BudgetProposal>(_ctx);
+            BudgetItems = new GenericRepository<BudgetItem>(_ctx);
+            ExpenseReceipts = new GenericRepository<ExpenseReceipt>(_ctx);
+            //
+        }
 
         public Task<int> SaveChangesAsync() => _ctx.SaveChangesAsync();
 

@@ -1,0 +1,89 @@
+﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <span class="fw-bold">
+            <i class="bi bi-list-ul me-2 text-success"></i>Hạng mục ngân sách
+        </span>
+        @if (Model.CanAddItem)
+        {
+            <button class="btn btn-success btn-sm fw-semibold"
+                    data-bs-toggle="modal" data-bs-target="#modalAddItem">
+                <i class="bi bi-plus-circle me-1"></i> Thêm hạng mục
+            </button>
+        }
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Items.Any())
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                <p class="mt-2 small mb-0">Chưa có hạng mục nào.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Hạng mục</th>
+                            <th>Mô tả</th>
+                            <th class="text-end">Dự kiến</th>
+                            @if (Model.CanAddItem)
+                            {
+                                <th class="text-center">Thao tác</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td class="align-middle">
+                                    <span class="badge bg-secondary">@item.Category</span>
+                                </td>
+                                <td class="text-muted small align-middle">@item.Description</td>
+                                <td class="text-end fw-bold align-middle">
+                                    @item.EstimatedAmount.ToString("N0")đ
+                                </td>
+                                @if (Model.CanAddItem)
+                                {
+                                    <td class="text-center align-middle">
+                                        <button class="btn btn-warning btn-sm me-1"
+                                                onclick="openEditItem('@item.ItemId','@item.Category','@Html.Raw(item.Description)','@item.EstimatedAmount')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form asp-action="RemoveItem"
+                                              asp-controller="BudgetProposal"
+                                              method="post" class="d-inline"
+                                              onsubmit="return confirm('Xóa hạng mục này?')">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="itemId" value="@item.ItemId" />
+                                            <input type="hidden" name="eventId" value="@Model.EventId" />
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2" class="fw-bold">Tổng dự kiến</td>
+                            <td class="text-end fw-bold text-primary">
+                                @Model.PlannedAmount.ToString("N0")đ
+                            </td>
+                            @if (Model.CanAddItem)
+                            {
+                                <td></td>
+                            }
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,100 @@
+﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+@using DataAccess.Enum
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <span class="fw-bold">
+            <i class="bi bi-receipt me-2 text-success"></i>Biên lai chi phí
+        </span>
+        @if (Model.CanAddReceipt)
+        {
+            <button class="btn btn-success btn-sm fw-semibold"
+                    data-bs-toggle="modal" data-bs-target="#modalAddReceipt">
+                <i class="bi bi-plus-circle me-1"></i> Thêm biên lai
+            </button>
+        }
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Receipts.Any())
+        {
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                <p class="mt-2 small mb-0">
+                    @if (Model.Status != ProposalStatusEnum.Approved)
+                    {
+                        <span>Proposal cần được duyệt trước khi thêm biên lai.</span>
+                    }
+                    else
+                    {
+                        <span>Chưa có biên lai nào.</span>
+                    }
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Tên khoản chi</th>
+                            <th class="text-end">Số tiền thực tế</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày nộp</th>
+                            <th class="text-center">Hóa đơn</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Receipts)
+                        {
+                            <tr>
+                                <td class="fw-bold align-middle">@r.Title</td>
+                                <td class="text-end align-middle">
+                                    @r.ActualAmount.ToString("N0")đ
+                                </td>
+                                <td class="align-middle">
+                                    @{
+                                        var (rClass, rIcon) = r.Status switch
+                                        {
+                                            ExpenseStatusEnum.Accepted => ("bg-success", "bi-check-circle"),
+                                            ExpenseStatusEnum.Rejected => ("bg-danger", "bi-x-circle"),
+                                            _ => ("bg-warning text-dark", "bi-hourglass-split")
+                                        };
+                                    }
+                                    <span class="badge @rClass">
+                                        <i class="bi @rIcon me-1"></i>@r.Status
+                                    </span>
+                                </td>
+                                <td class="text-muted small align-middle">
+                                    @r.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td class="text-center align-middle">
+                                    @if (!string.IsNullOrEmpty(r.ReceiptImageUrl))
+                                    {
+                                        <a href="@r.ReceiptImageUrl" target="_blank"
+                                           class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-file-earmark-image"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td class="fw-bold">Tổng thực tế</td>
+                            <td class="text-end fw-bold @(Model.IsOverBudget ? "text-danger" : "text-success")">
+                                @Model.ActualAmount.ToString("N0")đ
+                            </td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>

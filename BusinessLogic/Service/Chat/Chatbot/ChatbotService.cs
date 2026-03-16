@@ -225,46 +225,46 @@ namespace BusinessLogic.Service.Chat
 			};
 		}
 
-		public async Task<HealthStatusDto> CheckHealthAsync()
-		{
-			try
-			{
-				var response = await _httpClient.GetAsync($"{_ragApiBaseUrl}/health");
+        public async Task<HealthStatusDto> CheckHealthAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"{_ragApiBaseUrl}/health");
 
-				if (response.IsSuccessStatusCode)
-				{
-					var json = await response.Content.ReadAsStringAsync();
-					var health = JsonSerializer.Deserialize<dynamic>(json, _jsonOptions);
-					return new HealthStatusDto
-					{
-						IsHealthy = true,
-						Status = "ok",
-						Message = "RAG API đang hoạt động"
-					};
-				}
-				else
-				{
-					return new HealthStatusDto
-					{
-						IsHealthy = false,
-						Status = "error",
-						Message = "RAG API không phản hồi"
-					};
-				}
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError($"Health check failed: {ex.Message}", ex);
-				return new HealthStatusDto
-				{
-					IsHealthy = false,
-					Status = "error",
-					Message = $"Không thể kết nối tới RAG API: {ex.Message}"
-				};
-			}
-		}
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var health = JsonSerializer.Deserialize<dynamic>(json, _jsonOptions);
+                    return new HealthStatusDto
+                    {
+                        IsHealthy = true,
+                        Status = "ok",
+                        Message = "RAG API đang hoạt động"
+                    };
+                }
+                else
+                {
+                    return new HealthStatusDto
+                    {
+                        IsHealthy = false,
+                        Status = "error",
+                        Message = "RAG API không phản hồi"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Health check failed: {ex.Message}", ex);
+                return new HealthStatusDto
+                {
+                    IsHealthy = false,
+                    Status = "error",
+                    Message = $"Không thể kết nối tới RAG API: {ex.Message}"
+                };
+            }
+        }
 
-		private static float ParseScoreToFloat(string? score)
+        private static float ParseScoreToFloat(string? score)
 		{
 			if (string.IsNullOrWhiteSpace(score))
 			{
