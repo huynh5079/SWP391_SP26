@@ -641,7 +641,7 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.StudentId)
 				.HasConstraintName("FK__Feedback__Studen__0F624AF8");
 			entity.Property(x => x.Rating)
-				.HasDefaultValue(0)
+				.HasDefaultValue(0.0)
 				.HasColumnType("decimal(3, 2)");
 			entity.Property(x => x.Status)
 				.HasMaxLength(50)
