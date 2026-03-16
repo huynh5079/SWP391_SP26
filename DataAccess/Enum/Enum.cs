@@ -110,7 +110,7 @@ namespace DataAccess.Enum
 		CheckedIn,  // Đã điểm danh (tham gia sự kiện)
 		Cancelled,   // Đã hủy vé
 		Used        // Đã sử dụng (sau khi checkout)
-			}
+	}
 
 	public enum UserStatusEnum
 	{
