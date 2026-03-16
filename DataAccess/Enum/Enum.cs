@@ -229,6 +229,7 @@ namespace DataAccess.Enum
 	public enum FeedbackStatusEnum
 	{
 	    NA, 
+		BeforeEvent,
 		DuringEvent,   
 		AfterEvent
 	}

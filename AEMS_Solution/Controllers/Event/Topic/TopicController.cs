@@ -46,12 +46,14 @@ namespace AEMS_Solution.Controllers.Event.Topic
             return View("~/Views/Topic/Index.cshtml", vm);
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpGet]
         public IActionResult Create()
         {
             return View("~/Views/Topic/Create.cshtml", new CreateTopicViewModel());
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateTopicViewModel vm)
@@ -83,6 +85,7 @@ namespace AEMS_Solution.Controllers.Event.Topic
             return View("~/Views/Topic/Create.cshtml", vm);
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
@@ -105,6 +108,7 @@ namespace AEMS_Solution.Controllers.Event.Topic
             });
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UpdateTopicViewModel vm)
@@ -142,6 +146,7 @@ namespace AEMS_Solution.Controllers.Event.Topic
             return View("~/Views/Topic/Edit.cshtml", vm);
         }
 
+        [Authorize(Roles = "Approver,Admin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string id)
