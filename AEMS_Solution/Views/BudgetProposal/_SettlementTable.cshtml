@@ -1,0 +1,53 @@
+﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
+
+@if (Model.ItemSummaries.Any())
+{
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+            <span class="fw-bold">
+                <i class="bi bi-bar-chart-line me-2 text-success"></i>Báo cáo quyết toán
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Hạng mục</th>
+                            <th class="text-end">Dự kiến</th>
+                            <th class="text-end">Thực tế</th>
+                            <th class="text-end">Chênh lệch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.ItemSummaries)
+                        {
+                            <tr>
+                                <td>@s.Category</td>
+                                <td class="text-end">@s.EstimatedAmount.ToString("N0")đ</td>
+                                <td class="text-end">@s.ActualAmount.ToString("N0")đ</td>
+                                <td class="text-end fw-bold @(s.IsOverBudget ? "text-danger" : "text-success")">
+                                    @(s.IsOverBudget ? "−" : "+")@Math.Abs(s.Variance).ToString("N0")đ
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td>Tổng</td>
+                            <td class="text-end text-primary">
+                                @Model.PlannedAmount.ToString("N0")đ
+                            </td>
+                            <td class="text-end @(Model.IsOverBudget ? "text-danger" : "text-success")">
+                                @Model.ActualAmount.ToString("N0")đ
+                            </td>
+                            <td class="text-end @(Model.IsOverBudget ? "text-danger" : "text-success")">
+                                @(Model.IsOverBudget ? "Vượt −" : "Tiết kiệm +")@Math.Abs(Model.Variance).ToString("N0")đ
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}

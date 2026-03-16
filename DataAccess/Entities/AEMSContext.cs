@@ -145,8 +145,9 @@ public partial class AEMSContext : DbContext
 	public virtual DbSet<ApprovalLog> ApprovalLogs { get; set; }
 
 	public virtual DbSet<BudgetProposal> BudgetProposals { get; set; }
+    public virtual DbSet<BudgetItem> BudgetItems { get; set; }
 
-	public virtual DbSet<ChatSession> ChatSessions { get; set; }
+    public virtual DbSet<ChatSession> ChatSessions { get; set; }
 
 	public virtual DbSet<ChatMessage> ChatMessages { get; set; }
 
@@ -276,7 +277,25 @@ public partial class AEMSContext : DbContext
                 .HasConstraintName("FK_BudgetProposal_Approver");
         });
 
-		modelBuilder.Entity<ChatSession>(entity =>
+        // BudgetItem mapping
+        modelBuilder.Entity<BudgetItem>(entity =>
+        {
+            entity.ToTable("BudgetItem");
+
+            entity.Property(e => e.BudgetProposalId).HasMaxLength(450);
+            entity.Property(e => e.Category).HasMaxLength(255);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.EstimatedAmount).HasColumnType("decimal(18, 2)");
+
+            // Relationship to BudgetProposal (proposal may not have a collection navigation yet)
+            entity.HasOne(d => d.BudgetProposal)
+                .WithMany() // keep flexible: no required collection on BudgetProposal
+                .HasForeignKey(d => d.BudgetProposalId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_BudgetItem_BudgetProposal");
+        });
+
+        modelBuilder.Entity<ChatSession>(entity =>
 		{
 			entity.ToTable("ChatSession");
 

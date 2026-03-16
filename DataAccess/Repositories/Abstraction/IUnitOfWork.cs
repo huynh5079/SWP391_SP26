@@ -52,6 +52,11 @@ namespace DataAccess.Repositories.Abstraction
 		// Teams
 		IGenericRepository<EventTeam> EventTeams { get; }
 		IGenericRepository<TeamMember> TeamMembers { get; }
-	}
+
+        // Budget and expense
+        IGenericRepository<BudgetProposal> BudgetProposals { get; }
+        IGenericRepository<BudgetItem> BudgetItems { get; }
+        IGenericRepository<ExpenseReceipt> ExpenseReceipts { get; }
+    }
 
 }

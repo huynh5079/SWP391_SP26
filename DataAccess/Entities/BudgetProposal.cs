@@ -16,7 +16,6 @@ public partial class BudgetProposal : BaseEntity
     public string? Description { get; set; }
 
     public decimal PlannedAmount { get; set; }
-
     public ProposalStatusEnum? Status { get; set; }
 
     public string? Note { get; set; }
@@ -34,6 +33,8 @@ public partial class BudgetProposal : BaseEntity
     public virtual User? Approver { get; set; }
     public virtual ICollection<ExpenseReceipt> ExpenseReceipts
     { get; set; } = new List<ExpenseReceipt>();
+    public virtual ICollection<BudgetItem> BudgetItems
+    { get; set; } = new List<BudgetItem>();
 
     // Computed — không lưu vào DB
     [NotMapped]
