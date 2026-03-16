@@ -35,3 +35,4 @@
 
 ## Enum Management
 - Prefer shared enums to live in the central enum file/class instead of being declared inside feature DTO/contracts files.
+- Do not modify enum files or entity classes when fixing current issues; only adjust services/controllers/views/context/mappings as needed.

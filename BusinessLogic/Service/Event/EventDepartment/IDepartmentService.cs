@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs.Department;
 
-namespace BusinessLogic.Service.Admin
+namespace BusinessLogic.Service.Event.EventDepartment
 {
     public interface IDepartmentService
     {

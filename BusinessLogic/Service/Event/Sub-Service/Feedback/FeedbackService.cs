@@ -22,36 +22,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 			_unitOfWork = unitOfWork;
 		}
 
-		public async Task<EventFeedbackAnalysisDto> AnalyzeEventFeedback(string eventId)
-		{
-            if (string.IsNullOrWhiteSpace(eventId))
-			{
-				throw new InvalidOperationException("EventId không du?c d? tr?ng.");
-			}
-
-			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == eventId && x.DeletedAt == null);
-			if (eventEntity == null)
-			{
-				throw new InvalidOperationException("S? ki?n không t?n t?i.");
-			}
-
-			var feedbacks = (await _unitOfWork.Feedbacks.GetAllAsync(x => x.EventId == eventId && x.DeletedAt == null)).ToList();
-			var total = feedbacks.Count;
-			var averageRating = total == 0 ? 0 : Math.Round(feedbacks.Average(x => x.Rating.GetValueOrDefault()), 2);
-			var latestFeedback = feedbacks.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
-
-			return new EventFeedbackAnalysisDto
-			{
-				EventId = eventEntity.Id,
-				EventTitle = eventEntity.Title,
-				TotalFeedbacks = total,
-              AverageRating = ResolveRatingEnum(averageRating),
-				Status = latestFeedback?.Status ?? FeedbackStatusEnum.NA,
-				CommentCount = feedbacks.Count(x => !string.IsNullOrWhiteSpace(x.Comment)),
-				LatestFeedbackAt = latestFeedback?.CreatedAt,
-				AppriciateLevel = ResolveAppriciateLevel(averageRating)
-			};
-		}
+		
 
        public async Task<EventFeedbackSummaryDto> CreateFeedback(string studentId, string eventId, string? comment, double rating)
 		{
@@ -94,7 +65,6 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 			{
 				EventId = eventId,
 				StudentId = studentId,
-				Rating = Math.Round(rating, 2),
 				Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim(),
 				Status = ResolveFeedbackStatus(eventEntity),
 				RatingEvent = ResolveRatingEnum(rating)
@@ -148,7 +118,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 			{
 				EventId = eventEntity.Id,
 				EventTitle = eventEntity.Title,
-				Rating = feedbacks.Count == 0 ? 0 : Math.Round(feedbacks.Average(x => x.Rating.GetValueOrDefault()), 2),
+                Rating = feedbacks.Count == 0 ? 0 : Math.Round(feedbacks.Average(x => (double)(int)x.RatingEvent), 2),
 				Comment = latest?.Comment,
 				CreatedAt = latest?.CreatedAt
 			};
@@ -190,7 +160,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 				{
 					EventId = g.Key.EventId,
 					EventTitle = g.Key.EventTitle,
-					AverageRating = Math.Round(g.Average(x => x.Rating.GetValueOrDefault()), 2)
+                 AverageRating = Math.Round(g.Average(x => (double)(int)x.RatingEvent), 2)
 				})
 				.OrderByDescending(x => x.AverageRating)
 				.ThenBy(x => x.EventTitle)
@@ -233,7 +203,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 				throw new InvalidOperationException("Feedback không t?n t?i.");
 			}
 
-			feedback.Rating = Math.Round(rating, 2);
+			feedback.RatingEvent = (FeedBackRatingsEnum)rating;
 			feedback.Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
 			feedback.RatingEvent = ResolveRatingEnum(rating);
 			feedback.Status = feedback.Event == null ? FeedbackStatusEnum.NA : ResolveFeedbackStatus(feedback.Event);
@@ -251,7 +221,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 			{
 				EventId = feedback.EventId ?? string.Empty,
 				EventTitle = feedback.Event?.Title ?? string.Empty,
-				Rating = feedback.Rating.GetValueOrDefault(),
+               Rating = (int)feedback.RatingEvent,
 				Comment = feedback.Comment,
 				CreatedAt = feedback.CreatedAt,
 				StudentId = feedback.StudentId,
@@ -278,7 +248,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 				return FeedbackStatusEnum.AfterEvent;
 			}
 
-			return FeedbackStatusEnum.NA;
+           return FeedbackStatusEnum.BeforeEvent;
 		}
 
 		private static AppriciateEventEnum ResolveAppriciateLevel(double averageRating)
