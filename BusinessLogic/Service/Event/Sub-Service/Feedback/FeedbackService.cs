@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-<<<<<<< HEAD
-=======
+
 using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -12,20 +11,13 @@ using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 
->>>>>>> 63-feat-Feedback-Event
-
 namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 {
-	public class FeedbackService : IFeedbackService
+	public class FeedbackService : IFeedBackService
 	{
-<<<<<<< HEAD
-
-		public Task<EventFeedbackAnalysisDto> AnalyzeEventFeedback(string eventId)
-=======
       private readonly IUnitOfWork _unitOfWork;
 
 		public FeedbackService(IUnitOfWork unitOfWork)
->>>>>>> 63-feat-Feedback-Event
 		{
 			_unitOfWork = unitOfWork;
 		}
@@ -34,13 +26,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		{
             if (string.IsNullOrWhiteSpace(eventId))
 			{
-				throw new InvalidOperationException("EventId không được để trống.");
+				throw new InvalidOperationException("EventId kh�ng du?c d? tr?ng.");
 			}
 
 			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == eventId && x.DeletedAt == null);
 			if (eventEntity == null)
 			{
-				throw new InvalidOperationException("Sự kiện không tồn tại.");
+				throw new InvalidOperationException("S? ki?n kh�ng t?n t?i.");
 			}
 
 			var feedbacks = (await _unitOfWork.Feedbacks.GetAllAsync(x => x.EventId == eventId && x.DeletedAt == null)).ToList();
@@ -65,29 +57,29 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		{
             if (string.IsNullOrWhiteSpace(studentId))
 			{
-				throw new InvalidOperationException("StudentId không được để trống.");
+				throw new InvalidOperationException("StudentId kh�ng du?c d? tr?ng.");
 			}
 
 			if (string.IsNullOrWhiteSpace(eventId))
 			{
-				throw new InvalidOperationException("EventId không được để trống.");
+				throw new InvalidOperationException("EventId kh�ng du?c d? tr?ng.");
 			}
 
 			if (rating < 1 || rating > 5)
 			{
-				throw new InvalidOperationException("Rating phải trong khoảng từ 1 đến 5.");
+				throw new InvalidOperationException("Rating ph?i trong kho?ng t? 1 d?n 5.");
 			}
 
 			var student = await _unitOfWork.StudentProfiles.GetAsync(x => x.Id == studentId && x.DeletedAt == null);
 			if (student == null)
 			{
-				throw new InvalidOperationException("Sinh viên không tồn tại.");
+				throw new InvalidOperationException("Sinh vi�n kh�ng t?n t?i.");
 			}
 
 			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == eventId && x.DeletedAt == null);
 			if (eventEntity == null)
 			{
-				throw new InvalidOperationException("Sự kiện không tồn tại.");
+				throw new InvalidOperationException("S? ki?n kh�ng t?n t?i.");
 			}
 
 			var existingFeedback = await _unitOfWork.Feedbacks.GetAsync(
@@ -95,7 +87,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 
 			if (existingFeedback != null)
 			{
-				throw new InvalidOperationException("Sinh viên đã feedback cho sự kiện này.");
+				throw new InvalidOperationException("Sinh vi�n d� feedback cho s? ki?n n�y.");
 			}
 
 			var feedback = new DataAccess.Entities.Feedback
@@ -121,13 +113,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		{
             if (string.IsNullOrWhiteSpace(feedbackId))
 			{
-				throw new InvalidOperationException("FeedbackId không được để trống.");
+				throw new InvalidOperationException("FeedbackId kh�ng du?c d? tr?ng.");
 			}
 
 			var feedback = await _unitOfWork.Feedbacks.GetAsync(x => x.Id == feedbackId && x.DeletedAt == null);
 			if (feedback == null)
 			{
-				throw new InvalidOperationException("Feedback không tồn tại.");
+				throw new InvalidOperationException("Feedback kh�ng t?n t?i.");
 			}
 
 			await _unitOfWork.Feedbacks.RemoveAsync(feedback);
@@ -138,13 +130,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		{
             if (string.IsNullOrWhiteSpace(eventId))
 			{
-				throw new InvalidOperationException("EventId không được để trống.");
+				throw new InvalidOperationException("EventId kh�ng du?c d? tr?ng.");
 			}
 
 			var eventEntity = await _unitOfWork.Events.GetAsync(x => x.Id == eventId && x.DeletedAt == null);
 			if (eventEntity == null)
 			{
-				throw new InvalidOperationException("Sự kiện không tồn tại.");
+				throw new InvalidOperationException("S? ki?n kh�ng t?n t?i.");
 			}
 
 			var feedbacks = (await _unitOfWork.Feedbacks.GetAllAsync(x => x.EventId == eventId && x.DeletedAt == null))
@@ -223,12 +215,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		{
             if (string.IsNullOrWhiteSpace(feedbackId))
 			{
-				throw new InvalidOperationException("FeedbackId không được để trống.");
+				throw new InvalidOperationException("FeedbackId kh�ng du?c d? tr?ng.");
 			}
 
 			if (rating < 1 || rating > 5)
 			{
-				throw new InvalidOperationException("Rating phải trong khoảng từ 1 đến 5.");
+				throw new InvalidOperationException("Rating ph?i trong kho?ng t? 1 d?n 5.");
 			}
 
 			var feedback = await _unitOfWork.Feedbacks.GetAsync(
@@ -238,7 +230,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 
 			if (feedback == null)
 			{
-				throw new InvalidOperationException("Feedback không tồn tại.");
+				throw new InvalidOperationException("Feedback kh�ng t?n t?i.");
 			}
 
 			feedback.Rating = Math.Round(rating, 2);
@@ -303,6 +295,6 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 
 			return AppriciateEventEnum.Negative;
 		}
->>>>>>> 63-feat-Feedback-Event
 	}
 }
+
