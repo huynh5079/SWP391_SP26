@@ -5,7 +5,7 @@
     Layout = "_Organizerlayout";
     var thumbnailUrl = !string.IsNullOrWhiteSpace(Model.ThumbnailUrl)
         ? Model.ThumbnailUrl
-        : "https://via.placeholder.com/640x360?text=No+Image";
+        : $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(Model.Title)}&size=640&background=f1f5f9&color=64748b&font-size=0.15&bold=true";
     var occupancyPercent = Model.MaxCapacity > 0
         ? Math.Min(100, (int)Math.Round((double)Model.RegisteredCount / Model.MaxCapacity * 100))
         : 0;
@@ -72,6 +72,8 @@
         object-fit: cover;
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
+        background-color: #f1f5f9; /* Fallback color for missing image */
+        display: block;
     }
 
     .event-detail-page .action-list {
@@ -242,10 +244,11 @@
                         </div>
                         @if (Model.CanEdit)
                         {
-                            <div class="position-absolute bottom-0 end-0 bg-white rounded-circle p-2 m-2 shadow-sm border border-2 border-white" 
-                                 style="cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" 
-                                 onclick="document.getElementById('thumbnail-input').click();">
-                                <i class="fas fa-camera text-primary"></i>
+                            <div class="position-absolute bottom-0 end-0 bg-primary rounded-circle p-2 m-2 shadow border border-2 border-white" 
+                                 style="cursor: pointer; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; z-index: 10; background-color: #4f46e5 !important;" 
+                                 onclick="document.getElementById('thumbnail-input').click();"
+                                 title="Thay đổi ảnh đại diện">
+                                <i class="bi bi-camera-fill text-white" style="font-size: 1.2rem;"></i>
                             </div>
                             <input type="file" id="thumbnail-input" class="d-none" accept="image/*">
                         }
@@ -421,7 +424,7 @@
                             <label class="form-label">Location</label>
                             <input type="hidden" id="hiddenCreateAgendaLocation" name="Location" value="@(Model.Location ?? Model.LocationText ?? string.Empty)" />
                             <div class="position-relative">
-                                <input type="text" id="agendaLocationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 2 ký tự)..." autocomplete="off" />
+                                <input type="text" id="agendaLocationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 1 ký tự)..." autocomplete="off" />
                                 <div id="agendaLocationSearchResults" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
                             </div>
                             <div id="agendaLocationStatic" class="form-text text-muted">Current Event Location: @(Model.Location ?? Model.LocationText ?? "None")</div>
@@ -783,7 +786,6 @@
 
             refreshAvailableLocations();
         })();
-        })();
 
         // ================= Team Members Autocomplete =================
         const searchInputs = document.querySelectorAll('.user-search-input');
@@ -798,7 +800,7 @@
             input.addEventListener('input', function() {
                 clearTimeout(debounceTimer);
                 const query = this.value;
-                if (query.length < 3) {
+                if (query.length < 1) {
                     resultsContainer.style.display = 'none';
                     return;
                 }
@@ -867,7 +869,7 @@
                 clearTimeout(agendaTimer);
                 const query = this.value;
                 
-                if (query.length < 3) {
+                if (query.length < 1) {
                     agendaResults.style.display = 'none';
                     if (query.length === 0) {
                         agendaClearBtn.style.display = 'none';
@@ -937,7 +939,7 @@
             locInput.addEventListener('input', function() {
                 clearTimeout(locTimer);
                 const query = this.value;
-                if (query.length < 2) {
+                if (query.length < 1) {
                     locResults.style.display = 'none';
                     if (query.length === 0) {
                         hiddenLocInput.value = '';

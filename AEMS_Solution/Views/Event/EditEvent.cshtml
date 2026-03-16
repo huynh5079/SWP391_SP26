@@ -130,7 +130,7 @@
             <a href="@Url.Action("MyEvents", "Organizer")" class="btn btn-secondary" style="text-decoration: none; font-size: 14px;">← Back to List</a>
         </div>
 
-        <form asp-controller="Event" asp-action="Edit" method="post" id="editEventForm" enctype="multipart/form-data">
+        <form asp-controller="Event" asp-action="Edit" asp-route-id="@Model.EventId" method="post" id="editEventForm" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             @* Hidden EventId; Status được xử lý theo điều kiện bên dưới *@
             <input type="hidden" asp-for="EventId" />
@@ -166,7 +166,7 @@
                     <label asp-for="LocationId">Location *</label>
                     <input type="hidden" asp-for="LocationId" id="LocationId" />
                     <div class="position-relative">
-                        <input type="text" id="locationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 2 ký tự)..." autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
+                        <input type="text" id="locationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 1 ký tự)..." autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
                         <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
                     </div>
                     <span asp-validation-for="LocationId" class="error text-danger small"></span>
@@ -440,7 +440,7 @@
                     input.addEventListener('input', function() {
                         clearTimeout(timer);
                         const query = this.value;
-                        if (query.length < 2) {
+                        if (query.length < 1) {
                             results.style.display = 'none';
                             if (query.length === 0) hidden.value = '';
                             return;
@@ -502,7 +502,7 @@
                     clearTimeout(input.dataset.timer);
                     
                     const query = input.value;
-                    if (query.length < 2) {
+                    if (query.length < 1) {
                         results.style.display = 'none';
                         if (query.length === 0) hidden.value = '';
                         return;

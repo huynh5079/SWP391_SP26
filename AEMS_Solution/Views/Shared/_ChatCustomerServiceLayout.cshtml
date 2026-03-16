@@ -1,4 +1,4 @@
-﻿@{
+@{
     var displayName = User?.Identity?.Name ?? "Người dùng";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
     var currentRole = User.IsInRole("Admin") ? "Admin"
@@ -28,12 +28,12 @@
     data-contacts-url="@Url.Action("Contacts", "Chat")"
     data-conversation-url="@Url.Action("Conversation", "Chat")"
     data-chat-hub-url="/hub/v1/chat">
-    <button type="button" class="nav-link text-dark messenger-nav-trigger" id="messengerToggle" aria-label="Mở chat giữa người dùng">
+    <button type="button" class="nav-link text-white messenger-nav-trigger" id="messengerToggle" aria-label="Mở chat giữa người dùng">
         <span class="messenger-nav-icon">
-            <i class="bi bi-messenger"></i>
+            <i class="bi bi-messenger text-white"></i>
             <span class="messenger-fab-badge d-none" id="messengerFabBadge">0</span>
         </span>
-        <span class="messenger-nav-text">Chat</span>
+        <span class="messenger-nav-text ms-1">Chat</span>
     </button>
 
     <section class="messenger-panel" id="messengerPanel" aria-hidden="true">
