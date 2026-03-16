@@ -1,4 +1,4 @@
-﻿using DataAccess.Enum;
+using DataAccess.Enum;
 using System;
 using System.Collections.Generic;
 
@@ -17,6 +17,8 @@ public partial class CheckInHistory : BaseEntity
     public ScanTypeEnum? ScanType { get; set; }
 
     public string? Location { get; set; }
+
+    public DateTime? CheckoutTime { get; set; }
 
     public virtual StaffProfile? Scanner { get; set; }
 

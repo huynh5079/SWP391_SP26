@@ -71,7 +71,10 @@
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="MyParticipatedEvents"><i class="bi bi-person-workspace me-2"></i>S&#7921; ki&#7879;n tham gia</a></li>
                                 <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="EventAgenda" asp-action="MyAgenda"><i class="bi bi-list-task me-2"></i>Agenda</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Ticket" asp-action="Index"><i class="bi bi-ticket me-2"></i>Tickets</a></li>
+                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="manageticket"><i class="bi bi-ticket me-2"></i>Manage Tickets</a></li>
+                                <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
+                                <li><a class="dropdown-item aems-dd-item" asp-controller="Topic" asp-action="Index"><i class="bi bi-tags me-2"></i>Topics</a></li>
+                                <li><a class="dropdown-item aems-dd-item" asp-controller="Location" asp-action="Index"><i class="bi bi-geo-alt me-2"></i>Locations</a></li>
                                 <li class="dropdown-submenu position-relative">
                                     <a class="dropdown-item aems-dd-item aems-submenu-toggle d-flex align-items-center justify-content-between" href="#">
                                         <span><i class="bi bi-question-circle me-2"></i>Quiz</span>

@@ -44,4 +44,23 @@ namespace AEMS_Solution.Models.Organizer.Manage
         public TicketStatusEnum? Status { get; set; }
         public DateTime? CheckInTime { get; set; }
     }
+
+    public class TicketSalesByEventVm
+    {
+        public string EventId { get; set; } = string.Empty;
+        public string EventTitle { get; set; } = string.Empty;
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public int MaxCapacity { get; set; }
+        public int SoldTickets { get; set; }
+        public int RemainingSeats => Math.Max(0, MaxCapacity - SoldTickets);
+        public double FillPercent => MaxCapacity > 0 ? Math.Round((double)SoldTickets / MaxCapacity * 100, 1) : 0;
+    }
+
+    public class ManageTicketViewModel
+    {
+        public string? Search { get; set; }
+        public List<TicketSalesByEventVm> Events { get; set; } = new();
+        public int TotalSoldTickets => Events.Sum(x => x.SoldTickets);
+    }
 }

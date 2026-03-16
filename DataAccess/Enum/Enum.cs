@@ -109,7 +109,7 @@ namespace DataAccess.Enum
 		Registered, // Đã đăng ký thành công
 		CheckedIn,  // Đã điểm danh (tham gia sự kiện)
 		Cancelled,   // Đã hủy vé
-		
+		Used        // Đã sử dụng (sau khi checkout)
 	}
 
 	public enum UserStatusEnum
@@ -229,6 +229,7 @@ namespace DataAccess.Enum
 	public enum FeedbackStatusEnum
 	{
 	    NA, 
+		BeforeEvent,
 		DuringEvent,   
 		AfterEvent
 	}

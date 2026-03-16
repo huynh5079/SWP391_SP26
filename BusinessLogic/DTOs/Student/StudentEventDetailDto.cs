@@ -45,8 +45,8 @@ namespace BusinessLogic.DTOs.Student
         public int? WaitlistPosition { get; set; }
         public DataAccess.Enum.EventWaitlistStatusEnum? WaitlistStatus { get; set; }
         public string? WaitlistStudentProfileId { get; set; }
-        // Agendas (new)
         public List<EventAgendaItemDto>? Agendas { get; set; }
+        public List<EventDocumentDto>? Documents { get; set; }
     }
     public class EventAgendaItemDto
     {
@@ -57,6 +57,11 @@ namespace BusinessLogic.DTOs.Student
         public DateTime? EndTime { get; set; }
         public string? Location { get; set; }
     }
-
+    public class EventDocumentDto
+    {
+        public string? Name { get; set; }
+        public string? Url { get; set; }
+        public string? Type { get; set; }
+    }
 
 }
