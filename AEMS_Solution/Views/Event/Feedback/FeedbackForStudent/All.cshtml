@@ -1,0 +1,53 @@
+@model List<BusinessLogic.DTOs.Student.StudentEventFeedbackItemDto>
+@{
+    ViewData["Title"] = "Tất cả feedback";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var eventTitle = ViewBag.EventTitle as string ?? "Sự kiện";
+    var eventId = ViewBag.EventId as string ?? string.Empty;
+    var avg = Model.Count > 0 ? Math.Round(Model.Average(x => x.Rating), 1) : 0;
+}
+
+<div class="container py-4" style="max-width:860px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-1">Tất cả feedback</h4>
+            <div class="text-muted">@eventTitle</div>
+        </div>
+        <a asp-controller="StudentEvent" asp-action="Detail" asp-route-id="@eventId" class="btn btn-outline-secondary">Quay lại sự kiện</a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-body py-3 d-flex gap-4 flex-wrap">
+            <div><strong>@Model.Count</strong> đánh giá</div>
+            <div><strong>@avg</strong>/5 ⭐</div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            @if (Model.Count == 0)
+            {
+                <div class="p-4 text-muted">Chưa có feedback nào cho sự kiện này.</div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var item in Model)
+                    {
+                        <div class="list-group-item py-3">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <div class="fw-semibold">@(item.StudentName ?? item.StudentCode ?? "Ẩn danh")</div>
+                                <small class="text-muted">@(item.CreatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "")</small>
+                            </div>
+                            <div class="mb-1">@string.Concat(Enumerable.Repeat("★", Math.Clamp(item.Rating, 1, 5)))</div>
+                            @if (!string.IsNullOrWhiteSpace(item.Comment))
+                            {
+                                <div>@item.Comment</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

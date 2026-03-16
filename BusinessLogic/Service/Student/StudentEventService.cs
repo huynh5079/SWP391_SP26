@@ -162,7 +162,8 @@ namespace BusinessLogic.Service.Student
                 throw new InvalidOperationException("Event không tồn tại.");
 
             var now = DateTimeHelper.GetVietnamTime();
-            int registeredCount = ev.Tickets?.Count(t => t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? 0;
+
+			int registeredCount = ev.Tickets?.Count(t => t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? 0;
 
             // Check student ticket
             var myTicket = ev.Tickets?.FirstOrDefault(
@@ -173,6 +174,15 @@ namespace BusinessLogic.Service.Student
             bool isPublic = ev.Status == EventStatusEnum.Published ||
                             ev.Status == EventStatusEnum.Upcoming  ||
                             ev.Status == EventStatusEnum.Happening;
+
+            var feedbackStatus = now < ev.StartTime
+                ? FeedbackStatusEnum.BeforeEvent
+                : now <= ev.EndTime
+                    ? FeedbackStatusEnum.DuringEvent
+                    : FeedbackStatusEnum.AfterEvent;
+
+            var existingFeedback = await _uow.Feedbacks.GetAsync(
+                f => f.EventId == eventId && f.StudentId == profile.Id && f.DeletedAt == null);
             //waitlist status
             var waitlistEntry = await _uow.EventWaitlist.GetAsync(
                 w => w.EventId == eventId && w.StudentId == profile.Id);
@@ -236,8 +246,13 @@ namespace BusinessLogic.Service.Student
                 WaitlistPosition = waitlistEntry?.Position,
                 WaitlistStatus = waitlistEntry?.Status,        // ✅ thêm
                 WaitlistStudentProfileId = waitlistEntry?.StudentId,
-                Agendas = agendas,
-                Documents = documents
+                FeedbackStatus = feedbackStatus,
+                HasSubmittedFeedback = (existingFeedback?.Rating ?? 0) > 0,
+                CurrentFeedbackRating = existingFeedback?.Rating.HasValue == true
+                    ? (int?)Math.Round(existingFeedback.Rating.Value)
+                    : null,
+                CurrentFeedbackComment = existingFeedback?.Comment,
+                Agendas = agendas
             };
         }
 
@@ -522,8 +537,9 @@ namespace BusinessLogic.Service.Student
             if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
             var now = DateTimeHelper.GetVietnamTime();
-            if (ev.EndTime > now)
-                throw new InvalidOperationException("Chỉ được gửi feedback sau khi event kết thúc.");
+            var canRate = now >= ev.StartTime;
+            if (!canRate && dto.Rating.HasValue)
+                throw new InvalidOperationException("Chỉ được đánh giá sao trong hoặc sau khi sự kiện bắt đầu.");
 
             // Check student attended
             var ticket = await _uow.Tickets.GetAsync(
@@ -532,32 +548,46 @@ namespace BusinessLogic.Service.Student
             if (ticket == null)
                 throw new InvalidOperationException("Bạn chưa đăng ký event này.");
 
-            var checkedIn = ticket.Status == TicketStatusEnum.CheckedIn || ticket.CheckInTime != null;
-            if (!checkedIn)
-            {
-                checkedIn = await _uow.CheckInHistories.GetAsync(
-                    h => h.TicketId == ticket.Id && h.DeletedAt == null && h.ScanType == ScanTypeEnum.CheckIn) != null;
-            }
-
-            if (!checkedIn)
-                throw new InvalidOperationException("Chỉ sinh viên đã check-in mới được gửi feedback.");
-
             // Check duplicate feedback
             var existingFeedback = await _uow.Feedbacks.GetAsync(
                 f => f.EventId == eventId && f.StudentId == profile.Id && f.DeletedAt == null);
-            if (existingFeedback != null)
-                throw new InvalidOperationException("Bạn đã gửi feedback cho event này rồi.");
 
-            // BaseEntity constructor auto-sets Id, CreatedAt, UpdatedAt
-            var feedback = new Feedback
+            var status = now < ev.StartTime
+                ? FeedbackStatusEnum.BeforeEvent
+                : now <= ev.EndTime
+                    ? FeedbackStatusEnum.DuringEvent
+                    : FeedbackStatusEnum.AfterEvent;
+
+            if (existingFeedback == null)
             {
-                EventId = eventId,
-                StudentId = profile.Id,
-                Rating = dto.Rating,
-                Comment = dto.Comment
-            };
+                var feedback = new Feedback
+                {
+                    EventId = eventId,
+                    StudentId = profile.Id,
+                    Rating = dto.Rating,
+                    Comment = dto.Comment,
+                    Status = status,
+                    RatingEvent = dto.Rating.HasValue
+                        ? (FeedBackRatingsEnum)dto.Rating.Value
+                        : FeedBackRatingsEnum.ThreeStar
+                };
 
-            await _uow.Feedbacks.CreateAsync(feedback);
+                await _uow.Feedbacks.CreateAsync(feedback);
+            }
+            else
+            {
+                existingFeedback.Comment = dto.Comment;
+                if (dto.Rating.HasValue)
+                {
+                    existingFeedback.Rating = dto.Rating.Value;
+                    existingFeedback.RatingEvent = (FeedBackRatingsEnum)dto.Rating.Value;
+                }
+                existingFeedback.Status = status;
+                existingFeedback.UpdatedAt = now;
+
+                await _uow.Feedbacks.UpdateAsync(existingFeedback);
+            }
+
             await _uow.SaveChangesAsync();
 
             // Send notification to Organizer
@@ -573,6 +603,29 @@ namespace BusinessLogic.Service.Student
                     RelatedEntityId = ev.Id
                 });
             }
+        }
+
+        public async Task<List<StudentEventFeedbackItemDto>> GetEventFeedbacksAsync(string eventId)
+        {
+            if (string.IsNullOrWhiteSpace(eventId))
+                return new List<StudentEventFeedbackItemDto>();
+
+            var feedbacks = await _uow.Feedbacks.GetAllAsync(
+                f => f.EventId == eventId && f.DeletedAt == null,
+                q => q.Include(f => f.Student).ThenInclude(s => s!.User));
+
+            return feedbacks
+                .OrderByDescending(f => f.CreatedAt)
+                .Select(f => new StudentEventFeedbackItemDto
+                {
+                    EventId = f.EventId ?? string.Empty,
+                    StudentCode = f.Student?.StudentCode,
+                    StudentName = f.Student?.User?.FullName,
+                    Rating = (int)Math.Round(f.Rating ?? 0),
+                    Comment = f.Comment,
+                    CreatedAt = f.CreatedAt
+                })
+                .ToList();
         }
 
         // ─── Waitlist ─────────────────────────────────────────────────────────

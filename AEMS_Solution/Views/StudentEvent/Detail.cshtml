@@ -25,6 +25,8 @@
     var sortedAgendas = Model.Agendas?
         .OrderBy(a => a.StartTime.HasValue ? a.StartTime.Value : DateTime.MinValue)
         .ToList();
+    var allFeedbacks = ViewBag.AllFeedbacks as List<BusinessLogic.DTOs.Student.StudentEventFeedbackItemDto>
+        ?? new List<BusinessLogic.DTOs.Student.StudentEventFeedbackItemDto>();
 }
 
 <style>
@@ -698,10 +700,10 @@
                     <span class="ev-badge ev-badge-secondary">@Model.SemesterName</span>
                 }
             </div>
-            @if (Model.IsRegistered && Model.EndTime < DateTime.Now)
+            @if (Model.IsRegistered && !Model.HasSubmittedFeedback)
             {
                 <div class="ev-hero-feedback-link">
-                    <a asp-controller="Feedback" asp-action="Index" asp-route-eventId="@Model.EventId" class="ev-hero-feedback-btn">
+                    <a href="#feedback-box" class="ev-hero-feedback-btn">
                         <i class="bi bi-star-fill"></i> Feedback ngay
                     </a>
                 </div>
@@ -1024,15 +1026,89 @@
                 </div>
 
                 <!-- Feedback -->
-                @if (Model.IsRegistered && Model.EndTime < DateTime.Now)
-                {
-                    <div class="ev-feedback">
-                        <h6><i class="bi bi-star-fill text-warning me-1"></i>Đánh giá sự kiện</h6>
-                        <a asp-controller="Feedback" asp-action="Index" asp-route-eventId="@Model.EventId" class="ev-btn-register ev-btn-warning text-decoration-none">
-                            <i class="bi bi-pencil-square"></i> Đi đến trang feedback
-                        </a>
-                    </div>
-                }
+                <div class="ev-feedback" id="feedback-box">
+                    <h6><i class="bi bi-star-fill text-warning me-1"></i>Đánh giá sự kiện</h6>
+
+                    @if (!Model.IsRegistered)
+                    {
+                        <div class="ev-status-pill ev-status-wait mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            <span>Bạn cần đăng ký sự kiện trước khi gửi feedback.</span>
+                        </div>
+                    }
+                    else if (Model.HasSubmittedFeedback)
+                    {
+                        <div class="ev-status-pill ev-status-success mb-0">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>Bạn đã gửi đánh giá sao cho sự kiện này.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <form asp-controller="StudentEvent" asp-action="SubmitFeedback" asp-route-id="@Model.EventId" method="post">
+                            @Html.AntiForgeryToken()
+
+                            @if (Model.FeedbackStatus == DataAccess.Enum.FeedbackStatusEnum.BeforeEvent)
+                            {
+                                <div class="ev-status-pill ev-status-wait mb-2">
+                                    <i class="bi bi-hourglass"></i>
+                                    <span>Chưa bắt đầu sự kiện: bạn có thể góp ý bằng comment, chưa đánh giá sao được.</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mb-2">
+                                    <label class="form-label fw-semibold mb-1">Mức đánh giá sao</label>
+                                    <select name="Rating" class="form-select" required>
+                                        <option value="5">⭐⭐⭐⭐⭐ Xuất sắc</option>
+                                        <option value="4">⭐⭐⭐⭐ Tốt</option>
+                                        <option value="3" selected>⭐⭐⭐ Bình thường</option>
+                                        <option value="2">⭐⭐ Chưa tốt</option>
+                                        <option value="1">⭐ Tệ</option>
+                                    </select>
+                                </div>
+                            }
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold mb-1">Nhận xét</label>
+                                <textarea name="Comment" class="form-control" rows="3" maxlength="1000" placeholder="Chia sẻ cảm nhận của bạn...">@Model.CurrentFeedbackComment</textarea>
+                            </div>
+
+                            <button type="submit" class="ev-btn-register ev-btn-warning">
+                                <i class="bi bi-send"></i> Gửi feedback
+                            </button>
+                        </form>
+                    }
+
+                    <hr class="my-3" />
+                    <h6 class="mb-2"><i class="bi bi-chat-left-text me-1"></i>Tất cả feedback (@allFeedbacks.Count)</h6>
+                    @if (!allFeedbacks.Any())
+                    {
+                        <div class="text-muted small">Chưa có feedback nào cho sự kiện này.</div>
+                    }
+                    else
+                    {
+                        <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;">
+                            @foreach (var fb in allFeedbacks)
+                            {
+                                <div style="border:1px solid var(--border);border-radius:10px;padding:.6rem .75rem;background:#fff;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong style="font-size:.84rem;">@(fb.StudentName ?? fb.StudentCode ?? "Ẩn danh")</strong>
+                                        <small class="text-muted">@(fb.CreatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "")</small>
+                                    </div>
+                                    @if (fb.Rating > 0)
+                                    {
+                                        <div style="font-size:.78rem;color:#f59e0b;">@string.Concat(Enumerable.Repeat("★", Math.Clamp(fb.Rating, 1, 5)))</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(fb.Comment))
+                                    {
+                                        <div style="font-size:.82rem;">@fb.Comment</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
 
             </div>
         </div>
