@@ -13,12 +13,12 @@
     string? search  = ViewBag.Search as string;
 
     // ── Calendar constants ────────────────────────────────────────────────────
-    const int GRID_START = 7;      // 07:00
-    const int GRID_END   = 19;     // 19:00
+    const int GRID_START = 0;      // 00:00
+    const int GRID_END   = 24;     // 24:00
     const int PX_PER_H   = 60;     // pixels per hour
-    int totalHours  = GRID_END - GRID_START;               // 12 h
-    int gridHeight  = totalHours * PX_PER_H;               // 720 px
-    // Labels every 2 hours: 7,9,11,13,15,17,19
+    int totalHours  = GRID_END - GRID_START;               // 24 h
+    int gridHeight  = totalHours * PX_PER_H;               // 1440 px
+    // Labels every 2 hours: 0,2,4,...,24
     var timeSlots   = Enumerable.Range(0, totalHours / 2 + 1).Select(i => GRID_START + i * 2).ToArray();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -61,6 +61,7 @@
                            align-items: center; justify-content: center; font-size: .95rem; }
 
     /* body */
+    .gc-scroller { max-height: 720px; overflow-y: auto; }
     .gc-body    { display: grid; grid-template-columns: 52px repeat(7, 1fr);
                   position: relative; height: @(gridHeight)px; }
     .gc-tcol    { position: relative; background: #f8f9fa; border-right: 1px solid #dee2e6; }
@@ -190,6 +191,7 @@
         </div>
 
         @* Body *@
+        <div class="gc-scroller">
         <div class="gc-body">
 
             @* Time label column *@
@@ -208,6 +210,74 @@
                     .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
                     .OrderBy(e => e.StartTime)
                     .ToList();
+
+                var normalized = dayEvts
+                    .Select(ev =>
+                    {
+                        var visStart = ev.StartTime.Date < day.Date
+                            ? day.Date.AddHours(GRID_START)
+                            : (ev.StartTime.Hour < GRID_START ? day.Date.AddHours(GRID_START) : ev.StartTime);
+                        var visEnd = ev.EndTime.Date > day.Date
+                            ? day.Date.AddHours(GRID_END)
+                            : (ev.EndTime.Hour > GRID_END ? day.Date.AddHours(GRID_END) : ev.EndTime);
+
+                        return (Ev: ev, Start: visStart, End: visEnd);
+                    })
+                    .Where(x => x.Start < day.Date.AddHours(GRID_END) && x.End > day.Date.AddHours(GRID_START))
+                    .OrderBy(x => x.Start)
+                    .ThenBy(x => x.End)
+                    .ToList();
+
+                var laidOut = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End, int Lane, int Lanes)>();
+                int idx = 0;
+                while (idx < normalized.Count)
+                {
+                    int clusterEnd = idx;
+                    DateTime clusterMaxEnd = normalized[idx].End;
+
+                    while (clusterEnd + 1 < normalized.Count && normalized[clusterEnd + 1].Start < clusterMaxEnd)
+                    {
+                        clusterEnd++;
+                        if (normalized[clusterEnd].End > clusterMaxEnd)
+                        {
+                            clusterMaxEnd = normalized[clusterEnd].End;
+                        }
+                    }
+
+                    var laneEnds = new List<DateTime>();
+                    var clusterAssigned = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End, int Lane)>();
+
+                    for (int c = idx; c <= clusterEnd; c++)
+                    {
+                        var item = normalized[c];
+                        int lane = -1;
+                        for (int l = 0; l < laneEnds.Count; l++)
+                        {
+                            if (laneEnds[l] <= item.Start)
+                            {
+                                lane = l;
+                                laneEnds[l] = item.End;
+                                break;
+                            }
+                        }
+
+                        if (lane == -1)
+                        {
+                            lane = laneEnds.Count;
+                            laneEnds.Add(item.End);
+                        }
+
+                        clusterAssigned.Add((item.Ev, item.Start, item.End, lane));
+                    }
+
+                    int totalLanes = Math.Max(1, laneEnds.Count);
+                    foreach (var ca in clusterAssigned)
+                    {
+                        laidOut.Add((ca.Ev, ca.Start, ca.End, ca.Lane, totalLanes));
+                    }
+
+                    idx = clusterEnd + 1;
+                }
 
                 <div class="gc-dcol @(isToday ? "today-col" : "")">
 
@@ -236,45 +306,40 @@
                     }
 
                     @* Events *@
-                    @foreach (var ev in dayEvts)
+                    @foreach (var item in laidOut)
                     {
-                        // For multi-day events, clamp visible start/end to this day's grid bounds
-                        var visStart = ev.StartTime.Date < day.Date
-                            ? day.Date.AddHours(GRID_START)
-                            : (ev.StartTime.Hour < GRID_START ? day.Date.AddHours(GRID_START) : ev.StartTime);
-                        var visEnd = ev.EndTime.Date > day.Date
-                            ? day.Date.AddHours(GRID_END)
-                            : (ev.EndTime.Hour > GRID_END ? day.Date.AddHours(GRID_END) : ev.EndTime);
+                        int top = TopPx(item.Start);
+                        int ht  = HeightPx(item.Start, item.End);
+                        string bg = EventBg(item.Ev);
 
-                        if (visStart >= day.Date.AddHours(GRID_END) ||
-                            visEnd   <= day.Date.AddHours(GRID_START)) { continue; }
+                        double laneWidth = 100.0 / item.Lanes;
+                        double leftPct = item.Lane * laneWidth;
+                        string leftCss = leftPct.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+                        string widthCss = laneWidth.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
 
-                        int top = TopPx(visStart);
-                        int ht  = HeightPx(visStart, visEnd);
-                        string bg = EventBg(ev);
-
-                        <a asp-action="Detail" asp-route-id="@ev.EventId"
+                        <a asp-action="Detail" asp-route-id="@item.Ev.EventId"
                            class="ev-pill"
-                           style="top:@(top)px; height:@(ht)px; background:@bg;"
-                           title="@ev.Title&#10;@ev.StartTime.ToString("HH:mm") – @ev.EndTime.ToString("HH:mm")@(ev.Location != null ? "\n" + ev.Location : "")">
-                            @if (ev.IsRegistered)
+                           style="top:@(top)px; height:@(ht)px; left:calc(@leftCss% + 2px); width:calc(@widthCss% - 4px); right:auto; background:@bg;"
+                           title="@item.Ev.Title&#10;@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")@(item.Ev.Location != null ? "\n" + item.Ev.Location : "")">
+                            @if (item.Ev.IsRegistered)
                             {
                                 <span class="ep-reg">✓ Đã đăng ký</span>
                             }
-                            <span class="ep-title">@ev.Title</span>
+                            <span class="ep-title">@item.Ev.Title</span>
                             @if (ht >= 36)
                             {
-                                <span class="ep-sub">@ev.StartTime.ToString("HH:mm") – @ev.EndTime.ToString("HH:mm")</span>
+                                <span class="ep-sub">@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")</span>
                             }
-                            @if (ht >= 56 && !string.IsNullOrEmpty(ev.Location))
+                            @if (ht >= 56 && !string.IsNullOrEmpty(item.Ev.Location))
                             {
-                                <span class="ep-sub"><i class="bi bi-geo-alt"></i> @ev.Location</span>
+                                <span class="ep-sub"><i class="bi bi-geo-alt"></i> @item.Ev.Location</span>
                             }
                         </a>
                     }
 
                 </div>
             }
+        </div>
         </div>
     </div>
 
