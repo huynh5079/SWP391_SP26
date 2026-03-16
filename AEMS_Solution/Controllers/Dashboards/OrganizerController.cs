@@ -81,6 +81,9 @@ using Microsoft.EntityFrameworkCore;
 						return await MyEventsDelete(search, parsedStatus, semesterId, page, pageSize);
 					}
 
+				case "manageticket":
+					return await ManageTicket(search);
+
 				default:
 					return BadRequest("Operation không hợp lệ.");
 			}
@@ -93,6 +96,48 @@ using Microsoft.EntityFrameworkCore;
 			return RedirectToAction("Index");
 		}
 	}
+
+		[HttpGet]
+		public async Task<IActionResult> ManageTicket(string? search)
+		{
+			var userId = CurrentUserId;
+			if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+
+			try
+			{
+				var events = await _organizerService.GetMyEventsAsync(userId);
+				if (!string.IsNullOrWhiteSpace(search))
+				{
+					events = events
+						.Where(x => x.Title.Contains(search, StringComparison.OrdinalIgnoreCase))
+						.ToList();
+				}
+
+				var model = new ManageTicketViewModel
+				{
+					Search = search,
+					Events = events
+						.OrderByDescending(x => x.StartTime)
+						.Select(x => new TicketSalesByEventVm
+						{
+							EventId = x.EventId,
+							EventTitle = x.Title,
+							StartTime = x.StartTime,
+							EndTime = x.EndTime,
+							MaxCapacity = x.MaxCapacity,
+							SoldTickets = x.RegisteredCount
+						})
+						.ToList()
+				};
+
+				return View("~/Views/Ticket/ManageTicket.cshtml", model);
+			}
+			catch (Exception)
+			{
+				SetError("Đã xảy ra lỗi khi tải thống kê vé.");
+				return View("~/Views/Ticket/ManageTicket.cshtml", new ManageTicketViewModel());
+			}
+		}
 
 	        [HttpPost]
         public async Task<IActionResult> UploadThumbnail(string id, IFormFile file)
