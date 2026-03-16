@@ -1,4 +1,4 @@
-﻿using DataAccess.Enum;
+using DataAccess.Enum;
 
 namespace BusinessLogic.DTOs.Role.Organizer;
 
@@ -53,6 +53,7 @@ public class EventDetailsDto
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? ThumbnailUrl { get; set; }
+    public List<string> ImageUrls { get; set; } = new();
     public string? SemesterId { get; set; }
     public string? SemesterName { get; set; }
     public string? DepartmentId { get; set; }
@@ -115,6 +116,7 @@ public class EventListDto
     public string Title { get; set; } = "";
     public string? Description { get; set; }
     public string? ThumbnailUrl { get; set; }
+    public List<string> ImageUrls { get; set; } = new();
 
     public string? SemesterId { get; set; }
     public string? SemesterName { get; set; }

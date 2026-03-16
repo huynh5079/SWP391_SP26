@@ -87,5 +87,7 @@ namespace BusinessLogic.Service.Organizer
 		public Task RespondToOfferAsync(RespondOfferRequestDto dto)=>_eventwaitlist.RespondToOfferAsync(dto);
 
         public Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId) => _eventService.UpdateThumbnailAsync(eventId, file, userId);
+		public Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId) => _eventService.AddEventImageAsync(eventId, file, userId);
+		public Task RemoveEventImageAsync(string eventId, string imageUrl, string userId) => _eventService.RemoveEventImageAsync(eventId, imageUrl, userId);
 	}
 }

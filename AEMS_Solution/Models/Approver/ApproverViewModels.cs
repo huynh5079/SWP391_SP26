@@ -46,6 +46,7 @@ namespace AEMS_Solution.Models.Approver
 
         public string OrganizerName { get; set; } = "";
         public string OrganizerEmail { get; set; } = "";
+        public string? Location { get; set; }
 
         public List<ApprovalLogVm> ApprovalLogs { get; set; } = new();
     }

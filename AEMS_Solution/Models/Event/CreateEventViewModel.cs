@@ -14,6 +14,7 @@ namespace AEMS_Solution.Models.Event
 
 		public string? ThumbnailUrl { get; set; }
 		public Microsoft.AspNetCore.Http.IFormFile? ThumbnailFile { get; set; }
+		public List<Microsoft.AspNetCore.Http.IFormFile>? BannerFiles { get; set; }
 
 		// ===== 2. Time =====
 		[Required]

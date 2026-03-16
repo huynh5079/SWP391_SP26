@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 
@@ -14,6 +14,7 @@ namespace AEMS_Solution.Models.Event
 		public string Title { get; set; } = "";
 		public string? Description { get; set; }
 		public string? ThumbnailUrl { get; set; }
+		public List<string> ImageUrls { get; set; } = new();
 
 		public string OrganizerId { get; set; } = "";
 		public StaffMiniVm? Organizer { get; set; }

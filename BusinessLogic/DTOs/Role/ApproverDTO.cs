@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,6 +29,7 @@ namespace BusinessLogic.DTOs.Role
 		public int MaxCapacity { get; set; }
 
 		public EventStatusEnum Status { get; set; } // Pending/Approved/Rejected/Published...
+		public string? Location { get; set; }
 
 		// Organizer info (nếu cần)
 		public string OrganizerId { get; set; } = "";

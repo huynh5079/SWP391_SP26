@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -260,6 +260,7 @@ namespace BusinessLogic.Service.Approval
 				e => e.Id == eventId,
 				q => q.Include(e => e.Organizer).ThenInclude(sp => sp.User)
 					  .Include(e => e.ApprovalLogs)
+					  .Include(e => e.Location)
 			);
 
 			if (eventDetail == null) return null;
@@ -273,6 +274,9 @@ namespace BusinessLogic.Service.Approval
 				EndTime = eventDetail.EndTime,
 				MaxCapacity = eventDetail.MaxCapacity,
 				Status = eventDetail.Status,
+				Location = eventDetail.Location != null 
+					? (!string.IsNullOrWhiteSpace(eventDetail.Location.Address) ? eventDetail.Location.Address : eventDetail.Location.Name) 
+					: null,
 				OrganizerId = eventDetail.OrganizerId ?? "",
 				OrganizerName = eventDetail.Organizer?.User?.FullName ?? "",
 				OrganizerEmail = eventDetail.Organizer?.User?.Email ?? "",

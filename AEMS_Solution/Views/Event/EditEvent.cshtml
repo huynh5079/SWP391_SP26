@@ -199,10 +199,11 @@
                     <input asp-for="MaxCapacity" type="number" min="1" />
                 </div>
                 <div class="col">
-                    <label asp-for="ThumbnailFile">Thumbnail Image</label>
-                    <input asp-for="ThumbnailFile" type="file" accept="image/*" />
-                    <div class="hint">Or provide a URL below</div>
-                    <input asp-for="ThumbnailUrl" placeholder="https://..." />
+                    <label>Event Images (Slideshow)</label>
+                    <input asp-for="BannerFiles" type="file" accept="image/*" multiple />
+                    <div class="hint">Select multiple images to create a slideshow. The first image will be the primary thumbnail.</div>
+                    <div class="hint" style="margin-top: 10px;">Or provide Image URLs (separating by | )</div>
+                    <input asp-for="ThumbnailUrl" placeholder="https://url1.jpg|https://url2.jpg" />
                 </div>
             </div>
 
@@ -458,7 +459,7 @@
                                     
                                     results.innerHTML = resp.data.map(loc => `
                                         <div class="p-2 border-bottom loc-search-item text-dark" style="cursor:pointer;" 
-                                             data-id="${loc.id}" data-name="${loc.name}">
+                                             data-id="${loc.id}" data-name="${loc.name}" data-address="${loc.address || ''}">
                                             <div class="fw-semibold small">${loc.name}</div>
                                             <div class="text-muted" style="font-size:0.75rem;">
                                                 ${loc.address ? loc.address + ' - ' : ''}Sức chứa: ${loc.capacity}
@@ -472,7 +473,8 @@
                                         item.addEventListener('click', function() {
                                             const locId = this.getAttribute('data-id');
                                             const locName = this.getAttribute('data-name');
-                                            input.value = locName;
+                                            const locAddr = this.getAttribute('data-address');
+                                            input.value = locAddr ? locAddr : locName;
                                             hidden.value = isMain ? locId : locName;
                                             results.style.display = 'none';
                                         });
@@ -520,7 +522,7 @@
                                 
                                 results.innerHTML = resp.data.map(loc => `
                                     <div class="p-2 border-bottom loc-search-item text-dark" style="cursor:pointer;" 
-                                         data-name="${loc.name}">
+                                         data-name="${loc.name}" data-address="${loc.address || ''}">
                                         <div class="fw-semibold small">${loc.name}</div>
                                         <div class="text-muted" style="font-size:0.75rem;">
                                             ${loc.address ? loc.address + ' - ' : ''}Sức chứa: ${loc.capacity}
@@ -533,7 +535,8 @@
                                 items.forEach(item => {
                                     item.addEventListener('click', function() {
                                         const locName = this.getAttribute('data-name');
-                                        input.value = locName;
+                                        const locAddr = this.getAttribute('data-address');
+                                        input.value = locAddr ? locAddr : locName;
                                         hidden.value = locName;
                                         results.style.display = 'none';
                                     });
