@@ -1,9 +1,9 @@
 ﻿@model AEMS_Solution.Models.Organizer.BudgetProposal.BudgetProposalViewModel
 @using DataAccess.Enum
-
 @{
     var (badgeClass, badgeIcon) = Model.Status switch
     {
+        ProposalStatusEnum.Draft => ("bg-secondary", "bi-pencil"),
         ProposalStatusEnum.Approved => ("bg-success", "bi-check-circle"),
         ProposalStatusEnum.Rejected => ("bg-danger", "bi-x-circle"),
         _ => ("bg-warning text-dark", "bi-hourglass-split")
@@ -24,9 +24,27 @@
                 </span>
             </div>
 
-            @if (Model.CanApprove)
-            {
-                <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
+
+               
+                @if (Model.CanSend)
+                {
+                    <form asp-action="SubmitForApproval"
+                          asp-controller="BudgetProposal"
+                          method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="proposalId" value="@Model.ProposalId" />
+                        <input type="hidden" name="eventId" value="@Model.EventId" />
+                        <button type="submit" class="btn btn-primary fw-semibold"
+                                onclick="return confirm('Gửi Proposal lên Approver duyệt?')">
+                            <i class="bi bi-send me-1"></i> Gửi duyệt
+                        </button>
+                    </form>
+                }
+
+                
+                @if (Model.CanApprove)
+                {
                     <button class="btn btn-success fw-semibold"
                             data-bs-toggle="modal" data-bs-target="#modalApprove">
                         <i class="bi bi-check-lg me-1"></i> Duyệt
@@ -35,8 +53,8 @@
                             data-bs-toggle="modal" data-bs-target="#modalReject">
                         <i class="bi bi-x-lg me-1"></i> Từ chối
                     </button>
-                </div>
-            }
+                }
+            </div>
         </div>
 
         @if (!string.IsNullOrEmpty(Model.Note))

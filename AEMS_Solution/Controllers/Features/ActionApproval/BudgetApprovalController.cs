@@ -97,7 +97,7 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             try
             {
                 var vm = await BuildViewModelAsync(eventId);
-                return View("~/Views/Organizer/BudgetProposal/Detail.cshtml", vm);
+                return View("~/Views/BudgetProposal/Detail.cshtml", vm);
             }
             catch (Exception ex)
             {

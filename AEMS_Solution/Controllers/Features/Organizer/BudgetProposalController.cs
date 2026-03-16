@@ -122,7 +122,7 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 var vm = await BuildViewModelAsync(eventId, isApprover: false);
-                return View("~/Views/Organizer/BudgetProposal/Detail.cshtml", vm);
+                return View("~/Views/BudgetProposal/Detail.cshtml", vm);
             }
             catch (Exception ex)
             {
@@ -189,6 +189,31 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             {
                 await _errorLog.LogErrorAsync(ex, CurrentUserId,
                     $"{nameof(BudgetProposalController)}.{nameof(AddItem)}");
+
+                var deepest = ex;
+                while (deepest.InnerException != null) deepest = deepest.InnerException;
+                SetError(deepest.Message);
+            }
+
+            return RedirectToAction(nameof(Detail), new { eventId });
+        }
+
+        // ─── Submit for Approval ──────────────────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitForApproval(string proposalId, string eventId)
+        {
+            if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                await _service.SubmitForApprovalAsync(CurrentUserId, proposalId);
+                SetSuccess("Đã gửi Budget Proposal lên Approver duyệt!");
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, CurrentUserId,
+                    $"{nameof(BudgetProposalController)}.{nameof(SubmitForApproval)}");
 
                 var deepest = ex;
                 while (deepest.InnerException != null) deepest = deepest.InnerException;

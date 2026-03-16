@@ -11,7 +11,7 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
         // BudgetProposal
         Task<BudgetProposalDetailDto> GetByEventAsync(string eventId);
         Task<BudgetProposalDetailDto> CreateAsync(string organizerId, CreateBudgetProposalDto dto);
-        //Task SubmitForApprovalAsync(string organizerId, string proposalId);
+        Task SubmitForApprovalAsync(string organizerId, string proposalId);
         Task ApproveAsync(string approverId, string proposalId, string? note);
         Task RejectAsync(string approverId, string proposalId, string note);
 

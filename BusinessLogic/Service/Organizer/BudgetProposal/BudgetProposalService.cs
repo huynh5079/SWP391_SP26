@@ -51,7 +51,7 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
             return MapToDetailDto(proposal);
         }
 
-        // ─── 2. Tạo Proposal mới → Pending luôn ──────────────────────────────
+    
         public async Task<BudgetProposalDetailDto> CreateAsync(string organizerId, CreateBudgetProposalDto dto)
         {
             await RequireEventAsync(dto.EventId);
@@ -70,7 +70,7 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
                 Title = dto.Title,
                 Description = dto.Description,
                 PlannedAmount = 0,
-                Status = ProposalStatusEnum.Pending,
+                Status = ProposalStatusEnum.Draft,  // ✅ Draft thay vì Pending
                 CreatedBy = organizerId
             };
 
@@ -78,6 +78,25 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
             await _uow.SaveChangesAsync();
 
             return MapToDetailDto(proposal);
+        }
+
+        public async Task SubmitForApprovalAsync(string organizerId, string proposalId)
+        {
+            var proposal = await RequireProposalAsync(proposalId);
+
+            if (proposal.Status != ProposalStatusEnum.Draft)
+                throw new InvalidOperationException(
+                    "Chỉ có thể gửi duyệt Proposal đang ở trạng thái Draft.");
+
+            if (!proposal.BudgetItems.Any(i => i.DeletedAt == null))
+                throw new InvalidOperationException(
+                    "Vui lòng thêm ít nhất 1 hạng mục trước khi gửi duyệt.");
+
+            proposal.Status = ProposalStatusEnum.Pending;
+            proposal.UpdatedBy = organizerId;
+
+            await _uow.BudgetProposals.UpdateAsync(proposal);
+            await _uow.SaveChangesAsync();
         }
 
         // ─── 3. Approver duyệt ───────────────────────────────────────────────
@@ -123,9 +142,10 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
         {
             var proposal = await RequireProposalAsync(proposalId);
 
-            if (proposal.Status == ProposalStatusEnum.Approved)
+            if (proposal.Status == ProposalStatusEnum.Pending ||
+                proposal.Status == ProposalStatusEnum.Approved)
                 throw new InvalidOperationException(
-                    "Không thể chỉnh sửa Proposal đã được duyệt.");
+                    "Chỉ có thể chỉnh sửa Proposal đang ở trạng thái Draft.");
 
             var item = new BudgetItem
             {
@@ -155,9 +175,10 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
 
             var proposal = await RequireProposalAsync(item.BudgetProposalId);
 
-            if (proposal.Status == ProposalStatusEnum.Approved)
+            if (proposal.Status == ProposalStatusEnum.Pending ||
+            proposal.Status == ProposalStatusEnum.Approved)
                 throw new InvalidOperationException(
-                    "Không thể chỉnh sửa Proposal đã được duyệt.");
+                    "Chỉ có thể chỉnh sửa Proposal đang ở trạng thái Draft.");
 
             item.Category = dto.Category;
             item.Description = dto.Description;
@@ -181,9 +202,10 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
 
             var proposal = await RequireProposalAsync(item.BudgetProposalId);
 
-            if (proposal.Status == ProposalStatusEnum.Approved)
+            if (proposal.Status == ProposalStatusEnum.Pending ||
+            proposal.Status == ProposalStatusEnum.Approved)
                 throw new InvalidOperationException(
-                    "Không thể xóa item của Proposal đã được duyệt.");
+                    "Chỉ có thể chỉnh sửa Proposal đang ở trạng thái Draft.");
 
             item.DeletedAt = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
             item.UpdatedBy = organizerId;

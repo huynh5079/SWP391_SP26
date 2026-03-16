@@ -41,6 +41,8 @@ namespace AEMS_Solution.Models.Organizer.BudgetProposal
         public bool HasProposal => !string.IsNullOrEmpty(ProposalId);
         public bool CanAddItem => HasProposal && Status != ProposalStatusEnum.Approved;
         public bool CanAddReceipt => HasProposal && Status == ProposalStatusEnum.Approved;
+        // Chỉ được Send khi Draft và có ít nhất 1 item
+        public bool CanSend => HasProposal && Status == ProposalStatusEnum.Draft && Items.Any();
         public bool CanApprove => IsApprover && Status == ProposalStatusEnum.Pending;
         public bool IsOverBudget => ActualAmount > PlannedAmount;
     }
