@@ -94,6 +94,39 @@
     .ev-pill .ep-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ev-pill .ep-sub   { font-size: .63rem; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ev-pill .ep-reg   { font-size: .6rem; opacity: .8; margin-bottom: 1px; }
+
+    .ev-cluster-btn {
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        border: 0;
+        border-radius: 6px;
+        background: #3558e6;
+        color: #fff;
+        padding: 4px 6px;
+        font-size: .72rem;
+        text-align: left;
+        box-shadow: 0 1px 4px rgba(0,0,0,.22);
+        z-index: 5;
+    }
+
+    .ev-cluster-btn:hover { filter: brightness(1.1); }
+
+    .ev-cluster-menu {
+        min-width: 260px;
+        max-width: 320px;
+        max-height: 300px;
+        overflow-y: auto;
+        font-size: .82rem;
+        z-index: 2000;
+    }
+
+    .day-dd-menu {
+        max-height: 280px;
+        overflow-y: auto;
+        min-width: 280px;
+        font-size: .82rem;
+    }
 </style>
 
 <div class="container-fluid py-3" style="max-width: 1320px;">
@@ -172,19 +205,42 @@
         @* Header *@
         <div class="gc-header">
             <div class="gc-hcell"></div>
-            @foreach (var day in days)
+            @for (int dayIndex = 0; dayIndex < days.Count; dayIndex++)
             {
+                var day = days[dayIndex];
                 bool isToday = day.Date == today;
-                int cnt = Model.Events.Count(e => e.StartTime.Date == day.Date);
+                var dayItems = Model.Events
+                    .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
+                    .OrderBy(e => e.StartTime)
+                    .ToList();
+                int cnt = dayItems.Count;
                 <div class="gc-hcell @(isToday ? "today" : "")">
                     <div class="dn">@DayLabel(day.DayOfWeek)</div>
                     <div class="dd">@day.Day</div>
                     @if (cnt > 0)
                     {
-                        <div><span class="badge rounded-pill"
-                                   style="font-size:.58rem;background:#e8f0fe;color:#4361ee;padding:1px 5px;">
-                            @cnt
-                        </span></div>
+                        var ddId = $"dayEventDropdown_{dayIndex}";
+                        <div class="dropdown">
+                            <button class="badge rounded-pill border-0"
+                                    id="@ddId"
+                                    type="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    style="font-size:.58rem;background:#e8f0fe;color:#4361ee;padding:1px 5px;cursor:pointer;">
+                                @cnt
+                            </button>
+                            <ul class="dropdown-menu day-dd-menu text-start" aria-labelledby="@ddId">
+                                @foreach (var item in dayItems)
+                                {
+                                    <li>
+                                        <a class="dropdown-item" asp-action="Detail" asp-route-id="@item.EventId">
+                                            <div class="fw-semibold text-truncate">@item.Title</div>
+                                            <div class="text-muted small">@item.StartTime.ToString("HH:mm") – @item.EndTime.ToString("HH:mm")</div>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
                     }
                 </div>
             }
@@ -203,8 +259,9 @@
             </div>
 
             @* Day columns *@
-            @foreach (var day in days)
+            @for (int dayIndex = 0; dayIndex < days.Count; dayIndex++)
             {
+                var day = days[dayIndex];
                 bool isToday = day.Date == today;
                 var dayEvts  = Model.Events
                     .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
@@ -228,7 +285,7 @@
                     .ThenBy(x => x.End)
                     .ToList();
 
-                var laidOut = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End, int Lane, int Lanes)>();
+                var clusters = new List<(DateTime Start, DateTime End, List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End)> Items)>();
                 int idx = 0;
                 while (idx < normalized.Count)
                 {
@@ -244,37 +301,9 @@
                         }
                     }
 
-                    var laneEnds = new List<DateTime>();
-                    var clusterAssigned = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End, int Lane)>();
-
-                    for (int c = idx; c <= clusterEnd; c++)
-                    {
-                        var item = normalized[c];
-                        int lane = -1;
-                        for (int l = 0; l < laneEnds.Count; l++)
-                        {
-                            if (laneEnds[l] <= item.Start)
-                            {
-                                lane = l;
-                                laneEnds[l] = item.End;
-                                break;
-                            }
-                        }
-
-                        if (lane == -1)
-                        {
-                            lane = laneEnds.Count;
-                            laneEnds.Add(item.End);
-                        }
-
-                        clusterAssigned.Add((item.Ev, item.Start, item.End, lane));
-                    }
-
-                    int totalLanes = Math.Max(1, laneEnds.Count);
-                    foreach (var ca in clusterAssigned)
-                    {
-                        laidOut.Add((ca.Ev, ca.Start, ca.End, ca.Lane, totalLanes));
-                    }
+                    var clusterItems = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End)>();
+                    for (int c = idx; c <= clusterEnd; c++) clusterItems.Add(normalized[c]);
+                    clusters.Add((clusterItems.Min(x => x.Start), clusterItems.Max(x => x.End), clusterItems));
 
                     idx = clusterEnd + 1;
                 }
@@ -306,35 +335,65 @@
                     }
 
                     @* Events *@
-                    @foreach (var item in laidOut)
+                    @for (int ci = 0; ci < clusters.Count; ci++)
                     {
-                        int top = TopPx(item.Start);
-                        int ht  = HeightPx(item.Start, item.End);
-                        string bg = EventBg(item.Ev);
+                        var cluster = clusters[ci];
+                        int top = TopPx(cluster.Start);
+                        int ht = HeightPx(cluster.Start, cluster.End);
 
-                        double laneWidth = 100.0 / item.Lanes;
-                        double leftPct = item.Lane * laneWidth;
-                        string leftCss = leftPct.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
-                        string widthCss = laneWidth.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
-
-                        <a asp-action="Detail" asp-route-id="@item.Ev.EventId"
-                           class="ev-pill"
-                           style="top:@(top)px; height:@(ht)px; left:calc(@leftCss% + 2px); width:calc(@widthCss% - 4px); right:auto; background:@bg;"
-                           title="@item.Ev.Title&#10;@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")@(item.Ev.Location != null ? "\n" + item.Ev.Location : "")">
-                            @if (item.Ev.IsRegistered)
-                            {
-                                <span class="ep-reg">✓ Đã đăng ký</span>
-                            }
-                            <span class="ep-title">@item.Ev.Title</span>
-                            @if (ht >= 36)
-                            {
-                                <span class="ep-sub">@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")</span>
-                            }
-                            @if (ht >= 56 && !string.IsNullOrEmpty(item.Ev.Location))
-                            {
-                                <span class="ep-sub"><i class="bi bi-geo-alt"></i> @item.Ev.Location</span>
-                            }
-                        </a>
+                        if (cluster.Items.Count == 1)
+                        {
+                            var item = cluster.Items[0];
+                            string bg = EventBg(item.Ev);
+                            <a asp-action="Detail" asp-route-id="@item.Ev.EventId"
+                               class="ev-pill"
+                               style="top:@(top)px; height:@(ht)px; background:@bg;"
+                               title="@item.Ev.Title&#10;@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")@(item.Ev.Location != null ? "\n" + item.Ev.Location : "")">
+                                @if (item.Ev.IsRegistered)
+                                {
+                                    <span class="ep-reg">✓ Đã đăng ký</span>
+                                }
+                                <span class="ep-title">@item.Ev.Title</span>
+                                @if (ht >= 36)
+                                {
+                                    <span class="ep-sub">@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")</span>
+                                }
+                                @if (ht >= 56 && !string.IsNullOrEmpty(item.Ev.Location))
+                                {
+                                    <span class="ep-sub"><i class="bi bi-geo-alt"></i> @item.Ev.Location</span>
+                                }
+                            </a>
+                        }
+                        else
+                        {
+                            var clusterId = $"dayCluster_{dayIndex}_{ci}";
+                            <div class="dropdown" style="position:absolute; top:@(top)px; left:3px; right:3px; z-index:7;">
+                                <button class="ev-cluster-btn"
+                                        id="@clusterId"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        title="Có @cluster.Items.Count sự kiện gần/trùng giờ. Bấm để xem danh sách.">
+                                    <div class="fw-semibold">@cluster.Items.Count sự kiện</div>
+                                    <div style="font-size:.64rem;opacity:.9;">@cluster.Start.ToString("HH:mm") – @cluster.End.ToString("HH:mm")</div>
+                                </button>
+                                <ul class="dropdown-menu ev-cluster-menu" aria-labelledby="@clusterId">
+                                    @foreach (var x in cluster.Items.OrderBy(x => x.Start))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-action="Detail" asp-route-id="@x.Ev.EventId">
+                                                <div class="fw-semibold text-truncate">@x.Ev.Title</div>
+                                                <div class="text-muted small">@x.Ev.StartTime.ToString("HH:mm") – @x.Ev.EndTime.ToString("HH:mm")</div>
+                                                @if (!string.IsNullOrWhiteSpace(x.Ev.Location))
+                                                {
+                                                    <div class="small"><i class="bi bi-geo-alt"></i> @x.Ev.Location</div>
+                                                }
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
                     }
 
                 </div>
