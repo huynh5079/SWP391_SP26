@@ -57,6 +57,7 @@ namespace AEMS_Solution.Controllers.Features.Student
             if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
 
             var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
+            ViewBag.AllFeedbacks = await _service.GetEventFeedbacksAsync(id);
             return View(detail);
         }
 
@@ -135,7 +136,7 @@ namespace AEMS_Solution.Controllers.Features.Student
 
             if (!ModelState.IsValid)
             {
-                SetError("Dữ liệu không hợp lệ. Rating phải từ 1 đến 5.");
+                SetError("Dữ liệu feedback không hợp lệ.");
                 return RedirectToAction(nameof(Detail), new { id });
             }
 

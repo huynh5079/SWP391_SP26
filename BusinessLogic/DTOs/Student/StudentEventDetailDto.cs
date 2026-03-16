@@ -45,6 +45,10 @@ namespace BusinessLogic.DTOs.Student
         public int? WaitlistPosition { get; set; }
         public DataAccess.Enum.EventWaitlistStatusEnum? WaitlistStatus { get; set; }
         public string? WaitlistStudentProfileId { get; set; }
+        public FeedbackStatusEnum FeedbackStatus { get; set; } = FeedbackStatusEnum.NA;
+        public bool HasSubmittedFeedback { get; set; }
+        public int? CurrentFeedbackRating { get; set; }
+        public string? CurrentFeedbackComment { get; set; }
         // Agendas (new)
         public List<EventAgendaItemDto>? Agendas { get; set; }
     }

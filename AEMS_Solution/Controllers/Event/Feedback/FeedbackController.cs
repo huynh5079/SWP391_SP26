@@ -41,9 +41,15 @@ namespace AEMS_Solution.Controllers.Event.Feedback
 					return RedirectToAction("Detail", "StudentEvent", new { id = eventId });
 				}
 
-				if (detail.EndTime >= DateTime.Now)
+				if (detail.FeedbackStatus == DataAccess.Enum.FeedbackStatusEnum.BeforeEvent)
 				{
-					SetWarning("Chỉ có thể feedback sau khi sự kiện kết thúc.");
+					SetWarning("Chỉ được đánh giá sao trong hoặc sau khi sự kiện bắt đầu.");
+					return RedirectToAction("Detail", "StudentEvent", new { id = eventId });
+				}
+
+				if (detail.HasSubmittedFeedback)
+				{
+					SetWarning("Bạn đã feedback sự kiện này rồi.");
 					return RedirectToAction("Detail", "StudentEvent", new { id = eventId });
 				}
 
@@ -91,6 +97,32 @@ namespace AEMS_Solution.Controllers.Event.Feedback
 			}
 
 			return RedirectToAction("Detail", "StudentEvent", new { id = vm.EventId });
+		}
+
+		[HttpGet]
+		public async Task<IActionResult> All(string eventId)
+		{
+			if (CurrentUserId == null) return RedirectToAction("Login", "Auth");
+			if (string.IsNullOrWhiteSpace(eventId)) return RedirectToAction("Index", "StudentEvent");
+
+			try
+			{
+				var detail = await _studentEventService.GetEventDetailAsync(eventId, CurrentUserId);
+				var items = await _studentEventService.GetEventFeedbacksAsync(eventId);
+				ViewBag.EventTitle = detail.Title;
+				ViewBag.EventId = detail.EventId;
+				return View("~/Views/Event/Feedback/FeedbackForStudent/All.cshtml", items);
+			}
+			catch (Exception ex)
+			{
+				await _errorLogService.LogErrorAsync(
+					ex,
+					CurrentUserId,
+					$"{nameof(FeedbackController)}.{nameof(All)}");
+
+				SetError(ex.Message);
+				return RedirectToAction("Detail", "StudentEvent", new { id = eventId });
+			}
 		}
 	}
 }
