@@ -1,0 +1,49 @@
+﻿@model AEMS_Solution.Models.Event.Feedback.ForStudentFeedback.StudentEventFeedbackViewModel
+@{
+    ViewData["Title"] = "Feedback sự kiện";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-4" style="max-width:760px;">
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4 p-md-5">
+            <h4 class="fw-bold mb-1">Đánh giá sự kiện</h4>
+            <p class="text-muted mb-4">@Model.EventTitle</p>
+
+            <form asp-action="Index" method="post">
+                @Html.AntiForgeryToken()
+                <input asp-for="EventId" type="hidden" />
+                <input asp-for="EventTitle" type="hidden" />
+
+                <div class="mb-3">
+                    <label asp-for="Rating" class="form-label fw-semibold">Mức đánh giá</label>
+                    <select asp-for="Rating" class="form-select">
+                        <option value="5">⭐⭐⭐⭐⭐ Xuất sắc</option>
+                        <option value="4">⭐⭐⭐⭐ Tốt</option>
+                        <option value="3">⭐⭐⭐ Bình thường</option>
+                        <option value="2">⭐⭐ Chưa tốt</option>
+                        <option value="1">⭐ Tệ</option>
+                    </select>
+                    <span asp-validation-for="Rating" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Comment" class="form-label fw-semibold">Nhận xét</label>
+                    <textarea asp-for="Comment" class="form-control" rows="5" maxlength="1000" placeholder="Chia sẻ cảm nhận của bạn (tuỳ chọn)"></textarea>
+                    <span asp-validation-for="Comment" class="text-danger small"></span>
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end">
+                    <a asp-controller="StudentEvent" asp-action="Detail" asp-route-id="@Model.EventId" class="btn btn-outline-secondary">Quay lại</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send me-1"></i> Gửi feedback
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
