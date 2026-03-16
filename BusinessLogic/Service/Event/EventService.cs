@@ -360,10 +360,10 @@ public class EventService : IEventService
 			var location = await _uow.Locations.GetByIdAsync(normalizedLocationId);
 			if (location == null) throw new InvalidOperationException("Location không tồn tại.");
 		}
-
+		
 		var now = DateTimeHelper.GetVietnamTime();
-		if (dto.StartTime < now.AddDays(7))
-			throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
+		//if (dto.StartTime < now.AddDays(7))
+			//throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
 
 		if (dto.Agendas != null)
 		{
