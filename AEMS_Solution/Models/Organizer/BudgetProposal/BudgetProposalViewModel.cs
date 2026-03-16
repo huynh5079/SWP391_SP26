@@ -39,9 +39,36 @@ namespace AEMS_Solution.Models.Organizer.BudgetProposal
 
         // Helper properties cho View
         public bool HasProposal => !string.IsNullOrEmpty(ProposalId);
-        public bool CanAddItem => HasProposal && Status != ProposalStatusEnum.Approved;
-        public bool CanAddReceipt => HasProposal && Status == ProposalStatusEnum.Approved;
-        public bool CanApprove => IsApprover && Status == ProposalStatusEnum.Pending;
+        public bool CanAddItem => HasProposal
+                        && Status == ProposalStatusEnum.Draft
+                        && !IsApprover;  // ← thêm điều kiện này
+
+        // ✅ Chỉ Organizer mới được thêm Receipt
+        public bool CanAddReceipt => HasProposal
+                                  && Status == ProposalStatusEnum.Approved
+                                  && !IsApprover;  // ← thêm điều kiện này
+
+        // ✅ Chỉ Organizer mới được Send
+        public bool CanSend => HasProposal
+                            && Status == ProposalStatusEnum.Draft
+                            && !IsApprover;  // ← thêm điều kiện này
+
+        // ✅ Chỉ Approver mới được duyệt
+        public bool CanApprove => IsApprover
+                               && Status == ProposalStatusEnum.Pending;
+        // Có thể sửa và xóa khi ở trạng thái Rejected hoặc Draft, và chỉ khi là Organizer (không phải Approver)
+        public bool CanEditProposal => HasProposal
+                            && (Status == ProposalStatusEnum.Draft ||
+                                Status == ProposalStatusEnum.Rejected)
+                            && !IsApprover;
+
+        // Chỉ Approver mới được duyệt/từ chối Receipt
+        // Và chỉ khi Proposal đã được Approved
+        public bool CanReviewReceipts => IsApprover
+                                      && Status == ProposalStatusEnum.Approved;
+        // Organizer được edit/xóa Receipt khi bị Rejected
+        public bool CanEditReceipts => !IsApprover
+                                    && Status == ProposalStatusEnum.Approved;
         public bool IsOverBudget => ActualAmount > PlannedAmount;
     }
 
