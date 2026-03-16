@@ -263,8 +263,10 @@ namespace BusinessLogic.Service.Student
                     ev.Status != EventStatusEnum.Upcoming)
                     throw new InvalidOperationException("Event chưa mở đăng ký.");
 
+                // Use IgnoreQueryFilters to retrieve even soft-deleted (Cancelled) tickets so we can reactivate them!
                 var existing = await _uow.Tickets.GetAsync(
-                    t => t.EventId == eventId && t.StudentId == profile.Id);
+                    t => t.EventId == eventId && t.StudentId == profile.Id,
+                    q => q.IgnoreQueryFilters());
 
                 if (existing != null)
                 {
@@ -318,6 +320,12 @@ namespace BusinessLogic.Service.Student
                 await newTrans.RollbackAsync();
                 Exception inner = dbEx;
                 while (inner.InnerException != null) inner = inner.InnerException;
+                
+                if (inner.Message.Contains("UIX_Ticket_Event_Student") || inner.Message.Contains("duplicate key"))
+                {
+                    throw new InvalidOperationException("Bạn đã đăng ký event này rồi.");
+                }
+
                 throw new InvalidOperationException($"Lỗi lưu dữ liệu: {inner.Message}", dbEx);
             }
 

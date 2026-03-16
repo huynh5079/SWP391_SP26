@@ -41,10 +41,18 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                       .Include(t => t.Student)
                         .ThenInclude(s => s.User));
 
-            if (ticket == null || ticket.DeletedAt != null || ticket.Status == TicketStatusEnum.Cancelled)
+            if (ticket == null)
             {
-                _validator.ValidateTicketForCheckIn(ticket);
-			}
+                return new CheckInResponseDto { IsSuccess = false, Message = $"Không tìm thấy vé trong DB! QrPayload={request.QrPayload}, EventId={request.EventId}" };
+            }
+            if (ticket.DeletedAt != null)
+            {
+                return new CheckInResponseDto { IsSuccess = false, Message = "Vé đã bị xóa khỏi hệ thống." };
+            }
+            if (ticket.Status == TicketStatusEnum.Cancelled)
+            {
+                return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ." };
+            }
 
             // 4. Validate Event Ownership
              _validator.ValidateEventOwnership(ticket, orgProfile);
@@ -86,9 +94,25 @@ namespace BusinessLogic.Service.Organizer.CheckIn
 				await _uow.SaveChangesAsync();
 				await transaction.CommitAsync();
 			}
-			catch
+			catch (Exception ex)
 			{
 				await transaction.RollbackAsync();
+
+				try
+				{
+					var errorLog = new SystemErrorLog
+					{
+						UserId = organizerUserId,
+						ExceptionType = ex.GetType().Name,
+						ExceptionMessage = ex.Message,
+						StackTrace = ex.StackTrace,
+						Source = "CheckInService.ProcessCheckInAsync"
+					};
+					await _uow.SystemErrorLogs.CreateAsync(errorLog);
+					await _uow.SaveChangesAsync();
+				}
+				catch { /* Ignore inner exceptions */ }
+
 				return new CheckInResponseDto
 				{
 					IsSuccess = false,
@@ -124,10 +148,19 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                 t => t.Id == request.QrPayload && t.EventId == request.EventId,
                 q => q.Include(t => t.Event).Include(t => t.Student).ThenInclude(s => s.User));
 
-            if (ticket == null || ticket.DeletedAt != null || ticket.Status == TicketStatusEnum.Cancelled)
+            if (ticket == null)
             {
-                _validator.ValidateTicketForCheckIn(ticket);
+                return new CheckInResponseDto { IsSuccess = false, Message = $"Không tìm thấy vé trong DB! QrPayload={request.QrPayload}, EventId={request.EventId}" };
             }
+            if (ticket.DeletedAt != null)
+            {
+                return new CheckInResponseDto { IsSuccess = false, Message = "Vé đã bị xóa khỏi hệ thống." };
+            }
+            if (ticket.Status == TicketStatusEnum.Cancelled)
+            {
+                return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ." };
+            }
+
 
             // 4. Validate Event Ownership
             _validator.ValidateEventOwnership(ticket, orgProfile);
@@ -166,9 +199,25 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                 await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+
+                try
+                {
+                    var errorLog = new SystemErrorLog
+                    {
+                        UserId = organizerUserId,
+                        ExceptionType = ex.GetType().Name,
+                        ExceptionMessage = ex.Message,
+                        StackTrace = ex.StackTrace,
+                        Source = "CheckInService.ProcessCheckoutAsync"
+                    };
+                    await _uow.SystemErrorLogs.CreateAsync(errorLog);
+                    await _uow.SaveChangesAsync();
+                }
+                catch { /* Ignore inner exceptions */ }
+
                 return new CheckInResponseDto
                 {
                     IsSuccess = false,
