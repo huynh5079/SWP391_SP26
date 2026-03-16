@@ -224,4 +224,26 @@ namespace DataAccess.Enum
 		Organizer,
 		Community
 	}
+
+	public enum FeedbackStatusEnum
+	{
+	    NA, 
+		DuringEvent,   
+		AfterEvent
+	}
+	public enum FeedBackRatingsEnum
+	{
+		OneStar = 1,
+		TwoStars = 2,
+		ThreeStar = 3,
+		FourStar = 4,
+		FiveStar = 5,
+	}
+	public enum AppriciateEventEnum
+	{
+		Positive,
+		Neutral,
+		Negative
+	}
+
 }
