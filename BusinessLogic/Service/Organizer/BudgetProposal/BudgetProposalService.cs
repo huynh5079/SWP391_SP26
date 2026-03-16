@@ -1,4 +1,6 @@
-﻿using BusinessLogic.DTOs.Organizer;
+﻿using BusinessLogic.DTOs;
+using BusinessLogic.DTOs.Organizer;
+using BusinessLogic.Service.System;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
@@ -8,7 +10,9 @@ using static BusinessLogic.DTOs.Organizer.BudgetProposal.BugetProposalDtos;
 namespace BusinessLogic.Service.Organizer.BudgetProposal
 {
     public class BudgetProposalService : IBudgetProposalService
+
     {
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _uow;
 
         public BudgetProposalService(IUnitOfWork uow)
@@ -51,7 +55,7 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
             return MapToDetailDto(proposal);
         }
 
-        // ─── 2. Tạo Proposal mới → Pending luôn ──────────────────────────────
+    
         public async Task<BudgetProposalDetailDto> CreateAsync(string organizerId, CreateBudgetProposalDto dto)
         {
             await RequireEventAsync(dto.EventId);
@@ -70,7 +74,7 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
                 Title = dto.Title,
                 Description = dto.Description,
                 PlannedAmount = 0,
-                Status = ProposalStatusEnum.Pending,
+                Status = ProposalStatusEnum.Draft,  // ✅ Draft thay vì Pending
                 CreatedBy = organizerId
             };
 
@@ -78,6 +82,25 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
             await _uow.SaveChangesAsync();
 
             return MapToDetailDto(proposal);
+        }
+
+        public async Task SubmitForApprovalAsync(string organizerId, string proposalId)
+        {
+            var proposal = await RequireProposalAsync(proposalId);
+
+            if (proposal.Status != ProposalStatusEnum.Draft)
+                throw new InvalidOperationException(
+                    "Chỉ có thể gửi duyệt Proposal đang ở trạng thái Draft.");
+
+            if (!proposal.BudgetItems.Any(i => i.DeletedAt == null))
+                throw new InvalidOperationException(
+                    "Vui lòng thêm ít nhất 1 hạng mục trước khi gửi duyệt.");
+
+            proposal.Status = ProposalStatusEnum.Pending;
+            proposal.UpdatedBy = organizerId;
+
+            await _uow.BudgetProposals.UpdateAsync(proposal);
+            await _uow.SaveChangesAsync();
         }
 
         // ─── 3. Approver duyệt ───────────────────────────────────────────────
@@ -117,15 +140,54 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
             await _uow.BudgetProposals.UpdateAsync(proposal);
             await _uow.SaveChangesAsync();
         }
+        // Edit Proposal
+        public async Task EditProposalAsync(string organizerId, string proposalId,
+            string? title, string? description)
+        {
+            var proposal = await RequireProposalAsync(proposalId);
+
+            if (proposal.Status != ProposalStatusEnum.Draft &&
+                proposal.Status != ProposalStatusEnum.Rejected)
+                throw new InvalidOperationException(
+                    "Chỉ có thể chỉnh sửa Proposal khi ở trạng thái Draft và Rejected.");
+
+            proposal.Title = title;
+            proposal.Description = description;
+            proposal.Status = ProposalStatusEnum.Draft; // ← reset về Draft để gửi lại
+            proposal.Note = null;                        // ← xóa note cũ
+            proposal.ApprovedBy = null;
+            proposal.ApprovedAt = null;
+            proposal.UpdatedBy = organizerId;
+
+            await _uow.BudgetProposals.UpdateAsync(proposal);
+            await _uow.SaveChangesAsync();
+        }
+        // Delete Proposal
+        public async Task DeleteProposalAsync(string organizerId, string proposalId)
+        {
+            var proposal = await RequireProposalAsync(proposalId);
+
+            if (proposal.Status != ProposalStatusEnum.Draft &&
+                proposal.Status != ProposalStatusEnum.Rejected)
+                throw new InvalidOperationException(
+                    "Chỉ có thể chỉnh sửa Proposal khi ở trạng thái Draft và Rejected.");
+
+            proposal.DeletedAt = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+            proposal.UpdatedBy = organizerId;
+
+            await _uow.BudgetProposals.UpdateAsync(proposal);
+            await _uow.SaveChangesAsync();
+        }
 
         // ─── 5. Thêm BudgetItem ───────────────────────────────────────────────
         public async Task<BudgetItemDto> AddItemAsync(string organizerId, string proposalId, CreateBudgetItemDto dto)
         {
             var proposal = await RequireProposalAsync(proposalId);
 
-            if (proposal.Status == ProposalStatusEnum.Approved)
+            if (proposal.Status == ProposalStatusEnum.Pending ||
+                proposal.Status == ProposalStatusEnum.Approved)
                 throw new InvalidOperationException(
-                    "Không thể chỉnh sửa Proposal đã được duyệt.");
+                    "Chỉ có thể chỉnh sửa Proposal đang ở trạng thái Draft.");
 
             var item = new BudgetItem
             {
@@ -155,9 +217,10 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
 
             var proposal = await RequireProposalAsync(item.BudgetProposalId);
 
-            if (proposal.Status == ProposalStatusEnum.Approved)
+            if (proposal.Status == ProposalStatusEnum.Pending ||
+            proposal.Status == ProposalStatusEnum.Approved)
                 throw new InvalidOperationException(
-                    "Không thể chỉnh sửa Proposal đã được duyệt.");
+                    "Chỉ có thể chỉnh sửa Proposal đang ở trạng thái Draft.");
 
             item.Category = dto.Category;
             item.Description = dto.Description;
@@ -181,9 +244,10 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
 
             var proposal = await RequireProposalAsync(item.BudgetProposalId);
 
-            if (proposal.Status == ProposalStatusEnum.Approved)
+            if (proposal.Status == ProposalStatusEnum.Pending ||
+            proposal.Status == ProposalStatusEnum.Approved)
                 throw new InvalidOperationException(
-                    "Không thể xóa item của Proposal đã được duyệt.");
+                    "Chỉ có thể chỉnh sửa Proposal đang ở trạng thái Draft.");
 
             item.DeletedAt = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
             item.UpdatedBy = organizerId;
@@ -227,6 +291,93 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
                 r => r.BudgetProposalId == proposalId && r.DeletedAt == null);
 
             return receipts.Select(MapToReceiptDto).ToList();
+        }
+        public async Task UpdateReceiptStatusAsync(string approverId, string receiptId, ExpenseStatusEnum status)
+        {
+            var receipt = await _uow.ExpenseReceipts.GetAsync(
+                r => r.Id == receiptId && r.DeletedAt == null);
+
+            if (receipt == null)
+                throw new InvalidOperationException("Không tìm thấy biên lai.");
+
+            receipt.Status = status;
+            receipt.UpdatedBy = approverId;
+
+            await _uow.ExpenseReceipts.UpdateAsync(receipt);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task RejectReceiptAsync(string approverId, string receiptId,
+    string eventId, string note)
+        {
+            var receipt = await _uow.ExpenseReceipts.GetAsync(
+                r => r.Id == receiptId && r.DeletedAt == null);
+            if (receipt == null)
+                throw new InvalidOperationException("Không tìm thấy biên lai.");
+
+            // Chỉ update Status — không cần RejectionNote trong DB
+            receipt.Status = ExpenseStatusEnum.Rejected;
+            receipt.UpdatedBy = approverId;
+
+            await _uow.ExpenseReceipts.UpdateAsync(receipt);
+            await _uow.SaveChangesAsync();
+
+            // Gửi thông báo kèm lý do cho Organizer
+            var proposal = await _uow.BudgetProposals.GetAsync(
+                p => p.Id == receipt.BudgetProposalId);
+
+            if (proposal?.CreatedBy != null)
+            {
+                await _notificationService.SendNotificationAsync(
+                    new SendNotificationRequest
+                    {
+                        ReceiverId = proposal.CreatedBy,
+                        Title = "Biên lai bị từ chối",
+                        Message = $"Biên lai '{receipt.Title}' đã bị từ chối. " +
+                                          $"Lý do: {note}",
+                        Type = NotificationType.EventFeedback,
+                        RelatedEntityId = eventId
+                    });
+            }
+        }
+
+        public async Task EditReceiptAsync(string organizerId, string receiptId,
+            string? title, decimal actualAmount)
+        {
+            var receipt = await _uow.ExpenseReceipts.GetAsync(
+                r => r.Id == receiptId && r.DeletedAt == null);
+            if (receipt == null)
+                throw new InvalidOperationException("Không tìm thấy biên lai.");
+
+            if (receipt.Status != ExpenseStatusEnum.Rejected)
+                throw new InvalidOperationException(
+                    "Chỉ có thể chỉnh sửa biên lai đã bị từ chối.");
+
+            receipt.Title = title;
+            receipt.ActualAmount = actualAmount;
+            receipt.Status = ExpenseStatusEnum.Pending; // ← reset về Pending
+            receipt.UpdatedBy = organizerId;
+
+            await _uow.ExpenseReceipts.UpdateAsync(receipt);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task DeleteReceiptAsync(string organizerId, string receiptId)
+        {
+            var receipt = await _uow.ExpenseReceipts.GetAsync(
+                r => r.Id == receiptId && r.DeletedAt == null);
+            if (receipt == null)
+                throw new InvalidOperationException("Không tìm thấy biên lai.");
+
+            if (receipt.Status != ExpenseStatusEnum.Rejected)
+                throw new InvalidOperationException(
+                    "Chỉ có thể xóa biên lai đã bị từ chối.");
+
+            receipt.DeletedAt = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+            receipt.UpdatedBy = organizerId;
+
+            await _uow.ExpenseReceipts.UpdateAsync(receipt);
+            await _uow.SaveChangesAsync();
         }
 
         // ─── 10. Báo cáo quyết toán ──────────────────────────────────────────

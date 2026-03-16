@@ -47,7 +47,8 @@ namespace DataAccess.Enum
 
 	public enum ProposalStatusEnum
 	{
-		Pending,    // Đang chờ duyệt
+        Draft,    // Organizer đang soạn thảo
+        Pending,    // Đang chờ duyệt
 		Approved,   // Đã duyệt (Cho phép chi)
 		Rejected,    // Từ chối
 		

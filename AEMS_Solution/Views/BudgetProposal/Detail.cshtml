@@ -56,18 +56,20 @@
     }
     else
     {
-        @await Html.PartialAsync("_ProposalInfo", Model)
-        @await Html.PartialAsync("_BudgetSummaryCards", Model)
-        @await Html.PartialAsync("_BudgetItemsTable", Model)
-        @await Html.PartialAsync("_ExpenseReceiptsTable", Model)
-        @await Html.PartialAsync("_SettlementTable", Model)
+        @await Html.PartialAsync("~/Views/BudgetProposal/_ProposalInfo.cshtml", Model)
+        @await Html.PartialAsync("~/Views/BudgetProposal/_BudgetSummaryCards.cshtml", Model)
+        @await Html.PartialAsync("~/Views/BudgetProposal/_BudgetItemsTable.cshtml", Model)
+        @await Html.PartialAsync("~/Views/BudgetProposal/_ExpenseReceiptsTable.cshtml", Model)
+        @await Html.PartialAsync("~/Views/BudgetProposal/_SettlementTable.cshtml", Model)
+        
     }
 </div>
 
-@await Html.PartialAsync("_Modals", Model)
+@await Html.PartialAsync("~/Views/BudgetProposal/_Modals.cshtml", Model)
 
 @section Scripts {
     <script>
+        // Mở modal sửa BudgetItem
         function openEditItem(itemId, category, description, amount) {
             document.getElementById('editItemId').value = itemId;
             document.getElementById('editDescription').value = description;
@@ -82,5 +84,21 @@
             }
             new bootstrap.Modal(document.getElementById('modalEditItem')).show();
         }
+
+        // ➕ Mở modal Reject Receipt (Approver)
+        function openRejectReceiptModal(receiptId, title) {
+            document.getElementById('rejectReceiptId').value = receiptId;
+            document.getElementById('rejectReceiptTitle').textContent = title;
+            new bootstrap.Modal(document.getElementById('modalRejectReceipt')).show();
+        }
+
+        // ➕ Mở modal Edit Receipt (Organizer)
+        function openEditReceiptModal(receiptId, title, amount) {
+            document.getElementById('editReceiptId').value = receiptId;
+            document.getElementById('editReceiptTitle').value = title;
+            document.getElementById('editReceiptAmount').value = amount;
+            new bootstrap.Modal(document.getElementById('modalEditReceipt')).show();
+        }
     </script>
+
 }

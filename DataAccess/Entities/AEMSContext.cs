@@ -289,7 +289,7 @@ public partial class AEMSContext : DbContext
 
             // Relationship to BudgetProposal (proposal may not have a collection navigation yet)
             entity.HasOne(d => d.BudgetProposal)
-                .WithMany() // keep flexible: no required collection on BudgetProposal
+                .WithMany(p => p.BudgetItems) // keep flexible: no required collection on BudgetProposal
                 .HasForeignKey(d => d.BudgetProposalId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_BudgetItem_BudgetProposal");
