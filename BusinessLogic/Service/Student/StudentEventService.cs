@@ -271,8 +271,8 @@ namespace BusinessLogic.Service.Student
                 if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
                 var now = DateTimeHelper.GetVietnamTime();
-            if (now < ev.StartTime && dto.Rating.HasValue)
-                throw new InvalidOperationException("Chỉ được đánh giá sao trong hoặc sau khi sự kiện bắt đầu.");
+           // if (now < ev.StartTime && dto.Rating.HasValue)
+             //   throw new InvalidOperationException("Chỉ được đánh giá sao trong hoặc sau khi sự kiện bắt đầu.");
                 if (ev.StartTime <= now)
                     throw new InvalidOperationException("Không thể đăng ký event đã diễn ra.");
 

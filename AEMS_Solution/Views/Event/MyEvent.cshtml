@@ -1,7 +1,7 @@
 ﻿@model AEMS_Solution.Models.Organizer.Manage.MyEventsViewModel
 @using DataAccess.Enum
 @{
-    ViewData["Title"] = "My Events";
+    ViewData["Title"] = "My And Public Events";
     Layout = "_Organizerlayout";
 
     string StatusClass(EventStatusEnum status) => status switch
@@ -21,7 +21,7 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">📅 My Events</h2>
+        <h2 class="mb-0">📅 My And Public Events</h2>
         <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-primary shadow-sm">
             <i class="bi bi-plus-circle me-1"></i> Create Event
         </a>
@@ -41,7 +41,7 @@
         </div>
 
         <div class="col-auto">
-            @{ var statuses = new[] { "Draft", "Pending", "Upcoming", "Happening", "Completed", "Cancelled" }; }
+            @{ var statuses = new[] { "Draft", "Pending", "Approved", "Rejected", "Published", "Upcoming", "Happening", "Completed", "Cancelled" }; }
             <select name="status" class="form-select">
                 <option value="">All Status</option>
                 @foreach (var s in statuses)
@@ -60,6 +60,7 @@
             <tr>
                 <th>Thumbnail</th>
                 <th>Title</th>
+                <th>Source</th>
                 <th>Location</th>
                 <th>Time</th>
                 <th>Status</th>
@@ -79,6 +80,18 @@
 
                     <td>
                         <strong>@e.Title</strong>
+                    </td>
+
+                    <td>
+                        @if (e.IsOwnedByCurrentUser)
+                        {
+                            <span class="badge bg-primary">My Event</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info text-dark">Public</span>
+                            <div class="small text-muted mt-1">@(string.IsNullOrWhiteSpace(e.OrganizerName) ? "Organizer khác" : e.OrganizerName)</div>
+                        }
                     </td>
 
                     <td>@e.Location</td>
@@ -104,49 +117,56 @@
                                 }
                             </style>
                             <a class="btn btn-sm btn-info fw-semibold" asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId">View</a>
-                            <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
-                            @if (e.Status == EventStatusEnum.Approved)
+                            @if (e.IsOwnedByCurrentUser)
                             {
+                                @if (e.CanEdit)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
+                                }
+                                @if (e.CanPublish)
+                                {
+                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="operation" value="publish" />
+                                        <input type="hidden" name="id" value="@e.EventId" />
+                                        <button type="submit" class="btn btn-sm btn-success fw-semibold action-pill">Public</button>
+                                    </form>
+                                }
+                                @if (e.CanSendForApproval)
+                                {
+                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="operation" value="sendforapproval" />
+                                        <input type="hidden" name="id" value="@e.EventId" />
+                                        <button type="submit" class="btn btn-sm btn-primary fw-semibold action-pill">Send</button>
+                                    </form>
+                                }
+                                <a class="btn btn-sm btn-secondary fw-semibold action-pill" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId">Waitlist</a>
+                                @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
+                                {
+                                    <a class="btn btn-sm btn-success fw-semibold action-pill"
+                                       asp-controller="BudgetProposal" asp-action="Detail"
+                                       asp-route-eventId="@e.EventId">
+                                        <i class="bi bi-cash-stack me-1"></i>Budget
+                                    </a>
+                                }
+
+                                @if (e.CanCancel)
+                                {
+                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="operation" value="cancel" />
+                                        <input type="hidden" name="id" value="@e.EventId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold action-pill">Cancel</button>
+                                    </form>
+                                }
                                 <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="operation" value="publish" />
+                                    <input type="hidden" name="operation" value="softdelete" />
                                     <input type="hidden" name="id" value="@e.EventId" />
-                                    <button type="submit" class="btn btn-sm btn-success fw-semibold action-pill">Public</button>
+                                    <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
                                 </form>
                             }
-                            @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Rejected)
-                            {
-                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="operation" value="sendforapproval" />
-                                    <input type="hidden" name="id" value="@e.EventId" />
-                                    <button type="submit" class="btn btn-sm btn-primary fw-semibold action-pill">Send</button>
-                                </form>
-                            }
-                            <a class="btn btn-sm btn-secondary fw-semibold action-pill" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId">Waitlist</a>
-                            @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
-                            {
-                                <a class="btn btn-sm btn-success fw-semibold action-pill"
-                                   asp-controller="BudgetProposal" asp-action="Detail"
-                                   asp-route-eventId="@e.EventId">
-                                    <i class="bi bi-cash-stack me-1"></i>Budget
-                                </a>
-                            }
-                            
-                            
-                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="operation" value="cancel" />
-                                    <input type="hidden" name="id" value="@e.EventId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold action-pill">Cancel</button>
-                                </form>
-                            
-                            <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="operation" value="softdelete" />
-                                <input type="hidden" name="id" value="@e.EventId" />
-                                <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
-                            </form>
                         </div>
                     </td>
                 </tr>

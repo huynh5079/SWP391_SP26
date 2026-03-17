@@ -320,7 +320,7 @@ namespace AEMS_Solution.Controllers.Dashboards
         [HttpGet]
         public async Task<IActionResult> PendingApprovals(string? search, int page = 1, int pageSize = 20)
         {
-            var list = await _queryService.GetPendingEventsAsync(search, null, page, pageSize);
+            var list = await _queryService.GetPendingEventsAsync(CurrentUserId, search, null, page, pageSize);
 
             var vm = new PendingApprovalsViewModel();
             foreach (var e in list)
@@ -334,6 +334,8 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Status = e.Status,
                     ThumbnailUrl = e.ThumbnailUrl,
 					Location = e.Location,
+                    OrganizerName = e.OrganizerName,
+                    OrganizerEmail = e.OrganizerEmail,
 					LastApprovalComment = e.LastApprovalComment
 				});
             }
@@ -348,7 +350,12 @@ namespace AEMS_Solution.Controllers.Dashboards
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            var allEvents = await _unitOfWork.Events.GetAllAsync(includes: q => q.Include(e => e.Location));
+            var approverStaffId = (await _unitOfWork.StaffProfiles.GetAsync(x => x.UserId == CurrentUserId))?.Id;
+            var allEvents = await _unitOfWork.Events.GetAllAsync(
+                e => e.DeletedAt == null && (approverStaffId == null || e.OrganizerId != approverStaffId),
+                includes: q => q.Include(e => e.Location)
+                    .Include(e => e.Organizer!)
+                        .ThenInclude(o => o!.User));
             var pendingEvents = allEvents.Where(x => x.Status == EventStatusEnum.Pending).ToList();
 
             var vm = new ApproverDashboardStatsViewModel
@@ -375,6 +382,8 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Status = e.Status,
                     ThumbnailUrl = e.ThumbnailUrl,
                     Location = e.Location?.Address,
+                    OrganizerName = e.Organizer?.User?.FullName,
+                    OrganizerEmail = e.Organizer?.User?.Email,
                     LastApprovalComment = null
                 });
             }

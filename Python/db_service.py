@@ -53,15 +53,14 @@ class DatabaseService:
             cursor.execute(
                 """
                 INSERT INTO [dbo].[ChatbotSession]
-                    ([Id], [UserId], [StartedAt], [Status], [IsDeleted], [CreatedAt], [UpdatedAt])
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ([Id], [UserId], [StartedAt], [Status], [CreatedAt], [UpdatedAt])
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session_id,
                     user_id,
                     created_at,
                     "Active",
-                    False,
                     created_at,
                     created_at,
                 ),
@@ -89,7 +88,7 @@ class DatabaseService:
                     """
                     SELECT TOP 1 [Id]
                     FROM [dbo].[ChatbotSession]
-                    WHERE [Id] = ? AND [UserId] = ? AND [IsDeleted] = 0
+                    WHERE [Id] = ? AND [UserId] = ? AND [DeletedAt] IS NULL
                     """,
                     (session_id, user_id),
                 )
@@ -112,7 +111,7 @@ class DatabaseService:
                     """
                     SELECT TOP 1 [Id]
                     FROM [dbo].[ChatbotSession]
-                    WHERE [Id] = ? AND [IsDeleted] = 0
+                    WHERE [Id] = ? AND [DeletedAt] IS NULL
                     """,
                     (session_id,),
                 )
@@ -124,10 +123,10 @@ class DatabaseService:
             cursor.execute(
                 """
                 INSERT INTO [dbo].[ChatbotSession]
-                    ([Id], [UserId], [StartedAt], [Status], [IsDeleted], [CreatedAt], [UpdatedAt])
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ([Id], [UserId], [StartedAt], [Status], [CreatedAt], [UpdatedAt])
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (new_session_id, user_id, now, "Active", False, now, now),
+                (new_session_id, user_id, now, "Active", now, now),
             )
             conn.commit()
             cursor.close()
@@ -161,8 +160,8 @@ class DatabaseService:
             cursor.execute(
                 """
                 INSERT INTO [dbo].[ChatbotMessage]
-                    ([Id], [Role], [SessionId], [Sender], [Content], [Status], [ErrorMessage], [IsDeleted], [CreatedAt], [UpdatedAt])
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ([Id], [Role], [SessionId], [Sender], [Content], [Status], [ErrorMessage], [CreatedAt], [UpdatedAt])
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message_id,
@@ -172,7 +171,6 @@ class DatabaseService:
                     content,
                     status,
                     error_message,
-                    False,
                     now,
                     now,
                 ),
@@ -271,8 +269,8 @@ class DatabaseService:
                     INNER JOIN [dbo].[ChatbotSession] s ON s.[Id] = m.[SessionId]
                     WHERE m.[SessionId] = ?
                       AND s.[UserId] = ?
-                      AND m.[IsDeleted] = 0
-                      AND s.[IsDeleted] = 0
+                                            AND m.[DeletedAt] IS NULL
+                                            AND s.[DeletedAt] IS NULL
                     ORDER BY m.[CreatedAt] DESC
                     """,
                     (limit_messages, session_id, user_id),
@@ -282,7 +280,7 @@ class DatabaseService:
                     """
                     SELECT TOP (?) [Id], [Sender], [Content], [Status], [CreatedAt], [Role]
                     FROM [dbo].[ChatbotMessage]
-                    WHERE [SessionId] = ? AND [IsDeleted] = 0
+                    WHERE [SessionId] = ? AND [DeletedAt] IS NULL
                     ORDER BY [CreatedAt] DESC
                     """,
                     (limit_messages, session_id),
@@ -327,8 +325,8 @@ class DatabaseService:
                     FROM [dbo].[ChatbotMessage] m
                     INNER JOIN [dbo].[ChatbotSession] s ON s.[Id] = m.[SessionId]
                     WHERE s.[UserId] = ?
-                      AND m.[IsDeleted] = 0
-                      AND s.[IsDeleted] = 0
+                                            AND m.[DeletedAt] IS NULL
+                                            AND s.[DeletedAt] IS NULL
                       AND s.[Id] <> ?
                     ORDER BY m.[CreatedAt] DESC
                     """,
@@ -341,8 +339,8 @@ class DatabaseService:
                     FROM [dbo].[ChatbotMessage] m
                     INNER JOIN [dbo].[ChatbotSession] s ON s.[Id] = m.[SessionId]
                     WHERE s.[UserId] = ?
-                      AND m.[IsDeleted] = 0
-                      AND s.[IsDeleted] = 0
+                                            AND m.[DeletedAt] IS NULL
+                                            AND s.[DeletedAt] IS NULL
                     ORDER BY m.[CreatedAt] DESC
                     """,
                     (limit_messages, user_id),

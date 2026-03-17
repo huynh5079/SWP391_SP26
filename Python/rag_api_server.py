@@ -8,6 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, AsyncGenerator
+import time
 from uuid import uuid4
 
 import faiss
@@ -81,10 +82,16 @@ class RagEngine:
         self._embedding_model = SentenceTransformer(self.embedding_model_name)
 
         api_key = os.getenv("GROQ_API_KEY", "").strip()
-        if not api_key:
-            raise ValueError("Missing GROQ_API_KEY. Please set it in environment or .env file.")
+        self._llm_api_key_set = bool(api_key)
+        self._llm = Groq(api_key=api_key) if api_key else None
+        self._llm_last_error: str | None = None
+        self._llm_last_error_type: str | None = None
+        self._llm_last_error_at: str | None = None
+        self._llm_blocked_until: float = 0.0
+        self._llm_cooldown_seconds = int(os.getenv("RAG_LLM_COOLDOWN_SECONDS", "180"))
 
-        self._llm = Groq(api_key=api_key)
+        if not self._llm_api_key_set:
+            print("[RAG] GROQ_API_KEY is missing. System will run in data fallback mode.")
 
         self._chunks: list[Chunk] = []
         self._index: faiss.IndexFlatIP | None = None
@@ -104,6 +111,105 @@ class RagEngine:
         except Exception as e:
             print(f"[RAG] Database service initialization failed: {e}")
             self.db_service = None
+
+    def _categorize_llm_error(self, error: Exception) -> tuple[str, str]:
+        raw = str(error)
+        lowered = raw.lower()
+
+        if "403" in lowered and "access denied" in lowered:
+            return (
+                "access_denied_network",
+                "Groq từ chối truy cập từ mạng hiện tại (403 Access denied).",
+            )
+        if "401" in lowered or "invalid api key" in lowered or "authentication" in lowered:
+            return (
+                "auth",
+                "GROQ_API_KEY không hợp lệ hoặc đã hết hiệu lực.",
+            )
+        if "model" in lowered and ("not found" in lowered or "does not exist" in lowered):
+            return (
+                "model",
+                f"Model '{self.llm_model_name}' không khả dụng cho API key hiện tại.",
+            )
+        if "timed out" in lowered or "timeout" in lowered or "name resolution" in lowered:
+            return (
+                "network",
+                "Không thể kết nối đến Groq do timeout hoặc DNS/network.",
+            )
+        if not self._llm_api_key_set:
+            return (
+                "missing_key",
+                "Thiếu GROQ_API_KEY nên không thể dùng LLM bên ngoài.",
+            )
+        return (
+            "unknown",
+            f"Lỗi khi gọi Groq: {raw}",
+        )
+
+    def _record_llm_error(self, error: Exception) -> None:
+        error_type, diagnosis = self._categorize_llm_error(error)
+        self._llm_last_error_type = error_type
+        self._llm_last_error = diagnosis
+        self._llm_last_error_at = datetime.now().isoformat()
+        self._llm_blocked_until = time.time() + self._llm_cooldown_seconds
+
+    def _clear_llm_error(self) -> None:
+        self._llm_last_error = None
+        self._llm_last_error_type = None
+        self._llm_last_error_at = None
+        self._llm_blocked_until = 0.0
+
+    def _can_call_llm(self) -> tuple[bool, str | None]:
+        if self._llm is None:
+            return False, "GROQ_API_KEY chưa được cấu hình."
+
+        now = time.time()
+        if now < self._llm_blocked_until:
+            wait_seconds = int(self._llm_blocked_until - now)
+            return (
+                False,
+                f"LLM đang tạm thời bị chặn sau lỗi gần nhất. Thử lại sau ~{wait_seconds}s.",
+            )
+
+        return True, None
+
+    def probe_llm_health(self) -> dict[str, Any]:
+        can_call, reason = self._can_call_llm()
+        if not can_call:
+            return {
+                "enabled": self._llm is not None,
+                "ok": False,
+                "model": self.llm_model_name,
+                "cooldown_seconds": self._llm_cooldown_seconds,
+                "last_error_type": self._llm_last_error_type,
+                "last_error": self._llm_last_error or reason,
+                "last_error_at": self._llm_last_error_at,
+            }
+
+        try:
+            # Lightweight probe to verify key/network accessibility.
+            self._llm.models.list()
+            self._clear_llm_error()
+            return {
+                "enabled": True,
+                "ok": True,
+                "model": self.llm_model_name,
+                "cooldown_seconds": self._llm_cooldown_seconds,
+                "last_error_type": None,
+                "last_error": None,
+                "last_error_at": None,
+            }
+        except Exception as ex:
+            self._record_llm_error(ex)
+            return {
+                "enabled": True,
+                "ok": False,
+                "model": self.llm_model_name,
+                "cooldown_seconds": self._llm_cooldown_seconds,
+                "last_error_type": self._llm_last_error_type,
+                "last_error": self._llm_last_error,
+                "last_error_at": self._llm_last_error_at,
+            }
 
     @property
     def db_connection_string(self) -> str:
@@ -970,9 +1076,34 @@ class RagEngine:
         else:
             role_scope = "Dữ liệu đang xét ở mức an toàn cho người dùng, chủ yếu là sự kiện và feedback tổng hợp."
 
+        error_type, diagnosis = self._categorize_llm_error(error)
+        if error_type == "access_denied_network":
+            action_hint = (
+                "- Kiểm tra mạng outbound tới https://api.groq.com (VPN/Proxy/Firewall có thể đang chặn).\n"
+                "- Nếu đang đặt HTTP_PROXY/HTTPS_PROXY, thử tắt proxy và gọi lại.\n"
+                "- Xác nhận API key còn hoạt động bằng cách gọi endpoint /llm/health."
+            )
+        elif error_type == "auth":
+            action_hint = (
+                "- Kiểm tra lại GROQ_API_KEY trong file .env.\n"
+                "- Tạo key mới trên Groq Console nếu key cũ bị thu hồi.\n"
+                "- Gọi endpoint /llm/health để xác nhận trạng thái xác thực."
+            )
+        elif error_type == "model":
+            action_hint = (
+                f"- Đổi RAG_LLM_MODEL sang model khả dụng cho key hiện tại.\n"
+                "- Gọi endpoint /llm/health để xác nhận model/network."
+            )
+        else:
+            action_hint = (
+                "- Kiểm tra GROQ_API_KEY và mạng Internet.\n"
+                "- Gọi endpoint /llm/health để lấy chẩn đoán nhanh trước khi thử lại."
+            )
+
         return (
             "1) Chẩn đoán nhanh\n"
             f"- Chưa thể gọi LLM bên ngoài ({str(error)}), nên hệ thống chuyển sang tư vấn fallback từ dữ liệu truy xuất.\n"
+            f"- Kết luận kỹ thuật: {diagnosis}\n"
             f"- {role_scope}\n\n"
             "2) Bằng chứng từ dữ liệu\n"
             f"- Số nguồn truy xuất: {len(retrieved)}\n"
@@ -981,7 +1112,8 @@ class RagEngine:
             + "\n\n"
             "3) Khuyến nghị ưu tiên\n"
             "- Ưu tiên kiểm tra các sự kiện/feedback xuất hiện ở top nguồn vì độ liên quan cao.\n"
-            "- Nếu cần kết luận sâu hơn, hãy xác nhận lại GROQ_API_KEY và kết nối mạng để bật phân tích LLM đầy đủ.\n\n"
+            + action_hint
+            + "\n\n"
             "4) Cảnh báo rủi ro\n"
             "- Khi đang ở chế độ fallback, chất lượng tổng hợp ngữ nghĩa có thể thấp hơn chế độ LLM đầy đủ."
         )
@@ -1021,10 +1153,6 @@ class RagEngine:
         )
         
         conversation_history = self._get_session_context(session_id)
-        user_personal_history = self._get_user_personal_history_context(
-            user_id=user_id,
-            current_session_id=session_id,
-        )
         user_personal_history = self._get_user_personal_history_context(
             user_id=user_id,
             current_session_id=session_id,
@@ -1086,17 +1214,40 @@ class RagEngine:
             user_prompt += (
                 f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
             )
-
-        if user_personal_history:
-            user_prompt += (
-                f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
-            )
         
         user_prompt += (
             f"Câu hỏi: {question}\n\n"
             f"Dữ liệu liên quan:\n{context}\n\n"
             "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
         )
+
+        can_call_llm, llm_block_reason = self._can_call_llm()
+        if not can_call_llm:
+            ex = RuntimeError(llm_block_reason or "LLM is currently unavailable")
+            self._record_llm_error(ex)
+            fallback_answer = self._build_fallback_answer(
+                question=question,
+                retrieved=retrieved,
+                normalized_role=normalized_role,
+                error=ex,
+            )
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=fallback_answer))
+
+            if save_to_db and user_id and self.db_service:
+                try:
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=fallback_answer,
+                        session_id=session_id,
+                        role=normalized_role,
+                    )
+                    session_id = saved_session_id
+                except Exception as e:
+                    print(f"[RAG] Failed to save unavailable-LLM fallback to DB: {e}")
+
+            return fallback_answer, retrieved, session_id
 
         try:
             completion = self._llm.chat.completions.create(
@@ -1111,6 +1262,7 @@ class RagEngine:
 
             answer = completion.choices[0].message.content or ""
             answer = answer.strip()
+            self._clear_llm_error()
             
             # Save to conversation history
             self._sessions[session_id].append(ConversationMessage(role="user", content=question))
@@ -1132,6 +1284,7 @@ class RagEngine:
             
             return answer, retrieved, session_id
         except Exception as ex:
+            self._record_llm_error(ex)
             fallback_answer = self._build_fallback_answer(
                 question=question,
                 retrieved=retrieved,
@@ -1264,6 +1417,38 @@ class RagEngine:
             "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
         )
 
+        can_call_llm, llm_block_reason = self._can_call_llm()
+        if not can_call_llm:
+            ex = RuntimeError(llm_block_reason or "LLM is currently unavailable")
+            self._record_llm_error(ex)
+            fallback_answer = self._build_fallback_answer(
+                question=question,
+                retrieved=retrieved,
+                normalized_role=normalized_role,
+                error=ex,
+            )
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=fallback_answer))
+
+            if save_to_db and user_id and self.db_service:
+                try:
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=fallback_answer,
+                        session_id=session_id,
+                        role=normalized_role,
+                    )
+                    session_id = saved_session_id
+                except Exception as e:
+                    print(f"[RAG] Failed to save stream unavailable-LLM fallback: {e}")
+
+            yield json.dumps({
+                "type": "error",
+                "content": fallback_answer,
+            }) + "\n"
+            return
+
         try:
             # Stream response from LLM
             stream = self._llm.chat.completions.create(
@@ -1278,6 +1463,7 @@ class RagEngine:
             )
 
             full_answer = ""
+            self._clear_llm_error()
             
             # First yield session info
             yield json.dumps({
@@ -1331,6 +1517,7 @@ class RagEngine:
             }) + "\n"
 
         except Exception as ex:
+            self._record_llm_error(ex)
             fallback_answer = self._build_fallback_answer(
                 question=question,
                 retrieved=retrieved,
@@ -1368,6 +1555,9 @@ class RagEngine:
             "log_index_size": log_chunks,
             "model": self.embedding_model_name,
             "llm": self.llm_model_name,
+            "llm_enabled": self._llm is not None,
+            "llm_last_error_type": self._llm_last_error_type,
+            "llm_last_error": self._llm_last_error,
             "api_version": "role-aware-rag-v2",
             "last_reload": self._last_reload,
         }
@@ -1412,6 +1602,11 @@ def health() -> dict[str, Any]:
 @app.get("/stats")
 def stats() -> dict[str, Any]:
     return engine.stats()
+
+
+@app.get("/llm/health")
+def llm_health() -> dict[str, Any]:
+    return engine.probe_llm_health()
 
 
 @app.post("/reload")

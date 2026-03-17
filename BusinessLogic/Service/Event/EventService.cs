@@ -38,6 +38,109 @@ public class EventService : IEventService
 		_fileStorageService = fileStorageService;
 	}
 
+	private static bool IsPubliclyVisibleStatus(EventStatusEnum status)
+		=> status == EventStatusEnum.Published
+			|| status == EventStatusEnum.Upcoming
+			|| status == EventStatusEnum.Happening;
+
+	private static EventListDto MapEventListDto(DataAccess.Entities.Event e, string currentStaffId)
+	{
+		int ticketCount = e.Tickets?.Count(t => t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled) ?? 0;
+		int checkedIn = e.Tickets?.Count(t => t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled && t.CheckInTime != null) ?? 0;
+		int waitlist = e.EventWaitlists?.Count(w => w.DeletedAt == null) ?? 0;
+		double avg = 0;
+		if (e.Feedbacks != null && e.Feedbacks.Count > 0)
+		{
+			var ratings = e.Feedbacks
+				.Where(f => f.DeletedAt == null && f.RatingEvent != null)
+				.Select(f => (int)f.RatingEvent!.Value)
+				.ToList();
+
+			if (ratings.Count > 0)
+			{
+				avg = ratings.Average();
+			}
+		}
+
+		var lastApproval = e.ApprovalLogs?
+			.Where(l => l.DeletedAt == null)
+			.OrderByDescending(l => l.CreatedAt)
+			.FirstOrDefault();
+
+		var isOwnedByCurrentUser = e.OrganizerId == currentStaffId;
+		var isPubliclyVisible = IsPubliclyVisibleStatus(e.Status);
+
+		return new EventListDto
+		{
+			OrganizerId = e.OrganizerId ?? string.Empty,
+			OrganizerName = e.Organizer?.User?.FullName,
+			OrganizerEmail = e.Organizer?.User?.Email,
+			EventId = e.Id,
+			Title = e.Title,
+			Description = e.Description,
+			ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
+			ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
+			SemesterId = e.SemesterId,
+			SemesterName = e.Semester?.Name,
+			DepartmentId = e.DepartmentId,
+			DepartmentName = e.Department?.Name,
+			LocationId = e.LocationId,
+			Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
+			StartTime = e.StartTime,
+			EndTime = e.EndTime,
+			MaxCapacity = e.MaxCapacity,
+			Status = e.Status,
+			RegisteredCount = ticketCount,
+			CheckedInCount = checkedIn,
+			WaitlistCount = waitlist,
+			AvgRating = avg,
+			Mode = e.Mode?.ToString(),
+			MeetingUrl = e.MeetingUrl,
+			CreatedAt = e.CreatedAt,
+			UpdatedAt = e.UpdatedAt,
+			PublishedAt = e.PublishedAt,
+			LastApprovalAction = lastApproval?.Action,
+			LastApprovalActionAt = lastApproval?.CreatedAt,
+			LastApprovalBy = lastApproval?.ApproverId,
+			CanEdit = isOwnedByCurrentUser,
+			CanSendForApproval = isOwnedByCurrentUser && (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Rejected),
+			CanPublish = isOwnedByCurrentUser && e.Status == EventStatusEnum.Approved,
+			CanCancel = isOwnedByCurrentUser && e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed,
+			HasThumbnail = !string.IsNullOrWhiteSpace(e.ThumbnailUrl),
+			IsOwnedByCurrentUser = isOwnedByCurrentUser,
+			IsPubliclyVisible = isPubliclyVisible,
+		};
+	}
+
+	private async Task<List<EventListDto>> GetAccessibleEventsForOrganizerAsync(string userId)
+	{
+		if (string.IsNullOrEmpty(userId))
+			throw new InvalidOperationException("UserId không được để trống.");
+
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null)
+			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên để tạo hồ sơ của bạn.");
+
+		var events = await _uow.Events.GetAllAsync(
+			e => e.DeletedAt == null
+				&& (e.OrganizerId == staff.Id || IsPubliclyVisibleStatus(e.Status)),
+			q => q
+				.Include(x => x.Tickets)
+				.Include(x => x.EventWaitlists)
+				.Include(x => x.Feedbacks)
+				.Include(x => x.Semester)
+				.Include(x => x.Department)
+				.Include(x => x.Location)
+				.Include(x => x.ApprovalLogs)
+				.Include(x => x.Organizer!)
+					.ThenInclude(x => x!.User));
+
+		return events
+			.OrderByDescending(x => x.StartTime)
+			.Select(e => MapEventListDto(e, staff.Id))
+			.ToList();
+	}
+
 	public async Task CancelEventAsync(string userId, string eventId)
 	{
 		if (string.IsNullOrEmpty(eventId))
@@ -169,59 +272,14 @@ public class EventService : IEventService
 				.Include(x => x.Department)
 				.Include(x => x.Location)
 				.Include(x => x.ApprovalLogs)
+				.Include(x => x.Organizer!)
+					.ThenInclude(x => x!.User)
 		);
 
-		var list = new List<EventListDto>();
-		foreach (var e in events.OrderByDescending(x => x.StartTime))
-		{
-			int ticketCount = e.Tickets?.Count ?? 0;
-			int checkedIn = e.Tickets?.Count(t => t.CheckInTime != null) ?? 0;
-			int waitlist = e.EventWaitlists?.Count ?? 0;
-			double avg = 0;
-			if (e.Feedbacks != null && e.Feedbacks.Count > 0)
-			{
-				var ratings = e.Feedbacks
-	               .Where(f => f.RatingEvent != null)
-	               .Select(f => (int)f.RatingEvent!.Value)
-	               .ToList();
-
-				if (ratings.Count > 0)
-				{
-					avg = ratings.Average();
-				}
-			}
-
-			// Determine last approval action from logs (if any)
-			var lastApproval = e.ApprovalLogs?.Where(l => l.DeletedAt == null).OrderByDescending(l => l.CreatedAt).FirstOrDefault();
-
-			list.Add(new EventListDto
-			{
-				EventId = e.Id,
-				Title = e.Title,
-				ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
-				ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
-				SemesterId = e.SemesterId,
-				SemesterName = e.Semester?.Name,
-				DepartmentId = e.DepartmentId,
-				DepartmentName = e.Department?.Name,
-				Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
-				StartTime = e.StartTime,
-				EndTime = e.EndTime,
-				MaxCapacity = e.MaxCapacity,
-				Status = e.Status,
-				RegisteredCount = ticketCount,
-				CheckedInCount = checkedIn,
-				WaitlistCount = waitlist,
-				AvgRating = avg,
-				Mode = e.Mode?.ToString(),
-				MeetingUrl = e.MeetingUrl,
-				LastApprovalAction = lastApproval?.Action,
-				LastApprovalActionAt = lastApproval?.CreatedAt,
-				LastApprovalBy = lastApproval?.ApproverId,
-			});
-		}
-
-		return list;
+		return events
+			.OrderByDescending(x => x.StartTime)
+			.Select(e => MapEventListDto(e, staff.Id))
+			.ToList();
 	}
 
 	public async Task<List<EventListDto>> GetMyDeletedEventsAsync(string userId)
@@ -291,7 +349,7 @@ public class EventService : IEventService
 
 	public async Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
 	{
-		var items = await GetMyEventsAsync(userId);
+		var items = await GetAccessibleEventsForOrganizerAsync(userId);
 
 		if (!string.IsNullOrWhiteSpace(search))
 		{

@@ -681,7 +681,7 @@ public partial class AEMSContext : DbContext
 				.HasForeignKey(d => d.StudentId)
 				.HasConstraintName("FK__Feedback__Studen__0F624AF8");
 			entity.Property(x => x.RatingEvent)
-				.HasDefaultValue(0);
+				.HasDefaultValue(FeedBackRatingsEnum.OneStar);
 			entity.Property(x => x.Status)
 				.HasMaxLength(50)
 				.HasConversion<string>()
