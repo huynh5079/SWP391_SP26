@@ -319,7 +319,13 @@ class RagEngine:
         except Exception as ex:
             print(f"[RAG] Primary query failed ({query_name}): {ex}")
             print(f"[RAG] Falling back to simplified query for: {query_name}")
-            return self._fetch_rows(fallback_query)
+            try:
+                return self._fetch_rows(fallback_query)
+            except Exception as fallback_ex:
+                # Keep auto-reload alive even when one dataset query is incompatible with current schema.
+                print(f"[RAG] Fallback query also failed ({query_name}): {fallback_ex}")
+                print(f"[RAG] Skipping dataset '{query_name}' for this reload cycle.")
+                return []
     def _build_chunks_from_db(self) -> list[Chunk]:
         top_n = self.data_limit
 
@@ -349,7 +355,7 @@ class RagEngine:
                 (SELECT COUNT(*) FROM [EventTeam] WHERE EventId = e.Id) AS TeamMemberCount,
                 (SELECT COUNT(*) FROM [EventAgenda] WHERE EventId = e.Id) AS AgendaCount,
                 (SELECT COUNT(*) FROM [Ticket] WHERE EventId = e.Id) AS RegisteredCount,
-                (SELECT AVG(CAST(Rating AS FLOAT)) FROM [Feedback] WHERE EventId = e.Id) AS AvgRating,
+                (SELECT AVG(CAST(fb.RatingEvent AS FLOAT)) FROM [Feedback] fb WHERE fb.EventId = e.Id) AS AvgRating,
                 (SELECT COUNT(*) FROM [Feedback] WHERE EventId = e.Id) AS FeedbackCount,
                 e.CreatedAt,
                 e.UpdatedAt
@@ -472,7 +478,7 @@ class RagEngine:
                 f.StudentId,
                 u.FullName AS StudentName,
                 sp.StudentCode,
-                f.Rating,
+                f.RatingEvent AS Rating,
                 f.Comment,
                 f.CreatedAt,
                 f.UpdatedAt
@@ -490,7 +496,7 @@ class RagEngine:
                 f.StudentId,
                 CAST(NULL AS NVARCHAR(255)) AS StudentName,
                 CAST(NULL AS NVARCHAR(50)) AS StudentCode,
-                f.Rating,
+                f.RatingEvent AS Rating,
                 f.Comment,
                 f.CreatedAt,
                 f.UpdatedAt
@@ -539,9 +545,9 @@ class RagEngine:
                 e.Id AS EventId,
                 e.Title AS EventTitle,
                 COUNT(f.Id) AS FeedbackCount,
-                AVG(CAST(f.Rating AS FLOAT)) AS AvgRating,
-                SUM(CASE WHEN f.Rating >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
-                SUM(CASE WHEN f.Rating <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
+                AVG(CAST(f.RatingEvent AS FLOAT)) AS AvgRating,
+                SUM(CASE WHEN f.RatingEvent >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
+                SUM(CASE WHEN f.RatingEvent <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
                 MAX(f.CreatedAt) AS LastFeedbackAt
             FROM [Event] e
             LEFT JOIN [Feedback] f ON f.EventId = e.Id
@@ -553,9 +559,9 @@ class RagEngine:
                 CAST(NULL AS NVARCHAR(450)) AS EventId,
                 CAST(NULL AS NVARCHAR(500)) AS EventTitle,
                 COUNT(f.Id) AS FeedbackCount,
-                AVG(CAST(f.Rating AS FLOAT)) AS AvgRating,
-                SUM(CASE WHEN f.Rating >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
-                SUM(CASE WHEN f.Rating <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
+                AVG(CAST(f.RatingEvent AS FLOAT)) AS AvgRating,
+                SUM(CASE WHEN f.RatingEvent >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
+                SUM(CASE WHEN f.RatingEvent <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
                 MAX(f.CreatedAt) AS LastFeedbackAt
             FROM [Feedback] f
             GROUP BY f.EventId
@@ -945,6 +951,51 @@ class RagEngine:
             return {"event", "feedback", "feedback_analytics", "event_agenda", "event_team"}
         return {"event", "feedback_analytics", "event_agenda"}
 
+    @staticmethod
+    def _is_greeting(question: str) -> bool:
+        lowered = (question or "").strip().lower()
+        if not lowered:
+            return False
+
+        greeting_patterns = [
+            r"\bhi\b",
+            r"\bhello\b",
+            r"\bhey\b",
+            r"\bxin\s*chào\b",
+            r"\bchào\b",
+            r"\balo\b",
+        ]
+        return any(re.search(pattern, lowered) for pattern in greeting_patterns)
+
+    def _infer_question_doc_types(self, question: str) -> Optional[set[str]]:
+        lowered = (question or "").strip().lower()
+        if not lowered:
+            return None
+
+        if self._is_greeting(lowered):
+            return set()
+
+        event_keywords = [
+            "sự kiện", "su kien", "event", "đăng ký", "dang ky", "vé", "ve", "ticket",
+            "địa điểm", "dia diem", "room", "phòng", "phong", "lịch", "lich", "agenda", "chương trình", "chuong trinh",
+        ]
+        feedback_keywords = [
+            "feedback", "phản hồi", "phan hoi", "đánh giá", "danh gia", "rating", "nhận xét", "nhan xet",
+        ]
+        system_keywords = [
+            "log", "lỗi", "loi", "error", "exception", "hệ thống", "he thong", "500", "403", "401",
+        ]
+
+        question_doc_types: set[str] = set()
+        if any(keyword in lowered for keyword in event_keywords):
+            question_doc_types.update({"event", "event_agenda", "event_team"})
+        if any(keyword in lowered for keyword in feedback_keywords):
+            question_doc_types.update({"feedback", "feedback_analytics"})
+        if any(keyword in lowered for keyword in system_keywords):
+            question_doc_types.update({"system_log", "log_analytics"})
+
+        return question_doc_types or None
+
     def _get_session_context(self, session_id: Optional[str]) -> str:
         """Get conversation history context for the session"""
         if not session_id or session_id not in self._sessions:
@@ -1031,6 +1082,15 @@ class RagEngine:
 
         normalized_role = self._normalize_role(role)
         allowed_doc_types = self._allowed_doc_types(normalized_role)
+        question_doc_types = self._infer_question_doc_types(question)
+
+        effective_doc_types = allowed_doc_types
+        if question_doc_types is not None:
+            if not question_doc_types:
+                return []
+            effective_doc_types = allowed_doc_types.intersection(question_doc_types)
+            if not effective_doc_types:
+                return []
 
         query_vec = self._encode_texts([question])
         search_k = min(max(top_k * 5, top_k), len(self._chunks))
@@ -1041,7 +1101,7 @@ class RagEngine:
             if idx < 0 or idx >= len(self._chunks):
                 continue
             chunk = self._chunks[idx]
-            if chunk.meta.get("doc_type") not in allowed_doc_types:
+            if chunk.meta.get("doc_type") not in effective_doc_types:
                 continue
             results.append(
                 {
@@ -1124,10 +1184,18 @@ class RagEngine:
         Returns: (answer, sources, session_id)
         """
         normalized_role = self._normalize_role(role)
+
+        if self._is_greeting(question):
+            answer = (
+                "Xin chào! Mình là trợ lý AI của hệ thống AEMS. "
+                "Mình sẽ trả lời đúng trọng tâm nội dung bạn hỏi. Bạn cần mình hỗ trợ gì?"
+            )
+            return answer, [], session_id or str(uuid4())
+
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
         if not retrieved:
-            answer = "Hiện tại chưa có dữ liệu phù hợp để tư vấn. Vui lòng thử câu hỏi cụ thể hơn về các sự kiện trong hệ thống."
+            answer = "Hiện tại chưa có dữ liệu phù hợp với chủ đề bạn hỏi. Vui lòng nêu cụ thể nội dung cần hỗ trợ."
             return answer, [], session_id or str(uuid4())
 
         # Create or reuse session
@@ -1173,8 +1241,8 @@ class RagEngine:
             "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
             "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
             "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
-            "   → Trả lời bình thường dựa trên kiến thức chung\n"
-            "   → Có thể đề cập đến sự kiện AEMS nếu phù hợp\n\n"
+            "   → Chỉ trả lời đúng nội dung mà người dùng hỏi\n"
+            "   → KHÔNG tự chuyển chủ đề sang sự kiện hoặc chủ đề khác nếu người dùng không hỏi\n\n"
             
             "PHONG CÁCH TRẢ LỜI:\n"
             "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
@@ -1186,6 +1254,7 @@ class RagEngine:
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
@@ -1218,7 +1287,7 @@ class RagEngine:
         user_prompt += (
             f"Câu hỏi: {question}\n\n"
             f"Dữ liệu liên quan:\n{context}\n\n"
-            "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
+            "Hãy trả lời ngắn gọn, đúng trọng tâm câu hỏi, và không tự ý mở rộng sang chủ đề khác."
         )
 
         can_call_llm, llm_block_reason = self._can_call_llm()
@@ -1316,12 +1385,21 @@ class RagEngine:
         Yields: JSON lines with streaming content
         """
         normalized_role = self._normalize_role(role)
+
+        if self._is_greeting(question):
+            yield json.dumps({
+                "type": "answer",
+                "content": "Xin chào! Mình là trợ lý AI của hệ thống AEMS. Mình sẽ trả lời đúng trọng tâm nội dung bạn hỏi. Bạn cần mình hỗ trợ gì?",
+                "session_id": session_id or str(uuid4())
+            }) + "\n"
+            return
+
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
         if not retrieved:
             yield json.dumps({
                 "type": "answer",
-                "content": "Hiện tại chưa có dữ liệu phù hợp để tư vấn. Vui lòng thử câu hỏi cụ thể hơn về các sự kiện trong hệ thống.",
+                "content": "Hiện tại chưa có dữ liệu phù hợp với chủ đề bạn hỏi. Vui lòng nêu cụ thể nội dung cần hỗ trợ.",
                 "session_id": session_id or str(uuid4())
             }) + "\n"
             return
@@ -1369,8 +1447,8 @@ class RagEngine:
             "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
             "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
             "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
-            "   → Trả lời bình thường dựa trên kiến thức chung\n"
-            "   → Có thể đề cập đến sự kiện AEMS nếu phù hợp\n\n"
+            "   → Chỉ trả lời đúng nội dung mà người dùng hỏi\n"
+            "   → KHÔNG tự chuyển chủ đề sang sự kiện hoặc chủ đề khác nếu người dùng không hỏi\n\n"
             
             "PHONG CÁCH TRẢ LỜI:\n"
             "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
@@ -1382,6 +1460,7 @@ class RagEngine:
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
@@ -1414,7 +1493,7 @@ class RagEngine:
         user_prompt += (
             f"Câu hỏi: {question}\n\n"
             f"Dữ liệu liên quan:\n{context}\n\n"
-            "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
+            "Hãy trả lời ngắn gọn, đúng trọng tâm câu hỏi, và không tự ý mở rộng sang chủ đề khác."
         )
 
         can_call_llm, llm_block_reason = self._can_call_llm()
