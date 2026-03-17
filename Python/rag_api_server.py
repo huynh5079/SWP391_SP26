@@ -1096,6 +1096,20 @@ class RagEngine:
             print(f"[RAG] Failed to load user personalized history: {exc}")
             return ""
 
+    @staticmethod
+    def _split_profile_and_dynamic_context(user_profile_context: Optional[str]) -> tuple[str, str]:
+        if not user_profile_context:
+            return "", ""
+
+        marker = "Ngữ cảnh truy xuất động"
+        idx = user_profile_context.find(marker)
+        if idx < 0:
+            return user_profile_context.strip(), ""
+
+        static_part = user_profile_context[:idx].strip()
+        dynamic_part = user_profile_context[idx:].strip()
+        return static_part, dynamic_part
+
     def retrieve(self, question: str, top_k: int, role: str) -> list[dict[str, Any]]:
         if self._index is None or not self._chunks:
             self.warmup()
@@ -1214,9 +1228,10 @@ class RagEngine:
             )
             return answer, [], session_id or str(uuid4())
 
+        static_profile_context, dynamic_retrieval_context = self._split_profile_and_dynamic_context(user_profile_context)
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
-        if not retrieved:
+        if not retrieved and not dynamic_retrieval_context:
             answer = "Hiện tại chưa có dữ liệu phù hợp với chủ đề bạn hỏi. Vui lòng nêu cụ thể nội dung cần hỗ trợ."
             return answer, [], session_id or str(uuid4())
 
@@ -1238,9 +1253,20 @@ class RagEngine:
             self._sessions[session_id] = []
 
         # Build context with conversation history
-        context = "\n\n".join(
-            [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
-        )
+        context_parts: list[str] = []
+        if dynamic_retrieval_context:
+            # When dynamic DB context is available, do not mix semantic chunks to avoid date/status drift.
+            context_parts.append(
+                "[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n"
+                + dynamic_retrieval_context
+            )
+        elif retrieved:
+            context_parts.append(
+                "\n\n".join(
+                    [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
+                )
+            )
+        context = "\n\n".join(context_parts)
         
         conversation_history = self._get_session_context(session_id)
         user_personal_history = self._get_user_personal_history_context(
@@ -1277,6 +1303,9 @@ class RagEngine:
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
             "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
+            "- Nếu xuất hiện khối 'Ngữ cảnh truy xuất động', PHẢI ưu tiên khối đó hơn mọi nguồn khác\n"
+            "- Khi dữ liệu truy xuất động mâu thuẫn với dữ liệu semantic, chọn dữ liệu truy xuất động\n"
+            "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
@@ -1301,9 +1330,9 @@ class RagEngine:
                 f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
             )
 
-        if user_profile_context:
+        if static_profile_context:
             user_prompt += (
-                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
+                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{static_profile_context}\n\n"
             )
         
         user_prompt += (
@@ -1416,9 +1445,10 @@ class RagEngine:
             }) + "\n"
             return
 
+        static_profile_context, dynamic_retrieval_context = self._split_profile_and_dynamic_context(user_profile_context)
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
-        if not retrieved:
+        if not retrieved and not dynamic_retrieval_context:
             yield json.dumps({
                 "type": "answer",
                 "content": "Hiện tại chưa có dữ liệu phù hợp với chủ đề bạn hỏi. Vui lòng nêu cụ thể nội dung cần hỗ trợ.",
@@ -1444,9 +1474,20 @@ class RagEngine:
             self._sessions[session_id] = []
 
         # Build context
-        context = "\n\n".join(
-            [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
-        )
+        context_parts: list[str] = []
+        if dynamic_retrieval_context:
+            # When dynamic DB context is available, do not mix semantic chunks to avoid date/status drift.
+            context_parts.append(
+                "[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n"
+                + dynamic_retrieval_context
+            )
+        elif retrieved:
+            context_parts.append(
+                "\n\n".join(
+                    [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
+                )
+            )
+        context = "\n\n".join(context_parts)
         
         conversation_history = self._get_session_context(session_id)
         user_personal_history = self._get_user_personal_history_context(
@@ -1483,12 +1524,19 @@ class RagEngine:
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
             "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
+            "- Nếu xuất hiện khối 'Ngữ cảnh truy xuất động', PHẢI ưu tiên khối đó hơn mọi nguồn khác\n"
+            "- Khi dữ liệu truy xuất động mâu thuẫn với dữ liệu semantic, chọn dữ liệu truy xuất động\n"
+            "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
-        if normalized_role == "admin":
+        if normalized_role == "Admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
+            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        elif normalized_role == "Approver":
+            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        elif normalized_role == "Organizer":
             role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
         else:
             role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
@@ -1507,9 +1555,9 @@ class RagEngine:
                 f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
             )
 
-        if user_profile_context:
+        if static_profile_context:
             user_prompt += (
-                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
+                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{static_profile_context}\n\n"
             )
         
         user_prompt += (

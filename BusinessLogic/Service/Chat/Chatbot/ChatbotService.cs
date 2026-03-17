@@ -69,32 +69,12 @@ namespace BusinessLogic.Service.Chat
 				var activeSession = await GetOrCreateActiveSessionAsync(userId, sessionId);
 				var effectiveSessionId = activeSession.Id;
 
-				if (userRole == RoleEnum.Approver && IsPendingApprovalQuestion(question))
+				var dynamicRetrievalContext = await BuildDynamicRetrievalContextAsync(userId, userRole, question, effectiveSessionId);
+				if (!string.IsNullOrWhiteSpace(dynamicRetrievalContext))
 				{
-					var pendingAnswer = await BuildApproverPendingAnswerAsync(userId);
-					await SaveConversationAsync(effectiveSessionId, userId, userRole, question, pendingAnswer, ChatMessageStatus.Final);
-					return new ChatbotResponseDto
-					{
-						Success = true,
-						Message = "Thành công",
-						SessionId = effectiveSessionId,
-						Answer = pendingAnswer,
-						Sources = Array.Empty<SourceDto>()
-					};
-				}
-
-				if (userRole == RoleEnum.Organizer && IsOrganizerMyEventsQuestion(question))
-				{
-					var organizerAnswer = await BuildOrganizerMyEventsAnswerAsync(userId);
-					await SaveConversationAsync(effectiveSessionId, userId, userRole, question, organizerAnswer, ChatMessageStatus.Final);
-					return new ChatbotResponseDto
-					{
-						Success = true,
-						Message = "Thành công",
-						SessionId = effectiveSessionId,
-						Answer = organizerAnswer,
-						Sources = Array.Empty<SourceDto>()
-					};
+					userProfileContext = string.IsNullOrWhiteSpace(userProfileContext)
+						? dynamicRetrievalContext
+						: $"{userProfileContext}\n\n{dynamicRetrievalContext}";
 				}
 
 				_logger.LogInformation($"[ChatbotService] Asking question: '{question}', topK: {topK}, sessionId: {effectiveSessionId}, RAG URL: {_ragApiBaseUrl}/ask");
@@ -394,6 +374,53 @@ namespace BusinessLogic.Service.Chat
 			return hasMyEventContext || (hasEventWord && hasListingIntent && normalized.Contains("toi"));
 		}
 
+		private static bool IsEventQuestion(string question)
+		{
+			var normalized = NormalizeIntentText(question);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				return false;
+			}
+			return normalized.Contains("su kien") || normalized.Contains("event");
+		}
+
+		private enum StudentScheduleScope
+		{
+			Today,
+			ThisWeek,
+			Upcoming,
+		}
+
+		private static bool IsStudentScheduleQuestion(string question, out StudentScheduleScope scope)
+		{
+			scope = StudentScheduleScope.Today;
+			var normalized = NormalizeIntentText(question);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				return false;
+			}
+
+			var asksEvent = normalized.Contains("su kien") || normalized.Contains("event");
+			var asksToday = normalized.Contains("hom nay") || normalized.Contains("today");
+			var asksThisWeek = normalized.Contains("tuan nay") || normalized.Contains("this week");
+			var asksUpcoming = normalized.Contains("sap toi") || normalized.Contains("upcoming") || normalized.Contains("sap dien ra");
+
+			if (!asksEvent || (!asksToday && !asksThisWeek && !asksUpcoming))
+			{
+				return false;
+			}
+
+			if (asksUpcoming)
+			{
+				scope = StudentScheduleScope.Upcoming;
+			}
+			else
+			{
+				scope = asksThisWeek ? StudentScheduleScope.ThisWeek : StudentScheduleScope.Today;
+			}
+			return true;
+		}
+
 		private static string NormalizeIntentText(string? value)
 		{
 			if (string.IsNullOrWhiteSpace(value))
@@ -504,6 +531,156 @@ namespace BusinessLogic.Service.Chat
 				+ string.Join("\n", details);
 		}
 
+		private static bool IsStudentScheduleFollowUpQuestion(string question)
+		{
+			var normalized = NormalizeIntentText(question);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				return false;
+			}
+
+			return normalized.Contains("con")
+				|| normalized.Contains("khac")
+				|| normalized.Contains("nua")
+				|| normalized.Contains("van")
+				|| normalized.Contains("co nua khong")
+				|| normalized.Contains("con su kien nao")
+				|| normalized.Contains("con nao khong")
+				|| normalized.Contains("a vay");
+		}
+
+		private async Task<StudentScheduleScope?> ResolveStudentScheduleScopeAsync(string sessionId, string question)
+		{
+			if (IsStudentScheduleQuestion(question, out var directScope))
+			{
+				return directScope;
+			}
+
+			if (!IsStudentScheduleFollowUpQuestion(question) || string.IsNullOrWhiteSpace(sessionId))
+			{
+				return null;
+			}
+
+			var recentMessages = await _unitOfWork.ChatbotMessages.GetAllAsync(
+				m => m.SessionId == sessionId,
+				q => q.OrderByDescending(m => m.CreatedAt).Take(20));
+
+			foreach (var msg in recentMessages)
+			{
+				if (!string.Equals(msg.Sender, "user", StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+				if (string.IsNullOrWhiteSpace(msg.Content) || string.Equals(msg.Content.Trim(), question.Trim(), StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+
+				if (IsStudentScheduleQuestion(msg.Content, out var previousScope))
+				{
+					return previousScope;
+				}
+			}
+
+			return null;
+		}
+
+		private async Task<string> BuildDynamicRetrievalContextAsync(string userId, RoleEnum role, string question, string sessionId)
+		{
+			var sections = new List<string>();
+
+			if (role == RoleEnum.Approver && IsPendingApprovalQuestion(question))
+			{
+				var pendingContext = await BuildApproverPendingAnswerAsync(userId);
+				if (!string.IsNullOrWhiteSpace(pendingContext))
+				{
+					sections.Add($"[Dữ liệu phê duyệt trực tiếp từ DB]\n{pendingContext}");
+				}
+			}
+
+			if (role == RoleEnum.Organizer && IsOrganizerMyEventsQuestion(question))
+			{
+				var organizerContext = await BuildOrganizerMyEventsAnswerAsync(userId);
+				if (!string.IsNullOrWhiteSpace(organizerContext))
+				{
+					sections.Add($"[Dữ liệu My Event trực tiếp từ DB]\n{organizerContext}");
+				}
+			}
+
+			if (role == RoleEnum.Student && (IsEventQuestion(question) || IsStudentScheduleFollowUpQuestion(question)))
+			{
+				var resolvedScope = await ResolveStudentScheduleScopeAsync(sessionId, question);
+				var effectiveScope = resolvedScope ?? StudentScheduleScope.ThisWeek;
+				var studentScheduleContext = await BuildStudentScheduleAnswerAsync(userId, effectiveScope);
+				if (!string.IsNullOrWhiteSpace(studentScheduleContext))
+				{
+					sections.Add($"[Dữ liệu lịch trực tiếp từ DB]\n{studentScheduleContext}");
+				}
+			}
+
+			if (!sections.Any())
+			{
+				return string.Empty;
+			}
+
+			return "Ngữ cảnh truy xuất động (ưu tiên cao, lấy trực tiếp từ DB):\n" + string.Join("\n\n", sections);
+		}
+
+		private async Task<string> BuildStudentScheduleAnswerAsync(string studentUserId, StudentScheduleScope scope)
+		{
+			var now = DateTime.Now;
+			var today = now.Date;
+			var weekStart = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+			if (today.DayOfWeek == DayOfWeek.Sunday)
+			{
+				weekStart = today.AddDays(-6);
+			}
+			var weekEndExclusive = weekStart.AddDays(7);
+
+			var publishedEvents = await _unitOfWork.Events.GetAllAsync(
+				e => e.DeletedAt == null && e.Status == EventStatusEnum.Published,
+				q => q
+					.Include(e => e.Location)
+					.OrderBy(e => e.StartTime));
+
+			var events = (publishedEvents ?? Enumerable.Empty<DataAccess.Entities.Event>()).ToList();
+
+			IEnumerable<DataAccess.Entities.Event> scopedEvents = events;
+			if (scope == StudentScheduleScope.Today)
+			{
+				scopedEvents = events.Where(e => e.StartTime.Date <= today && e.EndTime.Date >= today);
+			}
+			else if (scope == StudentScheduleScope.ThisWeek)
+			{
+				scopedEvents = events.Where(e => e.StartTime < weekEndExclusive && e.EndTime >= weekStart);
+			}
+			else
+			{
+				scopedEvents = events.Where(e => e.StartTime > now);
+			}
+
+			var sorted = scopedEvents.OrderBy(e => e.StartTime).ToList();
+			var payload = new
+			{
+				source = "student_published_events",
+				scope = scope.ToString(),
+				reference_time = now.ToString("yyyy-MM-dd HH:mm:ss"),
+				total = sorted.Count,
+				events = sorted.Select(e => new
+				{
+					title = e.Title,
+					status = e.Status.ToString(),
+					start_time = e.StartTime.ToString("yyyy-MM-dd HH:mm:ss"),
+					end_time = e.EndTime.ToString("yyyy-MM-dd HH:mm:ss"),
+					location = !string.IsNullOrWhiteSpace(e.Location?.Name) ? e.Location!.Name : "Chưa cập nhật",
+					mode = e.Mode?.ToString(),
+					type = e.Type?.ToString(),
+				}),
+			};
+
+			return JsonSerializer.Serialize(payload);
+		}
+
 		private async Task<string> BuildRequesterProfileContextAsync(string userId, RoleEnum role)
 		{
 			if (string.IsNullOrWhiteSpace(userId) || userId == "anonymous")
@@ -605,9 +782,12 @@ namespace BusinessLogic.Service.Chat
 				return session;
 			}
 
+			// Safety rule: never trust arbitrary requestedSessionId for creation.
+			// If requested id is invalid/not owned by this user, create a fresh session id
+			// to avoid key collisions and EF tracking conflicts.
 			session = new ChatbotSession
 			{
-				Id = string.IsNullOrWhiteSpace(requestedSessionId) ? Guid.NewGuid().ToString() : requestedSessionId,
+				Id = Guid.NewGuid().ToString(),
 				UserId = userId,
 				StartedAt = DateTime.UtcNow,
 				Status = ChatSessionStatus.Active
@@ -627,7 +807,7 @@ namespace BusinessLogic.Service.Chat
 
 				if (session == null)
 				{
-					session = await GetOrCreateActiveSessionAsync(userId, sessionId);
+					session = await GetOrCreateActiveSessionAsync(userId, null);
 				}
 
 				var userMessage = new ChatbotMessage
