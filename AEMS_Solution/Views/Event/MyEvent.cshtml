@@ -125,13 +125,25 @@
                             }
                             <a class="btn btn-sm btn-secondary fw-semibold action-pill" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId">Waitlist</a>
                             @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
-                            {
-                                <a class="btn btn-sm btn-success fw-semibold action-pill"
-                                   asp-controller="BudgetProposal" asp-action="Detail"
-                                   asp-route-eventId="@e.EventId">
-                                    <i class="bi bi-cash-stack me-1"></i>Budget
-                                </a>
-                            }
+                                @if (CanCreateBudget(e.Status))
+                                {
+                                    <a class="btn btn-sm btn-success fw-semibold action-pill"
+                                       asp-controller="BudgetProposal" asp-action="Detail"
+                                       asp-route-eventId="@e.EventId">
+                                        <i class="bi bi-cash-stack me-1"></i>Budget
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-secondary fw-semibold action-pill"
+                                            disabled
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="Không thể tạo Budget khi sự kiện đang '@e.Status'">
+                                        <i class="bi bi-cash-stack me-1"></i>Budget
+                                    </button>
+                                }
+
                             
                             
                                 <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
@@ -191,5 +203,32 @@
                 });
             })();
         </script>
+        <script>
+            // Khởi tạo tooltip cho nút Budget disabled
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                new bootstrap.Tooltip(el);
+            });
+
+            (function () {
+                document.querySelectorAll('.view-detail').forEach(btn => {
+                    btn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        var url = btn.getAttribute('data-url');
+                        if (!url) return;
+                        window.location.href = url;
+                    });
+                });
+            })();
+        </script>
+
     }
 </div>
+
+@functions {
+    // Returns true if the event status allows creating a budget
+    public bool CanCreateBudget(EventStatusEnum status)
+    {
+        // Example logic: allow budget creation only for Draft and Pending statuses
+        return status == EventStatusEnum.Draft || status == EventStatusEnum.Pending || status == EventStatusEnum.Approved;
+    }
+}
