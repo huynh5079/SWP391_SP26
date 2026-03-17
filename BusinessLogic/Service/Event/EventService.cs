@@ -123,7 +123,10 @@ public class EventService : IEventService
 
 		var events = await _uow.Events.GetAllAsync(
 			e => e.DeletedAt == null
-				&& (e.OrganizerId == staff.Id || IsPubliclyVisibleStatus(e.Status)),
+                && (e.OrganizerId == staff.Id
+					|| e.Status == EventStatusEnum.Published
+					|| e.Status == EventStatusEnum.Upcoming
+					|| e.Status == EventStatusEnum.Happening),
 			q => q
 				.Include(x => x.Tickets)
 				.Include(x => x.EventWaitlists)
