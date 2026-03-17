@@ -1,7 +1,7 @@
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Admin;
 using BusinessLogic.DTOs.Department;
-using BusinessLogic.Service.Admin;
+using BusinessLogic.Service.Event.EventDepartment;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

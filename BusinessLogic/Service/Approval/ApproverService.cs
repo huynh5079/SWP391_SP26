@@ -23,21 +23,36 @@ namespace BusinessLogic.Service.Approval
 			_uow = uow;
 			_notificationService = notificationService;
 		}
-		public async Task<List<EventItemDto>> GetPendingEventsAsync(string? search, string? status, int page = 1, int pageSize = 10)
+		public async Task<List<EventItemDto>> GetPendingEventsAsync(string? approverUserId, string? search, string? status, int page = 1, int pageSize = 10)
 		{
 			if (page <= 0) page = 1;
 			if (pageSize <= 0) pageSize = 10;
 
-			// NOTE: Repository của bạn có thể khác.
-			// Mình assume _uow.Events.Query() trả về IQueryable<Event>.
-			// Nếu không có Query(), bạn đổi sang method tương đương GetAllAsync + include.
-			var list = await _uow.Events.GetAllAsync( e => e.Status == EventStatusEnum.Pending,
-				q => q.Include(x => x.ApprovalLogs));
+			string? approverStaffId = null;
+			if (!string.IsNullOrWhiteSpace(approverUserId))
+			{
+				approverStaffId = (await _uow.StaffProfiles.GetAsync(s => s.UserId == approverUserId))?.Id;
+			}
+
+			var list = await _uow.Events.GetAllAsync(
+				e => e.Status == EventStatusEnum.Pending
+					&& e.DeletedAt == null
+					&& (approverStaffId == null || e.OrganizerId != approverStaffId),
+				q => q.Include(x => x.ApprovalLogs)
+					.Include(x => x.Location)
+					.Include(x => x.Organizer!)
+						.ThenInclude(x => x!.User));
 
 			if (!string.IsNullOrWhiteSpace(search))
 			{
 				search = search.Trim();
-				list = list.Where(e => e.Title.Contains(search)).ToList();
+				list = list.Where(e =>
+					e.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+					|| (e.Organizer != null && e.Organizer.User != null && e.Organizer.User.FullName != null
+						&& e.Organizer.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase))
+					|| (e.Organizer != null && e.Organizer.User != null && e.Organizer.User.Email != null
+						&& e.Organizer.User.Email.Contains(search, StringComparison.OrdinalIgnoreCase)))
+					.ToList();
 			}
 
 			list = list
@@ -55,12 +70,18 @@ namespace BusinessLogic.Service.Approval
 
 				return new EventItemDto
 				{
+					OrganizerId = e.OrganizerId,
+					OrganizerName = e.Organizer?.User?.FullName,
+					OrganizerEmail = e.Organizer?.User?.Email,
 					Id = e.Id,
 					Title = e.Title,
 					StartTime = e.StartTime,
 					EndTime = e.EndTime,
 					Status = e.Status,
 					ThumbnailUrl = e.ThumbnailUrl,
+					Location = e.Location != null
+						? (!string.IsNullOrWhiteSpace(e.Location.Address) ? e.Location.Address : e.Location.Name)
+						: null,
 					LastApprovalComment = lastLog?.Comment
 				};
 			}).ToList();
@@ -258,8 +279,8 @@ namespace BusinessLogic.Service.Approval
         {
             var eventDetail = await _uow.Events.GetAsync(
                 e => e.Id == eventId,
-                q => q
-                    .Include(e => e.Organizer).ThenInclude(sp => sp.User)
+				q => q
+					.Include(e => e.Organizer!).ThenInclude(sp => sp!.User)
                     .Include(e => e.ApprovalLogs)
                     .Include(e => e.Location)
                     .Include(e => e.EventAgenda)           // <-- thêm

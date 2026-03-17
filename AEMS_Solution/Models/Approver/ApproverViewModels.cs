@@ -48,6 +48,8 @@ namespace AEMS_Solution.Models.Approver
         public EventStatusEnum Status { get; set; }
         public string? ThumbnailUrl { get; set; }
         public string? Location { get; set; }
+        public string? OrganizerName { get; set; }
+        public string? OrganizerEmail { get; set; }
         public string? LastApprovalComment { get; set; }
     }
 

@@ -94,7 +94,7 @@ public class DashboardService : IDashboardService
             {
                 EventId = f.EventId,
                 EventTitle = f.Event!.Title,
-                Rating = (int)Math.Round(f.Rating.GetValueOrDefault(), MidpointRounding.AwayFromZero),
+                Rating = (int)f.RatingEvent,
                 Comment = f.Comment,
                 CreatedAt = f.CreatedAt,
                 StudentId = f.StudentId,

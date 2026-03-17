@@ -4,14 +4,13 @@ using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEven
 using AEMS_Solution.Configurations;
 using AEMS_Solution.Hubs;
 using AEMS_Solution.Services;
-using BusinessLogic.Service.Admin;
-using BusinessLogic.Service.Admin;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
 using BusinessLogic.Service.Chat.ChatforUser;
 using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Event.EventDepartment;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Quiz;
 using BusinessLogic.Service.Event.Sub_Service.Ticket;

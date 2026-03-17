@@ -204,7 +204,14 @@ Python/.env
 Python/kb
 Python/find_can_access.py
 Python/find_func.py
+Python/db_service.py
+Python/rag_api_server.py
 Python/kb/faiss.index
 CHATBOT_GUIDE.md
 test_api.bat
-*.idx
+results
+.venv
+.venv1
+kb/chunks.json
+kb/faiss.index
+kb/meta.json

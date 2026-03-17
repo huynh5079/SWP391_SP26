@@ -284,9 +284,9 @@ namespace BusinessLogic.Service.Student
                 WaitlistStatus = waitlistEntry?.Status,        // ✅ thêm
                 WaitlistStudentProfileId = waitlistEntry?.StudentId,
                 FeedbackStatus = feedbackStatus,
-                HasSubmittedFeedback = (existingFeedback?.Rating ?? 0) > 0,
-                CurrentFeedbackRating = existingFeedback?.Rating.HasValue == true
-                    ? (int?)Math.Round(existingFeedback.Rating.Value)
+                HasSubmittedFeedback = existingFeedback != null,
+                CurrentFeedbackRating = existingFeedback != null && (int)existingFeedback.RatingEvent >= 1
+                    ? (int?)((int)existingFeedback.RatingEvent)
                     : null,
                 CurrentFeedbackComment = existingFeedback?.Comment,
                 Agendas = agendas,
@@ -311,6 +311,8 @@ namespace BusinessLogic.Service.Student
                 if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
                 var now = DateTimeHelper.GetVietnamTime();
+           // if (now < ev.StartTime && dto.Rating.HasValue)
+             //   throw new InvalidOperationException("Chỉ được đánh giá sao trong hoặc sau khi sự kiện bắt đầu.");
                 if (ev.StartTime <= now)
                     throw new InvalidOperationException("Không thể đăng ký event đã diễn ra.");
 
@@ -612,12 +614,11 @@ namespace BusinessLogic.Service.Student
                 {
                     EventId = eventId,
                     StudentId = profile.Id,
-                    Rating = dto.Rating,
                     Comment = dto.Comment,
                     Status = status,
                     RatingEvent = dto.Rating.HasValue
                         ? (FeedBackRatingsEnum)dto.Rating.Value
-                        : FeedBackRatingsEnum.ThreeStar
+                        : (FeedBackRatingsEnum)0
                 };
 
                 await _uow.Feedbacks.CreateAsync(feedback);
@@ -627,7 +628,6 @@ namespace BusinessLogic.Service.Student
                 existingFeedback.Comment = dto.Comment;
                 if (dto.Rating.HasValue)
                 {
-                    existingFeedback.Rating = dto.Rating.Value;
                     existingFeedback.RatingEvent = (FeedBackRatingsEnum)dto.Rating.Value;
                 }
                 existingFeedback.Status = status;
@@ -669,7 +669,7 @@ namespace BusinessLogic.Service.Student
                     EventId = f.EventId ?? string.Empty,
                     StudentCode = f.Student?.StudentCode,
                     StudentName = f.Student?.User?.FullName,
-                    Rating = (int)Math.Round(f.Rating ?? 0),
+                    Rating = (int)f.RatingEvent,
                     Comment = f.Comment,
                     CreatedAt = f.CreatedAt
                 })
