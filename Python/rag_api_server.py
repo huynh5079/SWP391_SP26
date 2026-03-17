@@ -366,7 +366,7 @@ class RagEngine:
             LEFT JOIN [StaffProfile] sp ON sp.Id = e.OrganizerId
             LEFT JOIN [User] organizerUser ON organizerUser.Id = sp.UserId
             LEFT JOIN [Topics] t ON t.Id = e.TopicId
-            WHERE e.Status != 'Deleted' AND e.PublishedAt IS NOT NULL
+            WHERE e.Status != 'Deleted' AND (e.PublishedAt IS NOT NULL OR e.Status = 'Pending'OR e.Status = 'Draft')
             ORDER BY e.UpdatedAt DESC
             """,
             fallback_query=f"""
@@ -623,6 +623,7 @@ class RagEngine:
                     text=text,
                     meta={
                         "doc_type": "event",
+                        "access": self._resolve_event_access(row.get("Status"), row.get("PublishedAt")),
                         "event_id": row.get("EventId"),
                         "title": row.get("Title"),
                         "status": str(row.get("Status")),
@@ -944,12 +945,31 @@ class RagEngine:
         except:
             return ""
 
+    @staticmethod
+    def _resolve_event_access(status: Any, published_at: Any) -> str:
+        normalized_status = str(status or "").strip().lower()
+        if normalized_status in {"draft", "pending", "rejected", "requestchange"}:
+            return "staff"
+        if published_at in {None, "", "None"}:
+            return "staff"
+        return "public"
+
     def _allowed_doc_types(self, normalized_role: str) -> set[str]:
         if normalized_role == "admin":
             return {"event", "feedback", "feedback_analytics", "system_log", "log_analytics", "event_agenda", "event_team"}
         if normalized_role == "staff":
             return {"event", "feedback", "feedback_analytics", "event_agenda", "event_team"}
         return {"event", "feedback_analytics", "event_agenda"}
+
+    @staticmethod
+    def _can_access_chunk(meta: dict[str, Any], normalized_role: str) -> bool:
+        if normalized_role == "admin":
+            return True
+
+        access = str(meta.get("access", "public")).strip().lower()
+        if access == "staff":
+            return normalized_role == "staff"
+        return True
 
     @staticmethod
     def _is_greeting(question: str) -> bool:
@@ -1102,6 +1122,8 @@ class RagEngine:
                 continue
             chunk = self._chunks[idx]
             if chunk.meta.get("doc_type") not in effective_doc_types:
+                continue
+            if not self._can_access_chunk(chunk.meta, normalized_role):
                 continue
             results.append(
                 {

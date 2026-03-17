@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using BusinessLogic.DTOs.Chat.Chatbot;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -66,6 +68,20 @@ namespace BusinessLogic.Service.Chat
 
 				var activeSession = await GetOrCreateActiveSessionAsync(userId, sessionId);
 				var effectiveSessionId = activeSession.Id;
+
+				if (userRole == RoleEnum.Approver && IsPendingApprovalQuestion(question))
+				{
+					var pendingAnswer = await BuildApproverPendingAnswerAsync(userId);
+					await SaveConversationAsync(effectiveSessionId, userId, userRole, question, pendingAnswer, ChatMessageStatus.Final);
+					return new ChatbotResponseDto
+					{
+						Success = true,
+						Message = "Thành công",
+						SessionId = effectiveSessionId,
+						Answer = pendingAnswer,
+						Sources = Array.Empty<SourceDto>()
+					};
+				}
 
 				_logger.LogInformation($"[ChatbotService] Asking question: '{question}', topK: {topK}, sessionId: {effectiveSessionId}, RAG URL: {_ragApiBaseUrl}/ask");
 
@@ -303,6 +319,95 @@ namespace BusinessLogic.Service.Chat
 				RoleEnum.Approver => "staff",
 				_ => "user",
 			};
+		}
+
+		private static bool IsPendingApprovalQuestion(string question)
+		{
+			var normalized = NormalizeIntentText(question);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				return false;
+			}
+
+			var hasApprovalIntent =
+				normalized.Contains("duyet")
+				|| normalized.Contains("duoc duyet")
+				|| normalized.Contains("pending")
+				|| normalized.Contains("cho duyet")
+				|| normalized.Contains("gui duyet")
+				|| normalized.Contains("phe duyet")
+				|| normalized.Contains("duoc gui")
+				|| normalized.Contains("gui cho toi")
+				|| normalized.Contains("event gui")
+				|| normalized.Contains("approve")
+				|| normalized.Contains("approval")
+				|| normalized.Contains("Pending");
+			var hasEventContext =
+				normalized.Contains("su kien")
+				|| normalized.Contains("sukien")
+				|| normalized.Contains("event")
+				|| normalized.Contains("Event");
+			return hasApprovalIntent && hasEventContext;
+		}
+
+		private static string NormalizeIntentText(string? value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+			{
+				return string.Empty;
+			}
+
+			var formD = value.Normalize(NormalizationForm.FormD);
+			var builder = new StringBuilder(formD.Length);
+			foreach (var c in formD)
+			{
+				var category = CharUnicodeInfo.GetUnicodeCategory(c);
+				if (category != UnicodeCategory.NonSpacingMark)
+				{
+					builder.Append(char.ToLowerInvariant(c));
+				}
+			}
+
+			var withoutDiacritics = builder.ToString().Normalize(NormalizationForm.FormC);
+			return Regex.Replace(withoutDiacritics, "\\s+", " ").Trim();
+		}
+
+		private async Task<string> BuildApproverPendingAnswerAsync(string approverUserId)
+		{
+			string? approverStaffId = null;
+			if (!string.IsNullOrWhiteSpace(approverUserId) && approverUserId != "anonymous")
+			{
+				approverStaffId = (await _unitOfWork.StaffProfiles.GetAsync(s => s.UserId == approverUserId))?.Id;
+			}
+
+			var pendingEvents = await _unitOfWork.Events.GetAllAsync(
+				e => e.Status == EventStatusEnum.Pending
+					&& e.DeletedAt == null
+					&& (approverStaffId == null || e.OrganizerId != approverStaffId),
+				q => q.Include(e => e.Organizer!).ThenInclude(o => o!.User));
+
+			if (pendingEvents == null || !pendingEvents.Any())
+			{
+				return "Hiện tại không có sự kiện nào được gửi đến bạn để duyệt.";
+			}
+
+			var topPending = pendingEvents
+				.OrderByDescending(e => e.UpdatedAt)
+				.ThenBy(e => e.StartTime)
+				.Take(3)
+				.Select(e =>
+				{
+					var organizerName = e.Organizer?.User?.FullName;
+					var startTimeText = e.StartTime.ToString("dd/MM/yyyy HH:mm");
+					if (!string.IsNullOrWhiteSpace(organizerName))
+					{
+						return $"- {e.Title} (Organizer: {organizerName}, Bắt đầu: {startTimeText})";
+					}
+					return $"- {e.Title} (Bắt đầu: {startTimeText})";
+				})
+				.ToList();
+
+			return $"Hiện tại có {pendingEvents.Count()} sự kiện đang chờ duyệt:\n{string.Join("\n", topPending)}";
 		}
 
 		private async Task<string> BuildRequesterProfileContextAsync(string userId, RoleEnum role)
