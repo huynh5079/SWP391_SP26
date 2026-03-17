@@ -83,6 +83,20 @@ namespace BusinessLogic.Service.Chat
 					};
 				}
 
+				if (userRole == RoleEnum.Organizer && IsOrganizerMyEventsQuestion(question))
+				{
+					var organizerAnswer = await BuildOrganizerMyEventsAnswerAsync(userId);
+					await SaveConversationAsync(effectiveSessionId, userId, userRole, question, organizerAnswer, ChatMessageStatus.Final);
+					return new ChatbotResponseDto
+					{
+						Success = true,
+						Message = "Thành công",
+						SessionId = effectiveSessionId,
+						Answer = organizerAnswer,
+						Sources = Array.Empty<SourceDto>()
+					};
+				}
+
 				_logger.LogInformation($"[ChatbotService] Asking question: '{question}', topK: {topK}, sessionId: {effectiveSessionId}, RAG URL: {_ragApiBaseUrl}/ask");
 
 				var request = new
@@ -350,6 +364,36 @@ namespace BusinessLogic.Service.Chat
 			return hasApprovalIntent && hasEventContext;
 		}
 
+		private static bool IsOrganizerMyEventsQuestion(string question)
+		{
+			var normalized = NormalizeIntentText(question);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				return false;
+			}
+
+			var hasMyEventContext =
+				normalized.Contains("my event")
+				|| normalized.Contains("su kien cua toi")
+				|| normalized.Contains("su kien to chuc")
+				|| normalized.Contains("event cua toi")
+				|| normalized.Contains("myevent");
+
+			var hasEventWord =
+				normalized.Contains("su kien")
+				|| normalized.Contains("event");
+
+			var hasListingIntent =
+				normalized.Contains("co")
+				|| normalized.Contains("bao nhieu")
+				|| normalized.Contains("liet ke")
+				|| normalized.Contains("thong tin")
+				|| normalized.Contains("gi")
+				|| normalized.Contains("nao");
+
+			return hasMyEventContext || (hasEventWord && hasListingIntent && normalized.Contains("toi"));
+		}
+
 		private static string NormalizeIntentText(string? value)
 		{
 			if (string.IsNullOrWhiteSpace(value))
@@ -408,6 +452,56 @@ namespace BusinessLogic.Service.Chat
 				.ToList();
 
 			return $"Hiện tại có {pendingEvents.Count()} sự kiện đang chờ duyệt:\n{string.Join("\n", topPending)}";
+		}
+
+		private async Task<string> BuildOrganizerMyEventsAnswerAsync(string organizerUserId)
+		{
+			string? organizerStaffId = null;
+			if (!string.IsNullOrWhiteSpace(organizerUserId) && organizerUserId != "anonymous")
+			{
+				organizerStaffId = (await _unitOfWork.StaffProfiles.GetAsync(s => s.UserId == organizerUserId))?.Id;
+			}
+
+			if (string.IsNullOrWhiteSpace(organizerStaffId))
+			{
+				return "Không xác định được hồ sơ Organizer của bạn để lấy danh sách My Event.";
+			}
+
+			var myEvents = await _unitOfWork.Events.GetAllAsync(
+				e => e.OrganizerId == organizerStaffId && e.DeletedAt == null,
+				q => q
+					.Include(e => e.Location)
+					.OrderByDescending(e => e.StartTime));
+
+			if (myEvents == null || !myEvents.Any())
+			{
+				return "Hiện tại bạn chưa có sự kiện nào trong mục My Event.";
+			}
+
+			var statusSummary = myEvents
+				.GroupBy(e => e.Status)
+				.OrderByDescending(g => g.Count())
+				.Select(g => $"{g.Key}: {g.Count()}")
+				.ToList();
+
+			var details = myEvents
+				.OrderByDescending(e => e.StartTime)
+				.Select(e =>
+				{
+					var location = !string.IsNullOrWhiteSpace(e.Location?.Name) ? e.Location.Name : "Chưa cập nhật";
+					var startText = e.StartTime.ToString("dd/MM/yyyy HH:mm");
+					var endText = e.EndTime.ToString("dd/MM/yyyy HH:mm");
+					var modeText = e.Mode?.ToString() ?? "Chưa cập nhật";
+					var typeText = e.Type?.ToString() ?? "Chưa cập nhật";
+					return $"- {e.Title} | Trạng thái: {e.Status} | Loại: {typeText} | Hình thức: {modeText} | Thời gian: {startText} -> {endText} | Địa điểm: {location}";
+				})
+				.ToList();
+
+			return
+				$"My Event của bạn hiện có {myEvents.Count()} sự kiện.\n"
+				+ $"Tổng quan trạng thái: {string.Join(", ", statusSummary)}\n"
+				+ "Chi tiết:\n"
+				+ string.Join("\n", details);
 		}
 
 		private async Task<string> BuildRequesterProfileContextAsync(string userId, RoleEnum role)
