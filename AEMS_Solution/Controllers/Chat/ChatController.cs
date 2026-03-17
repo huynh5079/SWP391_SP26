@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AEMS_Solution.Services;
 using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,11 +13,13 @@ namespace AEMS_Solution.Controllers.Chat
     {
         private readonly IChatUserService _chatUserService;
         private readonly IChatPresenceTracker _presenceTracker;
+        private readonly ISystemErrorLogService _errorLog;
 
-        public ChatController(IChatUserService chatUserService, IChatPresenceTracker presenceTracker)
+        public ChatController(IChatUserService chatUserService, IChatPresenceTracker presenceTracker, ISystemErrorLogService errorLog)
         {
             _chatUserService = chatUserService;
             _presenceTracker = presenceTracker;
+            _errorLog = errorLog;
         }
 
         [HttpGet("contacts")]
@@ -29,14 +32,20 @@ namespace AEMS_Solution.Controllers.Chat
                 return Unauthorized();
             }
 
-            var contacts = (await _chatUserService.GetContactsAsync(currentUserId, currentRole)).ToList();
-
-            foreach (var contact in contacts)
+            try
             {
-                contact.IsOnline = _presenceTracker.IsOnline(contact.UserId);
+                var contacts = (await _chatUserService.GetContactsAsync(currentUserId, currentRole)).ToList();
+                foreach (var contact in contacts)
+                {
+                    contact.IsOnline = _presenceTracker.IsOnline(contact.UserId);
+                }
+                return Json(new { success = true, data = contacts });
             }
-
-            return Json(new { success = true, data = contacts });
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, currentUserId, $"{nameof(ChatController)}.{nameof(Contacts)}");
+                return StatusCode(500, new { success = false, message = "Không tải được danh sách chat." });
+            }
         }
 
         [HttpGet("conversation")]
@@ -63,9 +72,15 @@ namespace AEMS_Solution.Controllers.Chat
             {
                 return NotFound(new { success = false, message = ex.Message });
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
+                await _errorLog.LogErrorAsync(ex, currentUserId, $"{nameof(ChatController)}.{nameof(Conversation)}");
                 return Forbid();
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogErrorAsync(ex, currentUserId, $"{nameof(ChatController)}.{nameof(Conversation)}");
+                return StatusCode(500, new { success = false, message = "Lỗi hệ thống." });
             }
         }
     }

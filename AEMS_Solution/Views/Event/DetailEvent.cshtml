@@ -431,7 +431,14 @@
                                     <div class="document-item">
                                         <strong>@d.FileName</strong>
                                         <div class="text-muted small mt-1">@(d.Type ?? "No type")</div>
-                                        <a href="@d.Url" target="_blank" class="btn btn-link px-0 mt-2">Open document</a>
+                                        @if (!string.IsNullOrWhiteSpace(d.Url))
+                                        {
+                                            <a href="@d.Url" target="_blank" class="btn btn-link px-0 mt-2">Open document</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small mt-2 d-block"><i class="bi bi-exclamation-circle me-1"></i>Không có link tài liệu</span>
+                                        }
                                     </div>
                                 }
                             </div>

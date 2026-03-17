@@ -25,6 +25,7 @@ class AemsMessengerLayout {
         this.conversations = {};
         this.activeContactId = null;
         this.connection = null;
+        this.filterMode = 'history'; // default: only show chats with history
     }
 
     async init() {
@@ -162,9 +163,60 @@ class AemsMessengerLayout {
             await this.loadContacts(false);
         }
 
-        if (this.contacts.some(x => x.userId === contactId)) {
-            await this.selectContact(contactId);
+        if (!this.contacts.some(x => x.userId === contactId)) {
+            // User is allowed but has no chat history yet — fetch their info and inject as temp contact
+            try {
+                const res = await fetch(`${this.conversationUrl}?otherUserId=${encodeURIComponent(contactId)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (res.ok) {
+                    // Inject placeholder with lastMessageAt=now so it passes the history filter
+                    const tempContact = {
+                        userId: contactId,
+                        fullName: 'Thành viên',
+                        roleName: 'Student',
+                        avatarUrl: null,
+                        isOnline: false,
+                        lastMessage: null,
+                        lastMessageAt: new Date().toISOString(),
+                        unreadCount: 0
+                    };
+                    this.contacts.unshift(tempContact);
+                    this.conversations[contactId] = [];
+                    this.renderContacts();
+
+                    // Select conversation first so UI is ready
+                    await this.selectContact(contactId);
+
+                    // Auto-send a greeting to create a real chat session in DB
+                    if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
+                        try {
+                            await this.connection.invoke('SendPrivateMessage', contactId, 'Xin chào! Chúng ta sẽ cùng làm việc trong team, liên hệ mình nếu cần nhé 👋');
+                        } catch (err) {
+                            console.warn('Auto-greeting failed:', err);
+                        }
+                    }
+
+                    // Reload contacts so the real lastMessageAt from DB is used
+                    await this.loadContacts(true);
+                    return;
+                } else if (res.status === 403) {
+                    console.warn('openChatWith: permission denied for', contactId);
+                    alert('Bạn không có quyền chat với người dùng này.');
+                    return;
+                } else {
+                    console.warn('openChatWith: contact not found', contactId);
+                    alert('Không thể mở chat với người dùng này.');
+                    return;
+                }
+            } catch (err) {
+                console.error('openChatWith probe failed:', err);
+                return;
+            }
         }
+
+        await this.selectContact(contactId);
     }
 
     closePanel() {
@@ -207,15 +259,21 @@ class AemsMessengerLayout {
 
     renderContacts() {
         const keyword = (this.search?.value || '').trim().toLowerCase();
-        const contacts = this.contacts
+        let contacts = this.contacts
             .filter(contact => !keyword
                 || contact.fullName.toLowerCase().includes(keyword)
-                || contact.roleName.toLowerCase().includes(keyword))
-            .sort((a, b) => {
-                const aTime = a.lastMessageAt || '';
-                const bTime = b.lastMessageAt || '';
-                return bTime.localeCompare(aTime) || a.fullName.localeCompare(b.fullName);
-            });
+                || contact.roleName.toLowerCase().includes(keyword));
+
+        // Apply filter mode
+        if (this.filterMode === 'history') {
+            contacts = contacts.filter(c => c.lastMessageAt);
+        }
+
+        contacts = contacts.sort((a, b) => {
+            const aTime = a.lastMessageAt || '';
+            const bTime = b.lastMessageAt || '';
+            return bTime.localeCompare(aTime) || a.fullName.localeCompare(b.fullName);
+        });
 
         if (contacts.length === 0) {
             this.contactList.innerHTML = '<div class="messenger-empty-list">Không có người dùng phù hợp.</div>';
@@ -537,7 +595,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.addEventListener('aems:open-chat', async (event) => {
         const userId = event.detail?.userId;
-        if (!userId || !window.aemsMessengerLayout) {
+        if (!userId) {
+            return;
+        }
+
+        if (!window.aemsMessengerLayout) {
+            console.error('aems:open-chat received but messenger is not initialized');
+            alert('Hệ thống chat đang được tải. Vui lòng thử lại sau giây lát.');
             return;
         }
 

@@ -153,9 +153,12 @@ namespace BusinessLogic.Service.Student
                        .Include(x => x.Organizer).ThenInclude(o => o!.User)
                        .Include(x => x.Tickets)
                        .Include(x => x.EventDocuments)
-           // Include agendas and speaker profiles/users for richer agenda info
-           .Include(x => x.EventAgenda).ThenInclude(ag => ag.StudentSpeaker).ThenInclude(s => s.User)
-           .Include(x => x.EventAgenda).ThenInclude(ag => ag.StaffSpeaker).ThenInclude(s => s.User)
+               // Include agendas and speaker profiles/users for richer agenda info
+               .Include(x => x.EventAgenda).ThenInclude(ag => ag.StudentSpeaker).ThenInclude(s => s.User)
+               .Include(x => x.EventAgenda).ThenInclude(ag => ag.StaffSpeaker).ThenInclude(s => s.User)
+               // Include teams and members for speaker/BTC panel
+               .Include(x => x.EventTeams).ThenInclude(et => et.TeamMembers).ThenInclude(tm => tm.Student).ThenInclude(s => s!.User)
+               .Include(x => x.EventTeams).ThenInclude(et => et.TeamMembers).ThenInclude(tm => tm.Staff).ThenInclude(s => s!.User)
 )).FirstOrDefault();
 
             if (ev == null)
@@ -213,6 +216,40 @@ namespace BusinessLogic.Service.Student
                 Type = d.Type
             }).ToList();
 
+            // ─── Participation role for the current student ────────────────────
+            bool isTeamMember = ev.EventTeams?.Any(et =>
+                et.DeletedAt == null &&
+                et.TeamMembers.Any(tm => tm.StudentId == profile.Id)) ?? false;
+
+            bool isSpeaker = ev.EventAgenda?.Any(a =>
+                a.StudentSpeakerId == profile.Id && a.DeletedAt == null) ?? false;
+
+            string? participationRole = null;
+            if (isTeamMember)       participationRole = "Ban tổ chức";
+            else if (isSpeaker)     participationRole = "Diễn giả";
+            else if (isRegistered)  participationRole = "Khách tham dự";
+
+            // ─── Read-only teams for speaker/BTC view ─────────────────────────
+            List<EventTeamReadOnlyDto>? teams = null;
+            if (participationRole == "Ban tổ chức" || participationRole == "Diễn giả")
+            {
+                teams = ev.EventTeams?
+                    .Where(et => et.DeletedAt == null)
+                    .Select(et => new EventTeamReadOnlyDto
+                    {
+                        TeamName = et.TeamName ?? "",
+                        Description = et.Description,
+                        Members = et.TeamMembers.Select(tm => new TeamMemberReadOnlyDto
+                        {
+                            MemberName = tm.Student?.User?.FullName
+                                      ?? tm.Staff?.User?.FullName
+                                      ?? "(Chưa rõ)",
+                            RoleName = tm.Role?.ToString() ?? "",
+                            UserId    = tm.Student?.UserId ?? tm.Staff?.UserId
+                        }).ToList()
+                    }).ToList();
+            }
+
             return new StudentEventDetailDto
             {
                 EventId = ev.Id,
@@ -252,7 +289,10 @@ namespace BusinessLogic.Service.Student
                     ? (int?)Math.Round(existingFeedback.Rating.Value)
                     : null,
                 CurrentFeedbackComment = existingFeedback?.Comment,
-                Agendas = agendas
+                Agendas = agendas,
+                Documents = documents,
+                ParticipationRole = participationRole,
+                Teams = teams
             };
         }
 

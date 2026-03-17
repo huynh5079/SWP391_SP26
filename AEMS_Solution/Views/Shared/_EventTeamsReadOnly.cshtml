@@ -1,0 +1,73 @@
+@model List<BusinessLogic.DTOs.Student.EventTeamReadOnlyDto>
+@* Read-only team panel — styled to match DetailEvent organizer view *@
+
+<div class="card detail-card mt-4 mb-4">
+    <div class="card-body p-4 p-lg-5">
+        <div class="section-head mb-4">
+            <div>
+                <h4 class="mb-1">Ban Tổ Chức &amp; Đội ngũ</h4>
+                <div class="text-muted">Danh sách các nhóm và thành viên của sự kiện.</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge rounded-pill bg-light text-dark border">@Model.Count nhóm</span>
+            </div>
+        </div>
+
+        @if (!Model.Any())
+        {
+            <p class="text-muted mb-0">Chưa có nhóm nào được tạo.</p>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var team in Model)
+                {
+                    <div class="col-12 col-xl-6">
+                        <div class="agenda-card">
+                            <div class="agenda-card-header mb-3">
+                                <div>
+                                    <h5 class="mb-0 text-primary">@team.TeamName</h5>
+                                    @if (!string.IsNullOrEmpty(team.Description))
+                                    {
+                                        <div class="text-muted small mt-1">@team.Description</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <strong>Thành viên (@team.Members.Count):</strong>
+                                @if (team.Members.Any())
+                                {
+                                    <ul class="list-group list-group-flush mt-2 border rounded-3 overflow-hidden">
+                                        @foreach (var member in team.Members)
+                                        {
+                                            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 bg-light">
+                                                <div>
+                                                    <div class="fw-semibold">@member.MemberName</div>
+                                                    <small class="text-muted">@member.RoleName</small>
+                                                </div>
+                                                    @if (!string.IsNullOrWhiteSpace(member.UserId))
+                                                    {
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-primary"
+                                                                onclick="(function(uid){ if(window.aemsMessengerLayout){ window.aemsMessengerLayout.openChatWith(uid); } else { document.dispatchEvent(new CustomEvent('aems:open-chat',{detail:{userId:uid}})); } })('@member.UserId'); return false;"
+                                                                title="Chat với @member.MemberName">
+                                                            <i class="bi bi-chat-dots me-1"></i>Chat
+                                                        </button>
+                                                    }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <br /><small class="text-muted">Nhóm chưa có thành viên.</small>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

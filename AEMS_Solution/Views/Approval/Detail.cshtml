@@ -735,17 +735,34 @@
                             };
                             var displayName = !string.IsNullOrWhiteSpace(d.FileName) ? d.FileName
                             : !string.IsNullOrWhiteSpace(d.Type) ? d.Type : "Document";
-                            <a href="@d.FileUrl" target="_blank" class="edp-doc-item">
-                                <div class="edp-doc-icon @iconClass">@typeLabel</div>
-                                <div>
-                                    <p class="edp-doc-name">@displayName</p>
-                                    @if (!string.IsNullOrWhiteSpace(d.Type))
-                                    {
-                                        <p class="edp-doc-type">@d.Type</p>
-                                    }
+                            @if (!string.IsNullOrWhiteSpace(d.FileUrl))
+                            {
+                                <a href="@d.FileUrl" target="_blank" class="edp-doc-item">
+                                    <div class="edp-doc-icon @iconClass">@typeLabel</div>
+                                    <div>
+                                        <p class="edp-doc-name">@displayName</p>
+                                        @if (!string.IsNullOrWhiteSpace(d.Type))
+                                        {
+                                            <p class="edp-doc-type">@d.Type</p>
+                                        }
+                                    </div>
+                                    <i class="bi bi-arrow-up-right edp-doc-arrow"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                <div class="edp-doc-item" style="cursor:default; opacity:.7;">
+                                    <div class="edp-doc-icon @iconClass">@typeLabel</div>
+                                    <div>
+                                        <p class="edp-doc-name">@displayName</p>
+                                        @if (!string.IsNullOrWhiteSpace(d.Type))
+                                        {
+                                            <p class="edp-doc-type">@d.Type</p>
+                                        }
+                                        <p class="edp-doc-type text-warning"><i class="bi bi-exclamation-circle me-1"></i>Không có link tài liệu</p>
+                                    </div>
                                 </div>
-                                <i class="bi bi-arrow-up-right edp-doc-arrow"></i>
-                            </a>
+                            }
                         }
                     </div>
                 }
