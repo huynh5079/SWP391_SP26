@@ -50,7 +50,7 @@ namespace BusinessLogic.Service.Student
                 MaxCapacity = e.MaxCapacity,
                 RegisteredCount = registeredCount,
                 TopicName = e.Topic?.Name,
-                SemesterName = e.Semester?.Name,
+                SemesterName = e.Semester?.Name.ToString(),
                 Mode = e.Mode,
                 IsRegistered = isRegistered
             };
@@ -268,7 +268,7 @@ namespace BusinessLogic.Service.Student
                 IsDepositRequired = ev.IsDepositRequired,
                 DepositAmount = ev.DepositAmount,
                 TopicName = ev.Topic?.Name,
-                SemesterName = ev.Semester?.Name,
+                SemesterName = ev.Semester?.Name.ToString(),
                 DepartmentName = ev.Department?.Name,
                 OrganizerName = ev.Organizer?.User?.FullName,
                 OrganizerUserId = ev.Organizer?.UserId,

@@ -1,0 +1,125 @@
+﻿@model BusinessLogic.DTOs.Event.Semester.SemesterDTO
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Create Semester";
+    Layout = "_Approvallayout";
+    var isEdit = !string.IsNullOrWhiteSpace(Model.SemesterId);
+    ViewData["Title"] = isEdit ? "Edit Semester" : "Create Semester";
+    var selectedName = Model.Name ?? "Spring";
+    var selectedStatus = Model.Status;
+    var semesterNameOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+    {
+        new() { Value = "Spring", Text = "Spring", Selected = selectedName == "Spring" },
+        new() { Value = "Summer", Text = "Summer", Selected = selectedName == "Summer" },
+        new() { Value = "Fall", Text = "Fall", Selected = selectedName == "Fall" }
+    };
+    var statusOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+    {
+        new() { Value = "Upcoming", Text = "Upcoming", Selected = selectedStatus == SemesterStatusEnum.Upcoming },
+        new() { Value = "Active", Text = "Active", Selected = selectedStatus == SemesterStatusEnum.Active },
+        new() { Value = "Finished", Text = "Finished", Selected = selectedStatus == SemesterStatusEnum.Finished }
+    };
+}
+
+<div class="container py-4" style="max-width:900px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">@(isEdit ? "Edit Semester" : "Create Semester")</h2>
+            <p class="text-muted mb-0">Tạo/cập nhật học kỳ theo đúng nghiệp vụ: Name = Spring/Summer/Fall, Code = SP26/SU26/FA26.</p>
+        </div>
+        <a asp-controller="Approver" asp-action="Semester" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form asp-controller="Approver" asp-action="CreateSemester" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SemesterId" value="@Model.SemesterId" />
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Semester Name</label>
+                    <select id="semesterName" name="Name" class="form-select" asp-items="semesterNameOptions" required></select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Year</label>
+                    <input id="semesterYear" name="year" type="number" class="form-control" min="2000" max="3000" value="@Model.year" required />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Code</label>
+                    <input id="semesterCode" name="Code" type="text" class="form-control" value="@Model.Code" placeholder="SP26" required />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Status</label>
+                    <select name="Status" class="form-select" asp-items="statusOptions"></select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Start Date</label>
+                    <input id="startDate" name="StartDate" type="date" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">End Date</label>
+                    <input id="endDate" name="EndDate" type="date" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" required />
+                </div>
+
+                <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                    <a asp-controller="Approver" asp-action="Semester" class="btn btn-light border">Hủy</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check2-circle me-1"></i>@(isEdit ? "Cập nhật Semester" : "Tạo Semester")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        const nameEl = document.getElementById('semesterName');
+        const yearEl = document.getElementById('semesterYear');
+        const codeEl = document.getElementById('semesterCode');
+        const startEl = document.getElementById('startDate');
+        const endEl = document.getElementById('endDate');
+
+        function pad2(v) { return String(v).padStart(2, '0'); }
+
+        function getPrefix(name) {
+            if (name === 'Spring') return 'SP';
+            if (name === 'Summer') return 'SU';
+            return 'FA';
+        }
+
+        function setDefaultRange(name, year) {
+            if (!year || year < 1900) return;
+            if (name === 'Spring') {
+                startEl.value = `${year}-01-01`;
+                endEl.value = `${year}-04-30`;
+            } else if (name === 'Summer') {
+                startEl.value = `${year}-05-01`;
+                endEl.value = `${year}-08-31`;
+            } else {
+                startEl.value = `${year}-09-01`;
+                endEl.value = `${year}-12-31`;
+            }
+        }
+
+        function updateCodeAndRange() {
+            const name = nameEl.value;
+            const year = parseInt(yearEl.value || '0', 10);
+            const yy = year > 0 ? pad2(year % 100) : '';
+            codeEl.value = `${getPrefix(name)}${yy}`;
+            setDefaultRange(name, year);
+        }
+
+        nameEl?.addEventListener('change', updateCodeAndRange);
+        yearEl?.addEventListener('input', updateCodeAndRange);
+    })();
+</script>
+}

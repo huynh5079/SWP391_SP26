@@ -2,11 +2,14 @@ using System.Threading.Tasks;
 using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event.EventAgenda;
+using AEMS_Solution.Models.Event.Semester;
 using AutoMapper;
 using AEMS_Solution.Models.Approver;
+using BusinessLogic.DTOs.Event.Semester;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.DTOs.Event.Location;
 using BusinessLogic.Service.Event.Sub_Service.Location;
+using BusinessLogic.Service.Event.Sub_Service.Semester;
 using DataAccess.Repositories.Abstraction;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
@@ -23,18 +26,153 @@ namespace AEMS_Solution.Controllers.Dashboards
         private readonly IApproverQueryService _queryService;
         private readonly IApproverCommandService _commandService;
         private readonly ILocationService _locationService;
+        private readonly ISemesterService _semesterService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IApproverEventAgendaAction _eventAgendaAction;
 
-        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction)
+        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, ISemesterService semesterService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction)
         {
             _queryService = queryService;
             _commandService = commandService;
             _locationService = locationService;
+            _semesterService = semesterService;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _eventAgendaAction = eventAgendaAction;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Semester(string? search = null, string? status = null)
+        {
+            var semesters = await _semesterService.GetAllSemestersAsync();
+            var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+            var canCreateNextSemester = !semesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now);
+
+            var filtered = semesters.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var keyword = search.Trim();
+                filtered = filtered.Where(x =>
+                    (x.Name?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (x.Code?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<SemesterStatusEnum>(status, true, out var parsedStatus))
+            {
+                filtered = filtered.Where(x => x.Status == parsedStatus);
+            }
+
+            var model = new ApproverSemesterViewModel
+            {
+                Search = search,
+                Status = status,
+                CanCreateNextSemester = canCreateNextSemester,
+                Semesters = _mapper.Map<List<SemesterItemViewModel>>(filtered.OrderByDescending(x => x.StartDate).ToList())
+            };
+
+            return View("~/Views/Event/Semester/Index.cshtml", model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CreateSemester()
+        {
+            var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+            var model = new SemesterDTO
+            {
+                Name = "Spring",
+                year = now.Year,
+                Code = $"SP{(now.Year % 100):00}",
+                StartDate = new DateTime(now.Year, 1, 1),
+                EndDate = new DateTime(now.Year, 4, 30),
+                Status = SemesterStatusEnum.Upcoming
+            };
+
+            var allSemesters = await _semesterService.GetAllSemestersAsync();
+            var canCreate = !allSemesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now);
+            if (!canCreate)
+            {
+                SetInfo("Đã có semester kế tiếp. Nút tạo mới sẽ mở lại khi semester đó bắt đầu.");
+                return RedirectToAction(nameof(Semester));
+            }
+
+            return View("~/Views/Event/Semester/CreateSemester.cshtml", model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditSemester(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                SetError("SemesterId không hợp lệ.");
+                return RedirectToAction(nameof(Semester));
+            }
+
+            var semester = await _semesterService.GetSemesterByIdAsync(id);
+            if (semester == null)
+            {
+                SetError("Không tìm thấy học kỳ.");
+                return RedirectToAction(nameof(Semester));
+            }
+
+            return View("~/Views/Event/Semester/CreateSemester.cshtml", semester);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AutoCreateSemester()
+        {
+            try
+            {
+                var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+                var allSemesters = await _semesterService.GetAllSemestersAsync();
+                if (allSemesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now))
+                {
+                    SetInfo("Đã có semester kế tiếp. Khi semester đó bắt đầu, bạn mới tạo tiếp được.");
+                    return RedirectToAction(nameof(Semester));
+                }
+
+                var created = await _semesterService.AutoCreateSemesterAsync();
+                SetSuccess($"Đã tự động tạo học kỳ {created.Name} ({created.Code}).");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(Semester));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateSemester(SemesterDTO dto)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(dto.SemesterId))
+                {
+                    await _semesterService.UpdateSemesterAsync(dto.SemesterId, dto);
+                    SetSuccess("Cập nhật học kỳ thành công.");
+                    return RedirectToAction(nameof(Semester));
+                }
+
+                var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
+                var allSemesters = await _semesterService.GetAllSemestersAsync();
+                if (allSemesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now))
+                {
+                    SetInfo("Đã có semester kế tiếp. Khi semester đó bắt đầu, bạn mới tạo tiếp được.");
+                    return RedirectToAction(nameof(Semester));
+                }
+
+                await _semesterService.CreateSemesterAsync(dto);
+                SetSuccess("Tạo học kỳ thủ công thành công.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(Semester));
         }
 
         [HttpGet]
