@@ -43,9 +43,14 @@ namespace BusinessLogic.Service.Student
         Task<List<StudentEventBrowseDto>> GetMyParticipationsAsync(string studentId);
 
         /// <summary>
-        /// Submit feedback after an event has ended.
+        /// Submit feedback during or after an event starts.
         /// </summary>
         Task SubmitFeedbackAsync(string studentId, string eventId, SubmitFeedbackRequestDto dto);
+
+        /// <summary>
+        /// Returns all feedback entries for an event to display to students.
+        /// </summary>
+        Task<List<StudentEventFeedbackItemDto>> GetEventFeedbacksAsync(string eventId);
 
         // ──────────────────────────────────────────────
         // Waitlist stub — to be implemented in a future phase
