@@ -795,8 +795,20 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("Semester");
 
+			entity.HasIndex(e => e.Code, "UQ_Semester_Code").IsUnique();
+			entity.HasIndex(e => new { e.Name, e.Year }, "IX_Semester_Name_Year").IsUnique();
+
 			entity.Property(e => e.Code).HasMaxLength(50);
-			entity.Property(e => e.Name).HasMaxLength(255);
+			entity.Property(e => e.Name)
+               .HasConversion(
+					v => v.ToString(),
+					v => v.StartsWith("Spring", StringComparison.OrdinalIgnoreCase)
+						? SemesterNameEnum.Spring
+						: v.StartsWith("Summer", StringComparison.OrdinalIgnoreCase)
+							? SemesterNameEnum.Summer
+							: SemesterNameEnum.Fall)
+	              .HasMaxLength(50);
+            entity.Property(e => e.Year).HasDefaultValue(0);
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)
 				.HasConversion<string>()

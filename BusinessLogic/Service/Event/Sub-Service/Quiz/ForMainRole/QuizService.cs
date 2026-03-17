@@ -106,7 +106,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				QuizSetId = quiz.QuizSetId ?? quizSet?.Id ?? string.Empty,
 				EventId = quiz.EventId,
 				EventTitle = quiz.Event?.Title ?? string.Empty,
-				SemesterName = quiz.Event?.Semester?.Name ?? quiz.Event?.Semester?.Code ?? string.Empty,
+                SemesterName = quiz.Event?.Semester?.Name.ToString() ?? quiz.Event?.Semester?.Code ?? string.Empty,
 				SharingStatus = quizSet?.SharingStatus ?? QuizSetVisibilityEnum.Private,
 				TopicId = quizSet?.TopicId,
 				OrganizerId = quizSet?.OrganizerId,
@@ -189,6 +189,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			{
 				throw new ArgumentException("UserId không hợp lệ.");
 			}
+
 
 			var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
 			if (staff == null)
