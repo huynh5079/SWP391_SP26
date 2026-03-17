@@ -58,7 +58,17 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
     
         public async Task<BudgetProposalDetailDto> CreateAsync(string organizerId, CreateBudgetProposalDto dto)
         {
-            await RequireEventAsync(dto.EventId);
+            var ev = await RequireEventAsync(dto.EventId);
+
+            // ✅ Chỉ tạo khi Event chưa Published
+            if (ev.Status == EventStatusEnum.Published ||
+                ev.Status == EventStatusEnum.Upcoming ||
+                ev.Status == EventStatusEnum.Happening ||
+                ev.Status == EventStatusEnum.Completed ||
+                ev.Status == EventStatusEnum.Cancelled)
+                throw new InvalidOperationException(
+                    $"Không thể tạo Budget Proposal khi sự kiện đang ở trạng thái '{ev.Status}'. " +
+                    "Chỉ được tạo khi sự kiện ở trạng thái Draft, Pending hoặc Approved.");
 
             var existing = await _uow.BudgetProposals.GetAsync(
                 p => p.EventId == dto.EventId &&
@@ -74,7 +84,7 @@ namespace BusinessLogic.Service.Organizer.BudgetProposal
                 Title = dto.Title,
                 Description = dto.Description,
                 PlannedAmount = 0,
-                Status = ProposalStatusEnum.Draft,  // ✅ Draft thay vì Pending
+                Status = ProposalStatusEnum.Draft,
                 CreatedBy = organizerId
             };
 

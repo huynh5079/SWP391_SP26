@@ -49,9 +49,13 @@ namespace BusinessLogic.DTOs.Student
         public bool HasSubmittedFeedback { get; set; }
         public int? CurrentFeedbackRating { get; set; }
         public string? CurrentFeedbackComment { get; set; }
-        // Agendas (new)
+        // Agendas
         public List<EventAgendaItemDto>? Agendas { get; set; }
         public List<EventDocumentDto>? Documents { get; set; }
+
+        // Participation info (speaker / team member)
+        public string? ParticipationRole { get; set; } // "Ban tổ chức" / "Diễn giả" / "Khách tham dự" / null
+        public List<EventTeamReadOnlyDto>? Teams { get; set; }
     }
     public class EventAgendaItemDto
     {
@@ -67,6 +71,20 @@ namespace BusinessLogic.DTOs.Student
         public string? Name { get; set; }
         public string? Url { get; set; }
         public string? Type { get; set; }
+    }
+
+    public class EventTeamReadOnlyDto
+    {
+        public string TeamName { get; set; } = "";
+        public string? Description { get; set; }
+        public List<TeamMemberReadOnlyDto> Members { get; set; } = new();
+    }
+
+    public class TeamMemberReadOnlyDto
+    {
+        public string MemberName { get; set; } = "";
+        public string RoleName { get; set; } = "";
+        public string? UserId { get; set; }  // for Chat button
     }
 
 }
