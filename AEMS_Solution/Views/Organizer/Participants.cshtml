@@ -1,0 +1,152 @@
+@using DataAccess.Enum
+@model AEMS_Solution.Models.Organizer.Manage.EventParticipantsViewModel
+@{
+    ViewData["Title"] = "Người tham gia - " + Model.EventTitle;
+    Layout = "_OrganizerLayout";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Manage" asp-route-operation="detail" asp-route-id="@Model.EventId" class="btn btn-outline-secondary me-3">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a asp-action="Index">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Manage" asp-route-operation="myevents">Sự kiện của tôi</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Manage" asp-route-operation="detail" asp-route-id="@Model.EventId">Chi tiết</a></li>
+                    <li class="breadcrumb-item active">Người tham gia</li>
+                </ol>
+            </nav>
+            <h2 class="h4 mb-0">Quản lý người tham gia</h2>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="mb-0">Danh sách đăng ký (@Model.Participants.Count)</h5>
+                    <p class="text-muted small mb-0">Sự kiện: <strong>@Model.EventTitle</strong></p>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i>In danh sách
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Họ tên / MSSV</th>
+                            <th>Mã vé</th>
+                            <th>Email</th>
+                            <th>Trạng thái</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Participants == null || !Model.Participants.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="bi bi-people d-block display-4 mb-3"></i>
+                                        <p>Chưa có ai đăng ký tham gia sự kiện này.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var p in Model.Participants)
+                            {
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-sm bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                @(p.FullName.Length > 0 ? p.FullName[0].ToString().ToUpper() : "?")
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark">@p.FullName</div>
+                                                <div class="text-muted small">@p.StudentCode</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <code class="text-primary small">@p.TicketCode</code>
+                                    </td>
+                                    <td><span class="text-muted small">@p.Email</span></td>
+                                    <td>
+                                        @{
+                                            var badgeClass = p.Status switch
+                                            {
+                                                TicketStatusEnum.Registered => "bg-info-subtle text-info border-info",
+                                                TicketStatusEnum.CheckedIn => "bg-warning-subtle text-warning border-warning",
+                                                TicketStatusEnum.Used => "bg-success-subtle text-success border-success",
+                                                TicketStatusEnum.Cancelled => "bg-danger-subtle text-danger border-danger",
+                                                _ => "bg-secondary-subtle"
+                                            };
+                                            var statusText = p.Status switch
+                                            {
+                                                TicketStatusEnum.Registered => "Đã đăng ký",
+                                                TicketStatusEnum.CheckedIn => "Đã Check-in",
+                                                TicketStatusEnum.Used => "Đã Checkout",
+                                                TicketStatusEnum.Cancelled => "Đã hủy",
+                                                _ => p.Status.ToString()
+                                            };
+                                        }
+                                        <span class="badge border @badgeClass">@statusText</span>
+                                    </td>
+                                    <td>
+                                        @if (p.CheckInTime.HasValue)
+                                        {
+                                            <div class="text-dark small">@p.CheckInTime.Value.ToString("HH:mm")</div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">@p.CheckInTime.Value.ToString("dd/MM/yyyy")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">--:--</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (p.CheckOutTime.HasValue)
+                                        {
+                                            <div class="text-dark small">@p.CheckOutTime.Value.ToString("HH:mm")</div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">@p.CheckOutTime.Value.ToString("dd/MM/yyyy")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">--:--</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar { flex-shrink: 0; }
+    .bg-info-subtle { background-color: #e0f7fa !important; }
+    .text-info { color: #00acc1 !important; }
+    .border-info { border-color: #b2ebf2 !important; }
+    .bg-warning-subtle { background-color: #fff8e1 !important; }
+    .text-warning { color: #fbc02d !important; }
+    .border-warning { border-color: #fff1c1 !important; }
+    .bg-success-subtle { background-color: #e8f5e9 !important; }
+    .text-success { color: #2e7d32 !important; }
+    .border-success { border-color: #c8e6c9 !important; }
+    .bg-danger-subtle { background-color: #ffebee !important; }
+    .text-danger { color: #d32f2f !important; }
+    .border-danger { border-color: #ffcdd2 !important; }
+</style>

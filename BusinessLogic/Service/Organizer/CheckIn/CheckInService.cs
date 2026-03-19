@@ -1,4 +1,5 @@
 using BusinessLogic.DTOs.Ticket;
+using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -12,7 +13,8 @@ namespace BusinessLogic.Service.Organizer.CheckIn
     {
         private readonly IUnitOfWork _uow;
         private readonly IOrganizerValidator _validator;
-		public CheckInService(IUnitOfWork uow,IOrganizerValidator validator)
+
+        public CheckInService(IUnitOfWork uow, IOrganizerValidator validator)
         {
             _uow = uow;
             _validator = validator;
@@ -20,21 +22,17 @@ namespace BusinessLogic.Service.Organizer.CheckIn
 
         public async Task<CheckInResponseDto> ProcessCheckInAsync(CheckInRequestDto request, string organizerUserId)
         {
-            // 1. Validate payload
             if (string.IsNullOrWhiteSpace(request.QrPayload) || string.IsNullOrWhiteSpace(request.EventId))
             {
                 _validator.ValidateCheckInRequest(request);
-			}
+            }
 
-            // 2. Resolve Organizer Profile from UserId
             var orgProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == organizerUserId);
             if (orgProfile == null)
             {
                 _validator.ValidateOrganizerCanCheckIn(orgProfile);
-			}
+            }
 
-            // 3. Find the ticket
-            // We use Include to fetch student and event data to show dynamic success messages
             var ticket = await _uow.Tickets.GetAsync(
                 t => t.Id == request.QrPayload && t.EventId == request.EventId,
                 q => q.Include(t => t.Event)
@@ -54,72 +52,61 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                 return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ." };
             }
 
-            // 4. Validate Event Ownership
-             _validator.ValidateEventOwnership(ticket, orgProfile);
-            // 5. Validate Event Event-time (Optional business rule: only check-in on the day of the event)
+            _validator.ValidateEventOwnership(ticket, orgProfile);
             var now = DateTimeHelper.GetVietnamTime();
-			// Tạm thời comment điều kiện kiểm tra thời gian để bạn có thể test dễ dàng sự kiện bất kỳ lúc nào
-			/*
-            if (now < ticket.Event.StartTime.AddDays(-1) || now > ticket.Event.EndTime.AddHours(2))
+
+            _validator.ValidateNotAlreadyCheckedIn(ticket);
+            _validator.ValidateCheckInWindow(ticket, now);
+
+            using var transaction = await _uow.BeginTransactionAsync();
+
+            try
             {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Khoảng thời gian này không được phép Check-in." };
+                ticket.Status = TicketStatusEnum.CheckedIn;
+                ticket.UpdatedAt = now;
+
+                await _uow.Tickets.UpdateAsync(ticket);
+
+                var historyRecord = new CheckInHistory
+                {
+                    TicketId = ticket.Id,
+                    ScannerId = orgProfile.Id,
+                    ScanType = ScanTypeEnum.CheckIn,
+                    DeviceName = "Mobile Web Scanner",
+                    Location = ticket.Event.Location?.Name
+                };
+
+                await _uow.CheckInHistories.CreateAsync(historyRecord);
+
+                await _uow.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
-            */
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
 
-			// 6. Check if already checked in
-			_validator.ValidateNotAlreadyCheckedIn(ticket);
-			_validator.ValidateCheckInWindow(ticket, now);
+                try
+                {
+                    var errorLog = new SystemErrorLog
+                    {
+                        UserId = organizerUserId,
+                        ExceptionType = ex.GetType().Name,
+                        ExceptionMessage = ex.Message,
+                        StackTrace = ex.StackTrace,
+                        Source = "CheckInService.ProcessCheckInAsync"
+                    };
+                    await _uow.SystemErrorLogs.CreateAsync(errorLog);
+                    await _uow.SaveChangesAsync();
+                }
+                catch { }
 
-			// 7. Update status & save History
-			using var transaction = await _uow.BeginTransactionAsync();
-
-			try
-			{
-				ticket.Status = TicketStatusEnum.CheckedIn;
-				ticket.UpdatedAt = now;
-
-				await _uow.Tickets.UpdateAsync(ticket);
-
-				var historyRecord = new CheckInHistory
-				{
-					TicketId = ticket.Id,
-					ScannerId = orgProfile.Id,
-					ScanType = ScanTypeEnum.CheckIn,
-					DeviceName = "Mobile Web Scanner",
-					Location = ticket.Event.Location?.Name
-				};
-
-				await _uow.CheckInHistories.CreateAsync(historyRecord);
-
-				await _uow.SaveChangesAsync();
-				await transaction.CommitAsync();
-			}
-			catch (Exception ex)
-			{
-				await transaction.RollbackAsync();
-
-				try
-				{
-					var errorLog = new SystemErrorLog
-					{
-						UserId = organizerUserId,
-						ExceptionType = ex.GetType().Name,
-						ExceptionMessage = ex.Message,
-						StackTrace = ex.StackTrace,
-						Source = "CheckInService.ProcessCheckInAsync"
-					};
-					await _uow.SystemErrorLogs.CreateAsync(errorLog);
-					await _uow.SaveChangesAsync();
-				}
-				catch { /* Ignore inner exceptions */ }
-
-				return new CheckInResponseDto
-				{
-					IsSuccess = false,
-					Message = "Lỗi khi lưu dữ liệu Check-in."
-				};
-			}
-			return new CheckInResponseDto
+                return new CheckInResponseDto
+                {
+                    IsSuccess = false,
+                    Message = "Lỗi khi lưu dữ liệu Check-in."
+                };
+            }
+            return new CheckInResponseDto
             {
                 IsSuccess = true,
                 Message = "Check-in thành công!",
@@ -130,20 +117,17 @@ namespace BusinessLogic.Service.Organizer.CheckIn
 
         public async Task<CheckInResponseDto> ProcessCheckoutAsync(CheckInRequestDto request, string organizerUserId)
         {
-            // 1. Validate payload
             if (string.IsNullOrWhiteSpace(request.QrPayload) || string.IsNullOrWhiteSpace(request.EventId))
             {
                 _validator.ValidateCheckInRequest(request);
             }
 
-            // 2. Resolve Organizer Profile
             var orgProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == organizerUserId);
             if (orgProfile == null)
             {
                 _validator.ValidateOrganizerCanCheckIn(orgProfile);
             }
 
-            // 3. Find the ticket
             var ticket = await _uow.Tickets.GetAsync(
                 t => t.Id == request.QrPayload && t.EventId == request.EventId,
                 q => q.Include(t => t.Event).Include(t => t.Student).ThenInclude(s => s.User));
@@ -161,19 +145,15 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                 return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ." };
             }
 
-
-            // 4. Validate Event Ownership
             _validator.ValidateEventOwnership(ticket, orgProfile);
 
-            // 5. Must be in CheckedIn status to checkout
             if (ticket.Status != TicketStatusEnum.CheckedIn)
             {
                 return new CheckInResponseDto { IsSuccess = false, Message = "Sinh viên này chưa Check-in hoặc đã Checkout." };
             }
 
-            // 6. Find the CheckInHistory record
             var checkInRecord = await _uow.CheckInHistories
-                .GetAsync(h => h.TicketId == ticket.Id && h.CheckoutTime == null, 
+                .GetAsync(h => h.TicketId == ticket.Id && h.CheckoutTime == null,
                           q => q.OrderByDescending(h => h.CreatedAt));
 
             if (checkInRecord == null)
@@ -181,17 +161,14 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                 return new CheckInResponseDto { IsSuccess = false, Message = "Không tìm thấy thông tin Check-in hợp lệ để Checkout." };
             }
 
-            // 7. Update status & save History
             using var transaction = await _uow.BeginTransactionAsync();
             var now = DateTimeHelper.GetVietnamTime();
             try
             {
-                // Update Ticket status
-                ticket.Status = TicketStatusEnum.Used; // Or a new status e.g., "Completed"
+                ticket.Status = TicketStatusEnum.Used;
                 ticket.UpdatedAt = now;
                 await _uow.Tickets.UpdateAsync(ticket);
 
-                // Update CheckInHistory with checkout time
                 checkInRecord.CheckoutTime = now;
                 checkInRecord.UpdatedAt = now;
                 await _uow.CheckInHistories.UpdateAsync(checkInRecord);
@@ -216,7 +193,7 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                     await _uow.SystemErrorLogs.CreateAsync(errorLog);
                     await _uow.SaveChangesAsync();
                 }
-                catch { /* Ignore inner exceptions */ }
+                catch { }
 
                 return new CheckInResponseDto
                 {
@@ -232,6 +209,54 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                 StudentName = ticket.Student.User?.FullName ?? ticket.Student.User?.Email,
                 StudentEmail = ticket.Student.User?.Email
             };
+        }
+
+        public async Task<List<EventParticipantDto>> GetParticipantsAsync(string eventId)
+        {
+            var tickets = await _uow.Tickets.GetAllAsync(
+                t => t.EventId == eventId,
+                q => q.Include(t => t.Student).ThenInclude(s => s.User)
+                      .Include(t => t.CheckInHistories)
+            );
+
+            return tickets.Select(t =>
+            {
+                var checkIn = t.CheckInHistories
+                    .Where(h => h.ScanType == ScanTypeEnum.CheckIn)
+                    .OrderByDescending(h => h.CreatedAt)
+                    .FirstOrDefault();
+
+                var checkOut = t.CheckInHistories
+                    .Where(h => h.ScanType == ScanTypeEnum.CheckOut || h.CheckoutTime != null)
+                    .OrderByDescending(h => h.UpdatedAt)
+                    .FirstOrDefault();
+
+                DateTime? finalCheckOutTime = null;
+                if (checkOut != null)
+                {
+                    if (checkOut.CheckoutTime != null)
+                    {
+                        finalCheckOutTime = checkOut.CheckoutTime;
+                    }
+                    else
+                    {
+                        finalCheckOutTime = checkOut.UpdatedAt;
+                    }
+                }
+
+                return new EventParticipantDto
+                {
+                    TicketId = t.Id,
+                    TicketCode = t.TicketCode,
+                    StudentId = t.StudentId,
+                    FullName = t.Student.User?.FullName ?? "",
+                    Email = t.Student.User?.Email ?? "",
+                    StudentCode = t.Student.StudentCode ?? "",
+                    Status = t.Status,
+                    CheckInTime = (checkIn != null) ? checkIn.CreatedAt : (DateTime?)null,
+                    CheckOutTime = finalCheckOutTime
+                };
+            }).ToList();
         }
     }
 }

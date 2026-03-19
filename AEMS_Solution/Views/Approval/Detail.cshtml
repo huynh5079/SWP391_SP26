@@ -821,7 +821,8 @@
             <div class="edp-thumb-card">
                 @if (!string.IsNullOrWhiteSpace(Model.ThumbnailUrl))
                 {
-                    <img src="@Model.ThumbnailUrl" class="edp-thumb-img" alt="Thumbnail" />
+                    var fallbackUrl = "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(Model.Title ?? "Event") + "&size=640&background=f1f5f9&color=64748b&bold=true";
+                    <img src="@Model.ThumbnailUrl" class="edp-thumb-img" alt="Thumbnail" onerror="this.onerror=null;this.src='@fallbackUrl';" />
                 }
                 else
                 {

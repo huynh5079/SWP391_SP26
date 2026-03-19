@@ -42,5 +42,6 @@ namespace BusinessLogic.Service.Organizer
         Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId);
 		Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId);
 		Task RemoveEventImageAsync(string eventId, string imageUrl, string userId);
+		Task<List<EventParticipantDto>> GetParticipantsAsync(string eventId);
 	}
 }
