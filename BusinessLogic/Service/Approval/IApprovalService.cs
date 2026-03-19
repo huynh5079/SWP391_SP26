@@ -13,7 +13,7 @@ namespace BusinessLogic.Service.Approval
 	
 	public interface IApproverQueryService
 	{
-		Task<List<EventItemDto>> GetPendingEventsAsync(string? search, string? status, int page=1, int pageSize=10);
+		Task<List<EventItemDto>> GetPendingEventsAsync(string? approverUserId, string? search, string? status, int page=1, int pageSize=10);
 		Task<ApproverEventDetailDto?> GetEventDetailAsync(string eventId);
         // 4) Chỉ lấy logs (nếu UI có popup log)
 		Task<List<ApprovalLogDto>> GetApprovalLogsAsync(string eventId);

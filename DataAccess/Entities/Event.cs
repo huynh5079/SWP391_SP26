@@ -55,7 +55,9 @@ public partial class Event : BaseEntity
 
     public DateTime? PublishedAt { get; set; }
 
-    public virtual ICollection<ApprovalLog> ApprovalLogs { get; set; } = new List<ApprovalLog>();
+	public double? Rating { get; set; } //total rating
+
+	public virtual ICollection<ApprovalLog> ApprovalLogs { get; set; } = new List<ApprovalLog>();
 
     public virtual ICollection<BudgetProposal> BudgetProposals { get; set; } = new List<BudgetProposal>();
 

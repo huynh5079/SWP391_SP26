@@ -79,6 +79,7 @@ namespace AEMS_Solution.Models.Organizer
 		public string EventId { get; set; } = "";
 		public string Title { get; set; } = "";
 		public string? ThumbnailUrl { get; set; }
+		public string? OrganizerName { get; set; }
 
 		public string? SemesterId { get; set; }
 		public string? SemesterName { get; set; }
@@ -102,6 +103,12 @@ namespace AEMS_Solution.Models.Organizer
 
 		public string? Mode { get; set; }        // Offline/Online/Hybrid
 		public string? MeetingUrl { get; set; }
+		public bool CanEdit { get; set; }
+		public bool CanSendForApproval { get; set; }
+		public bool CanPublish { get; set; }
+		public bool CanCancel { get; set; }
+		public bool IsOwnedByCurrentUser { get; set; }
+		public bool IsPubliclyVisible { get; set; }
 	}
 
 	// Tóm tắt feedback gần đây

@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <Compile Remove="AutoMapper\Chat\**" />
+    <Compile Remove="AutoMapper\Event\Sub-Event\Approver\**" />
+    <Compile Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
+    <Compile Remove="AutoMapper\Event\Sub-Event\Student\**" />
     <Compile Remove="AutoMapper\User\**" />
     <Compile Remove="BaseAction%28ValidforController%29\Organizer\Event\Ticket\**" />
     <Compile Remove="Controllers\BaseAction%28ValidateInController%29\**" />
@@ -17,6 +20,9 @@
     <Compile Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <Compile Remove="Views\EventforOrganizer\**" />
     <Content Remove="AutoMapper\Chat\**" />
+    <Content Remove="AutoMapper\Event\Sub-Event\Approver\**" />
+    <Content Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
+    <Content Remove="AutoMapper\Event\Sub-Event\Student\**" />
     <Content Remove="AutoMapper\User\**" />
     <Content Remove="BaseAction%28ValidforController%29\Organizer\Event\Ticket\**" />
     <Content Remove="Controllers\BaseAction%28ValidateInController%29\**" />
@@ -25,6 +31,9 @@
     <Content Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <Content Remove="Views\EventforOrganizer\**" />
     <EmbeddedResource Remove="AutoMapper\Chat\**" />
+    <EmbeddedResource Remove="AutoMapper\Event\Sub-Event\Approver\**" />
+    <EmbeddedResource Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
+    <EmbeddedResource Remove="AutoMapper\Event\Sub-Event\Student\**" />
     <EmbeddedResource Remove="AutoMapper\User\**" />
     <EmbeddedResource Remove="BaseAction%28ValidforController%29\Organizer\Event\Ticket\**" />
     <EmbeddedResource Remove="Controllers\BaseAction%28ValidateInController%29\**" />
@@ -33,6 +42,9 @@
     <EmbeddedResource Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <EmbeddedResource Remove="Views\EventforOrganizer\**" />
     <None Remove="AutoMapper\Chat\**" />
+    <None Remove="AutoMapper\Event\Sub-Event\Approver\**" />
+    <None Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
+    <None Remove="AutoMapper\Event\Sub-Event\Student\**" />
     <None Remove="AutoMapper\User\**" />
     <None Remove="BaseAction%28ValidforController%29\Organizer\Event\Ticket\**" />
     <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
@@ -70,9 +82,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="AutoMapper\Event\Sub-Event\Approver\" />
-    <Folder Include="AutoMapper\Event\Sub-Event\Student\" />
-    <Folder Include="AutoMapper\Event\Sub-Event\Organizer\" />
     <Folder Include="BaseAction%28ValidforController%29\Chat\" />
     <Folder Include="Views\Event\Feedback\ManageFeedbackforMainRole\" />
   </ItemGroup>

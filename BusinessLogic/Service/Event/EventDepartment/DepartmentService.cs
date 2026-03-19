@@ -6,7 +6,7 @@ using BusinessLogic.DTOs.Department;
 using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 
-namespace BusinessLogic.Service.Admin
+namespace BusinessLogic.Service.Event.EventDepartment
 {
     public class DepartmentService : IDepartmentService
     {

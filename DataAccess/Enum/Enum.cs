@@ -247,5 +247,11 @@ namespace DataAccess.Enum
 		Neutral,
 		Negative
 	}
+	public enum SemesterNameEnum
+	{
+		Spring,
+		Summer,
+		Fall,
+	}
 
 }

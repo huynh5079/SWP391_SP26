@@ -92,6 +92,7 @@ public class EventItemDto
 {
 	public string? OrganizerId { get; set; }
 	public string? OrganizerName { get; set; }
+    public string? OrganizerEmail { get; set; }
 	public string Id { get; set; } = "";
     public string Title { get; set; } = "";
     public DateTime StartTime { get; set; }
@@ -110,6 +111,7 @@ public class EventListDto
 {
     public string OrganizerId { get; set; } = "";
     public string? OrganizerName { get; set; }
+    public string? OrganizerEmail { get; set; }
     public string? OrganizerCode { get; set; }
 
     public string EventId { get; set; } = "";
@@ -174,6 +176,8 @@ public class EventListDto
     public bool IsFull { get; set; }
     public bool IsRegistrationOpen { get; set; }
     public bool HasThumbnail { get; set; }
+    public bool IsOwnedByCurrentUser { get; set; }
+    public bool IsPubliclyVisible { get; set; }
 
     // (kept above)
     public string? LastRejectReason { get; set; }

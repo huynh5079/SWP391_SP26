@@ -9,7 +9,7 @@
 
     <form class="row g-2 mb-3" method="get" asp-controller="Approver" asp-action="PendingApprovals">
         <div class="col-auto">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search title..." />
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search event or organizer..." />
         </div>
 
         <div class="col-auto">
@@ -22,6 +22,7 @@
             <tr>
                 <th>Thumbnail</th>
                 <th>Title</th>
+                <th>Organizer</th>
                 <th>Location</th>
                 <th>Time</th>
                 <th>Status</th>
@@ -42,6 +43,10 @@
                         }
                     </td>
                     <td><strong>@e.Title</strong></td>
+                    <td>
+                        <div><strong>@(string.IsNullOrWhiteSpace(e.OrganizerName) ? "-" : e.OrganizerName)</strong></div>
+                        <div class="text-muted small">@(string.IsNullOrWhiteSpace(e.OrganizerEmail) ? string.Empty : e.OrganizerEmail)</div>
+                    </td>
                     <td>@e.Location</td>
                     <td>
                         @e.StartTime.ToString("dd/MM/yyyy HH:mm")<br />→<br />@e.EndTime.ToString("dd/MM/yyyy HH:mm")

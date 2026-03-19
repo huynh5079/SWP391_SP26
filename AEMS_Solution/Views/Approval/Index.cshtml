@@ -466,6 +466,7 @@
                         <tr>
                             <th style="width:70px;">Thumbnail</th>
                             <th>Event Name</th>
+                            <th style="width:220px;">Organizer</th>
                             <th style="width:150px;">Start Time</th>
                             <th style="width:100px;">Status</th>
                             <th style="width:320px; text-align:center;">Actions</th>
@@ -493,6 +494,13 @@
                                     @if (!string.IsNullOrWhiteSpace(evt.Location))
                                     {
                                         <p class="dash-event-loc"><i class="bi bi-geo-alt me-1"></i>@evt.Location</p>
+                                    }
+                                </td>
+                                <td>
+                                    <p class="dash-event-name">@(string.IsNullOrWhiteSpace(evt.OrganizerName) ? "-" : evt.OrganizerName)</p>
+                                    @if (!string.IsNullOrWhiteSpace(evt.OrganizerEmail))
+                                    {
+                                        <p class="dash-event-loc"><i class="bi bi-envelope me-1"></i>@evt.OrganizerEmail</p>
                                     }
                                 </td>
                                 <td style="color:#6b7280; font-size:0.82rem;">

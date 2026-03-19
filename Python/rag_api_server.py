@@ -8,6 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, AsyncGenerator
+import time
 from uuid import uuid4
 
 import faiss
@@ -81,10 +82,16 @@ class RagEngine:
         self._embedding_model = SentenceTransformer(self.embedding_model_name)
 
         api_key = os.getenv("GROQ_API_KEY", "").strip()
-        if not api_key:
-            raise ValueError("Missing GROQ_API_KEY. Please set it in environment or .env file.")
+        self._llm_api_key_set = bool(api_key)
+        self._llm = Groq(api_key=api_key) if api_key else None
+        self._llm_last_error: str | None = None
+        self._llm_last_error_type: str | None = None
+        self._llm_last_error_at: str | None = None
+        self._llm_blocked_until: float = 0.0
+        self._llm_cooldown_seconds = int(os.getenv("RAG_LLM_COOLDOWN_SECONDS", "180"))
 
-        self._llm = Groq(api_key=api_key)
+        if not self._llm_api_key_set:
+            print("[RAG] GROQ_API_KEY is missing. System will run in data fallback mode.")
 
         self._chunks: list[Chunk] = []
         self._index: faiss.IndexFlatIP | None = None
@@ -104,6 +111,105 @@ class RagEngine:
         except Exception as e:
             print(f"[RAG] Database service initialization failed: {e}")
             self.db_service = None
+
+    def _categorize_llm_error(self, error: Exception) -> tuple[str, str]:
+        raw = str(error)
+        lowered = raw.lower()
+
+        if "403" in lowered and "access denied" in lowered:
+            return (
+                "access_denied_network",
+                "Groq từ chối truy cập từ mạng hiện tại (403 Access denied).",
+            )
+        if "401" in lowered or "invalid api key" in lowered or "authentication" in lowered:
+            return (
+                "auth",
+                "GROQ_API_KEY không hợp lệ hoặc đã hết hiệu lực.",
+            )
+        if "model" in lowered and ("not found" in lowered or "does not exist" in lowered):
+            return (
+                "model",
+                f"Model '{self.llm_model_name}' không khả dụng cho API key hiện tại.",
+            )
+        if "timed out" in lowered or "timeout" in lowered or "name resolution" in lowered:
+            return (
+                "network",
+                "Không thể kết nối đến Groq do timeout hoặc DNS/network.",
+            )
+        if not self._llm_api_key_set:
+            return (
+                "missing_key",
+                "Thiếu GROQ_API_KEY nên không thể dùng LLM bên ngoài.",
+            )
+        return (
+            "unknown",
+            f"Lỗi khi gọi Groq: {raw}",
+        )
+
+    def _record_llm_error(self, error: Exception) -> None:
+        error_type, diagnosis = self._categorize_llm_error(error)
+        self._llm_last_error_type = error_type
+        self._llm_last_error = diagnosis
+        self._llm_last_error_at = datetime.now().isoformat()
+        self._llm_blocked_until = time.time() + self._llm_cooldown_seconds
+
+    def _clear_llm_error(self) -> None:
+        self._llm_last_error = None
+        self._llm_last_error_type = None
+        self._llm_last_error_at = None
+        self._llm_blocked_until = 0.0
+
+    def _can_call_llm(self) -> tuple[bool, str | None]:
+        if self._llm is None:
+            return False, "GROQ_API_KEY chưa được cấu hình."
+
+        now = time.time()
+        if now < self._llm_blocked_until:
+            wait_seconds = int(self._llm_blocked_until - now)
+            return (
+                False,
+                f"LLM đang tạm thời bị chặn sau lỗi gần nhất. Thử lại sau ~{wait_seconds}s.",
+            )
+
+        return True, None
+
+    def probe_llm_health(self) -> dict[str, Any]:
+        can_call, reason = self._can_call_llm()
+        if not can_call:
+            return {
+                "enabled": self._llm is not None,
+                "ok": False,
+                "model": self.llm_model_name,
+                "cooldown_seconds": self._llm_cooldown_seconds,
+                "last_error_type": self._llm_last_error_type,
+                "last_error": self._llm_last_error or reason,
+                "last_error_at": self._llm_last_error_at,
+            }
+
+        try:
+            # Lightweight probe to verify key/network accessibility.
+            self._llm.models.list()
+            self._clear_llm_error()
+            return {
+                "enabled": True,
+                "ok": True,
+                "model": self.llm_model_name,
+                "cooldown_seconds": self._llm_cooldown_seconds,
+                "last_error_type": None,
+                "last_error": None,
+                "last_error_at": None,
+            }
+        except Exception as ex:
+            self._record_llm_error(ex)
+            return {
+                "enabled": True,
+                "ok": False,
+                "model": self.llm_model_name,
+                "cooldown_seconds": self._llm_cooldown_seconds,
+                "last_error_type": self._llm_last_error_type,
+                "last_error": self._llm_last_error,
+                "last_error_at": self._llm_last_error_at,
+            }
 
     @property
     def db_connection_string(self) -> str:
@@ -213,7 +319,13 @@ class RagEngine:
         except Exception as ex:
             print(f"[RAG] Primary query failed ({query_name}): {ex}")
             print(f"[RAG] Falling back to simplified query for: {query_name}")
-            return self._fetch_rows(fallback_query)
+            try:
+                return self._fetch_rows(fallback_query)
+            except Exception as fallback_ex:
+                # Keep auto-reload alive even when one dataset query is incompatible with current schema.
+                print(f"[RAG] Fallback query also failed ({query_name}): {fallback_ex}")
+                print(f"[RAG] Skipping dataset '{query_name}' for this reload cycle.")
+                return []
     def _build_chunks_from_db(self) -> list[Chunk]:
         top_n = self.data_limit
 
@@ -243,7 +355,7 @@ class RagEngine:
                 (SELECT COUNT(*) FROM [EventTeam] WHERE EventId = e.Id) AS TeamMemberCount,
                 (SELECT COUNT(*) FROM [EventAgenda] WHERE EventId = e.Id) AS AgendaCount,
                 (SELECT COUNT(*) FROM [Ticket] WHERE EventId = e.Id) AS RegisteredCount,
-                (SELECT AVG(CAST(Rating AS FLOAT)) FROM [Feedback] WHERE EventId = e.Id) AS AvgRating,
+                (SELECT AVG(CAST(fb.RatingEvent AS FLOAT)) FROM [Feedback] fb WHERE fb.EventId = e.Id) AS AvgRating,
                 (SELECT COUNT(*) FROM [Feedback] WHERE EventId = e.Id) AS FeedbackCount,
                 e.CreatedAt,
                 e.UpdatedAt
@@ -254,7 +366,7 @@ class RagEngine:
             LEFT JOIN [StaffProfile] sp ON sp.Id = e.OrganizerId
             LEFT JOIN [User] organizerUser ON organizerUser.Id = sp.UserId
             LEFT JOIN [Topics] t ON t.Id = e.TopicId
-            WHERE e.Status != 'Deleted' AND e.PublishedAt IS NOT NULL
+            WHERE e.Status != 'Deleted' AND (e.PublishedAt IS NOT NULL OR e.Status = 'Pending'OR e.Status = 'Draft')
             ORDER BY e.UpdatedAt DESC
             """,
             fallback_query=f"""
@@ -366,7 +478,7 @@ class RagEngine:
                 f.StudentId,
                 u.FullName AS StudentName,
                 sp.StudentCode,
-                f.Rating,
+                f.RatingEvent AS Rating,
                 f.Comment,
                 f.CreatedAt,
                 f.UpdatedAt
@@ -384,7 +496,7 @@ class RagEngine:
                 f.StudentId,
                 CAST(NULL AS NVARCHAR(255)) AS StudentName,
                 CAST(NULL AS NVARCHAR(50)) AS StudentCode,
-                f.Rating,
+                f.RatingEvent AS Rating,
                 f.Comment,
                 f.CreatedAt,
                 f.UpdatedAt
@@ -433,9 +545,9 @@ class RagEngine:
                 e.Id AS EventId,
                 e.Title AS EventTitle,
                 COUNT(f.Id) AS FeedbackCount,
-                AVG(CAST(f.Rating AS FLOAT)) AS AvgRating,
-                SUM(CASE WHEN f.Rating >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
-                SUM(CASE WHEN f.Rating <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
+                AVG(CAST(f.RatingEvent AS FLOAT)) AS AvgRating,
+                SUM(CASE WHEN f.RatingEvent >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
+                SUM(CASE WHEN f.RatingEvent <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
                 MAX(f.CreatedAt) AS LastFeedbackAt
             FROM [Event] e
             LEFT JOIN [Feedback] f ON f.EventId = e.Id
@@ -447,9 +559,9 @@ class RagEngine:
                 CAST(NULL AS NVARCHAR(450)) AS EventId,
                 CAST(NULL AS NVARCHAR(500)) AS EventTitle,
                 COUNT(f.Id) AS FeedbackCount,
-                AVG(CAST(f.Rating AS FLOAT)) AS AvgRating,
-                SUM(CASE WHEN f.Rating >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
-                SUM(CASE WHEN f.Rating <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
+                AVG(CAST(f.RatingEvent AS FLOAT)) AS AvgRating,
+                SUM(CASE WHEN f.RatingEvent >= 4 THEN 1 ELSE 0 END) AS HighRatingCount,
+                SUM(CASE WHEN f.RatingEvent <= 2 THEN 1 ELSE 0 END) AS LowRatingCount,
                 MAX(f.CreatedAt) AS LastFeedbackAt
             FROM [Feedback] f
             GROUP BY f.EventId
@@ -511,6 +623,7 @@ class RagEngine:
                     text=text,
                     meta={
                         "doc_type": "event",
+                        "access": self._resolve_event_access(row.get("Status"), row.get("PublishedAt")),
                         "event_id": row.get("EventId"),
                         "title": row.get("Title"),
                         "status": str(row.get("Status")),
@@ -832,12 +945,76 @@ class RagEngine:
         except:
             return ""
 
+    @staticmethod
+    def _resolve_event_access(status: Any, published_at: Any) -> str:
+        normalized_status = str(status or "").strip().lower()
+        if normalized_status in {"draft", "pending", "rejected", "requestchange"}:
+            return "staff"
+        if published_at in {None, "", "None"}:
+            return "staff"
+        return "public"
+
     def _allowed_doc_types(self, normalized_role: str) -> set[str]:
         if normalized_role == "admin":
             return {"event", "feedback", "feedback_analytics", "system_log", "log_analytics", "event_agenda", "event_team"}
         if normalized_role == "staff":
             return {"event", "feedback", "feedback_analytics", "event_agenda", "event_team"}
         return {"event", "feedback_analytics", "event_agenda"}
+
+    @staticmethod
+    def _can_access_chunk(meta: dict[str, Any], normalized_role: str) -> bool:
+        if normalized_role == "admin":
+            return True
+
+        access = str(meta.get("access", "public")).strip().lower()
+        if access == "staff":
+            return normalized_role == "staff"
+        return True
+
+    @staticmethod
+    def _is_greeting(question: str) -> bool:
+        lowered = (question or "").strip().lower()
+        if not lowered:
+            return False
+
+        greeting_patterns = [
+            r"\bhi\b",
+            r"\bhello\b",
+            r"\bhey\b",
+            r"\bxin\s*chào\b",
+            r"\bchào\b",
+            r"\balo\b",
+        ]
+        return any(re.search(pattern, lowered) for pattern in greeting_patterns)
+
+    def _infer_question_doc_types(self, question: str) -> Optional[set[str]]:
+        lowered = (question or "").strip().lower()
+        if not lowered:
+            return None
+
+        if self._is_greeting(lowered):
+            return set()
+
+        event_keywords = [
+            "sự kiện", "su kien", "event", "đăng ký", "dang ky", "vé", "ve", "ticket",
+            "địa điểm", "dia diem", "room", "phòng", "phong", "lịch", "lich", "agenda", "chương trình", "chuong trinh",
+        ]
+        feedback_keywords = [
+            "feedback", "phản hồi", "phan hoi", "đánh giá", "danh gia", "rating", "nhận xét", "nhan xet",
+        ]
+        system_keywords = [
+            "log", "lỗi", "loi", "error", "exception", "hệ thống", "he thong", "500", "403", "401",
+        ]
+
+        question_doc_types: set[str] = set()
+        if any(keyword in lowered for keyword in event_keywords):
+            question_doc_types.update({"event", "event_agenda", "event_team"})
+        if any(keyword in lowered for keyword in feedback_keywords):
+            question_doc_types.update({"feedback", "feedback_analytics"})
+        if any(keyword in lowered for keyword in system_keywords):
+            question_doc_types.update({"system_log", "log_analytics"})
+
+        return question_doc_types or None
 
     def _get_session_context(self, session_id: Optional[str]) -> str:
         """Get conversation history context for the session"""
@@ -919,12 +1096,35 @@ class RagEngine:
             print(f"[RAG] Failed to load user personalized history: {exc}")
             return ""
 
+    @staticmethod
+    def _split_profile_and_dynamic_context(user_profile_context: Optional[str]) -> tuple[str, str]:
+        if not user_profile_context:
+            return "", ""
+
+        marker = "Ngữ cảnh truy xuất động"
+        idx = user_profile_context.find(marker)
+        if idx < 0:
+            return user_profile_context.strip(), ""
+
+        static_part = user_profile_context[:idx].strip()
+        dynamic_part = user_profile_context[idx:].strip()
+        return static_part, dynamic_part
+
     def retrieve(self, question: str, top_k: int, role: str) -> list[dict[str, Any]]:
         if self._index is None or not self._chunks:
             self.warmup()
 
         normalized_role = self._normalize_role(role)
         allowed_doc_types = self._allowed_doc_types(normalized_role)
+        question_doc_types = self._infer_question_doc_types(question)
+
+        effective_doc_types = allowed_doc_types
+        if question_doc_types is not None:
+            if not question_doc_types:
+                return []
+            effective_doc_types = allowed_doc_types.intersection(question_doc_types)
+            if not effective_doc_types:
+                return []
 
         query_vec = self._encode_texts([question])
         search_k = min(max(top_k * 5, top_k), len(self._chunks))
@@ -935,7 +1135,9 @@ class RagEngine:
             if idx < 0 or idx >= len(self._chunks):
                 continue
             chunk = self._chunks[idx]
-            if chunk.meta.get("doc_type") not in allowed_doc_types:
+            if chunk.meta.get("doc_type") not in effective_doc_types:
+                continue
+            if not self._can_access_chunk(chunk.meta, normalized_role):
                 continue
             results.append(
                 {
@@ -970,9 +1172,34 @@ class RagEngine:
         else:
             role_scope = "Dữ liệu đang xét ở mức an toàn cho người dùng, chủ yếu là sự kiện và feedback tổng hợp."
 
+        error_type, diagnosis = self._categorize_llm_error(error)
+        if error_type == "access_denied_network":
+            action_hint = (
+                "- Kiểm tra mạng outbound tới https://api.groq.com (VPN/Proxy/Firewall có thể đang chặn).\n"
+                "- Nếu đang đặt HTTP_PROXY/HTTPS_PROXY, thử tắt proxy và gọi lại.\n"
+                "- Xác nhận API key còn hoạt động bằng cách gọi endpoint /llm/health."
+            )
+        elif error_type == "auth":
+            action_hint = (
+                "- Kiểm tra lại GROQ_API_KEY trong file .env.\n"
+                "- Tạo key mới trên Groq Console nếu key cũ bị thu hồi.\n"
+                "- Gọi endpoint /llm/health để xác nhận trạng thái xác thực."
+            )
+        elif error_type == "model":
+            action_hint = (
+                f"- Đổi RAG_LLM_MODEL sang model khả dụng cho key hiện tại.\n"
+                "- Gọi endpoint /llm/health để xác nhận model/network."
+            )
+        else:
+            action_hint = (
+                "- Kiểm tra GROQ_API_KEY và mạng Internet.\n"
+                "- Gọi endpoint /llm/health để lấy chẩn đoán nhanh trước khi thử lại."
+            )
+
         return (
             "1) Chẩn đoán nhanh\n"
             f"- Chưa thể gọi LLM bên ngoài ({str(error)}), nên hệ thống chuyển sang tư vấn fallback từ dữ liệu truy xuất.\n"
+            f"- Kết luận kỹ thuật: {diagnosis}\n"
             f"- {role_scope}\n\n"
             "2) Bằng chứng từ dữ liệu\n"
             f"- Số nguồn truy xuất: {len(retrieved)}\n"
@@ -981,7 +1208,8 @@ class RagEngine:
             + "\n\n"
             "3) Khuyến nghị ưu tiên\n"
             "- Ưu tiên kiểm tra các sự kiện/feedback xuất hiện ở top nguồn vì độ liên quan cao.\n"
-            "- Nếu cần kết luận sâu hơn, hãy xác nhận lại GROQ_API_KEY và kết nối mạng để bật phân tích LLM đầy đủ.\n\n"
+            + action_hint
+            + "\n\n"
             "4) Cảnh báo rủi ro\n"
             "- Khi đang ở chế độ fallback, chất lượng tổng hợp ngữ nghĩa có thể thấp hơn chế độ LLM đầy đủ."
         )
@@ -992,10 +1220,19 @@ class RagEngine:
         Returns: (answer, sources, session_id)
         """
         normalized_role = self._normalize_role(role)
+
+        if self._is_greeting(question):
+            answer = (
+                "Xin chào! Mình là trợ lý AI của hệ thống AEMS. "
+                "Mình sẽ trả lời đúng trọng tâm nội dung bạn hỏi. Bạn cần mình hỗ trợ gì?"
+            )
+            return answer, [], session_id or str(uuid4())
+
+        static_profile_context, dynamic_retrieval_context = self._split_profile_and_dynamic_context(user_profile_context)
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
-        if not retrieved:
-            answer = "Hiện tại chưa có dữ liệu phù hợp để tư vấn. Vui lòng thử câu hỏi cụ thể hơn về các sự kiện trong hệ thống."
+        if not retrieved and not dynamic_retrieval_context:
+            answer = "Hiện tại chưa có dữ liệu phù hợp với chủ đề bạn hỏi. Vui lòng nêu cụ thể nội dung cần hỗ trợ."
             return answer, [], session_id or str(uuid4())
 
         # Create or reuse session
@@ -1016,15 +1253,22 @@ class RagEngine:
             self._sessions[session_id] = []
 
         # Build context with conversation history
-        context = "\n\n".join(
-            [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
-        )
+        context_parts: list[str] = []
+        if dynamic_retrieval_context:
+            # When dynamic DB context is available, do not mix semantic chunks to avoid date/status drift.
+            context_parts.append(
+                "[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n"
+                + dynamic_retrieval_context
+            )
+        elif retrieved:
+            context_parts.append(
+                "\n\n".join(
+                    [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
+                )
+            )
+        context = "\n\n".join(context_parts)
         
         conversation_history = self._get_session_context(session_id)
-        user_personal_history = self._get_user_personal_history_context(
-            user_id=user_id,
-            current_session_id=session_id,
-        )
         user_personal_history = self._get_user_personal_history_context(
             user_id=user_id,
             current_session_id=session_id,
@@ -1045,8 +1289,8 @@ class RagEngine:
             "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
             "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
             "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
-            "   → Trả lời bình thường dựa trên kiến thức chung\n"
-            "   → Có thể đề cập đến sự kiện AEMS nếu phù hợp\n\n"
+            "   → Chỉ trả lời đúng nội dung mà người dùng hỏi\n"
+            "   → KHÔNG tự chuyển chủ đề sang sự kiện hoặc chủ đề khác nếu người dùng không hỏi\n\n"
             
             "PHONG CÁCH TRẢ LỜI:\n"
             "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
@@ -1058,6 +1302,10 @@ class RagEngine:
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
+            "- Nếu xuất hiện khối 'Ngữ cảnh truy xuất động', PHẢI ưu tiên khối đó hơn mọi nguồn khác\n"
+            "- Khi dữ liệu truy xuất động mâu thuẫn với dữ liệu semantic, chọn dữ liệu truy xuất động\n"
+            "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
@@ -1082,21 +1330,44 @@ class RagEngine:
                 f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
             )
 
-        if user_profile_context:
+        if static_profile_context:
             user_prompt += (
-                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
-            )
-
-        if user_personal_history:
-            user_prompt += (
-                f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
+                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{static_profile_context}\n\n"
             )
         
         user_prompt += (
             f"Câu hỏi: {question}\n\n"
             f"Dữ liệu liên quan:\n{context}\n\n"
-            "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
+            "Hãy trả lời ngắn gọn, đúng trọng tâm câu hỏi, và không tự ý mở rộng sang chủ đề khác."
         )
+
+        can_call_llm, llm_block_reason = self._can_call_llm()
+        if not can_call_llm:
+            ex = RuntimeError(llm_block_reason or "LLM is currently unavailable")
+            self._record_llm_error(ex)
+            fallback_answer = self._build_fallback_answer(
+                question=question,
+                retrieved=retrieved,
+                normalized_role=normalized_role,
+                error=ex,
+            )
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=fallback_answer))
+
+            if save_to_db and user_id and self.db_service:
+                try:
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=fallback_answer,
+                        session_id=session_id,
+                        role=normalized_role,
+                    )
+                    session_id = saved_session_id
+                except Exception as e:
+                    print(f"[RAG] Failed to save unavailable-LLM fallback to DB: {e}")
+
+            return fallback_answer, retrieved, session_id
 
         try:
             completion = self._llm.chat.completions.create(
@@ -1111,6 +1382,7 @@ class RagEngine:
 
             answer = completion.choices[0].message.content or ""
             answer = answer.strip()
+            self._clear_llm_error()
             
             # Save to conversation history
             self._sessions[session_id].append(ConversationMessage(role="user", content=question))
@@ -1132,6 +1404,7 @@ class RagEngine:
             
             return answer, retrieved, session_id
         except Exception as ex:
+            self._record_llm_error(ex)
             fallback_answer = self._build_fallback_answer(
                 question=question,
                 retrieved=retrieved,
@@ -1163,12 +1436,22 @@ class RagEngine:
         Yields: JSON lines with streaming content
         """
         normalized_role = self._normalize_role(role)
-        retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
-        
-        if not retrieved:
+
+        if self._is_greeting(question):
             yield json.dumps({
                 "type": "answer",
-                "content": "Hiện tại chưa có dữ liệu phù hợp để tư vấn. Vui lòng thử câu hỏi cụ thể hơn về các sự kiện trong hệ thống.",
+                "content": "Xin chào! Mình là trợ lý AI của hệ thống AEMS. Mình sẽ trả lời đúng trọng tâm nội dung bạn hỏi. Bạn cần mình hỗ trợ gì?",
+                "session_id": session_id or str(uuid4())
+            }) + "\n"
+            return
+
+        static_profile_context, dynamic_retrieval_context = self._split_profile_and_dynamic_context(user_profile_context)
+        retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
+        
+        if not retrieved and not dynamic_retrieval_context:
+            yield json.dumps({
+                "type": "answer",
+                "content": "Hiện tại chưa có dữ liệu phù hợp với chủ đề bạn hỏi. Vui lòng nêu cụ thể nội dung cần hỗ trợ.",
                 "session_id": session_id or str(uuid4())
             }) + "\n"
             return
@@ -1191,9 +1474,20 @@ class RagEngine:
             self._sessions[session_id] = []
 
         # Build context
-        context = "\n\n".join(
-            [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
-        )
+        context_parts: list[str] = []
+        if dynamic_retrieval_context:
+            # When dynamic DB context is available, do not mix semantic chunks to avoid date/status drift.
+            context_parts.append(
+                "[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n"
+                + dynamic_retrieval_context
+            )
+        elif retrieved:
+            context_parts.append(
+                "\n\n".join(
+                    [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
+                )
+            )
+        context = "\n\n".join(context_parts)
         
         conversation_history = self._get_session_context(session_id)
         user_personal_history = self._get_user_personal_history_context(
@@ -1216,8 +1510,8 @@ class RagEngine:
             "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
             "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
             "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
-            "   → Trả lời bình thường dựa trên kiến thức chung\n"
-            "   → Có thể đề cập đến sự kiện AEMS nếu phù hợp\n\n"
+            "   → Chỉ trả lời đúng nội dung mà người dùng hỏi\n"
+            "   → KHÔNG tự chuyển chủ đề sang sự kiện hoặc chủ đề khác nếu người dùng không hỏi\n\n"
             
             "PHONG CÁCH TRẢ LỜI:\n"
             "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
@@ -1229,12 +1523,20 @@ class RagEngine:
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
+            "- Nếu xuất hiện khối 'Ngữ cảnh truy xuất động', PHẢI ưu tiên khối đó hơn mọi nguồn khác\n"
+            "- Khi dữ liệu truy xuất động mâu thuẫn với dữ liệu semantic, chọn dữ liệu truy xuất động\n"
+            "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
 
-        if normalized_role == "admin":
+        if normalized_role == "Admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
+            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        elif normalized_role == "Approver":
+            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        elif normalized_role == "Organizer":
             role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
         else:
             role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
@@ -1253,16 +1555,48 @@ class RagEngine:
                 f"Ngữ cảnh cá nhân từ các phiên trước của cùng người dùng:\n{user_personal_history}\n\n"
             )
 
-        if user_profile_context:
+        if static_profile_context:
             user_prompt += (
-                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{user_profile_context}\n\n"
+                f"Hồ sơ người dùng hiện tại (lấy từ hệ thống):\n{static_profile_context}\n\n"
             )
         
         user_prompt += (
             f"Câu hỏi: {question}\n\n"
             f"Dữ liệu liên quan:\n{context}\n\n"
-            "Hãy trả lời ngắn gọn (2-3 sự kiện nổi bật), dễ hiểu, và hữu ích."
+            "Hãy trả lời ngắn gọn, đúng trọng tâm câu hỏi, và không tự ý mở rộng sang chủ đề khác."
         )
+
+        can_call_llm, llm_block_reason = self._can_call_llm()
+        if not can_call_llm:
+            ex = RuntimeError(llm_block_reason or "LLM is currently unavailable")
+            self._record_llm_error(ex)
+            fallback_answer = self._build_fallback_answer(
+                question=question,
+                retrieved=retrieved,
+                normalized_role=normalized_role,
+                error=ex,
+            )
+            self._sessions[session_id].append(ConversationMessage(role="user", content=question))
+            self._sessions[session_id].append(ConversationMessage(role="assistant", content=fallback_answer))
+
+            if save_to_db and user_id and self.db_service:
+                try:
+                    saved_session_id, _, _ = self.db_service.save_conversation_batch(
+                        user_id=user_id,
+                        question=question,
+                        answer=fallback_answer,
+                        session_id=session_id,
+                        role=normalized_role,
+                    )
+                    session_id = saved_session_id
+                except Exception as e:
+                    print(f"[RAG] Failed to save stream unavailable-LLM fallback: {e}")
+
+            yield json.dumps({
+                "type": "error",
+                "content": fallback_answer,
+            }) + "\n"
+            return
 
         try:
             # Stream response from LLM
@@ -1278,6 +1612,7 @@ class RagEngine:
             )
 
             full_answer = ""
+            self._clear_llm_error()
             
             # First yield session info
             yield json.dumps({
@@ -1331,6 +1666,7 @@ class RagEngine:
             }) + "\n"
 
         except Exception as ex:
+            self._record_llm_error(ex)
             fallback_answer = self._build_fallback_answer(
                 question=question,
                 retrieved=retrieved,
@@ -1368,6 +1704,9 @@ class RagEngine:
             "log_index_size": log_chunks,
             "model": self.embedding_model_name,
             "llm": self.llm_model_name,
+            "llm_enabled": self._llm is not None,
+            "llm_last_error_type": self._llm_last_error_type,
+            "llm_last_error": self._llm_last_error,
             "api_version": "role-aware-rag-v2",
             "last_reload": self._last_reload,
         }
@@ -1412,6 +1751,11 @@ def health() -> dict[str, Any]:
 @app.get("/stats")
 def stats() -> dict[str, Any]:
     return engine.stats()
+
+
+@app.get("/llm/health")
+def llm_health() -> dict[str, Any]:
+    return engine.probe_llm_health()
 
 
 @app.post("/reload")

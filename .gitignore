@@ -183,15 +183,12 @@ PublishScripts/
 # Tệp Strong Name Key (rủi ro bảo mật)
 # *.snk
 
-# Python Virtual Environments (Custom)
-.venv-rag/
-.venv-gpu/
+
 
 # Python Dependencies (generated per environment)
 requirements.txt
 
-# Local Notebooks (Secrets)
-Python/RAG_SWP.ipynb
+
 # Python Dependencies
 Python/requirements.txt
 Python/.env.example
@@ -207,4 +204,9 @@ Python/find_func.py
 Python/kb/faiss.index
 CHATBOT_GUIDE.md
 test_api.bat
-*.idx
+results
+Python(Environment)/
+kb/chunks.json
+kb/faiss.index
+kb/meta.json
+Python/TestGPU-CPU/
