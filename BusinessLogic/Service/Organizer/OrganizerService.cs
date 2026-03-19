@@ -19,12 +19,15 @@ namespace BusinessLogic.Service.Organizer
         private readonly IDropdownService _dropdownService;
         private readonly IDashboardService _dashboardService;
 		private readonly IEventWaitlistService _eventwaitlist;
-		public OrganizerService(IEventService eventService, IDropdownService dropdownService, IDashboardService dashboardService, IEventWaitlistService eventwaitlist)
+        private readonly CheckIn.ICheckInService _checkInService;
+
+        public OrganizerService(IEventService eventService, IDropdownService dropdownService, IDashboardService dashboardService, IEventWaitlistService eventwaitlist, CheckIn.ICheckInService checkInService)
         {
             _eventService = eventService;
             _dropdownService = dropdownService;
             _dashboardService = dashboardService;
 			_eventwaitlist = eventwaitlist;
+            _checkInService = checkInService;
         }
 
 		public async Task<BusinessLogic.DTOs.Role.Organizer.PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10)
@@ -89,5 +92,10 @@ namespace BusinessLogic.Service.Organizer
         public Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId) => _eventService.UpdateThumbnailAsync(eventId, file, userId);
 		public Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId) => _eventService.AddEventImageAsync(eventId, file, userId);
 		public Task RemoveEventImageAsync(string eventId, string imageUrl, string userId) => _eventService.RemoveEventImageAsync(eventId, imageUrl, userId);
+
+        public async Task<List<EventParticipantDto>> GetParticipantsAsync(string eventId)
+        {
+            return await _checkInService.GetParticipantsAsync(eventId);
+        }
 	}
 }

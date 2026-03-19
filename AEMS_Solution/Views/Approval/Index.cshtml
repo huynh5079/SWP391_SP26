@@ -1,4 +1,4 @@
-﻿@model AEMS_Solution.Models.Approver.ApproverDashboardStatsViewModel
+@model AEMS_Solution.Models.Approver.ApproverDashboardStatsViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "Approver Dashboard";
@@ -479,7 +479,8 @@
                                 <td>
                                     @if (!string.IsNullOrEmpty(evt.ThumbnailUrl))
                                     {
-                                        <img src="@evt.ThumbnailUrl" class="dash-thumb" alt="Thumbnail" />
+                                        var fallbackUrl = "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(evt.Title ?? "Event") + "&size=128&background=f3f4f6&color=9ca3af&bold=true";
+                                        <img src="@evt.ThumbnailUrl" class="dash-thumb" alt="Thumbnail" onerror="this.onerror=null;this.src='@fallbackUrl';" />
                                     }
                                     else
                                     {

@@ -38,7 +38,8 @@
                     <td style="width:120px">
                         @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
                         {
-                            <img src="@e.ThumbnailUrl" class="img-fluid rounded" />
+                            var fallbackUrl = "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(e.Title ?? "Event") + "&size=128&background=f3f4f6&color=9ca3af&bold=true";
+                            <img src="@e.ThumbnailUrl" class="img-fluid rounded" onerror="this.onerror=null;this.src='@fallbackUrl';" />
                         }
                     </td>
                     <td><strong>@e.Title</strong></td>
