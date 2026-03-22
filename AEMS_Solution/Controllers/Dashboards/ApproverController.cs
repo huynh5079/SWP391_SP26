@@ -182,7 +182,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 _eventAgendaAction.EnsureApproverId(CurrentUserId);
 
-                var events = (await _unitOfWork.Events.GetAllAsync(x => x.DeletedAt == null))
+                var events = (await _unitOfWork.Events.GetAllAsync(x => x.DeletedAt == null && x.Status != EventStatusEnum.Expired))
                     .OrderBy(x => x.Title)
                     .ToList();
 

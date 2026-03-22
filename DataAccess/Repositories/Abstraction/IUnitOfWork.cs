@@ -52,6 +52,8 @@ namespace DataAccess.Repositories.Abstraction
 		// Teams
 		IGenericRepository<EventTeam> EventTeams { get; }
 		IGenericRepository<TeamMember> TeamMembers { get; }
+        // Batch delete helper for event quiz questions to avoid N roundtrips
+        Task<int> DeleteEventQuizQuestionsAsync(string eventQuizId);
 
         // Budget and expense
         IGenericRepository<BudgetProposal> BudgetProposals { get; }

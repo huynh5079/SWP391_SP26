@@ -80,7 +80,8 @@ namespace DataAccess.Enum
 		Upcoming,   // Sắp diễn ra
 		Happening,  // Đang diễn ra
 		Completed,  // Đã kết thúc thành công
-		Cancelled   // Đã bị hủy
+		Cancelled,  // Đã bị hủy
+		Expired     // Hết hạn (chưa duyệt nhưng đã qua StartTime)
 	}
 
 	public enum ExpenseStatusEnum
