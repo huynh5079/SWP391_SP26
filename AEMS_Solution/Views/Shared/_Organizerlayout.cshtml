@@ -68,6 +68,7 @@
                                 style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:230px; padding:.5rem;">
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="MyEvents"><i class="bi bi-calendar-check me-2"></i>My Events</a></li>
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete"><i class="bi bi-trash me-2"></i>Deleted Events</a></li>
+                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="ExpiredEvent"><i class="bi bi-clock-history me-2"></i>Expired Events</a></li>
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="MyParticipatedEvents"><i class="bi bi-person-workspace me-2"></i>S&#7921; ki&#7879;n tham gia</a></li>
                                 <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
                                 <li><a class="dropdown-item aems-dd-item" asp-controller="EventAgenda" asp-action="MyAgenda"><i class="bi bi-list-task me-2"></i>Agenda</a></li>
@@ -91,11 +92,27 @@
                         </li>
                     </ul>
                     <ul class="navbar-nav ms-auto d-flex flex-row align-items-center gap-1">
-                        @if (User.Identity?.IsAuthenticated == true)
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        @try
                         {
                             @await Component.InvokeAsync("Notification")
-                            <partial name="_ChatCustomerServiceLayout" />
-                            <li class="nav-item dropdown ms-1">
+                        }
+                        catch
+                        {
+                            /* swallow notification errors to avoid breaking layout rendering */
+                        }
+
+                        @try
+                        {
+                            @await Html.PartialAsync("_ChatCustomerServiceLayout")
+                        }
+                        catch
+                        {
+                            /* swallow chat partial errors */
+                        }
+
+                        <li class="nav-item dropdown ms-1">
                                 <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 text-white rounded-3"
                                    href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown"
                                    style="background:rgba(255,255,255,.08); transition:background .2s; font-size:.875rem;">

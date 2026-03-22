@@ -791,5 +791,26 @@ namespace AEMS_Solution.Controllers.Dashboards
                 return RedirectToAction(nameof(Manage), new { operation = "detail", id = id });
             }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> ExpiredEvent()
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var events = await _eventService.GetExpiredEventsAsync(userId);
+                var vm = new OrganizerExpiredEventViewModel
+                {
+                    Events = events
+                };
+				return View(vm);
+            }
+            catch (Exception)
+            {
+                SetError("Đã xảy ra lỗi khi tải danh sách sự kiện hết hạn.");
+                return View(new OrganizerExpiredEventViewModel());
+            }
+        }
     }
 }
