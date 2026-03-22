@@ -63,6 +63,9 @@ namespace BusinessLogic.Storage
             var kind = StoragePathResolver.InferKind(contentType, fileName);
             var folder = _resolver.Resolve(context, kind, ownerUserId);
 
+            long fileLength = 0;
+            try { fileLength = s.Length; } catch { }
+
             UploadResult res = kind switch
             {
                 FileKind.Image => await _cloud.UploadAsync(new ImageUploadParams
@@ -102,7 +105,7 @@ namespace BusinessLogic.Storage
                 Url = res.SecureUrl?.ToString() ?? res.Url?.ToString() ?? "",
                 FileName = fileName,
                 ContentType = contentType ?? "application/octet-stream",
-                FileSize = s.Length,
+                FileSize = fileLength,
                 Kind = kind,
                 ProviderPublicId = res.PublicId
             };

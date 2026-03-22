@@ -1,4 +1,4 @@
-﻿@model AEMS_Solution.Models.Organizer.Manage.MyEventsViewModel
+@model AEMS_Solution.Models.Organizer.Manage.MyEventsViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "My And Public Events";
@@ -21,7 +21,7 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">📅 My And Public Events</h2>
+        <h2 class="mb-0">📅 My Events</h2>
         <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-primary shadow-sm">
             <i class="bi bi-plus-circle me-1"></i> Create Event
         </a>
@@ -68,7 +68,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var e in Model.Events)
+            @foreach (var e in Model.Events.Where(x => x.Status != EventStatusEnum.Expired))
             {
                 <tr>
                     <td style="width:120px">
@@ -167,51 +167,7 @@
                                     <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
                                 </form>
                             }
-                            @if (e.Status == EventStatusEnum.Draft || e.Status == EventStatusEnum.Rejected)
-                            {
-                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="operation" value="sendforapproval" />
-                                    <input type="hidden" name="id" value="@e.EventId" />
-                                    <button type="submit" class="btn btn-sm btn-primary fw-semibold action-pill">Send</button>
-                                </form>
-                            }
-                            <a class="btn btn-sm btn-secondary fw-semibold action-pill" asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId">Waitlist</a>
-                            @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
-                                @if (CanCreateBudget(e.Status))
-                                {
-                                    <a class="btn btn-sm btn-success fw-semibold action-pill"
-                                       asp-controller="BudgetProposal" asp-action="Detail"
-                                       asp-route-eventId="@e.EventId">
-                                        <i class="bi bi-cash-stack me-1"></i>Budget
-                                    </a>
-                                }
-                                else
-                                {
-                                    <button class="btn btn-sm btn-secondary fw-semibold action-pill"
-                                            disabled
-                                            data-bs-toggle="tooltip"
-                                            data-bs-placement="top"
-                                            title="Không thể tạo Budget khi sự kiện đang '@e.Status'">
-                                        <i class="bi bi-cash-stack me-1"></i>Budget
-                                    </button>
-                                }
 
-                            
-                            
-                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="operation" value="cancel" />
-                                    <input type="hidden" name="id" value="@e.EventId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold action-pill">Cancel</button>
-                                </form>
-                            
-                            <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="operation" value="softdelete" />
-                                <input type="hidden" name="id" value="@e.EventId" />
-                                <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
-                            </form>
                         </div>
                     </td>
                 </tr>

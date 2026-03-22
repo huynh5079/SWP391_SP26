@@ -663,6 +663,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			var questionSetStatus = orderIndex > 1 ? QuestionSetEnum.Available : QuestionSetEnum.NA;
 			await _uow.QuizSets.UpdateAsync(quizSet);
+			await _uow.SaveChangesAsync();
 			await SyncQuestionBankAsync(quizSet, questionSetStatus);
 		}
 
@@ -1278,12 +1279,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				throw new InvalidOperationException("Lỗi khi upload file lên Cloudinary.");
 
 			// 2. Parse content from memory (no local file saving needed)
-			ms.Position = 0; // Reset stream position for reading
+			using var parseStream = new MemoryStream(request.FileContent);
 			string textContent = ext switch
 			{
-				".txt" => await new StreamReader(ms).ReadToEndAsync(),
-				".docx" => ReadDocxFromStream(ms),
-				".pdf" => ReadPdfFromStream(ms),
+				".txt" => await new StreamReader(parseStream).ReadToEndAsync(),
+				".docx" => ReadDocxFromStream(parseStream),
+				".pdf" => ReadPdfFromStream(parseStream),
 				_ => string.Empty
 			};
 
@@ -1300,7 +1301,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			try
 			{
 				await PersistQuestionsAsync(quizSet, organizer, questions, true);
+				await _uow.SaveChangesAsync();
 				await RefreshEventQuizQuestionsAsync(quiz);
+
+				quiz.FileQuiz = quizSet.FileQuiz;
+
 				await _uow.QuizSets.UpdateAsync(quizSet);
 				await _uow.EventQuiz.UpdateAsync(quiz);
 				await _uow.SaveChangesAsync();
@@ -1495,7 +1500,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				}
 			}
 
-			// Optionally: log parsingErrors somewhere or expose via another API. For now, we keep only valid questions
+			if (questions.Count == 0 && parsingErrors.Any()) 
+			{
+				throw new InvalidOperationException("Không đọc được câu hỏi. Chi tiết: " + string.Join(" | ", parsingErrors));
+			}
+
 			return RemoveDuplicateQuestions(questions);
 		}
 		private string NormalizeQuizText(string text)
@@ -1507,9 +1516,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			// đảm bảo option xuống dòng - only apply when question-like patterns present to avoid accidental formatting changes
 			// chỉ áp dụng nếu có pattern câu hỏi
-          if (Regex.IsMatch(text, @"Câu\s*\d+|Question\s*\d+", RegexOptions.IgnoreCase))
+			if (Regex.IsMatch(text, @"Câu\s*\d+|Question\s*\d+", RegexOptions.IgnoreCase))
 			{
-				text = Regex.Replace(text, @"\s([A-D])[\.\:\)\-]", "\n$1");
+				text = Regex.Replace(text, @"\s+([A-D][\.\:\)\-])", "\n$1");
 			}
 			// đảm bảo question xuống dòng
 			text = Regex.Replace(text, @"\s(Câu\s*\d+)", "\n$1", RegexOptions.IgnoreCase);

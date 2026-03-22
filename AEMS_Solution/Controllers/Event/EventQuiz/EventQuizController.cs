@@ -1,4 +1,4 @@
-﻿using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event.EventQuiz;
 using AutoMapper;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
@@ -433,7 +433,10 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 if (!string.IsNullOrEmpty(userId))
                 {
                     var events = await _organizerService.GetMyEventsAsync(userId);
-                    vm.Events = events.Select(e => new SelectListItem(e.Title, e.EventId)).ToList();
+                    vm.Events = events
+                        .Where(e => e.Status != DataAccess.Enum.EventStatusEnum.Expired)
+                        .Select(e => new SelectListItem(e.Title, e.EventId))
+                        .ToList();
 
                     var quizBanks = await _quizService.GetAvailableQuizBanksAsync(new GetAvailableQuizBanksRequestDto
                     {
