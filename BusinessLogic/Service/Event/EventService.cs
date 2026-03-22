@@ -115,6 +115,7 @@ public class EventService : IEventService
 
 	private async Task<List<EventListDto>> GetAccessibleEventsForOrganizerAsync(string userId)
 	{
+        var now = DateTimeHelper.GetVietnamTime();
 		if (string.IsNullOrEmpty(userId))
 			throw new InvalidOperationException("UserId không được để trống.");
 
@@ -124,7 +125,7 @@ public class EventService : IEventService
 
 		var events = await _uow.Events.GetAllAsync(
 			e => e.DeletedAt == null
-                && (e.OrganizerId == staff.Id
+				&& (e.OrganizerId == staff.Id
 					|| e.Status == EventStatusEnum.Published
 					|| e.Status == EventStatusEnum.Upcoming
 					|| e.Status == EventStatusEnum.Happening),
@@ -138,6 +139,24 @@ public class EventService : IEventService
 				.Include(x => x.ApprovalLogs)
 				.Include(x => x.Organizer!)
 					.ThenInclude(x => x!.User));
+
+		bool anyExpired = false;
+		foreach (var e in events)
+		{
+			if (e.EndTime < now &&
+				e.Status != EventStatusEnum.Completed &&
+				e.Status != EventStatusEnum.Cancelled &&
+				e.Status != EventStatusEnum.Expired)
+			{
+				e.Status = EventStatusEnum.Expired;
+				await _uow.Events.UpdateAsync(e);
+				anyExpired = true;
+			}
+		}
+		if (anyExpired)
+		{
+			await _uow.SaveChangesAsync();
+		}
 
 		return events
 			.OrderByDescending(x => x.StartTime)
@@ -259,6 +278,7 @@ public class EventService : IEventService
 
 	public async Task<List<EventListDto>> GetMyEventsAsync(string userId)
 	{
+        var now = DateTimeHelper.GetVietnamTime();
 		if (string.IsNullOrEmpty(userId))
 			throw new InvalidOperationException("UserId không được để trống.");
 
@@ -279,6 +299,24 @@ public class EventService : IEventService
 				.Include(x => x.Organizer!)
 					.ThenInclude(x => x!.User)
 		);
+
+		bool anyExpired = false;
+		foreach (var e in events)
+		{
+			if (e.EndTime < now &&
+				e.Status != EventStatusEnum.Completed &&
+				e.Status != EventStatusEnum.Cancelled &&
+				e.Status != EventStatusEnum.Expired)
+			{
+				e.Status = EventStatusEnum.Expired;
+				await _uow.Events.UpdateAsync(e);
+				anyExpired = true;
+			}
+		}
+		if (anyExpired)
+		{
+			await _uow.SaveChangesAsync();
+		}
 
 		return events
 			.OrderByDescending(x => x.StartTime)
