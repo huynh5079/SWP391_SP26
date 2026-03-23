@@ -18,5 +18,11 @@ namespace AEMS_Solution.Services
         {
             await _hubContext.Clients.Group(userId).SendAsync("ReceiveNotification", title, message);
         }
+
+        public async Task SendCheckInNotificationAsync(string eventId, string fullName, string message, string? avatarUrl)
+        {
+            // Broadcast to the specific event group
+            await _hubContext.Clients.Group($"Event_{eventId}").SendAsync("ReceiveCheckIn", eventId, fullName, message, avatarUrl);
+        }
     }
 }

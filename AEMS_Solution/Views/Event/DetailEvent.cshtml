@@ -372,6 +372,10 @@
                                     <i class="fas fa-camera"></i> Bắt đầu Check-in
                                 </a>
 
+                                <a href="@Url.Action("LiveDisplay", "CheckIn", new { eventId = Model.EventId })" target="_blank" class="btn btn-outline-success w-100">
+                                    <i class="bi bi-display"></i> Màn hình Welcome (Live)
+                                </a>
+
                                 <a asp-action="Manage" asp-route-operation="participants" asp-route-id="@Model.EventId" class="btn btn-outline-info w-100">
                                     <i class="bi bi-people"></i> Quản lý người tham gia
                                 </a>
