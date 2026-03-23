@@ -6,6 +6,7 @@ using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
+using BusinessLogic.Service.System;
 
 namespace BusinessLogic.Service.Organizer.CheckIn
 {
@@ -13,11 +14,13 @@ namespace BusinessLogic.Service.Organizer.CheckIn
     {
         private readonly IUnitOfWork _uow;
         private readonly IOrganizerValidator _validator;
+        private readonly ISignalRNotifier _signalRNotifier;
 
-        public CheckInService(IUnitOfWork uow, IOrganizerValidator validator)
+        public CheckInService(IUnitOfWork uow, IOrganizerValidator validator, ISignalRNotifier signalRNotifier)
         {
             _uow = uow;
             _validator = validator;
+            _signalRNotifier = signalRNotifier;
         }
 
         public async Task<CheckInResponseDto> ProcessCheckInAsync(CheckInRequestDto request, string organizerUserId)
@@ -80,6 +83,17 @@ namespace BusinessLogic.Service.Organizer.CheckIn
 
                 await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // SignalR Broadcast for Live Display
+                try
+                {
+                    await _signalRNotifier.SendCheckInNotificationAsync(
+                        ticket.EventId,
+                        ticket.Student.User?.FullName ?? ticket.Student.User?.Email ?? "Sinh viên",
+                        "Chào mừng đến với sự kiện 🫶"
+                    );
+                }
+                catch { /* Fail silently if SignalR fails */ }
             }
             catch (Exception ex)
             {

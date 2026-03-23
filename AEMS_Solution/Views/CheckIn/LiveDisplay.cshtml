@@ -1,0 +1,245 @@
+@{
+    Layout = null;
+    var eventId = ViewBag.EventId as string;
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AEMS - Live Welcome Display</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0f172a;
+            color: #fff;
+        }
+
+        .background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), 
+                        url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            filter: blur(10px);
+            transform: scale(1.1);
+            z-index: -1;
+            transition: all 1s ease;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .event-info {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            text-align: left;
+            opacity: 0.8;
+        }
+
+        .event-logo {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .welcome-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 4rem;
+            max-width: 900px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: none; /* Hidden by default */
+            animation-duration: 0.8s;
+        }
+
+        .default-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 1.5s ease;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @@keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .user-name {
+            font-size: 5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 1.5rem 0;
+            line-height: 1.1;
+        }
+
+        .welcome-text {
+            font-size: 2rem;
+            color: #94a3b8;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .emoji-float {
+            font-size: 4rem;
+            display: block;
+            margin-top: 1rem;
+        }
+
+        .footer-brand {
+            position: absolute;
+            bottom: 40px;
+            opacity: 0.5;
+            font-size: 0.9rem;
+            letter-spacing: 0.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay" id="bg-overlay"></div>
+
+    <div class="main-container">
+        <div class="event-info">
+            <div class="event-logo">
+                <i class="bi bi-calendar-event-fill fs-4"></i>
+            </div>
+            <h4 class="fw-bold mb-0">AEMS System</h4>
+            <p class="text-muted small">Live Check-in Display</p>
+        </div>
+
+        <!-- Default State -->
+        <div id="default-view" class="default-state">
+            <h1 class="display-3 fw-bold mb-3">Sẵn sàng chào đón 🎉</h1>
+            <p class="lead text-muted">
+                <span class="status-dot"></span> Hệ thống đang kết nối...
+            </p>
+        </div>
+
+        <!-- Welcome Card (Dynamic) -->
+        <div id="welcome-card" class="welcome-card animate__animated">
+            <div class="welcome-text">Chào mừng</div>
+            <div id="display-name" class="user-name">Nguyễn Văn A</div>
+            <div class="welcome-text">đến với sự kiện <span class="emoji-float">🫶</span></div>
+        </div>
+
+        <div class="footer-brand">POWERED BY AEMS SOLUTION</div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+
+    <script>
+        const eventId = '@eventId';
+        const defaultView = document.getElementById('default-view');
+        const welcomeCard = document.getElementById('welcome-card');
+        const displayName = document.getElementById('display-name');
+        const statusText = document.querySelector('.default-state p');
+
+        // SignalR Setup
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hub/v1/notification")
+            .withAutomaticReconnect()
+            .build();
+
+        async function start() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+                statusText.innerHTML = '<span class="status-dot"></span> Đã kết nối với hệ thống';
+                
+                // Join Group for this Event
+                await connection.invoke("JoinEventGroup", eventId);
+                console.log("Joined Event Group:", eventId);
+            } catch (err) {
+                console.log(err);
+                statusText.innerHTML = '<span class="status-dot" style="background-color: #ef4444; box-shadow: 0 0 10px #ef4444;"></span> Mất kết nối. Đang thử lại...';
+                setTimeout(start, 5000);
+            }
+        };
+
+        connection.on("ReceiveCheckIn", (receivedEventId, fullName, message) => {
+            console.log("Check-in data received:", { receivedEventId, fullName, message });
+            
+            if (receivedEventId === eventId) {
+                showWelcome(fullName);
+            }
+        });
+
+        let welcomeTimeout = null;
+
+        function showWelcome(name) {
+            // Clear existing timeout if any
+            if (welcomeTimeout) clearTimeout(welcomeTimeout);
+
+            // Update UI
+            displayName.innerText = name;
+            
+            // Switch views with animation
+            defaultView.style.display = 'none';
+            welcomeCard.style.display = 'block';
+            welcomeCard.className = 'welcome-card animate__animated animate__zoomIn';
+
+            // Auto-hide after 8 seconds
+            welcomeTimeout = setTimeout(() => {
+                welcomeCard.className = 'welcome-card animate__animated animate__zoomOut';
+                setTimeout(() => {
+                    welcomeCard.style.display = 'none';
+                    defaultView.style.display = 'flex';
+                }, 800);
+            }, 8000);
+        }
+
+        start();
+    </script>
+</body>
+</html>

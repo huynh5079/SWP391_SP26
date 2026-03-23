@@ -34,5 +34,15 @@ using System.Threading.Tasks;
 		{
 			await Clients.All.SendAsync("ReceiveNotification", message);
 		}
+
+        public async Task JoinEventGroup(string eventId)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"Event_{eventId}");
+        }
+
+        public async Task LeaveEventGroup(string eventId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Event_{eventId}");
+        }
 	}
 }
