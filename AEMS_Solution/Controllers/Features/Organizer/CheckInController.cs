@@ -10,10 +10,12 @@ namespace AEMS_Solution.Controllers.Features.Organizer
     public class CheckInController : Controller
     {
         private readonly ICheckInService _checkInService;
+        private readonly BusinessLogic.Service.Organizer.IOrganizerService _organizerService;
 
-        public CheckInController(ICheckInService checkInService)
+        public CheckInController(ICheckInService checkInService, BusinessLogic.Service.Organizer.IOrganizerService organizerService)
         {
             _checkInService = checkInService;
+            _organizerService = organizerService;
         }
 
         // GET: /CheckIn/Scanner?eventId=xxx
@@ -90,6 +92,7 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             }
         }
         // GET: /CheckIn/LiveDisplay?eventId=xxx
+        [AllowAnonymous]
         public async Task<IActionResult> LiveDisplay(string eventId)
         {
             if (string.IsNullOrEmpty(eventId))
@@ -97,14 +100,17 @@ namespace AEMS_Solution.Controllers.Features.Organizer
                 return RedirectToAction("Index", "Event");
             }
 
-            var eventDetail = await _checkInService.GetParticipantsAsync(eventId); // We need event title/thumbnail actually
-            // Wait, GetParticipantsAsync returns members. I need the Event entity.
-            // I'll use repo directly or add a method to service.
-            // For now, let's just pass eventId and we'll fetch details in the view or add a method.
-            
-            // Actually, I'll just pass eventId and let the view handle basic display, 
-            // OR I should ideally get the event entity. 
-            // I'll check if CheckInService has access to uow (it does).
+            try 
+            {
+                var eventDetail = await _organizerService.GetEventDetailsAsync(eventId);
+                ViewBag.EventTitle = eventDetail.Title;
+                ViewBag.ThumbnailUrl = eventDetail.ThumbnailUrl;
+                ViewBag.ImageUrls = eventDetail.ImageUrls;
+            }
+            catch 
+            {
+                ViewBag.EventTitle = "AEMS System - Live Check-in";
+            }
             
             ViewBag.EventId = eventId;
             return View();
