@@ -1,0 +1,84 @@
+@model AEMS_Solution.Models.Organizer.Manage.OrganizerExpiredEventViewModel
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Expired Events";
+    Layout = "_Organizerlayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">🕒 Expired Events</h2>
+        <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Create Event
+        </a>
+    </div>
+
+    @if (Model == null || Model.Events == null || !Model.Events.Any())
+    {
+        <div class="alert alert-info">Không có sự kiện hết hạn nào.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow">
+            <thead class="table-dark">
+                <tr>
+                    <th>Thumbnail</th>
+                    <th>Title</th>
+                    <th>Location</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Action<th/>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model.Events)
+                {
+                    <tr>
+                        <td style="width:120px">
+                            <img src="@(e.ThumbnailUrl ?? "/images/default-event.png")" class="img-fluid rounded" style="width: 80px; height: 50px; object-fit: cover;" />
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">@(e.Title ?? "Untitled Event")</div>
+                            <small class="text-muted">ID: @e.EventId</small>
+                        </td>
+                        <td>@(e.Location ?? "N/A")</td>
+                        <td>
+                            <span>@e.StartTime.ToString("dd/MM/yyyy HH:mm")</span>
+                            <br />→<br />
+                            <span>@e.EndTime.ToString("dd/MM/yyyy HH:mm")</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">Expired</span>
+                        </td>
+                         <td class="text-center align-middle">
+                                <div class="d-flex flex-wrap gap-1 justify-content-center align-items-center" style="max-width: 320px; margin: 0 auto;">
+                                    <style>
+                                                                .action-pill {
+                                                                    min-width: 90px;
+                                                                    text-align: center;
+                                                                }
+                                    </style>
+                                    <a class="btn btn-sm btn-info fw-semibold" asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId">View</a>
+                                    @if (e.IsOwnedByCurrentUser)
+                                    {
+                                        @if (e.CanEdit)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
+                                        }
+                                        
+                                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="operation" value="softdelete" />
+                                            <input type="hidden" name="id" value="@e.EventId" />
+                                            <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
+                                        </form>
+                                    }
+
+                                </div>
+                         </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

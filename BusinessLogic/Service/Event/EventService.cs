@@ -152,6 +152,12 @@ public class EventService : IEventService
 				await _uow.Events.UpdateAsync(e);
 				anyExpired = true;
 			}
+			else if (e.Status == EventStatusEnum.Expired && e.EndTime > now)
+			{
+				e.Status = EventStatusEnum.Draft;
+				await _uow.Events.UpdateAsync(e);
+				anyExpired = true;
+			}
 		}
 		if (anyExpired)
 		{
@@ -309,6 +315,12 @@ public class EventService : IEventService
 				e.Status != EventStatusEnum.Expired)
 			{
 				e.Status = EventStatusEnum.Expired;
+				await _uow.Events.UpdateAsync(e);
+				anyExpired = true;
+			}
+			else if (e.Status == EventStatusEnum.Expired && e.EndTime > now)
+			{
+				e.Status = EventStatusEnum.Draft;
 				await _uow.Events.UpdateAsync(e);
 				anyExpired = true;
 			}
@@ -800,6 +812,12 @@ public class EventService : IEventService
 			ev.MaxCapacity = dto.Capacity ?? ev.MaxCapacity;
 			ev.Type = dto.Type;
 			ev.Status = dto.Status ?? ev.Status;
+
+			// Safety check: if an expired event is moved to future, it must be Draft
+			if (ev.Status == EventStatusEnum.Expired && ev.StartTime > now)
+			{
+				ev.Status = EventStatusEnum.Draft;
+			}
 			ev.IsDepositRequired = dto.IsDepositRequired;
 			ev.DepositAmount = dto.DepositAmount;
 			// Handle Multiple Image Uploads
@@ -1390,33 +1408,52 @@ public class EventService : IEventService
 
     public async Task<List<EventListDto>> GetExpiredEventsAsync(string userId)
     {
-        var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
-        if (string.IsNullOrEmpty(userId))
-            throw new InvalidOperationException("UserId không được để trống.");
+		var now = DateTimeHelper.GetVietnamTime();
+		if (string.IsNullOrEmpty(userId))
+			throw new InvalidOperationException("UserId không được để trống.");
 
-        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
-        if (staff == null)
-            throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên để tạo hồ sơ của bạn.");
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null)
+			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên để tạo hồ sơ của bạn.");
 
-        var events = await _uow.Events.GetAllAsync(
-            e => e.DeletedAt == null
-                && e.OrganizerId == staff.Id
-                && e.Status == EventStatusEnum.Expired,
-            q => q
-                .Include(x => x.Tickets)
-                .Include(x => x.EventWaitlists)
-                .Include(x => x.Feedbacks)
-                .Include(x => x.Semester)
-                .Include(x => x.Department)
-                .Include(x => x.Location)
-                .Include(x => x.ApprovalLogs)
-                .Include(x => x.Organizer!)
-                    .ThenInclude(x => x!.User));
+		var events = await _uow.Events.GetAllAsync(
+			e => e.DeletedAt == null
+				&& e.OrganizerId == staff.Id
+				&& e.Status == EventStatusEnum.Expired,
+			q => q
+				.Include(x => x.Tickets)
+				.Include(x => x.EventWaitlists)
+				.Include(x => x.Feedbacks)
+				.Include(x => x.Semester)
+				.Include(x => x.Department)
+				.Include(x => x.Location)
+				.Include(x => x.ApprovalLogs)
+				.Include(x => x.Organizer!)
+					.ThenInclude(x => x!.User));
 
-        return events
-            .OrderByDescending(x => x.StartTime)
-            .Select(e => MapEventListDto(e, staff.Id))
-            .ToList();
+		bool anyFixed = false;
+		var resultList = new List<EventListDto>();
+
+		foreach (var e in events)
+		{
+			if (e.EndTime > now)
+			{
+				e.Status = EventStatusEnum.Draft;
+				await _uow.Events.UpdateAsync(e);
+				anyFixed = true;
+			}
+			else
+			{
+				resultList.Add(MapEventListDto(e, staff.Id));
+			}
+		}
+
+		if (anyFixed)
+		{
+			await _uow.SaveChangesAsync();
+		}
+
+		return resultList.OrderByDescending(x => x.StartTime).ToList();
     }
 }
 

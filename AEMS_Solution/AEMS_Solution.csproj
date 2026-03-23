@@ -19,7 +19,6 @@
     <Compile Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <Compile Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <Compile Remove="Views\EventforOrganizer\**" />
-    <Compile Remove="Views\Event\ExpiredEvent\**" />
     <Content Remove="AutoMapper\Chat\**" />
     <Content Remove="AutoMapper\Event\Sub-Event\Approver\**" />
     <Content Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
@@ -31,7 +30,6 @@
     <Content Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <Content Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <Content Remove="Views\EventforOrganizer\**" />
-    <Content Remove="Views\Event\ExpiredEvent\**" />
     <EmbeddedResource Remove="AutoMapper\Chat\**" />
     <EmbeddedResource Remove="AutoMapper\Event\Sub-Event\Approver\**" />
     <EmbeddedResource Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
@@ -43,7 +41,6 @@
     <EmbeddedResource Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <EmbeddedResource Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <EmbeddedResource Remove="Views\EventforOrganizer\**" />
-    <EmbeddedResource Remove="Views\Event\ExpiredEvent\**" />
     <None Remove="AutoMapper\Chat\**" />
     <None Remove="AutoMapper\Event\Sub-Event\Approver\**" />
     <None Remove="AutoMapper\Event\Sub-Event\Organizer\**" />
@@ -55,7 +52,6 @@
     <None Remove="Controllers\BaseAction%28ValidateInController%29\**" />
     <None Remove="Controllers\BaseAction%28ValidInController%29\**" />
     <None Remove="Views\EventforOrganizer\**" />
-    <None Remove="Views\Event\ExpiredEvent\**" />
   </ItemGroup>
 
   <ItemGroup>
