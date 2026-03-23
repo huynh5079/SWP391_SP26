@@ -792,6 +792,46 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
         }
 
-        
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManualRegister(string eventId, string userId)
+        {
+            if (string.IsNullOrEmpty(eventId) || string.IsNullOrEmpty(userId)) return BadRequest();
+            try
+            {
+                await _organizerService.ManualRegisterAsync(eventId, userId, CurrentUserId);
+                SetSuccess("Đăng ký thành viên thành công.");
+            }
+            catch (Exception ex) { SetError(ex.Message); }
+            return RedirectToAction(nameof(Manage), new { operation = "participants", id = eventId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelTicket(string ticketId, string eventId)
+        {
+            if (string.IsNullOrEmpty(ticketId) || string.IsNullOrEmpty(eventId)) return BadRequest();
+            try
+            {
+                await _organizerService.CancelTicketAsync(ticketId, CurrentUserId);
+                SetSuccess("Đã hủy vé thành công.");
+            }
+            catch (Exception ex) { SetError(ex.Message); }
+            return RedirectToAction(nameof(Manage), new { operation = "participants", id = eventId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendTicket(string ticketId, string eventId)
+        {
+            if (string.IsNullOrEmpty(ticketId) || string.IsNullOrEmpty(eventId)) return BadRequest();
+            try
+            {
+                await _organizerService.ResendTicketEmailAsync(ticketId, CurrentUserId);
+                SetSuccess("Đã gửi lại email vé thành công.");
+            }
+            catch (Exception ex) { SetError(ex.Message); }
+            return RedirectToAction(nameof(Manage), new { operation = "participants", id = eventId });
+        }
     }
 }

@@ -37,8 +37,10 @@ namespace BusinessLogic.DTOs.Student
         public bool CanRegister { get; set; }   // Published + future + not registered + not full
         public bool CanCancel { get; set; }      // Registered + event hasn't started
 
-        // Ticket id for cancel action
+        // Ticket info for display
         public string? TicketId { get; set; }
+        public string? TicketCode { get; set; }
+        public string? QRCodeBase64 { get; set; }
 
         // Waitlist state
         public bool IsInWaitlist { get; set; }

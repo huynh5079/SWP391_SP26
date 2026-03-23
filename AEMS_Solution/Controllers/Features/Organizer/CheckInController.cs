@@ -10,10 +10,12 @@ namespace AEMS_Solution.Controllers.Features.Organizer
     public class CheckInController : Controller
     {
         private readonly ICheckInService _checkInService;
+        private readonly BusinessLogic.Service.Organizer.IOrganizerService _organizerService;
 
-        public CheckInController(ICheckInService checkInService)
+        public CheckInController(ICheckInService checkInService, BusinessLogic.Service.Organizer.IOrganizerService organizerService)
         {
             _checkInService = checkInService;
+            _organizerService = organizerService;
         }
 
         // GET: /CheckIn/Scanner?eventId=xxx
@@ -88,6 +90,30 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             {
                 return Json(new { success = false, message = "Có lỗi hệ thống xảy ra: " + ex.Message });
             }
+        }
+        // GET: /CheckIn/LiveDisplay?eventId=xxx
+        [AllowAnonymous]
+        public async Task<IActionResult> LiveDisplay(string eventId)
+        {
+            if (string.IsNullOrEmpty(eventId))
+            {
+                return RedirectToAction("Index", "Event");
+            }
+
+            try 
+            {
+                var eventDetail = await _organizerService.GetEventDetailsAsync(eventId);
+                ViewBag.EventTitle = eventDetail.Title;
+                ViewBag.ThumbnailUrl = eventDetail.ThumbnailUrl;
+                ViewBag.ImageUrls = eventDetail.ImageUrls;
+            }
+            catch 
+            {
+                ViewBag.EventTitle = "AEMS System - Live Check-in";
+            }
+            
+            ViewBag.EventId = eventId;
+            return View();
         }
     }
 }

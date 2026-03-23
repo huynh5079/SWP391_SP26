@@ -969,6 +969,26 @@
                             <i class="bi bi-check-circle-fill"></i>
                             <span>Bạn đã đăng ký sự kiện này.</span>
                         </div>
+
+                        <!-- Ticket Card -->
+                        <div class="card mb-3 border-0 shadow-sm" style="background: #f8fafc; border-radius: var(--radius-sm); border: 1px dashed var(--accent) !important;">
+                            <div class="card-body p-3 text-center">
+                                <div class="mb-2 small text-muted text-uppercase fw-bold" style="letter-spacing: .05em;">Vé của bạn</div>
+                                @if (!string.IsNullOrEmpty(Model.QRCodeBase64))
+                                {
+                                    <div class="qr-wrap mb-2 p-2 bg-white d-inline-block rounded shadow-sm">
+                                        <img src="data:image/png;base64,@Model.QRCodeBase64" alt="Ticket QR" style="width: 140px; height: 140px;" />
+                                    </div>
+                                    <div class="fw-bold text-primary mb-1" style="font-family: 'Sora', sans-serif;">@Model.TicketCode</div>
+                                    <div class="text-muted" style="font-size: .7rem;">Dùng mã này để check-in tại sự kiện</div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted small">Mã QR đang được xử lý...</div>
+                                }
+                            </div>
+                        </div>
+
                         @if (Model.CanCancel)
                         {
                             <form asp-action="Cancel" method="post">

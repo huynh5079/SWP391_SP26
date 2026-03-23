@@ -43,5 +43,8 @@ namespace BusinessLogic.Service.Organizer
 		Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId);
 		Task RemoveEventImageAsync(string eventId, string imageUrl, string userId);
 		Task<List<EventParticipantDto>> GetParticipantsAsync(string eventId);
+		Task ManualRegisterAsync(string eventId, string userId, string organizerUserId);
+		Task CancelTicketAsync(string ticketId, string organizerUserId);
+		Task ResendTicketEmailAsync(string ticketId, string organizerUserId);
 	}
 }

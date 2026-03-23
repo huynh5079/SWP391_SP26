@@ -97,5 +97,14 @@ namespace BusinessLogic.Service.Organizer
         {
             return await _checkInService.GetParticipantsAsync(eventId);
         }
-	}
+
+        public Task ManualRegisterAsync(string eventId, string userId, string organizerUserId)
+            => _checkInService.ManualRegisterAsync(eventId, userId, organizerUserId);
+
+        public Task CancelTicketAsync(string ticketId, string organizerUserId)
+            => _checkInService.CancelTicketAsync(ticketId, organizerUserId);
+
+        public Task ResendTicketEmailAsync(string ticketId, string organizerUserId)
+            => _checkInService.ResendTicketEmailAsync(ticketId, organizerUserId);
+    }
 }

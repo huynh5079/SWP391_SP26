@@ -6,6 +6,8 @@ using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
+using BusinessLogic.Service.System;
+using BusinessLogic.Helper;
 
 namespace BusinessLogic.Service.Organizer.CheckIn
 {
@@ -13,11 +15,15 @@ namespace BusinessLogic.Service.Organizer.CheckIn
     {
         private readonly IUnitOfWork _uow;
         private readonly IOrganizerValidator _validator;
+        private readonly ISignalRNotifier _signalRNotifier;
+        private readonly IEmailService _emailService;
 
-        public CheckInService(IUnitOfWork uow, IOrganizerValidator validator)
+        public CheckInService(IUnitOfWork uow, IOrganizerValidator validator, ISignalRNotifier signalRNotifier, IEmailService emailService)
         {
             _uow = uow;
             _validator = validator;
+            _signalRNotifier = signalRNotifier;
+            _emailService = emailService;
         }
 
         public async Task<CheckInResponseDto> ProcessCheckInAsync(CheckInRequestDto request, string organizerUserId)
@@ -80,6 +86,26 @@ namespace BusinessLogic.Service.Organizer.CheckIn
 
                 await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // SignalR Broadcast for Live Display
+                try
+                {
+                    var fullNameStr = ticket.Student.User?.FullName ?? ticket.Student.User?.Email ?? "Sinh viên";
+                    var avatarUrl = ticket.Student.User?.AvatarUrl;
+                    if (string.IsNullOrWhiteSpace(avatarUrl)) 
+                    {
+                        var initials = !string.IsNullOrWhiteSpace(fullNameStr) ? Uri.EscapeDataString(fullNameStr) : "S";
+                        avatarUrl = $"https://ui-avatars.com/api/?name={initials}&background=random&color=fff";
+                    }
+
+                    await _signalRNotifier.SendCheckInNotificationAsync(
+                        ticket.EventId,
+                        fullNameStr,
+                        "Chào mừng đến với sự kiện 🫶",
+                        avatarUrl
+                    );
+                }
+                catch { /* Fail silently if SignalR fails */ }
             }
             catch (Exception ex)
             {
@@ -257,6 +283,96 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                     CheckOutTime = finalCheckOutTime
                 };
             }).ToList();
+        }
+
+        public async Task ManualRegisterAsync(string eventId, string userId, string organizerUserId)
+        {
+            var ev = await _uow.Events.GetAsync(e => e.Id == eventId, q => q.Include(e => e.Location));
+            if (ev == null) throw new Exception("Không tìm thấy sự kiện.");
+
+            // Check if already registered
+            var student = await _uow.StudentProfiles.GetAsync(s => s.UserId == userId, q => q.Include(s => s.User));
+            if (student == null) throw new Exception("Không tìm thấy thông tin sinh viên.");
+
+            var existingTicket = await _uow.Tickets.GetAsync(t => t.EventId == eventId && t.StudentId == student.Id && t.DeletedAt == null);
+            if (existingTicket != null) throw new Exception("Sinh viên này đã có vé cho sự kiện này.");
+
+            // Check capacity
+            var registeredCount = await _uow.Tickets.CountAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+            if (registeredCount >= ev.MaxCapacity)
+            {
+                throw new Exception("Sự kiện đã hết chỗ.");
+            }
+
+            var ticket = new Ticket
+            {
+                EventId = eventId,
+                StudentId = student.Id,
+                Status = TicketStatusEnum.Registered,
+                TicketCode = $"TKT-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}",
+                CreatedAt = DateTimeHelper.GetVietnamTime()
+            };
+
+            await _uow.Tickets.CreateAsync(ticket);
+            await _uow.SaveChangesAsync();
+
+            // Send Email
+            var qrCode = QRCodeGeneratorHelper.GenerateQRCodeBase64(ticket.Id);
+            await _emailService.SendEventRegistrationEmailAsync(
+                student.User!.Email,
+                student.User.FullName ?? student.User.Email,
+                ev.Title,
+                ev.StartTime,
+                ev.Location?.Name ?? ev.LocationId,
+                qrCode
+            );
+        }
+
+        public async Task CancelTicketAsync(string ticketId, string organizerUserId)
+        {
+            var ticket = await _uow.Tickets.GetAsync(t => t.Id == ticketId, q => q.Include(t => t.Event).Include(t => t.Student).ThenInclude(s => s.User));
+            if (ticket == null) throw new Exception("Không tìm thấy vé.");
+
+            ticket.Status = TicketStatusEnum.Cancelled;
+            ticket.DeletedAt = DateTimeHelper.GetVietnamTime(); // Soft delete
+            ticket.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+            await _uow.Tickets.UpdateAsync(ticket);
+            await _uow.SaveChangesAsync();
+
+            // Send Cancellation Email
+            var subject = $"[AEMS] Thông báo hủy vé sự kiện: {ticket.Event.Title}";
+            var body = $@"
+                <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #fee2e2; border-radius: 8px;'>
+                    <h2 style='color: #ef4444;'>THÔNG BÁO HỦY VÉ</h2>
+                    <p>Chào <strong>{ticket.Student.User?.FullName ?? ticket.Student.User?.Email}</strong>,</p>
+                    <p>Ban tổ chức thông báo vé của bạn cho sự kiện <strong>{ticket.Event.Title}</strong> đã bị hủy.</p>
+                    <p>Nếu có thắc mắc, vui lòng liên hệ với Ban tổ chức sự kiện.</p>
+                    <hr />
+                    <p style='font-size: 12px; color: gray;'>Hệ thống AEMS</p>
+                </div>";
+            await _emailService.SendAsync(ticket.Student.User!.Email, subject, body);
+        }
+
+        public async Task ResendTicketEmailAsync(string ticketId, string organizerUserId)
+        {
+            var ticket = await _uow.Tickets.GetAsync(
+                t => t.Id == ticketId, 
+                q => q.Include(t => t.Event).ThenInclude(e => e.Location)
+                      .Include(t => t.Student).ThenInclude(s => s.User));
+
+            if (ticket == null) throw new Exception("Không tìm thấy vé.");
+            if (ticket.Status == TicketStatusEnum.Cancelled || ticket.DeletedAt != null) throw new Exception("Vé này đã bị hủy, không thể gửi lại.");
+
+            var qrCode = QRCodeGeneratorHelper.GenerateQRCodeBase64(ticket.Id);
+            await _emailService.SendEventRegistrationEmailAsync(
+                ticket.Student.User!.Email,
+                ticket.Student.User.FullName ?? ticket.Student.User.Email,
+                ticket.Event.Title,
+                ticket.Event.StartTime,
+                ticket.Event.Location?.Name ?? ticket.Event.LocationId,
+                qrCode
+            );
         }
     }
 }

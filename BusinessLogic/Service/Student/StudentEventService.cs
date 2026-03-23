@@ -278,6 +278,8 @@ namespace BusinessLogic.Service.Student
                 CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity && !isInWaitlist,
                 CanCancel = isRegistered && isFuture,
                 TicketId = myTicket?.Id,
+                TicketCode = myTicket?.TicketCode,
+                QRCodeBase64 = myTicket != null ? QRCodeGeneratorHelper.GenerateQRCodeBase64(myTicket.Id) : null,
                 //IsFull = registeredCount >= ev.MaxCapacity,
                 IsInWaitlist = isInWaitlist,
                 WaitlistPosition = waitlistEntry?.Position,
