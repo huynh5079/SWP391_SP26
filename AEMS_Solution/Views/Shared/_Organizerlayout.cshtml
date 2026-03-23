@@ -15,93 +15,161 @@
     <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
-<body>
-    <header>
-        <nav class="aems-navbar navbar navbar-expand-lg" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); box-shadow: 0 2px 20px rgba(0,0,0,0.4); padding: 0.6rem 0;">
-            <div class="container-fluid px-4">
-                <a class="navbar-brand fw-bold text-white d-flex align-items-center gap-2" asp-controller="Home" asp-action="Index"
-                   style="font-size:1.3rem; letter-spacing:0.04em;">
-                    <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:8px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
-                        <i class="bi bi-calendar-event-fill text-white" style="font-size:.85rem;"></i>
-                    </span>
-                    AEMS
+<<body>
+    <!-- Sidebar -->
+    <aside class="organizer-sidebar">
+        <a href="@Url.Action("Index", "Organizer")" class="brand-wrapper">
+            <div class="brand-icon-box">
+                <i class="bi bi-grid-fill"></i>
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">AEMS</span>
+                <span class="brand-subtitle">DIGITAL CONCIERGE</span>
+            </div>
+        </a>
+
+        <ul class="sidebar-nav">
+            @{
+                var currentCtrl = ViewContext.RouteData.Values["Controller"]?.ToString();
+                var currentAct = ViewContext.RouteData.Values["Action"]?.ToString();
+                var operation = Context.Request.Query["operation"].ToString() ?? "";
+            }
+            <li class="nav-item">
+                <a href="@Url.Action("Index", "Organizer")" class="nav-link @(currentCtrl == "Organizer" && currentAct == "Index" ? "active" : "")">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    Home
                 </a>
-                <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
-                    <i class="bi bi-list" style="font-size:1.5rem;"></i>
-                </button>
-                <div class="collapse navbar-collapse" id="mainNavbar">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
-                        <li class="nav-item">
-                            <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Home" asp-action="Index" style="font-size:.9rem;">
-                                <i class="bi bi-house-door me-1"></i>Home
+            </li>
+
+            <!-- Create Section -->
+            <li class="nav-item">
+                <a class="nav-link @(operation == "create" || (currentCtrl == "EventQuiz" && currentAct == "Create") ? "" : "collapsed")" 
+                   data-bs-toggle="collapse" href="#createCollapse" role="button" 
+                   aria-expanded="@(operation == "create" || (currentCtrl == "EventQuiz" && currentAct == "Create") ? "true" : "false")" 
+                   aria-controls="createCollapse">
+                    <i class="bi bi-plus-circle"></i>
+                    Create
+                    <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem; transition: transform 0.3s; transform: rotate(@(operation == "create" || (currentCtrl == "EventQuiz" && currentAct == "Create") ? "180deg" : "0deg"));"></i>
+                </a>
+                <div class="collapse @(operation == "create" || (currentCtrl == "EventQuiz" && currentAct == "Create") ? "show" : "")" id="createCollapse">
+                    <ul class="nav flex-column sidebar-submenu mt-1" style="padding-left: 1rem; list-style: none;">
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(operation == "create" ? "active" : "")" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create">
+                                <i class="bi bi-calendar-plus me-2 fs-6"></i> Create Event
                             </a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle px-3 text-white opacity-80 fw-medium" href="#" id="organizerCreateDropdown"
-                               role="button" data-bs-toggle="dropdown" style="font-size:.9rem;">
-                                <i class="bi bi-plus-circle me-1"></i>Create
+                        <li class="nav-item mt-2 mb-1 px-3 text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Create Quiz</li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 ps-4 @(currentCtrl == "EventQuiz" && currentAct == "Create" && Context.Request.Query["mode"] == "manual" ? "active" : "")" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual">
+                                <i class="bi bi-pencil-square me-2 fs-6"></i> Manual
                             </a>
-                            <ul class="dropdown-menu shadow-lg border-0 mt-2 aems-dropdown" aria-labelledby="organizerCreateDropdown"
-                                style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="create"><i class="bi bi-calendar-plus me-2"></i>Create Event</a></li>
-                                <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
-                                <li class="dropdown-submenu position-relative">
-                                    <a class="dropdown-item aems-dd-item aems-submenu-toggle d-flex align-items-center justify-content-between" href="#">
-                                        <span><i class="bi bi-patch-question me-2"></i>Create Quiz</span>
-                                        <i class="bi bi-chevron-right small"></i>
-                                    </a>
-                                    <ul class="dropdown-menu shadow-lg border-0 aems-dropdown aems-submenu"
-                                        style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
-                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
-                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
-                                    </ul>
-                                </li>
-                            </ul>
                         </li>
-                        <!-- Manage Dropdown -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle px-3 text-white opacity-80 fw-medium" href="#" id="organizerManageDropdown"
-                               role="button" data-bs-toggle="dropdown" style="font-size:.9rem;">
-                                <i class="bi bi-grid me-1"></i>Manage
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 ps-4 @(currentCtrl == "EventQuiz" && currentAct == "Create" && Context.Request.Query["mode"] == "upload" ? "active" : "")" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload">
+                                <i class="bi bi-upload me-2 fs-6"></i> Upload File
                             </a>
-                            <ul class="dropdown-menu shadow-lg border-0 mt-2 aems-dropdown" aria-labelledby="organizerManageDropdown"
-                                style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:230px; padding:.5rem;">
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="MyEvents"><i class="bi bi-calendar-check me-2"></i>My Events</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete"><i class="bi bi-trash me-2"></i>Deleted Events</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Event" asp-action="ExpiredEvent"><i class="bi bi-clock-history me-2"></i>Expired Events</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="MyParticipatedEvents"><i class="bi bi-person-workspace me-2"></i>S&#7921; ki&#7879;n tham gia</a></li>
-                                <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="EventAgenda" asp-action="MyAgenda"><i class="bi bi-list-task me-2"></i>Agenda</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="Manage" asp-route-operation="manageticket"><i class="bi bi-ticket me-2"></i>Manage Tickets</a></li>
-                                <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Topic" asp-action="Index"><i class="bi bi-tags me-2"></i>Topics</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Location" asp-action="Index"><i class="bi bi-geo-alt me-2"></i>Locations</a></li>
-                                <li class="dropdown-submenu position-relative">
-                                    <a class="dropdown-item aems-dd-item aems-submenu-toggle d-flex align-items-center justify-content-between" href="#">
-                                        <span><i class="bi bi-question-circle me-2"></i>Quiz</span>
-                                        <i class="bi bi-chevron-right small"></i>
-                                    </a>
-                                    <ul class="dropdown-menu shadow-lg border-0 aems-dropdown aems-submenu"
-                                        style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
-                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Index" asp-route-scope="myquiz"><i class="bi bi-person-workspace me-2"></i>My Quiz</a></li>
-                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="Index" asp-route-scope="community"><i class="bi bi-people me-2"></i>Quiz Community</a></li>
-                                        <li><a class="dropdown-item aems-dd-item" asp-controller="EventQuiz" asp-action="QuestionBank"><i class="bi bi-collection me-2"></i>Quiz Bank</a></li>
-                                    </ul>
-                                </li>
-                            </ul>
                         </li>
                     </ul>
-                    <ul class="navbar-nav ms-auto d-flex flex-row align-items-center gap-1">
-                    @if (User.Identity?.IsAuthenticated == true)
-                    {
-                        @try
-                        {
-                            @await Component.InvokeAsync("Notification")
-                        }
-                        catch
-                        {
-                            /* swallow notification errors to avoid breaking layout rendering */
-                        }
+                </div>
+            </li>
+
+            <!-- Manage Section -->
+            <li class="nav-item mt-2">
+                <a class="nav-link @(currentCtrl != "Organizer" && currentCtrl != "Home" || currentAct != "Index" && operation != "create" ? "" : "collapsed")" 
+                   data-bs-toggle="collapse" href="#manageCollapse" role="button" 
+                   aria-expanded="@(currentCtrl != "Organizer" && currentCtrl != "Home" || currentAct != "Index" && operation != "create" ? "true" : "false")" 
+                   aria-controls="manageCollapse">
+                    <i class="bi bi-grid"></i>
+                    Manage
+                    <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem; transition: transform 0.3s; transform: rotate(@(currentCtrl != "Organizer" && currentCtrl != "Home" || currentAct != "Index" && operation != "create" ? "180deg" : "0deg"));"></i>
+                </a>
+                <div class="collapse @(currentCtrl != "Organizer" && currentCtrl != "Home" || currentAct != "Index" && operation != "create" ? "show" : "")" id="manageCollapse">
+                    <ul class="nav flex-column sidebar-submenu mt-1" style="padding-left: 1rem; list-style: none;">
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Organizer" && currentAct == "MyEvents" && Context.Request.Query["status"] != "Expired" ? "active" : "")" asp-controller="Organizer" asp-action="MyEvents">
+                                <i class="bi bi-check-circle me-2 fs-6"></i> My Events
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(operation == "myeventsdelete" ? "active" : "")" asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete">
+                                <i class="bi bi-trash me-2 fs-6"></i> Deleted Events
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(Context.Request.Query["status"] == "Expired" ? "active" : "")" asp-controller="Organizer" asp-action="MyEvents" asp-route-status="Expired">
+                                <i class="bi bi-clock-history me-2 fs-6"></i> Expired Events
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentAct == "MyParticipatedEvents" ? "active" : "")" asp-controller="Organizer" asp-action="MyParticipatedEvents">
+                                <i class="bi bi-person-workspace me-2 fs-6"></i> Sự kiện tham gia
+                            </a>
+                        </li>
+
+                        <li><hr class="dropdown-divider border-secondary my-2 opacity-25"></li>
+
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentAct == "MyAgenda" ? "active" : "")" asp-controller="EventAgenda" asp-action="MyAgenda">
+                                <i class="bi bi-list-task me-2 fs-6"></i> Agenda
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Ticket" ? "active" : "")" asp-controller="Ticket" asp-action="Index">
+                                <i class="bi bi-ticket me-2 fs-6"></i> Manage Tickets
+                            </a>
+                        </li>
+
+                        <li><hr class="dropdown-divider border-secondary my-2 opacity-25"></li>
+
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Topic" ? "active" : "")" asp-controller="Topic" asp-action="Index">
+                                <i class="bi bi-tags me-2 fs-6"></i> Topics
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Location" ? "active" : "")" asp-controller="Location" asp-action="Index">
+                                <i class="bi bi-geo-alt me-2 fs-6"></i> Locations
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "EventQuiz" && currentAct != "Create" ? "" : "collapsed")" 
+                               data-bs-toggle="collapse" href="#quizCollapse" role="button" 
+                               aria-expanded="@(currentCtrl == "EventQuiz" && currentAct != "Create" ? "true" : "false")"
+                               aria-controls="quizCollapse">
+                                <i class="bi bi-question-circle me-2 fs-6"></i> Quiz
+                                <i class="bi bi-chevron-down ms-auto" style="font-size: 0.7rem; transition: transform 0.3s; transform: rotate(@(currentCtrl == "EventQuiz" && currentAct != "Create" ? "180deg" : "0deg"));"></i>
+                            </a>
+                            <div class="collapse @(currentCtrl == "EventQuiz" && currentAct != "Create" ? "show" : "")" id="quizCollapse">
+                                <ul class="nav flex-column sidebar-submenu mt-1 mb-1" style="padding-left: 1.5rem; list-style: none;">
+                                    <li class="nav-item mb-1">
+                                        <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "EventQuiz" && currentAct == "Index" && Context.Request.Query["scope"] != "community" ? "active" : "")" asp-controller="EventQuiz" asp-action="Index">
+                                            <i class="bi bi-person-badge me-2" style="font-size: 0.9rem;"></i> My Quiz
+                                        </a>
+                                    </li>
+                                    <li class="nav-item mb-1">
+                                        <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "EventQuiz" && currentAct == "Index" && Context.Request.Query["scope"] == "community" ? "active" : "")" asp-controller="EventQuiz" asp-action="Index" asp-route-scope="community">
+                                            <i class="bi bi-people me-2" style="font-size: 0.9rem;"></i> Quiz Community
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "EventQuiz" && currentAct == "QuestionBank" ? "active" : "")" asp-controller="EventQuiz" asp-action="QuestionBank">
+                                            <i class="bi bi-bank me-2" style="font-size: 0.9rem;"></i> Quiz Bank
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item mt-auto">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-gear"></i>
+                    Settings
+                </a>
+            </li>
+        </ul>
 
                         @try
                         {
