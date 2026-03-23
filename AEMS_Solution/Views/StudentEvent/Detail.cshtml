@@ -29,6 +29,8 @@
         ?? new List<BusinessLogic.DTOs.Student.StudentEventFeedbackItemDto>();
 }
 
+           
+
 <style>
     @@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
@@ -863,6 +865,44 @@
                                     {
                                         <span class="text-muted small"><i class="bi bi-exclamation-circle me-1"></i>Không có link</span>
                                     }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+            @* Quizzes section (below documents) *@
+            @if (Model.Quizzes != null && Model.Quizzes.Any())
+            {
+                <div class="ev-card mt-3">
+                    <div class="ev-card-header">
+                        <div class="icon icon-blue"><i class="bi bi-patch-question"></i></div>
+                        Bài kiểm tra (Quiz)
+                    </div>
+                    <div class="ev-card-body" style="padding: 0.5rem 1.4rem;">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var quiz in Model.Quizzes.OrderBy(q => q.Title))
+                            {
+                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center" style="border-color: var(--border); background: transparent;">
+                                    <div>
+                                        <i class="bi bi-file-earmark-text me-2" style="color: var(--accent);"></i>
+                                        <div class="fw-semibold">@quiz.Title</div>
+                                        <div class="small text-muted">@quiz.QuestionCount câu • @(quiz.TimeLimit?.ToString() ?? "0") phút</div>
+                                    </div>
+                                    <div>
+                                        @if (quiz.IsTaken)
+                                        {
+                                            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Preview", "EventQuiz", new { quizId = quiz.QuizId })">Xem kết quả</a>
+                                        }
+                                        else if (quiz.Status == DataAccess.Enum.QuizStatusEnum.Published)
+                                        {
+                                            <a class="btn btn-sm btn-primary" href="@Url.Action("ShowQuiz", "EventQuiz", new { area = "", eventId = Model.EventId })">Bắt đầu</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Trạng thái: @quiz.Status</span>
+                                        }
+                                    </div>
                                 </li>
                             }
                         </ul>

@@ -18,7 +18,7 @@ namespace AEMS.Test.UI.SendtoApprover
 			Assert.NotNull(users);
 			Assert.NotEmpty(users);
 
-			const string loginUrl = "https://localhost:7149/Auth/Login";
+			const string loginUrl ="https://localhost:7149/Auth/Login";
 
 			var firstUser = users[0];
 			var thirdUser = users.Length > 2 ? users[2] : users[0];

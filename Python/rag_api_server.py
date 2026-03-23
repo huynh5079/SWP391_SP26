@@ -347,6 +347,7 @@ class RagEngine:
                 sem.Name AS SemesterName,
                 loc.Name AS LocationName,
                 organizerUser.FullName AS OrganizerName,
+                sp.UserId AS OrganizerUserId,
                 t.Name AS TopicName,
                 e.IsDepositRequired,
                 e.DepositAmount,
@@ -366,7 +367,8 @@ class RagEngine:
             LEFT JOIN [StaffProfile] sp ON sp.Id = e.OrganizerId
             LEFT JOIN [User] organizerUser ON organizerUser.Id = sp.UserId
             LEFT JOIN [Topics] t ON t.Id = e.TopicId
-            WHERE e.Status != 'Deleted' AND (e.PublishedAt IS NOT NULL OR e.Status = 'Pending'OR e.Status = 'Draft')
+            WHERE e.Status IN ('Published', 'Upcoming', 'Happening')
+            AND e.DeletedAt IS NULL
             ORDER BY e.UpdatedAt DESC
             """,
             fallback_query=f"""
@@ -596,6 +598,9 @@ class RagEngine:
 
         chunks: list[Chunk] = []
 
+        # Re-enabled safe semantic indexing for published events.
+        # This allows topic-based search (AI, Workshop, etc.) for Participants.
+        
         # Build event chunks with enhanced information
         for row in event_rows:
             capacity_used = row.get('RegisteredCount', 0) or 0
@@ -630,6 +635,7 @@ class RagEngine:
                         "type": str(row.get("Type")),
                         "mode": str(row.get("Mode")),
                         "organizer": row.get("OrganizerName"),
+                        "organizer_user_id": row.get("OrganizerUserId"),
                         "avg_rating": self._format_float(row.get("AvgRating")),
                         "registered": capacity_used,
                         "max_capacity": max_capacity,
@@ -688,6 +694,7 @@ class RagEngine:
                 )
             )
 
+        # Build feedback chunks
         for row in feedback_rows:
             text = (
                 f"[FEEDBACK] Sự kiện: {row.get('EventTitle')} | Sinh viên: {row.get('StudentName')} ({row.get('StudentCode')}) | "
@@ -921,6 +928,8 @@ class RagEngine:
             return "admin"
         if value in {"organizer", "approver", "staff"}:
             return "staff"
+        if value == "student":
+            return "student"
         return "user"
 
     @staticmethod
@@ -1016,17 +1025,249 @@ class RagEngine:
 
         return question_doc_types or None
 
+    def _extract_status_from_query(self, question: str) -> Optional[str]:
+        """Extract event status keywords from the user question."""
+        lowered = (question or "").strip().lower()
+        
+        status_map = {
+            "draft": ["draft", "nháp", "nhap"],
+            "pending": ["pending", "chờ duyệt", "cho duyet", "đang chờ", "dang cho"],
+            "published": ["published", "công khai", "cong khai", "đã đăng", "da dang"],
+            "expired": ["expired", "hết hạn", "het han"],
+            "completed": ["completed", "hoàn thành", "hoan thanh", "đã xong", "da xong"],
+            "cancelled": ["cancelled", "đã hủy", "da huy", "expired", "hết hạn", "het han"], # Map expired to cancelled per user request
+            "approved": ["approved", "đã duyệt", "da duyet"],
+            "requestchange": ["requestchange", "yêu cầu chỉnh sửa", "yeu cau chinh sua"]
+        }
+        
+        for status, keywords in status_map.items():
+            if any(kw in lowered for kw in keywords):
+                return status
+        return None
+
+    def _extract_student_scope(self, question: str) -> str:
+        """Extract time scope for student event queries."""
+        lowered = question.lower()
+        if any(kw in lowered for kw in ["hôm nay", "hom nay", "today"]):
+            return "today"
+        if any(kw in lowered for kw in ["tuần này", "tuan nay", "this week"]):
+            return "this_week"
+        if any(kw in lowered for kw in ["sắp tới", "sap toi", "tương lai", "upcoming", "sắp diễn ra", "sap dien ra", "diễn ra", "dien ra", "sắp có", "sap co"]):
+            return "upcoming"
+        return "upcoming" # Default for student schedule
+
+    def _build_dynamic_event_context(self, user_id: Optional[str], role: str, question: str, session_id: Optional[str] = None) -> str:
+        """Build dynamic event context for any role if intent matches, including follow-up context."""
+        if not self.db_service:
+            return ""
+        
+        normalized_role = self._normalize_role(role)
+        lowered = question.lower()
+        sections = []
+
+        # 1. Ownership Intent (Organizer/Admin)
+        is_my_event_query = any(kw in lowered for kw in ["của tôi", "cua toi", "của mình", "cua minh", "my event", "myevent", "tôi có", "toi co"])
+        if normalized_role in {"admin", "staff"} and is_my_event_query:
+            status = self._extract_status_from_query(question)
+            fetch_status = status
+            if status == "cancelled":
+                fetch_status = ["Cancelled", "Expired"]
+            
+            events = self.db_service.get_organizer_events(user_id=user_id, status=fetch_status, limit=10)
+            if events:
+                header = f"[Dữ liệu Sự kiện của tôi (Organizer) - {('trạng thái ' + status) if status else 'tất cả'}]:"
+                lines = [header]
+                for e in events:
+                    start = e.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(e.get('StartTime'), datetime) else e.get('StartTime')
+                    lines.append(f"- {e.get('Title')} | Trạng thái: {e.get('Status')} | Bắt đầu: {start} | Địa điểm: {e.get('LocationName') or 'Chưa rõ'}")
+                sections.append("\n".join(lines))
+
+        # 1b. Organizer Statistics Intent
+        is_stats_query = any(kw in lowered for kw in ["thống kê", "thong ke", "bao nhiêu", "bao nhieu", "tổng số", "tong so", "hết hạn", "het han", "kết thúc", "ket thuc"])
+        if normalized_role in {"admin", "staff"} and is_stats_query and not is_my_event_query:
+            stats = self.db_service.get_organizer_stats(user_id=user_id)
+            if stats:
+                header = "[Thống kê Sự kiện (Organizer)]:"
+                lines = [header]
+                lines.append(f"- Tổng số người tham gia (tất cả sự kiện): {stats.get('total_registrations')}")
+                counts = stats.get('status_counts', {})
+                for s, count in counts.items():
+                    lines.append(f"- {s}: {count} sự kiện")
+                sections.append("\n".join(lines))
+
+        # 2. Approval Intent (Staff/Approver)
+        is_pending_query = any(kw in lowered for kw in ["duyệt", "duyet", "pending", "phê duyệt", "cho duyet", "chờ duyệt"])
+        if normalized_role in {"admin", "staff"} and is_pending_query:
+            pending = self.db_service.get_pending_approvals(user_id=user_id, limit=10)
+            if pending:
+                header = "[Dữ liệu Phê duyệt (Approver) - Các sự kiện đang chờ duyệt]:"
+                lines = [header]
+                for e in pending:
+                    start = e.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(e.get('StartTime'), datetime) else e.get('StartTime')
+                    lines.append(f"- {e.get('Title')} | Organizer: {e.get('OrganizerName')} | Bắt đầu: {start} | Địa điểm: {e.get('LocationName') or 'Chưa rõ'}")
+                sections.append("\n".join(lines))
+
+        # 2b. Admin System Statistics
+        is_admin_query = any(kw in lowered for kw in ["người dùng", "nguoi dung", "nguoi dung", "report", "hệ thống", "he thong"])
+        if normalized_role == "admin" and (is_stats_query or is_admin_query):
+            admin_stats = self.db_service.get_admin_system_stats()
+            if admin_stats:
+                header = "[Thống kê Hệ thống (Admin)]:"
+                lines = [header]
+                lines.append(f"- Tổng số người dùng: {admin_stats.get('user_count')}")
+                lines.append(f"- Tổng số sự kiện đang hoạt động: {admin_stats.get('active_events')}")
+                roles = admin_stats.get('roles', {})
+                role_str = ", ".join([f"{r}: {c}" for r, c in roles.items()])
+                lines.append(f"- Phân bổ Role: {role_str}")
+                sections.append("\n".join(lines))
+
+        # 2c. Participant Registration Status ("Tôi đã đăng ký chưa?")
+        is_reg_query = any(kw in lowered for kw in ["đăng ký", "dang ky", "đăng kí", "dang ki", "tham gia chưa", "tham gia chua", "đã join", "da join", "đã reg", "da reg"])
+        if is_reg_query:
+            regs = self.db_service.get_user_registrations(user_id=user_id)
+            if regs:
+                header = "[Thông tin Đăng ký & Vai trò của bạn]: "
+                lines = [header]
+                for r in regs:
+                    role = r.get('Role', 'Thành viên')
+                    status = r.get('Status', 'N/A')
+                    start = r.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(r.get('StartTime'), datetime) else r.get('StartTime')
+                    loc = r.get('LocationName') or 'Chưa rõ'
+                    lines.append(f"- {r.get('Title')} | Vai trò: {role} | Trạng thái: {status} | Bắt đầu: {start} | Địa điểm: {loc}")
+                sections.append("\n".join(lines))
+            elif user_id:
+                sections.append("[Thông tin Đăng ký]: Bạn chưa đăng ký tham gia sự kiện nào.")
+
+        # 3. Topic-based Search Fallback (AI Workshop, etc.)
+        is_topic_query = any(kw in lowered for kw in ["ai", "workshop", "miễn phí", "mien phi", "giá vé", "gia ve", "thanh toán", "thanh toan", "diễn giả", "dien gia"])
+        if is_topic_query:
+            # We first try to find by specific topic keywords in DB
+            keywords = ["ai", "workshop", "web", "mobile", "it", "blockchain", "iot", "leadership"]
+            found_events = []
+            for kw in keywords:
+                if kw in lowered:
+                    found_events = self.db_service.search_events_by_topic(topic_keyword=kw)
+                    break
+            
+            if found_events:
+                header = "[Kết quả tìm kiếm sự kiện theo chủ đề/từ khóa]:"
+                lines = [header]
+                for e in found_events:
+                    start = e.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(e.get('StartTime'), datetime) else e.get('StartTime')
+                    lines.append(f"- {e.get('Title')} | Chủ đề: {e.get('TopicName')} | Hình thức: {e.get('Mode')} | Bắt đầu: {start}")
+                sections.append("\n".join(lines))
+
+        # 4. General Schedule Intent (Universal - Today, Week, Upcoming)
+        scope = self._extract_student_scope(question)
+        # Broaden keywords to capture all event-related intents
+        schedule_keywords = [
+            "hôm nay", "hom nay", "today", "tuần này", "tuan nay", "this week", 
+            "sắp tới", "sap toi", "upcoming", "lịch", "lich", "sắp diễn ra", 
+            "sap dien ra", "đang diễn ra", "dang dien ra", "diễn ra", "dien ra",
+            "sự kiện", "su kien", "có gì", "co gi", "nào không", "nao khong",
+            "thông tin", "chi tiết", "xảy ra", "xay ra"
+        ]
+        is_schedule_query = any(kw in lowered for kw in schedule_keywords)
+        
+        if is_schedule_query:
+            events = self.db_service.get_student_schedule(scope=scope, limit=10)
+            
+            # Fallback for better UX: If today/this week is empty, show upcoming
+            is_fallback = False
+            if not events and scope != "upcoming":
+                upcoming_fallback = self.db_service.get_student_schedule(scope="upcoming", limit=5)
+                if upcoming_fallback:
+                    events = upcoming_fallback
+                    is_fallback = True
+            
+            if events:
+                if is_fallback:
+                    header = f"[Dữ liệu Lịch sự kiện chung - LƯU Ý: Hiện không có sự kiện nào {scope}, đây là các sự kiện SẮP TỚI]:"
+                else:
+                    header = f"[Dữ liệu Lịch sự kiện chung - Phạm vi: {scope}]:"
+                    
+                lines = [header]
+                for e in events:
+                    start = e.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(e.get('StartTime'), datetime) else e.get('StartTime')
+                    lines.append(f"- {e.get('Title')} | Hình thức: {e.get('Mode')} | Bắt đầu: {start} | Địa điểm: {e.get('LocationName') or 'Chưa rõ'}")
+                sections.append("\n".join(lines))
+                
+            # Extra fallback for Organizers/Staff: If public schedule is empty, check their own managed events
+            if not is_my_event_query and normalized_role in {"admin", "staff"}:
+                own_events = self.db_service.get_organizer_events(user_id=user_id, limit=5)
+                if own_events:
+                    header = "[Dữ liệu Sự kiện DO BẠN QUẢN LÝ (Gợi ý thêm)]: "
+                    lines = [header]
+                    for e in own_events:
+                        start = e.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(e.get('StartTime'), datetime) else e.get('StartTime')
+                        lines.append(f"- {e.get('Title')} | Trạng thái: {e.get('Status')} | Bắt đầu: {start}")
+                    sections.append("\n".join(lines))
+
+        # 5. Coreference / Follow-up Logic (Resolution for "đó", "nó", "cái đó")
+        is_followup = any(kw in lowered for kw in ["đó", "do", "nó", "no", "cái đó", "cai do", "về nó", "ve no", "tư vấn", "tu van"])
+        if is_followup and session_id and session_id in self._sessions:
+            history = self._sessions[session_id]
+            last_asst_msg = next((m.content for m in reversed(history) if m.role == "assistant"), "")
+            if last_asst_msg:
+                # Look for event titles in quotes "Title" or “Title”
+                # Improved extraction: quotes, or lines starting with '-' or bullets
+                titles = re.findall(r'["“]([^"”]+)["”]', last_asst_msg)
+                if not titles:
+                    # Fallback: look for - Event Name pattern
+                    lines = last_asst_msg.split('\n')
+                    for line in lines:
+                        match = re.search(r'[-•]\s*([A-Za-z0-9\s\.]+)(?:\s*vào|\s*tai|\s*\|)', line)
+                        if match:
+                            titles.append(match.group(1).strip())
+                
+                if titles:
+                    # Fetch first 2 events if multiple mentioned
+                    for title in titles[:2]:
+                        detail = self.db_service.get_event_details_by_title(title)
+
+                        if detail:
+                            header = f"[Dữ liệu chi tiết cho sự kiện '{title}' (vừa được nhắc tới)]:"
+                            lines = [header]
+                            for k, v in detail.items():
+                                if v and k not in {"EventId", "TopicId", "LocationId"}:
+                                    lines.append(f"- {k}: {v}")
+                            sections.append("\n".join(lines))
+
+        # 6. Absolute Fallback: If it's an event-related question but no specific dynamic context was built,
+        # fetch upcoming events to ensure 100% dynamic retrieval instead of falling back to FAISS.
+        is_event_question = any(kw in lowered for kw in ["sự kiện", "su kien", "event", "lịch", "lich"])
+        if is_event_question and not sections:
+            upcoming = self.db_service.get_student_schedule(scope="upcoming", limit=5)
+            if upcoming:
+                header = "[Dữ liệu Sự kiện SẮP TỚI (Truy xuất động)]: "
+                lines = [header]
+                for e in upcoming:
+                    start = e.get('StartTime').strftime("%d/%m/%Y %H:%M") if isinstance(e.get('StartTime'), datetime) else e.get('StartTime')
+                    lines.append(f"- {e.get('Title')} | Bắt đầu: {start} | Địa điểm: {e.get('LocationName') or 'Chưa rõ'}")
+                sections.append("\n".join(lines))
+
+        if not sections:
+            print("[DEBUG] No dynamic context sections generated.")
+            return ""
+            
+        final_ctx = "Ngữ cảnh truy xuất động (ƯU TIÊN TUYỆT ĐỐI - Dữ liệu thực tế từ DB):\n" + "\n\n".join(sections)
+        print(f"[DEBUG] Final Dynamic Context Length: {len(final_ctx)}")
+        return final_ctx
+
     def _get_session_context(self, session_id: Optional[str]) -> str:
         """Get conversation history context for the session"""
         if not session_id or session_id not in self._sessions:
             return ""
         
+        if session_id is None:
+            return ""
         messages = self._sessions[session_id]
         if not messages:
             return ""
         
         # Get last 4 messages for context
-        recent_messages = messages[-4:]
+        num_msgs = len(messages)
+        recent_messages = messages[max(0, num_msgs - 4):]
         context_lines = []
         for msg in recent_messages:
             role_text = "Người dùng" if msg.role == "user" else "Cố vấn"
@@ -1037,6 +1278,8 @@ class RagEngine:
     def _load_session_context_from_db(self, session_id: Optional[str], user_id: Optional[str]) -> None:
         """Load persisted chatbot messages into current in-memory session if needed."""
         if not session_id or not user_id or not self.db_service:
+            return
+        if session_id is None or user_id is None:
             return
         if session_id in self._sessions and self._sessions[session_id]:
             return
@@ -1102,12 +1345,23 @@ class RagEngine:
             return "", ""
 
         marker = "Ngữ cảnh truy xuất động"
+        reg_fallback_msg = "Bạn chưa đăng ký tham gia sự kiện nào"
+        
         idx = user_profile_context.find(marker)
         if idx < 0:
+            # Check if it's just the registration fallback message from .NET
+            if reg_fallback_msg in user_profile_context:
+                return "", user_profile_context.strip()
             return user_profile_context.strip(), ""
 
         static_part = user_profile_context[:idx].strip()
         dynamic_part = user_profile_context[idx:].strip()
+        
+        # If the static part contains the fallback, move it to dynamic
+        if reg_fallback_msg in static_part:
+            dynamic_part = (static_part + "\n\n" + dynamic_part).strip()
+            static_part = ""
+            
         return static_part, dynamic_part
 
     def retrieve(self, question: str, top_k: int, role: str) -> list[dict[str, Any]]:
@@ -1228,7 +1482,19 @@ class RagEngine:
             )
             return answer, [], session_id or str(uuid4())
 
-        static_profile_context, dynamic_retrieval_context = self._split_profile_and_dynamic_context(user_profile_context)
+        static_profile_context, original_dynamic_context = self._split_profile_and_dynamic_context(user_profile_context)
+        
+        # Build our own dynamic context in Python for each role (Approver, Organizer, Student)
+        python_dynamic_context = self._build_dynamic_event_context(user_id=user_id, role=role, question=question, session_id=session_id)
+        
+        # If .NET side said "No registrations" but Python found some, we prune the .NET side's negative context
+        if python_dynamic_context and "Thông tin Đăng ký & Vai trò" in python_dynamic_context:
+            if original_dynamic_context and "Bạn chưa đăng ký tham gia sự kiện nào" in original_dynamic_context:
+                original_dynamic_context = original_dynamic_context.replace("Bạn chưa đăng ký tham gia sự kiện nào.", "").strip()
+
+        # Combine contexts (giving priority to the one we just built if available)
+        dynamic_retrieval_context = (original_dynamic_context + "\n\n" + python_dynamic_context).strip()
+            
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
         if not retrieved and not dynamic_retrieval_context:
@@ -1253,52 +1519,42 @@ class RagEngine:
             self._sessions[session_id] = []
 
         # Build context with conversation history
+        # Build context with conversation history
         context_parts: list[str] = []
         if dynamic_retrieval_context:
-            # When dynamic DB context is available, do not mix semantic chunks to avoid date/status drift.
-            context_parts.append(
-                "[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n"
-                + dynamic_retrieval_context
-            )
+            context_parts.append("[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n" + dynamic_retrieval_context)
         elif retrieved:
-            context_parts.append(
-                "\n\n".join(
-                    [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
-                )
-            )
+            context_parts.append("\n\n".join([f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]))
         context = "\n\n".join(context_parts)
-        
+
         conversation_history = self._get_session_context(session_id)
-        user_personal_history = self._get_user_personal_history_context(
-            user_id=user_id,
-            current_session_id=session_id,
-        )
+        user_personal_history = self._get_user_personal_history_context(user_id=user_id, current_session_id=session_id)
 
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
-            
             "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
-            "0. 🎯 ƯU TIÊN CAO NHẤT - NẾU người dùng CHÀO HỎI (xin chào, hi, hello, chào bạn, hey, v.v.):\n"
-            "   → Chào lại thân thiện như bạn bè\n"
-            "   → Giới thiệu: 'Mình là trợ lý AI của hệ thống AEMS, chuyên hỗ trợ thông tin về các sự kiện, phản hồi và phân tích liên quan đến AEMS'\n"
-            "   → Hỏi người dùng cần giúp gì\n"
-            "   → KHÔNG cần tìm kiếm hoặc đề cập sự kiện cụ thể trong lời chào\n\n"
+            "0. ƯU TIÊN CAO NHẤT - CHỈ CHÀO HỎI ở TIN NHẮN ĐẦU TIÊN của phiên chat:\n"
+            "   → Chào lại thân thiện và giới thiệu ngắn gọn.\n"
+            "   → TUYỆT ĐỐI KHÔNG lập lại câu 'Xin chào [Tên]' hoặc giới thiệu bản thân nếu cuộc trò chuyện đã bắt đầu.\n"
+            "   → Đi thẳng vào vấn đề tư vấn.\n\n"
+            "XỬ LÝ NGỮ CẢNH (CONTEXT):\n"
+            "- Luôn sử dụng lịch sử trò chuyện để giải quyết các đại từ như 'đó', 'nó', 'cái đó' (Coreference Resolution).\n"
+            "- Nếu người dùng hỏi 'về cái đó', hãy tìm tên sự kiện vừa nhắc ở tin nhắn trước để trả lời chi tiết.\n\n"
             "1. NẾU câu hỏi liên quan đến SỰ KIỆN:\n"
             "   → Ưu tiên sử dụng dữ liệu liên quan được cung cấp\n"
-            "   → Khuyến nghị sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
+            "   → Luôn để tên sự kiện trong dấu ngoặc kép (ví dụ: \"Sự kiện ABC\") để người dùng dễ theo dõi.\n"
+            "   → Khuyến nghị sự kiện có đánh giá cao (4 sao trở lên)\n"
             "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
-            "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
+            "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt.\n\n"
             "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
             "   → Chỉ trả lời đúng nội dung mà người dùng hỏi\n"
             "   → KHÔNG tự chuyển chủ đề sang sự kiện hoặc chủ đề khác nếu người dùng không hỏi\n\n"
-            
             "PHONG CÁCH TRẢ LỜI:\n"
             "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
             "- Khi nói về sự kiện: chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
             "- KHÔNG dump data, trích xuất thông tin cần thiết\n"
             "- Sử dụng emoji phù hợp: ⭐📅📍💡❓\n"
             "- Tránh lặp lại thông tin không cần thiết\n\n"
-            
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
@@ -1308,7 +1564,6 @@ class RagEngine:
             "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
-
         if normalized_role == "admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
@@ -1336,9 +1591,9 @@ class RagEngine:
             )
         
         user_prompt += (
+            f"Dữ liệu thực tế từ Database (ƯU TIÊN TUYỆT ĐỐI):\n{context}\n\n"
             f"Câu hỏi: {question}\n\n"
-            f"Dữ liệu liên quan:\n{context}\n\n"
-            "Hãy trả lời ngắn gọn, đúng trọng tâm câu hỏi, và không tự ý mở rộng sang chủ đề khác."
+            "Hãy trả lời đúng trọng tâm dữ liệu trên. KHÔNG được trả lời là 'Bạn chưa đăng ký' nếu dữ liệu phía trên cho thấy có sự kiện."
         )
 
         can_call_llm, llm_block_reason = self._can_call_llm()
@@ -1445,7 +1700,16 @@ class RagEngine:
             }) + "\n"
             return
 
-        static_profile_context, dynamic_retrieval_context = self._split_profile_and_dynamic_context(user_profile_context)
+        static_profile_context, original_dynamic_context = self._split_profile_and_dynamic_context(user_profile_context)
+
+        # Build our own dynamic context in Python for each role (Approver, Organizer, Student)
+        python_dynamic_context = self._build_dynamic_event_context(user_id=user_id, role=role, question=question, session_id=session_id)
+
+        # Combine contexts (giving priority to the one we just built if available)
+        dynamic_retrieval_context = original_dynamic_context
+        if python_dynamic_context:
+            dynamic_retrieval_context = (dynamic_retrieval_context + "\n\n" + python_dynamic_context).strip()
+
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
         if not retrieved and not dynamic_retrieval_context:
@@ -1473,53 +1737,50 @@ class RagEngine:
         if session_id not in self._sessions:
             self._sessions[session_id] = []
 
-        # Build context
+        # 100% Dynamic Retrieval Priority
+        python_dynamic_context = self._build_dynamic_event_context(user_id=user_id, role=role, question=question, session_id=session_id)
+        
+        # If .NET side said "No registrations" but Python found some, we prune the .NET side's negative context
+        if python_dynamic_context and "Thông tin Đăng ký & Vai trò" in python_dynamic_context:
+            if "Bạn chưa đăng ký tham gia sự kiện nào" in original_dynamic_context:
+                original_dynamic_context = original_dynamic_context.replace("Bạn chưa đăng ký tham gia sự kiện nào.", "").strip()
+
+        dynamic_retrieval_context = (original_dynamic_context + "\n\n" + python_dynamic_context).strip()
         context_parts: list[str] = []
         if dynamic_retrieval_context:
-            # When dynamic DB context is available, do not mix semantic chunks to avoid date/status drift.
-            context_parts.append(
-                "[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n"
-                + dynamic_retrieval_context
-            )
+            context_parts.append("[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n" + dynamic_retrieval_context)
         elif retrieved:
-            context_parts.append(
-                "\n\n".join(
-                    [f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]
-                )
-            )
+            context_parts.append("\n\n".join([f"[Độ liên quan: {item['score']:.2%}] {item['text']}" for item in retrieved]))
         context = "\n\n".join(context_parts)
-        
+
         conversation_history = self._get_session_context(session_id)
-        user_personal_history = self._get_user_personal_history_context(
-            user_id=user_id,
-            current_session_id=session_id,
-        )
+        user_personal_history = self._get_user_personal_history_context(user_id=user_id, current_session_id=session_id)
 
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
-            
             "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
-            "0. 🎯 ƯU TIÊN CAO NHẤT - NẾU người dùng CHÀO HỎI (xin chào, hi, hello, chào bạn, hey, v.v.):\n"
-            "   → Chào lại thân thiện như bạn bè\n"
-            "   → Giới thiệu: 'Mình là trợ lý AI của hệ thống AEMS, chuyên hỗ trợ thông tin về các sự kiện, phản hồi và phân tích liên quan đến AEMS'\n"
-            "   → Hỏi người dùng cần giúp gì\n"
-            "   → KHÔNG cần tìm kiếm hoặc đề cập sự kiện cụ thể trong lời chào\n\n"
+            "0. ƯU TIÊN CAO NHẤT - CHỈ CHÀO HỎI ở TIN NHẮN ĐẦU TIÊN của phiên chat:\n"
+            "   → Chào lại thân thiện và giới thiệu ngắn gọn.\n"
+            "   → TUYỆT ĐỐI KHÔNG lập lại câu 'Xin chào [Tên]' hoặc giới thiệu bản thân nếu cuộc trò chuyện đã bắt đầu.\n"
+            "   → Đi thẳng vào vấn đề tư vấn.\n\n"
+            "XỬ LÝ NGỮ CẢNH (CONTEXT):\n"
+            "- Luôn sử dụng lịch sử trò chuyện để giải quyết các đại từ như 'đó', 'nó', 'cái đó' (Coreference Resolution).\n"
+            "- Nếu người dùng hỏi 'về cái đó', hãy tìm tên sự kiện vừa nhắc ở tin nhắn trước để trả lời chi tiết.\n\n"
             "1. NẾU câu hỏi liên quan đến SỰ KIỆN:\n"
             "   → Ưu tiên sử dụng dữ liệu liên quan được cung cấp\n"
-            "   → Khuyến nghị sự kiện có đánh giá cao (⭐⭐⭐⭐ trở lên)\n"
+            "   → Luôn để tên sự kiện trong dấu ngoặc kép (ví dụ: \"Sự kiện ABC\") để người dùng dễ theo dõi.\n"
+            "   → Khuyến nghị sự kiện có đánh giá cao (4 sao trở lên)\n"
             "   → Giải thích thời gian, địa điểm, cách tham gia từ dữ liệu\n"
-            "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt\n\n"
+            "   → Cảnh báo nếu gần hết chỗ hoặc có lưu ý đặc biệt.\n\n"
             "2. NẾU câu hỏi KHÔNG liên quan đến sự kiện:\n"
             "   → Chỉ trả lời đúng nội dung mà người dùng hỏi\n"
             "   → KHÔNG tự chuyển chủ đề sang sự kiện hoặc chủ đề khác nếu người dùng không hỏi\n\n"
-            
             "PHONG CÁCH TRẢ LỜI:\n"
             "- Ngắn gọn, dễ hiểu, thân thiện, chuyên nghiệp\n"
             "- Khi nói về sự kiện: chỉ đề cập 2-3 sự kiện nổi bật nhất\n"
             "- KHÔNG dump data, trích xuất thông tin cần thiết\n"
             "- Sử dụng emoji phù hợp: ⭐📅📍💡❓\n"
             "- Tránh lặp lại thông tin không cần thiết\n\n"
-            
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
@@ -1529,7 +1790,6 @@ class RagEngine:
             "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
-
         if normalized_role == "Admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
@@ -1561,9 +1821,9 @@ class RagEngine:
             )
         
         user_prompt += (
+            f"Dữ liệu thực tế từ Database (ƯU TIÊN TUYỆT ĐỐI):\n{context}\n\n"
             f"Câu hỏi: {question}\n\n"
-            f"Dữ liệu liên quan:\n{context}\n\n"
-            "Hãy trả lời ngắn gọn, đúng trọng tâm câu hỏi, và không tự ý mở rộng sang chủ đề khác."
+            "Hãy trả lời đúng trọng tâm dữ liệu trên. KHÔNG được trả lời là 'Bạn chưa đăng ký' nếu dữ liệu phía trên cho thấy có sự kiện."
         )
 
         can_call_llm, llm_block_reason = self._can_call_llm()

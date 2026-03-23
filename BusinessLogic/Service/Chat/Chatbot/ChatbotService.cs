@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
+using BusinessLogic.Helper;
 
 namespace BusinessLogic.Service.Chat
 {
@@ -48,13 +49,14 @@ namespace BusinessLogic.Service.Chat
 		/// <summary>
 		/// Gửi câu hỏi tới RAG API và lấy câu trả lời
 		/// </summary>
-		public async Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null)
+		public async Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null, string? userId = null, string? role = null)
 		{
+            var effectiveUserId = userId ?? GetCurrentUserId();
+            var effectiveUserRole = Enum.TryParse<RoleEnum>(role, true, out var r) ? r : GetCurrentUserRole();
+            
 			try
 			{
-                var userId = GetCurrentUserId();
-                var userRole = GetCurrentUserRole();
-				var userProfileContext = await BuildRequesterProfileContextAsync(userId, userRole);
+				var userProfileContext = await BuildRequesterProfileContextAsync(effectiveUserId, effectiveUserRole);
 
 				if (string.IsNullOrWhiteSpace(question))
 				{
@@ -66,10 +68,10 @@ namespace BusinessLogic.Service.Chat
 					};
 				}
 
-				var activeSession = await GetOrCreateActiveSessionAsync(userId, sessionId);
+				var activeSession = await GetOrCreateActiveSessionAsync(effectiveUserId, sessionId);
 				var effectiveSessionId = activeSession.Id;
 
-				var dynamicRetrievalContext = await BuildDynamicRetrievalContextAsync(userId, userRole, question, effectiveSessionId);
+				var dynamicRetrievalContext = await BuildDynamicRetrievalContextAsync(effectiveUserId, effectiveUserRole, question, effectiveSessionId);
 				if (!string.IsNullOrWhiteSpace(dynamicRetrievalContext))
 				{
 					userProfileContext = string.IsNullOrWhiteSpace(userProfileContext)
@@ -83,9 +85,9 @@ namespace BusinessLogic.Service.Chat
 				{
 					question,
 					top_k = topK,
-					role = MapRoleForRag(userRole),
+					role = MapRoleForRag(effectiveUserRole),
 					session_id = effectiveSessionId,
-					user_id = userId,
+					user_id = effectiveUserId,
 					user_profile_context = userProfileContext,
 					save_to_db = false
 				};
@@ -102,7 +104,7 @@ namespace BusinessLogic.Service.Chat
 				{
 					var errorContent = await response.Content.ReadAsStringAsync();
 					_logger.LogError($"[ChatbotService] RAG API error {response.StatusCode}: {errorContent}");
-                   await SaveConversationAsync(effectiveSessionId, userId, userRole, question, "Lỗi khi gọi RAG API", ChatMessageStatus.Error, errorContent);
+                   await SaveConversationAsync(effectiveSessionId, effectiveUserId, effectiveUserRole, question, "Lỗi khi gọi RAG API", ChatMessageStatus.Error, errorContent);
 					return new ChatbotResponseDto
 					{
 						Success = false,
@@ -120,7 +122,7 @@ namespace BusinessLogic.Service.Chat
 				if (apiResponse == null)
 				{
 					_logger.LogError("[ChatbotService] Failed to deserialize RAG API response");
-                   await SaveConversationAsync(effectiveSessionId, userId, userRole, question, "Không nhận được dữ liệu từ RAG API", ChatMessageStatus.Error, "Deserialize response failed");
+                   await SaveConversationAsync(effectiveSessionId, effectiveUserId, effectiveUserRole, question, "Không nhận được dữ liệu từ RAG API", ChatMessageStatus.Error, "Deserialize response failed");
 					return new ChatbotResponseDto
 					{
 						Success = false,
@@ -135,7 +137,7 @@ namespace BusinessLogic.Service.Chat
 				if (!string.IsNullOrWhiteSpace(apiResponse.Error))
 				{
 					_logger.LogWarning($"[ChatbotService] RAG API returned error: {apiResponse.Error}");
-                   await SaveConversationAsync(effectiveSessionId, userId, userRole, question, apiResponse.Error, ChatMessageStatus.Error, apiResponse.Error);
+                   await SaveConversationAsync(effectiveSessionId, effectiveUserId, effectiveUserRole, question, apiResponse.Error, ChatMessageStatus.Error, apiResponse.Error);
 					return new ChatbotResponseDto
 					{
 						Success = false,
@@ -153,7 +155,7 @@ namespace BusinessLogic.Service.Chat
 				var returnedSessionId = string.IsNullOrWhiteSpace(apiResponse.SessionId)
 					? effectiveSessionId
 					: apiResponse.SessionId!;
-				await SaveConversationAsync(returnedSessionId, userId, userRole, question, finalAnswer, ChatMessageStatus.Final);
+				await SaveConversationAsync(returnedSessionId, effectiveUserId, effectiveUserRole, question, finalAnswer, ChatMessageStatus.Final);
 
 				return new ChatbotResponseDto
 				{
@@ -171,10 +173,10 @@ namespace BusinessLogic.Service.Chat
 			catch (Exception ex)
 			{
 				_logger.LogError($"[ChatbotService] Error in AskQuestionAsync: {ex.Message}\n{ex.StackTrace}", ex);
-               var userId = GetCurrentUserId();
-				var userRole = GetCurrentUserRole();
-				var fallbackSession = await GetOrCreateActiveSessionAsync(userId, sessionId);
-				await SaveConversationAsync(fallbackSession.Id, userId, userRole, question, $"Lỗi: {ex.Message}", ChatMessageStatus.Error, ex.Message);
+                var fallbackUserId = effectiveUserId;
+				var fallbackUserRole = effectiveUserRole;
+				var fallbackSession = await GetOrCreateActiveSessionAsync(fallbackUserId, sessionId);
+				await SaveConversationAsync(fallbackSession.Id, fallbackUserId, fallbackUserRole, question, $"Lỗi: {ex.Message}", ChatMessageStatus.Error, ex.Message);
 				return new ChatbotResponseDto
 				{
 					Success = false,
@@ -292,16 +294,25 @@ namespace BusinessLogic.Service.Chat
 
 		private string GetCurrentUserId()
 		{
-			return _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-				?? "anonymous";
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user == null) return "anonymous";
+            
+            return user.GetUserId() ?? "anonymous";
 		}
 
 		private RoleEnum GetCurrentUserRole()
 		{
-			var roleClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value;
-			return Enum.TryParse<RoleEnum>(roleClaim, true, out var role)
-				? role
-				: RoleEnum.Student;
+			var user = _httpContextAccessor.HttpContext?.User;
+            if (user == null) return RoleEnum.Student;
+
+            // Try to get role from claims
+            var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+            if (!string.IsNullOrWhiteSpace(roleClaim) && Enum.TryParse<RoleEnum>(roleClaim, true, out var role))
+            {
+                return role;
+            }
+
+            return RoleEnum.Student;
 		}
 
 		private static string MapRoleForRag(RoleEnum role)
