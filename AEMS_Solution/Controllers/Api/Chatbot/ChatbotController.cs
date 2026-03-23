@@ -3,6 +3,8 @@ using BusinessLogic.Service;
 using BusinessLogic.Service.Chat;
 using Microsoft.AspNetCore.Mvc;
 
+using System.Security.Claims;
+
 namespace AEMS_Solution.Controllers.Api.Chatbot
 {
     [ApiController]
@@ -38,10 +40,13 @@ namespace AEMS_Solution.Controllers.Api.Chatbot
 
             try
             {
+                var role = User.FindFirstValue(ClaimTypes.Role);
                 var response = await _chatbotService.AskQuestionAsync(
                     request.Question,
                     request.TopK ?? 5,
-                    request.SessionId
+                    request.SessionId,
+                    CurrentUserId,
+                    role
                 );
 
                 if (!response.Success)
