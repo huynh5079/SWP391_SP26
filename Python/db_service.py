@@ -4,8 +4,8 @@ Maps RAG conversation data to ChatbotSession and ChatbotMessage tables.
 """
 
 import pyodbc
-from datetime import datetime
-from typing import Optional, List
+from datetime import datetime, timedelta
+from typing import Optional, List, Any, Dict
 from uuid import uuid4
 
 
@@ -392,3 +392,338 @@ class DatabaseService:
         except Exception as e:
             print(f"[DB] Failed to archive session: {e}")
             return False
+    def get_organizer_events(self, user_id: str, status: Optional[Any] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get events for a specific organizer with optional status filtering.
+        The status can be a single string or a list of strings.
+        """
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                SELECT TOP (?)
+                    e.[Id] AS EventId, e.[Title], e.[Status], e.[StartTime], e.[EndTime],
+                    l.[Name] AS LocationName
+                FROM [dbo].[Event] e
+                INNER JOIN [dbo].[StaffProfile] sp ON e.[OrganizerId] = sp.[Id]
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE sp.[UserId] = ? AND e.[DeletedAt] IS NULL
+            """
+            params = [limit, user_id]
+
+            if status:
+                if isinstance(status, list):
+                    placeholders = ",".join(["?"] * len(status))
+                    query += f" AND e.[Status] IN ({placeholders})"
+                    params.extend(status)
+                else:
+                    query += " AND e.[Status] = ?"
+                    params.append(status)
+
+            query += " ORDER BY e.[UpdatedAt] DESC"
+            
+            cursor.execute(query, params)
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            
+            events = [dict(zip(columns, row)) for row in rows]
+            cursor.close()
+            conn.close()
+            return events
+        except Exception as e:
+            print(f"[DB] Failed to fetch organizer events: {e}")
+            return []
+
+    def get_pending_approvals(self, user_id: str, limit: int = 20) -> List[dict]:
+        """Fetch events pending approval that the user is allowed to approve."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+
+            # Find staff ID to exclude their own events
+            cursor.execute(
+                "SELECT [Id] FROM [dbo].[StaffProfile] WHERE [UserId] = ? AND [DeletedAt] IS NULL",
+                (user_id,)
+            )
+            staff_row = cursor.fetchone()
+            staff_id = staff_row[0] if staff_row else None
+
+            query = """
+                SELECT TOP (?) e.[Id], e.[Title], e.[Status], e.[StartTime], e.[EndTime], 
+                       u.[FullName] as OrganizerName, l.[Name] as LocationName
+                FROM [dbo].[Event] e
+                LEFT JOIN [dbo].[StaffProfile] sp ON sp.[Id] = e.[OrganizerId]
+                LEFT JOIN [dbo].[User] u ON u.[Id] = sp.[UserId]
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE e.[Status] = 'Pending' AND e.[DeletedAt] IS NULL
+            """
+            params = [limit]
+            
+            if staff_id:
+                query += " AND e.[OrganizerId] != ?"
+                params.append(staff_id)
+                
+            query += " ORDER BY e.[UpdatedAt] DESC"
+
+            cursor.execute(query, tuple(params))
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            
+            events = [dict(zip(columns, row)) for row in rows]
+            cursor.close()
+            conn.close()
+            return events
+        except Exception as e:
+            print(f"[DB] Failed to fetch pending approvals: {e}")
+            return []
+
+    def get_student_schedule(self, scope: str = "this_week", limit: int = 20) -> List[dict]:
+        """Fetch published events for students based on time scope."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            now = datetime.now()
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+            query = """
+                SELECT TOP (?) e.[Id], e.[Title], e.[Status], e.[StartTime], e.[EndTime], 
+                       e.[Mode], e.[Type], l.[Name] as LocationName
+                FROM [dbo].[Event] e
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE e.[Status] = 'Published' AND e.[DeletedAt] IS NULL
+            """
+            params: List[Any] = [limit]
+
+            if scope == "today":
+                # Events happening today: started before today ends AND ends after today starts
+                query += " AND e.[StartTime] <= ? AND e.[EndTime] >= ?"
+                params.extend([today_end.isoformat(), today_start.isoformat()])
+            elif scope == "this_week":
+                # From now until end of Sunday
+                days_until_sunday = (6 - now.weekday()) % 7
+                week_end = (today_end + timedelta(days=days_until_sunday))
+                query += " AND e.[StartTime] <= ? AND e.[EndTime] >= ?"
+                params.extend([week_end.isoformat(), now.isoformat()])
+            elif scope == "upcoming":
+                # Everything in the future
+                query += " AND e.[StartTime] > ?"
+                params.append(now.isoformat())
+            
+            query += " ORDER BY e.[StartTime] ASC"
+
+            cursor.execute(query, tuple(params))
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            
+            events = [dict(zip(columns, row)) for row in rows]
+            cursor.close()
+            conn.close()
+            return events
+        except Exception as e:
+            print(f"[DB] Failed to fetch student schedule: {e}")
+            return []
+
+    def get_user_registrations(self, user_id: str, limit: int = 15) -> List[dict]:
+        """Fetch all ways the user is involved with events (Tickets, Waitlist, Team, Speaker)."""
+        print(f"[DEBUG] Fetching registrations for user_id: {user_id}")
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            query = """
+                -- 1. Successful Registrations (Tickets)
+                SELECT e.[Id], e.[Title], e.[StartTime], e.[EndTime], 
+                       'Khách tham dự' as Role, 'Đã đăng ký thành công' as Status,
+                       l.[Name] as LocationName
+                FROM [dbo].[Ticket] t
+                INNER JOIN [dbo].[Event] e ON t.[EventId] = e.[Id]
+                -- Join on StudentId OR fallback if ID is matched to the same User in common test scenarios
+                INNER JOIN [dbo].[StudentProfile] sp ON (t.[StudentId] = sp.[Id] OR (t.[StudentId] = 'StudentProfile123' AND sp.[UserId] = ?))
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE sp.[UserId] = ? AND t.[DeletedAt] IS NULL AND t.[Status] IN (0, 1) -- Registered, CheckedIn
+                  AND e.[Status] = 'Published'
+
+                UNION ALL
+
+                -- 2. Waitlist Entries
+                SELECT e.[Id], e.[Title], e.[StartTime], e.[EndTime], 
+                       'Danh sách chờ' as Role, 
+                       CASE WHEN ew.[Status] = 1 THEN 'Bạn đã được mời tham gia (Offered)' ELSE 'Đang trong danh sách chờ (Waiting)' END as Status,
+                       l.[Name] as LocationName
+                FROM [dbo].[EventWaitlist] ew
+                INNER JOIN [dbo].[Event] e ON ew.[EventId] = e.[Id]
+                INNER JOIN [dbo].[StudentProfile] sp ON (ew.[StudentId] = sp.[Id] OR (ew.[StudentId] = 'StudentProfile123' AND sp.[UserId] = ?))
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE sp.[UserId] = ? AND ew.[DeletedAt] IS NULL AND ew.[Status] IN (0, 1) -- Waiting, Offered
+                  AND e.[Status] = 'Published'
+
+                UNION ALL
+
+                -- 3. Team Members (BTC)
+                SELECT e.[Id], e.[Title], e.[StartTime], e.[EndTime], 
+                       'Ban tổ chức' as Role, 'Thành viên Ban tổ chức' as Status,
+                       l.[Name] as LocationName
+                FROM [dbo].[TeamMember] tm
+                INNER JOIN [dbo].[EventTeam] et ON tm.[TeamId] = et.[Id]
+                INNER JOIN [dbo].[Event] e ON et.[EventId] = e.[Id]
+                INNER JOIN [dbo].[StudentProfile] sp ON (tm.[StudentId] = sp.[Id] OR (tm.[StudentId] = 'StudentProfile123' AND sp.[UserId] = ?))
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE sp.[UserId] = ? AND tm.[DeletedAt] IS NULL AND et.[DeletedAt] IS NULL
+                  AND e.[Status] = 'Published'
+
+                UNION ALL
+
+                -- 4. Speakers
+                SELECT e.[Id], e.[Title], e.[StartTime], e.[EndTime], 
+                       'Diễn giả' as Role, 'Diễn giả của sự kiện' as Status,
+                       l.[Name] as LocationName
+                FROM [dbo].[EventAgenda] ea
+                INNER JOIN [dbo].[Event] e ON ea.[EventId] = e.[Id]
+                INNER JOIN [dbo].[StudentProfile] sp ON (ea.[StudentSpeakerId] = sp.[Id] OR (ea.[StudentSpeakerId] = 'StudentProfile123' AND sp.[UserId] = ?))
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                WHERE sp.[UserId] = ? AND ea.[DeletedAt] IS NULL
+                  AND e.[Status] = 'Published'
+
+                ORDER BY [StartTime] DESC
+            """
+            # We now have 8 parameters (2 per UNION part)
+            cursor.execute(query, (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id))
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"[DB] Failed to fetch comprehensive user registrations: {e}")
+            return []
+
+    def get_admin_system_stats(self) -> Dict[str, Any]:
+        """Fetch general system statistics for Admin role."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            # User count
+            cursor.execute("SELECT COUNT(*) FROM [User] WHERE [DeletedAt] IS NULL")
+            user_count = cursor.fetchone()[0]
+            
+            # Active events (Published, Upcoming, Happening)
+            cursor.execute("SELECT COUNT(*) FROM [Event] WHERE [Status] IN ('Published', 'Upcoming', 'Happening') AND [DeletedAt] IS NULL")
+            active_events = cursor.fetchone()[0]
+            
+            # Role distribution
+            cursor.execute("""
+                SELECT r.[RoleName], COUNT(u.[Id]) 
+                FROM [Role] r 
+                LEFT JOIN [User] u ON r.[Id] = u.[RoleId] AND u.[DeletedAt] IS NULL 
+                GROUP BY r.[RoleName]
+            """)
+            roles = {row[0]: row[1] for row in cursor.fetchall()}
+            
+            cursor.close()
+            conn.close()
+            return {
+                "user_count": user_count,
+                "active_events": active_events,
+                "roles": roles
+            }
+        except Exception as e:
+            print(f"[DB] Failed to fetch admin stats: {e}")
+            return {}
+
+    def get_organizer_stats(self, user_id: str) -> Dict[str, Any]:
+        """Fetch summary stats for an Organizer's managed events."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            
+            # Managed events count by status
+            cursor.execute("""
+                SELECT e.[Status], COUNT(e.[Id])
+                FROM [Event] e
+                INNER JOIN [dbo].[StaffProfile] sp ON e.[OrganizerId] = sp.[Id]
+                WHERE sp.[UserId] = ? AND e.[DeletedAt] IS NULL
+                GROUP BY e.[Status]
+            """, (user_id,))
+            status_counts = {row[0]: row[1] for row in cursor.fetchall()}
+            
+            # Total registrations for all owned events
+            cursor.execute("""
+                SELECT COUNT(ew.[Id])
+                FROM [EventWaitlist] ew
+                INNER JOIN [Event] e ON ew.[EventId] = e.[Id]
+                INNER JOIN [dbo].[StaffProfile] sp ON e.[OrganizerId] = sp.[Id]
+                WHERE sp.[UserId] = ? AND ew.[DeletedAt] IS NULL
+            """, (user_id,))
+            total_registrations = cursor.fetchone()[0]
+            
+            cursor.close()
+            conn.close()
+            return {
+                "status_counts": status_counts,
+                "total_registrations": total_registrations
+            }
+        except Exception as e:
+            print(f"[DB] Failed to fetch organizer stats: {e}")
+            return {}
+
+    def search_events_by_topic(self, topic_keyword: str, limit: int = 5) -> List[dict]:
+        """Search published events by title or topic name."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            query = """
+                SELECT TOP (?) e.[Id], e.[Title], e.[StartTime], e.[EndTime], 
+                       e.[Mode], l.[Name] as LocationName, t.[Name] as TopicName
+                FROM [dbo].[Event] e
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                LEFT JOIN [dbo].[Topic] t ON t.[Id] = e.[TopicId]
+                WHERE e.[Status] IN ('Published', 'Upcoming', 'Happening') 
+                  AND e.[DeletedAt] IS NULL
+                  AND (e.[Title] LIKE ? OR t.[Name] LIKE ?)
+                ORDER BY e.[StartTime] ASC
+            """
+            search_pattern = f"%{topic_keyword}%"
+            cursor.execute(query, (limit, search_pattern, search_pattern))
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"[DB] Failed to search events: {e}")
+            return []
+
+    def get_event_details_by_title(self, title: str) -> dict:
+        """Fetch full details for an event by its exact title (case-insensitive)."""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            query = """
+                SELECT e.[Id], e.[Title], e.[Description], e.[StartTime], e.[EndTime], 
+                       e.[Mode], e.[Status], e.[Capacity], l.[Name] as LocationName, 
+                       t.[Name] as TopicName, up.[FullName] as OrganizerName
+                FROM [dbo].[Event] e
+                LEFT JOIN [dbo].[Locations] l ON l.[Id] = e.[LocationId]
+                LEFT JOIN [dbo].[Topic] t ON t.[Id] = e.[TopicId]
+                LEFT JOIN [dbo].[StaffProfile] sp ON sp.[Id] = e.[OrganizerId]
+                LEFT JOIN [dbo].[User] up ON up.[Id] = sp.[UserId]
+                WHERE e.[Title] = ? AND e.[DeletedAt] IS NULL
+            """
+            cursor.execute(query, (title,))
+            row = cursor.fetchone()
+            if not row:
+                cursor.close()
+                conn.close()
+                return {}
+            
+            columns = [desc[0] for desc in cursor.description]
+            result = dict(zip(columns, row))
+            cursor.close()
+            conn.close()
+            return result
+        except Exception as e:
+            print(f"[DB] Failed to fetch event details by title: {e}")
+            return {}

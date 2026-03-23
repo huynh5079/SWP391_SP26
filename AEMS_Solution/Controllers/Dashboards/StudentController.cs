@@ -12,5 +12,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             // Redirect straight to the event calendar — the student's home page
             return RedirectToAction("Index", "StudentEvent");
         }
-    }
+        [HttpGet]
+        public async Task <IActionResult> ShowQuiz(){
+			return RedirectToAction("ShowQuiz", "EventQuiz");
+		}
+	}
 }

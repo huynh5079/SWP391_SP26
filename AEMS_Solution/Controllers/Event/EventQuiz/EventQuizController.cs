@@ -619,5 +619,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
             return answers.FirstOrDefault() ?? string.Empty;
         }
-    }
+		[HttpGet]
+		[AllowAnonymous] 
+		public IActionResult ShowQuiz()
+		{
+			return View("~/Views/Event/EventQuiz/PageShowQuizForStudent/Index.cshtml");
+		}
+	}
 }
