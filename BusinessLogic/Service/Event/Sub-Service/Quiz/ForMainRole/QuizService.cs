@@ -132,6 +132,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				QuestionCount = questionCount,
 				AttemptCount = attemptCount,
 				PassedCount = passedCount,
+				MaxAttempts = quiz.MaxAttemptSubmission,
 				CreatedAt = quiz.CreatedAt,
 				UpdatedAt = quiz.UpdatedAt
 			};
@@ -760,6 +761,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					FileQuiz = quizSet.FileQuiz,
 					LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null,
 					AllowReview = request.AllowReview,
+					MaxAttemptSubmission = request.MaxAttempts,
 					Status = QuizStatusEnum.Draft,
 					IsActive = true
 				};
@@ -1190,6 +1192,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			quiz.TimeLimit = request.TimeLimit;
 			quiz.LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null;
 			quiz.AllowReview = request.AllowReview;
+			quiz.MaxAttemptSubmission = request.MaxAttempts;
 			if (quiz.QuizSet != null)
 			{
 				quiz.QuizSet.Title = request.Title;

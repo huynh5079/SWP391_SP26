@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -34,17 +34,22 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
             if (quiz.QuestionSetStatus != QuestionSetEnum.Available || !quiz.EventQuizQuestions.Any())
                 throw new InvalidOperationException("Quiz chưa có câu hỏi để làm bài.");
 
-			var session = await _uow.StudentQuizScores.GetAsync(
-				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId,
-				q => q.Include(x => x.StudentAnswers));
+			var allSessions = (await _uow.StudentQuizScores.GetAllAsync(
+				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId)).ToList();
 
-			if (session != null)
-				throw new InvalidOperationException("Quiz already started");
+			var inProgressSession = allSessions.FirstOrDefault(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
+			if (inProgressSession != null)
+				throw new InvalidOperationException("Bạn đang có một lượt làm bài chưa hoàn thành.");
 
-			session = new StudentQuizScore
+			var submittedCount = allSessions.Count(x => x.Status == StudentQuizScoreStatusEnum.Submitted);
+			if (quiz.MaxAttemptSubmission.HasValue && quiz.MaxAttemptSubmission.Value > 0 && submittedCount >= quiz.MaxAttemptSubmission.Value)
+				throw new InvalidOperationException($"Bạn đã đạt tối đa số lần nộp bài ({quiz.MaxAttemptSubmission.Value} lần).");
+
+			var session = new StudentQuizScore
 			{
 				EventQuizId = request.QuizId,
 				StudentId = request.StudentId,
+				AttemptNumber = submittedCount + 1,
 				Score = 0,
 				StartedAt = DateTime.UtcNow,
 				Status = StudentQuizScoreStatusEnum.InProgress
@@ -256,6 +261,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
                 TimeLimitMinutes = quiz.TimeLimit,
                 StartedAt = startedAt,
                 EndsAt = endsAt,
+                MaxAttempts = quiz.MaxAttemptSubmission,
                 IsTimedOut = endsAt.HasValue && DateTime.UtcNow > endsAt.Value
             };
         }
@@ -278,6 +284,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 				AllowReview = quiz.AllowReview,
                 IsActive = quiz.IsActive,
                 QuestionCount = questionCount,
+				MaxAttempts = quiz.MaxAttemptSubmission,
                 AttemptCount = quiz.StudentQuizScores?.Count ?? 0,
                 PassedCount = quiz.StudentQuizScores?.Count(x => (x.Score ?? 0) >= (quiz.PassingScore ?? 0)) ?? 0,
                 CreatedAt = quiz.CreatedAt,

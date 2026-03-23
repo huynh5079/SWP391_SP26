@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 using DataAccess.Helper;
@@ -522,6 +522,11 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.PassingScore).HasDefaultValue(0);
 			entity.Property(e => e.TimeLimit).HasDefaultValue(0);
 			entity.Property(e => e.Title).HasMaxLength(255);
+			entity.Property(e=>e.MaxAttemptSubmission).HasDefaultValue(1);
+			entity.Property(e=> e.SubmitStatus)
+			     .HasMaxLength(50)
+				 .HasDefaultValue(SubmissionStatus.NotSubmitted)
+				 .HasConversion<string>();
 			entity.Property(e => e.Type)
 				.HasMaxLength(50)
 				.HasConversion<string>();
@@ -866,11 +871,12 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("StudentQuizScore");
 
-			entity.HasIndex(e => new { e.EventQuizId, e.StudentId }, "UIX_StudentQuizScore_EventQuiz_Student")
+			entity.HasIndex(e => new { e.EventQuizId, e.StudentId, e.AttemptNumber }, "UIX_StudentQuizScore_EventQuiz_Student")
 				.IsUnique()
 				.HasFilter("[DeletedAt] IS NULL AND [EventQuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
 
 			entity.Property(e => e.EventQuizId).HasMaxLength(450);
+			entity.Property(e => e.AttemptNumber).HasDefaultValue(1);
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)
 				.HasConversion<string>()
@@ -880,7 +886,7 @@ public partial class AEMSContext : DbContext
 			entity.HasOne(d => d.EventQuiz).WithMany(p => p.StudentQuizScores)
 				.HasForeignKey(d => d.EventQuizId)
 				.HasConstraintName("FK_StudentQuizScore_EventQuiz");
-
+	            
 			entity.HasOne(d => d.Student).WithMany(p => p.StudentQuizScores)
 				.HasForeignKey(d => d.StudentId)
 				.OnDelete(DeleteBehavior.ClientSetNull)
