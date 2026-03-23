@@ -53,6 +53,7 @@
                                  <th>Semester</th>
                                 <th>Type</th>
                                 <th>Passing Score</th>
+                                <th>Max Attempts</th>
                                 <th>Questions</th>
                                 <th>Attempts</th>
                                 <th>Passed</th>
@@ -71,6 +72,7 @@
                                      <td>@(string.IsNullOrWhiteSpace(q.SemesterName) ? "-" : q.SemesterName)</td>
                                     <td>@q.Type</td>
                                     <td>@(q.PassingScore?.ToString() ?? "-")</td>
+                                    <td>@(q.MaxAttempts?.ToString() ?? "Unlimited")</td>
                                     <td>@(q.QuestionCount)</td>
                                     <td>@q.AttemptCount</td>
                                     <td>@q.PassedCount</td>

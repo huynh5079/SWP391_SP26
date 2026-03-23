@@ -896,7 +896,7 @@
                                         }
                                         else if (quiz.Status == DataAccess.Enum.QuizStatusEnum.Published)
                                         {
-                                            <a class="btn btn-sm btn-primary" href="@Url.Action("ShowQuiz", "EventQuiz", new { area = "", eventId = Model.EventId })">Bắt đầu</a>
+                                            <a class="btn btn-sm btn-primary" href="@Url.Action("ShowQuiz", "EventQuiz", new { area = "", eventId = Model.EventId, quizId = quiz.QuizId })">Bắt đầu</a>
                                         }
                                         else
                                         {

@@ -16,6 +16,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz
         public string? FileQuiz { get; set; }
         public string? LiveQuizLink { get; set; }
         public bool AllowReview { get; set; }
+        public int? MaxAttempts { get; set; }
         public QuizSetVisibilityEnum SharingStatus { get; set; } = QuizSetVisibilityEnum.Private;
     }
 
