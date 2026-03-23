@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -35,6 +36,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			_uow = uow;
 			_validator = validator;
 			_fileStorageService = fileStorageService;
+		}
+
+		// helper: truncate a long string for error messages
+		private static string Truncate(string value, int maxLength)
+		{
+			if (string.IsNullOrEmpty(value)) return string.Empty;
+			return value.Length <= maxLength ? value : value.Substring(0, maxLength) + "...";
 		}
 
 		private static QuizQuestionOptionContract GetQuestionOptions(QuizQuestionContract dto)
@@ -253,18 +261,24 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		private static string? NormalizeAnswer(string? value)
 		{
+           // Normalize: remove whitespace (including NBSP and tabs), uppercase and validate
 			if (string.IsNullOrWhiteSpace(value))
 			{
 				return null;
 			}
 
-			var normalized = value.Replace(" ", string.Empty).ToUpperInvariant();
-			if (!Regex.IsMatch(normalized, @"^[A-D](,[A-D])*$"))
+			var cleaned = value.Replace("\u00A0", " ") // NBSP
+				.Replace("\t", " ")
+				.Replace(" ", string.Empty)
+				.ToUpperInvariant();
+
+			// Accept formats like "A , B", "a, b" -> cleaned becomes "A,B"
+			if (!Regex.IsMatch(cleaned, @"^[A-D](,[A-D])*$"))
 			{
 				throw new ArgumentException("Invalid answer format");
 			}
 
-			return string.Join(",", normalized
+			return string.Join(",", cleaned
 				.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 				.Distinct()
 				.OrderBy(x => x));
@@ -272,6 +286,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		private static string? NormalizeAnswers(string? value, QuestionTypeOptionEnum typeOption)
 		{
+            // Normalize individual answers first (removes spaces, normalizes case)
 			var normalized = NormalizeAnswer(value);
 			if (string.IsNullOrWhiteSpace(normalized))
 			{
@@ -305,15 +320,20 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		private static QuestionTypeOptionEnum DetermineQuestionType(string optionA, string optionB, string? optionC, string? optionD, string? correctAnswer)
 		{
-			if (string.Equals(optionA, "True", StringComparison.OrdinalIgnoreCase)
-				&& string.Equals(optionB, "False", StringComparison.OrdinalIgnoreCase)
-				&& string.IsNullOrWhiteSpace(optionC)
-				&& string.IsNullOrWhiteSpace(optionD))
+          // Improved comparison: trim + case-insensitive
+			string a = optionA?.Trim() ?? string.Empty;
+			string b = optionB?.Trim() ?? string.Empty;
+			string c = optionC?.Trim() ?? string.Empty;
+			string d = optionD?.Trim() ?? string.Empty;
+
+			if (a.Equals("TRUE", StringComparison.OrdinalIgnoreCase) && b.Equals("FALSE", StringComparison.OrdinalIgnoreCase)
+				&& string.IsNullOrWhiteSpace(c) && string.IsNullOrWhiteSpace(d))
 			{
 				return QuestionTypeOptionEnum.TrueFalse;
 			}
 
-			if (!string.IsNullOrWhiteSpace(correctAnswer) && correctAnswer.Contains(','))
+			// multiple choice if correct answer lists multiple entries
+			if (!string.IsNullOrWhiteSpace(correctAnswer) && correctAnswer.Trim().Contains(','))
 			{
 				return QuestionTypeOptionEnum.MultipleChoice;
 			}
@@ -365,11 +385,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				x => x.DeletedAt == null && x.Title == normalizedTitle,
 				q => q.Include(x => x.Event));
 
+            // Compare by EventId to avoid false positives when titles are not unique
 			var isDuplicated = sameTitleQuizzes.Any(x => x.Event != null
 				&& x.Event.DeletedAt == null
 				&& x.Event.OrganizerId == organizer.Id
 				&& x.Event.SemesterId == eventDataForAdd.SemesterId
-				&& string.Equals(x.Event.Title, eventDataForAdd.Title, StringComparison.OrdinalIgnoreCase));
+				&& x.EventId == eventDataForAdd.Id);
 
 			if (isDuplicated)
 			{
@@ -524,11 +545,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		private async Task RefreshEventQuizQuestionsAsync(EventQuiz quiz)
 		{
-			var existingSnapshots = (await _uow.EventQuizQuestions.GetAllAsync(x => x.EventQuizId == quiz.Id && x.DeletedAt == null)).ToList();
-			foreach (var snapshot in existingSnapshots)
-			{
-				await _uow.EventQuizQuestions.RemoveAsync(snapshot);
-			}
+         // Batch remove existing snapshots to avoid N calls
+         // Batch delete existing snapshots using UnitOfWork helper to avoid N roundtrips
+			await _uow.DeleteEventQuizQuestionsAsync(quiz.Id);
 
 			if (string.IsNullOrWhiteSpace(quiz.QuizSetId))
 			{
@@ -542,13 +561,19 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				.OrderBy(x => x.OrderIndex)
 				.ToList();
 
-			foreach (var quizSetQuestion in quizSetQuestions.Where(x => x.QuestionBank != null))
+            // Create snapshots in memory then persist in batch to reduce DB roundtrips
+			var snapshots = quizSetQuestions
+				.Where(x => x.QuestionBank != null)
+				.Select(qsq => CreateSnapshotQuestion(quiz, qsq.QuestionBank!, qsq.OrderIndex, qsq.ScorePoint ?? 1))
+				.ToList();
+            if (snapshots.Any())
 			{
-				await _uow.EventQuizQuestions.CreateAsync(CreateSnapshotQuestion(
-					quiz,
-					quizSetQuestion.QuestionBank!,
-					quizSetQuestion.OrderIndex,
-					quizSetQuestion.ScorePoint ?? 1));
+				foreach (var snap in snapshots)
+				{
+					await _uow.EventQuizQuestions.CreateAsync(snap);
+				}
+				// persist once after creating snapshots
+				await _uow.SaveChangesAsync();
 			}
 
 			quiz.QuestionSetStatus = quizSetQuestions.Count > 0 ? QuestionSetEnum.Available : QuestionSetEnum.NA;
@@ -569,14 +594,25 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 		{
 			if (replaceExisting)
 			{
-				var existingLinks = (await _uow.QuizSetQuestions.GetAllAsync(x => x.QuizSetId == quizSet.Id && x.DeletedAt == null)).ToList();
-				foreach (var link in existingLinks)
+              var existingLinks = (await _uow.QuizSetQuestions.GetAllAsync(x => x.QuizSetId == quizSet.Id && x.DeletedAt == null)).ToList();
+				if (existingLinks.Any())
 				{
-					await _uow.QuizSetQuestions.RemoveAsync(link);
+					// remove range in-memory and persist once
+					foreach (var link in existingLinks)
+					{
+						await _uow.QuizSetQuestions.RemoveAsync(link);
+					}
+					await _uow.SaveChangesAsync();
 				}
 			}
 
-			var orderIndex = 1;
+         var orderIndex = 1;
+			// Preload question bank map to avoid N+1 queries
+           var allQuestionBanks = (await _uow.QuestionBanks.GetAllAsync(x => x.DeletedAt == null)).ToList();
+			// Group by normalized question text to avoid duplicate-key exceptions and use culture-insensitive lower
+			var existingQuestions = allQuestionBanks
+				.GroupBy(x => (x.QuestionText ?? string.Empty).ToLowerInvariant())
+				.ToDictionary(g => g.Key, g => g.First());
 			foreach (var questionDto in questions.Where(x => !string.IsNullOrWhiteSpace(x.QuestionText)))
 			{
 				var options = GetQuestionOptions(questionDto);
@@ -587,27 +623,27 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				}
 
 				var normalizedQuestionText = questionDto.QuestionText.Trim();
-				var questionBank = await _uow.QuestionBanks.GetAsync(
-					x => x.QuestionText.ToLower() == normalizedQuestionText.ToLower() && x.DeletedAt == null);
+               existingQuestions.TryGetValue(normalizedQuestionText.ToLower(), out var questionBank);
 
-				if (questionBank == null)
+           if (questionBank == null)
+			{
+				questionBank = new QuestionBank
 				{
-					questionBank = new QuestionBank
-					{
-						TopicId = quizSet.TopicId,
-						OrganizerId = organizer.Id,
-						QuestionText = normalizedQuestionText,
-						OptionA = options.OptionA.Trim(),
-						OptionB = options.OptionB.Trim(),
-						OptionC = string.IsNullOrWhiteSpace(options.OptionC) ? null : options.OptionC.Trim(),
-						OptionD = string.IsNullOrWhiteSpace(options.OptionD) ? null : options.OptionD.Trim(),
-						CorrectAnswer = answer,
-						Explanation = string.IsNullOrWhiteSpace(questionDto.Explanation) ? null : questionDto.Explanation.Trim(),
-						Difficulty = questionDto.Difficulty
-					};
+					TopicId = quizSet.TopicId,
+					OrganizerId = organizer.Id,
+					QuestionText = normalizedQuestionText,
+					OptionA = options.OptionA?.Trim(),
+					OptionB = options.OptionB?.Trim(),
+					OptionC = string.IsNullOrWhiteSpace(options.OptionC) ? null : options.OptionC?.Trim(),
+					OptionD = string.IsNullOrWhiteSpace(options.OptionD) ? null : options.OptionD?.Trim(),
+					CorrectAnswer = answer,
+					Explanation = string.IsNullOrWhiteSpace(questionDto.Explanation) ? null : questionDto.Explanation.Trim(),
+					Difficulty = questionDto.Difficulty
+				};
 
-					await _uow.QuestionBanks.CreateAsync(questionBank);
-				}
+				await _uow.QuestionBanks.CreateAsync(questionBank);
+				// persist later by caller; do not SaveChanges here
+			}
 
 				var existingQuizSetQuestion = await _uow.QuizSetQuestions.GetAsync(
 					x => x.QuizSetId == quizSet.Id && x.QuestionBankId == questionBank.Id && x.DeletedAt == null);
@@ -627,6 +663,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			var questionSetStatus = orderIndex > 1 ? QuestionSetEnum.Available : QuestionSetEnum.NA;
 			await _uow.QuizSets.UpdateAsync(quizSet);
+			await _uow.SaveChangesAsync();
 			await SyncQuestionBankAsync(quizSet, questionSetStatus);
 		}
 
@@ -838,7 +875,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		public async Task<UpdateQuizQuestionResponseDto> UpdateQuizQuestionAsync(UpdateQuizQuestionRequestDto request)
 		{
-			var normalizedRequest = NormalizeQuestionRequest(new AddQuizQuestionRequestDto
+			
+				var normalizedRequest = NormalizeQuestionRequest(new AddQuizQuestionRequestDto
 			{
 				QuizId = request.QuizId,
 				QuestionText = request.QuestionText,
@@ -876,29 +914,54 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			await _uow.EventQuizQuestions.UpdateAsync(question);
 
-			if (!string.IsNullOrWhiteSpace(question.QuestionBankId))
+            if (!string.IsNullOrWhiteSpace(question.QuestionBankId))
 			{
+				// Only update shared QuestionBank if it belongs to current organizer. Otherwise clone and relink to avoid global data corruption.
 				var questionBank = await _uow.QuestionBanks.GetByIdAsync(question.QuestionBankId);
 				if (questionBank != null)
 				{
-					questionBank.QuestionText = question.QuestionText;
-					questionBank.OptionA = question.OptionA;
-					questionBank.OptionB = question.OptionB;
-					questionBank.OptionC = question.OptionC;
-					questionBank.OptionD = question.OptionD;
-					questionBank.CorrectAnswer = question.CorrectAnswer;
-					questionBank.Explanation = question.Explanation;
-					questionBank.Difficulty = question.Difficulty;
-					await _uow.QuestionBanks.UpdateAsync(questionBank);
-				}
-
-				if (!string.IsNullOrWhiteSpace(quiz.QuizSetId))
-				{
-					var quizSetQuestion = await _uow.QuizSetQuestions.GetAsync(x => x.QuizSetId == quiz.QuizSetId && x.QuestionBankId == question.QuestionBankId);
-					if (quizSetQuestion != null)
+					if (questionBank.OrganizerId == quiz.Event.OrganizerId)
 					{
-						quizSetQuestion.ScorePoint = question.ScorePoint;
-						await _uow.QuizSetQuestions.UpdateAsync(quizSetQuestion);
+						// Safe to update in-place
+						questionBank.QuestionText = question.QuestionText;
+						questionBank.OptionA = question.OptionA;
+						questionBank.OptionB = question.OptionB;
+						questionBank.OptionC = question.OptionC;
+						questionBank.OptionD = question.OptionD;
+						questionBank.CorrectAnswer = question.CorrectAnswer;
+						questionBank.Explanation = question.Explanation;
+						questionBank.Difficulty = question.Difficulty;
+						await _uow.QuestionBanks.UpdateAsync(questionBank);
+					}
+					else
+					{
+                      // Clone a new QuestionBank for this organizer and re-link
+						var cloned = CloneQuestionBank(questionBank, quiz.Event.OrganizerId ?? string.Empty, quiz.QuizSet?.TopicId);
+						// Apply updated fields from question
+						cloned.QuestionText = question.QuestionText;
+						cloned.OptionA = question.OptionA;
+						cloned.OptionB = question.OptionB;
+						cloned.OptionC = question.OptionC;
+						cloned.OptionD = question.OptionD;
+						cloned.CorrectAnswer = question.CorrectAnswer;
+						cloned.Explanation = question.Explanation;
+						cloned.Difficulty = question.Difficulty;
+						await _uow.QuestionBanks.CreateAsync(cloned);
+						// Save old QuestionBankId before changing so we can find existing QuizSetQuestion
+						var oldQuestionBankId = question.QuestionBankId;
+						// Update EventQuizQuestion to point to cloned
+						question.QuestionBankId = cloned.Id;
+						await _uow.EventQuizQuestions.UpdateAsync(question);
+						if (!string.IsNullOrWhiteSpace(quiz.QuizSetId))
+						{
+							var quizSetQuestion = await _uow.QuizSetQuestions.GetAsync(x => x.QuizSetId == quiz.QuizSetId && x.QuestionBankId == oldQuestionBankId);
+							if (quizSetQuestion != null)
+							{
+								quizSetQuestion.QuestionBankId = cloned.Id;
+								quizSetQuestion.ScorePoint = question.ScorePoint;
+								await _uow.QuizSetQuestions.UpdateAsync(quizSetQuestion);
+							}
+						}
 					}
 				}
 			}
@@ -969,18 +1032,22 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			{
 				TopicId = quizSet.TopicId,
 				OrganizerId = quiz.Event.OrganizerId,
-				QuestionText = request.QuestionText.Trim(),
-				OptionA = request.Options.OptionA.Trim(),
-				OptionB = request.Options.OptionB.Trim(),
-				OptionC = string.IsNullOrWhiteSpace(request.Options.OptionC) ? null : request.Options.OptionC.Trim(),
-				OptionD = string.IsNullOrWhiteSpace(request.Options.OptionD) ? null : request.Options.OptionD.Trim(),
+                QuestionText = request.QuestionText?.Trim(),
+				OptionA = request.Options.OptionA?.Trim(),
+				OptionB = request.Options.OptionB?.Trim(),
+				OptionC = string.IsNullOrWhiteSpace(request.Options.OptionC) ? null : request.Options.OptionC?.Trim(),
+				OptionD = string.IsNullOrWhiteSpace(request.Options.OptionD) ? null : request.Options.OptionD?.Trim(),
 				CorrectAnswer = request.CorrectAnswer,
 				Explanation = request.Explanation,
 				Difficulty = request.Difficulty
 			};
 
-			await _uow.QuestionBanks.CreateAsync(questionBank);
-			var orderIndex = await _uow.QuizSetQuestions.CountAsync(x => x.QuizSetId == quiz.QuizSetId && x.DeletedAt == null) + 1;
+         await _uow.QuestionBanks.CreateAsync(questionBank);
+
+            // Load existing QuizSetQuestions once and compute max OrderIndex (avoids multiple DB calls)
+			var existingQuizSetQuestions = (await _uow.QuizSetQuestions.GetAllAsync(x => x.QuizSetId == quiz.QuizSetId && x.DeletedAt == null)).ToList();
+			var maxIndex = existingQuizSetQuestions.Select(x => (int?)x.OrderIndex).Max() ?? 0;
+			var orderIndex = maxIndex + 1;
 			var quizSetQuestion = new QuizSetQuestion
 			{
 				QuizSetId = quiz.QuizSetId!,
@@ -1170,10 +1237,35 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			var quizSet = await EnsureExclusiveQuizSetAsync(quiz);
 
+           // Validate by extension and basic file signature where possible
 			var ext = Path.GetExtension(request.FileName).ToLowerInvariant();
 			var allowExt = new[] { ".pdf", ".txt", ".docx" };
 			if (!allowExt.Contains(ext))
 				throw new InvalidOperationException("Chỉ cho phép file PDF, TXT hoặc DOCX");
+
+			// Basic signature checks
+			if (request.FileContent.Length >= 4)
+			{
+				// PDF: 25 50 44 46 => %PDF
+				if (ext == ".pdf")
+				{
+					if (!(request.FileContent[0] == 0x25 && request.FileContent[1] == 0x50 && request.FileContent[2] == 0x44 && request.FileContent[3] == 0x46))
+						throw new InvalidOperationException("File PDF không hợp lệ (signature mismatch)");
+				}
+				// DOCX is a ZIP archive; check PK header: 50 4B 03 04
+				if (ext == ".docx")
+				{
+					if (!(request.FileContent[0] == 0x50 && request.FileContent[1] == 0x4B && request.FileContent[2] == 0x03 && request.FileContent[3] == 0x04))
+						throw new InvalidOperationException("File DOCX không hợp lệ (signature mismatch)");
+				}
+				// TXT: allow any but ensure not binary gibberish (simple heuristic)
+				if (ext == ".txt")
+				{
+					// check for null bytes
+					if (request.FileContent.Take(128).Any(b => b == 0))
+						throw new InvalidOperationException("File TXT không hợp lệ");
+				}
+			}
 
 			// 1. Upload to Cloudinary using the new Stream-based method
 			using var ms = new MemoryStream(request.FileContent);
@@ -1187,12 +1279,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				throw new InvalidOperationException("Lỗi khi upload file lên Cloudinary.");
 
 			// 2. Parse content from memory (no local file saving needed)
-			ms.Position = 0; // Reset stream position for reading
+			using var parseStream = new MemoryStream(request.FileContent);
 			string textContent = ext switch
 			{
-				".txt" => await new StreamReader(ms).ReadToEndAsync(),
-				".docx" => ReadDocxFromStream(ms),
-				".pdf" => ReadPdfFromStream(ms),
+				".txt" => await new StreamReader(parseStream).ReadToEndAsync(),
+				".docx" => ReadDocxFromStream(parseStream),
+				".pdf" => ReadPdfFromStream(parseStream),
 				_ => string.Empty
 			};
 
@@ -1209,7 +1301,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			try
 			{
 				await PersistQuestionsAsync(quizSet, organizer, questions, true);
+				await _uow.SaveChangesAsync();
 				await RefreshEventQuizQuestionsAsync(quiz);
+
+				quiz.FileQuiz = quizSet.FileQuiz;
+
 				await _uow.QuizSets.UpdateAsync(quizSet);
 				await _uow.EventQuiz.UpdateAsync(quiz);
 				await _uow.SaveChangesAsync();
@@ -1259,101 +1355,154 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		private List<QuizQuestionContract> ParseQuestions(string text)
 		{
+           // Refactored parsing:
+			// - use robust splitting of potential question blocks
+			// - collect parsing errors (but return valid questions)
 			var questions = new List<QuizQuestionContract>();
-
 			if (string.IsNullOrWhiteSpace(text))
 				return questions;
 
 			text = NormalizeQuizText(text);
 
-			// Improved questionRegex to better split questions
-			var questionRegex = new Regex(
-				@"(?im)(?:câu|question|q|#)?\s*(\d+)\s*[:\.\-\)]\s*(?<body>.+?)(?=(?:(?:câu|question|q|#)?\s*\d+\s*[:\.\-\)])|\z)",
-				RegexOptions.Singleline);
+			// Regex to split into blocks by question-like headings (supports flexible formats)
+         // Fixed regex: removed stray space and accept formats like "1)" or "1." as question delimiters
+			var splitRegex = new Regex(@"(?im)(?=(?:^|\n)\s*(?:câu\s*\d+|question\s*\d+|q\s*\d+|#\s*\d+|\d+\)|\d+\.))");
+			var blocks = splitRegex.Split(text).Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
 
-			var optionRegex = new Regex(
-				@"(?im)^\s*([A-D])\s*[\.\:\)\-]\s*(.+)$",
-				RegexOptions.Multiline);
+			// Patterns used inside each block
+			var optionRegex = new Regex(@"(?im)^\s*([A-D])\s*[\.\:\)\-]\s*(.+)$", RegexOptions.Multiline);
+			var answerRegex = new Regex(@"(?im)(?:đáp án|answer|correct|ans)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)");
+			var scoreRegex = new Regex(@"(?im)(?:score|point|điểm)\s*[:\-]?\s*(\d+(?:\.\d+)?)");
+			var explanationRegex = new Regex(@"(?im)(?:explanation|giải thích|note)\s*[:\-]?\s*(.+)");
 
-			var answerRegex = new Regex(
-				@"(?im)(?:đáp án|answer|correct|ans)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)");
+			var parsingErrors = new List<string>();
 
-			var scoreRegex = new Regex(
-				@"(?im)(?:score|point|điểm)\s*[:\-]?\s*(\d+(?:\.\d+)?)");
-
-			var explanationRegex = new Regex(
-				@"(?im)(?:explanation|giải thích|note)\s*[:\-]?\s*(.+)");
-
-			var matches = questionRegex.Matches(text);
-
-			foreach (Match match in matches)
+			foreach (var block in blocks)
 			{
-				var body = match.Groups["body"].Value.Trim();
-				if (string.IsNullOrWhiteSpace(body)) continue;
-
-				// Find options
-				var optionMatches = optionRegex.Matches(body);
-				if (optionMatches.Count < 2)
-					continue;
-
-				// Question text is everything before the first option
-				var questionText = body.Substring(0, optionMatches[0].Index).Trim();
-				if (string.IsNullOrWhiteSpace(questionText)) continue;
-
-				var options = new QuizQuestionOptionContract();
-				foreach (Match option in optionMatches)
+				try
 				{
-					var key = option.Groups[1].Value.ToUpper();
-					var value = option.Groups[2].Value.Trim();
-
-					// If an option contains an answer marker, strip it
-					var ansMatchInOption = answerRegex.Match(value);
-					if (ansMatchInOption.Success)
+					var body = block.Trim();
+					// Extract options
+					var optionMatches = optionRegex.Matches(body);
+					if (optionMatches.Count < 2)
 					{
-						value = value.Substring(0, ansMatchInOption.Index).Trim();
+						// try inline options e.g. "A. ... B. ..."
+						var inlineOptions = new QuizQuestionOptionContract();
+						if (!TryReadInlineOptions(body, inlineOptions))
+						{
+							parsingErrors.Add($"Insufficient options in block: '{Truncate(body,80)}'");
+							continue;
+						}
+						// inlineOptions found -> treat questionText as everything before first option label
+						var firstOptIndex = 0; // options are inline, questionText may be empty -> skip if empty
+						var qText = body;
+						if (string.IsNullOrWhiteSpace(qText))
+						{
+							parsingErrors.Add($"Empty question text for inline options block: '{Truncate(body,80)}'");
+							continue;
+						}
+						var answerMatchInline = answerRegex.Match(body);
+                      var answerValInline = answerMatchInline.Success ? NormalizeAnswer(answerMatchInline.Groups[1].Value) : null;
+						var scoreValInline = 1.0;
+						var scoreMatchInline = scoreRegex.Match(body);
+						if (scoreMatchInline.Success) double.TryParse(scoreMatchInline.Groups[1].Value, out scoreValInline);
+						var expMatchInline = explanationRegex.Match(body);
+						var explanationInline = expMatchInline.Success ? expMatchInline.Groups[1].Value.Trim() : null;
+                      questions.Add(new QuizQuestionContract
+						{
+							QuestionText = qText,
+							Options = inlineOptions,
+                          CorrectAnswer = answerValInline,
+							ScorePoint = (int)Math.Max(1, Math.Round(scoreValInline)),
+							Explanation = explanationInline,
+							Difficulty = QuestionDifficultyEnum.Medium
+						});
+						continue;
 					}
 
-					switch (key)
+					// Question text is everything before the first option label
+					var firstOption = optionMatches[0];
+					var questionText = body.Substring(0, firstOption.Index).Trim();
+					if (string.IsNullOrWhiteSpace(questionText))
 					{
-						case "A": options.OptionA = value; break;
-						case "B": options.OptionB = value; break;
-						case "C": options.OptionC = value; break;
-						case "D": options.OptionD = value; break;
+						parsingErrors.Add($"Empty question text in block: '{Truncate(body,80)}'");
+						continue;
 					}
+
+					var options = new QuizQuestionOptionContract();
+					foreach (Match option in optionMatches)
+					{
+						var key = option.Groups[1].Value.ToUpperInvariant();
+						var value = option.Groups[2].Value.Trim();
+						var ansMatchInOption = answerRegex.Match(value);
+						if (ansMatchInOption.Success)
+							value = value.Substring(0, ansMatchInOption.Index).Trim();
+						switch (key)
+						{
+							case "A": options.OptionA = value; break;
+							case "B": options.OptionB = value; break;
+							case "C": options.OptionC = value; break;
+							case "D": options.OptionD = value; break;
+						}
+					}
+
+					if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB))
+					{
+						parsingErrors.Add($"Missing mandatory options A/B in block: '{Truncate(questionText,80)}'");
+						continue;
+					}
+
+					// if one of C/D present, both must be present
+					if (!string.IsNullOrWhiteSpace(options.OptionC) ^ !string.IsNullOrWhiteSpace(options.OptionD))
+					{
+						parsingErrors.Add($"Incomplete C/D options in block: '{Truncate(questionText,80)}'");
+						continue;
+					}
+
+					// Find Answer
+					var answerMatch = answerRegex.Match(body);
+					string? answerVal = null;
+					if (answerMatch.Success)
+					{
+						answerVal = NormalizeAnswer(answerMatch.Groups[1].Value);
+					}
+					if (string.IsNullOrWhiteSpace(answerVal))
+					{
+						parsingErrors.Add($"Missing/invalid answer in question: '{Truncate(questionText,80)}'");
+						continue;
+					}
+
+					// Score
+					double score = 1.0;
+					var scoreMatch = scoreRegex.Match(body);
+					if (scoreMatch.Success)
+						double.TryParse(scoreMatch.Groups[1].Value, out score);
+
+					// Explanation
+					string? explanation = null;
+					var expMatch = explanationRegex.Match(body);
+					if (expMatch.Success)
+						explanation = expMatch.Groups[1].Value.Trim();
+
+					questions.Add(new QuizQuestionContract
+					{
+						QuestionText = questionText,
+						Options = options,
+						CorrectAnswer = answerVal,
+						ScorePoint = (int)Math.Max(1, Math.Round(score)),
+						Explanation = explanation,
+						Difficulty = QuestionDifficultyEnum.Medium
+					});
 				}
-
-				if (string.IsNullOrWhiteSpace(options.OptionA) || string.IsNullOrWhiteSpace(options.OptionB))
-					continue;
-
-				// Find Answer
-				var answer = "";
-				var answerMatch = answerRegex.Match(body);
-				if (answerMatch.Success)
+				catch (Exception ex)
 				{
-					answer = answerMatch.Groups[1].Value.Replace(" ", "").ToUpper();
+					parsingErrors.Add($"Exception parsing block: '{Truncate(block,80)}' -> {ex.Message}");
 				}
+			}
 
-				// Find Score
-				double score = 1.0;
-				var scoreMatch = scoreRegex.Match(body);
-				if (scoreMatch.Success)
-					double.TryParse(scoreMatch.Groups[1].Value, out score);
-
-				// Find Explanation
-				string explanation = null;
-				var expMatch = explanationRegex.Match(body);
-				if (expMatch.Success)
-					explanation = expMatch.Groups[1].Value.Trim();
-
-				questions.Add(new QuizQuestionContract
-				{
-					QuestionText = questionText,
-					Options = options,
-					CorrectAnswer = answer,
-					ScorePoint = (int)Math.Max(1, Math.Round(score)),
-					Explanation = explanation,
-					Difficulty = QuestionDifficultyEnum.Medium
-				});
+			if (questions.Count == 0 && parsingErrors.Any()) 
+			{
+				throw new InvalidOperationException("Không đọc được câu hỏi. Chi tiết: " + string.Join(" | ", parsingErrors));
 			}
 
 			return RemoveDuplicateQuestions(questions);
@@ -1365,11 +1514,12 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			text = Regex.Replace(text, @"\u00A0", " "); // remove non breaking space
 			text = Regex.Replace(text, @"\t", " ");
 
-			// đảm bảo option xuống dòng
-			text = Regex.Replace(text, @"\s([A-D])\.", "\n$1.");
-			text = Regex.Replace(text, @"\s([A-D])\)", "\n$1)");
-			text = Regex.Replace(text, @"\s([A-D])\:", "\n$1:");
-
+			// đảm bảo option xuống dòng - only apply when question-like patterns present to avoid accidental formatting changes
+			// chỉ áp dụng nếu có pattern câu hỏi
+			if (Regex.IsMatch(text, @"Câu\s*\d+|Question\s*\d+", RegexOptions.IgnoreCase))
+			{
+				text = Regex.Replace(text, @"\s+([A-D][\.\:\)\-])", "\n$1");
+			}
 			// đảm bảo question xuống dòng
 			text = Regex.Replace(text, @"\s(Câu\s*\d+)", "\n$1", RegexOptions.IgnoreCase);
 			text = Regex.Replace(text, @"\s(Question\s*\d+)", "\n$1", RegexOptions.IgnoreCase);
@@ -1383,16 +1533,34 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			foreach (var q in questions)
 			{
+				if (string.IsNullOrWhiteSpace(q.QuestionText))
+					continue;
+
 				var key = q.QuestionText.Trim().ToLower();
 
-				if (!seen.Contains(key))
-				{
-					seen.Add(key);
-					result.Add(q);
-				}
+				if (seen.Contains(key))
+					continue;
+
+				seen.Add(key);
+				result.Add(q);
 			}
 
 			return result;
+		}
+	}
+	public class MatchCollectionWrapper
+	{
+		public List<Match> Matches { get; } = new();
+
+		public MatchCollectionWrapper(string[] blocks)
+		{
+			foreach (var block in blocks)
+			{
+				if (string.IsNullOrWhiteSpace(block)) continue;
+
+				var fakeMatch = Regex.Match("1: " + block, @"(?<body>.+)", RegexOptions.Singleline);
+				Matches.Add(fakeMatch);
+			}
 		}
 	}
 }

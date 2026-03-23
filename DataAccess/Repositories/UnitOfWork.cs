@@ -100,6 +100,17 @@ namespace DataAccess.Repositories
 			=> await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.BeginTransactionAsync(_ctx.Database, isolationLevel, CancellationToken.None);
 
         public void Dispose() => _ctx.Dispose();
+
+        // Batch delete helper to remove EventQuizQuestion rows by EventQuizId efficiently
+        // NOTE: This method only marks entities for removal (RemoveRange) and returns the count.
+        // Caller is responsible for calling SaveChangesAsync once to persist within a transaction.
+        public Task<int> DeleteEventQuizQuestionsAsync(string eventQuizId)
+        {
+            var list = _ctx.Set<EventQuizQuestion>().Where(x => x.EventQuizId == eventQuizId && x.DeletedAt == null).ToList();
+            if (!list.Any()) return Task.FromResult(0);
+            _ctx.Set<EventQuizQuestion>().RemoveRange(list);
+            return Task.FromResult(list.Count);
+        }
     }
 
 }

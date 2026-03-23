@@ -39,6 +39,9 @@ namespace BusinessLogic.Service.Event
 		Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto);
 		Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto);
 
+        // Get expired events for organizer
+        Task<List<EventListDto>> GetExpiredEventsAsync(string userId);
+
         Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId);
         Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId);
         Task RemoveEventImageAsync(string eventId, string imageUrl, string userId);

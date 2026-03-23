@@ -71,6 +71,7 @@ builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>
 builder.Services.AddScoped<BusinessLogic.Service.System.ISignalRNotifier, AEMS_Solution.Services.SignalRNotifier>();
 builder.Services.AddSingleton<IChatPresenceTracker, ChatPresenceTracker>();
 builder.Services.AddHostedService<BusinessLogic.Service.Admin.UserLockExpirationService>();
+builder.Services.AddHostedService<BusinessLogic.Service.Event.EventStatusExpirationService>();
 builder.Services.AddScoped<IChatPermissionService, ChatPermissionService>();
 builder.Services.AddScoped<IChatUserService, ChatUserService>();
 
