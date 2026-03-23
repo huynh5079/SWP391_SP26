@@ -1,10 +1,13 @@
-﻿using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event;
+using AEMS_Solution.Models.Organizer.Manage;
 using AutoMapper;
 using BusinessLogic.DTOs.Role.Organizer;
+using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Enum;
+using DataAccess.Helper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,11 +18,13 @@ namespace AEMS_Solution.Controllers.Event
 	{
 		private readonly IOrganizerService _organizerService;
 		private readonly IMapper _mapper;
+		private readonly IEventService _eventService;
 
-		public EventController(IOrganizerService organizerService, IMapper mapper)
+		public EventController(IOrganizerService organizerService, IMapper mapper, IEventService eventService)
 		{
 			_organizerService = organizerService;
 			_mapper = mapper;
+			_eventService = eventService;
 		}
 
 		[HttpPost]
@@ -132,7 +137,12 @@ namespace AEMS_Solution.Controllers.Event
 			}
 
 			var targetStatus = originalEvent.Status;
-			if (originalEvent.Status == EventStatusEnum.Cancelled)
+			var now = DateTimeHelper.GetVietnamTime();
+			if (originalEvent.Status == EventStatusEnum.Expired && vm.StartTime > now)
+			{
+				targetStatus = EventStatusEnum.Draft;
+			}
+			else if (originalEvent.Status == EventStatusEnum.Cancelled)
 			{
 				if (vm.Status == EventStatusEnum.Draft || vm.Status == EventStatusEnum.Pending)
 				{
@@ -173,7 +183,27 @@ namespace AEMS_Solution.Controllers.Event
 			await LoadDropdowns(vm);
 			return View("EditEvent", vm);
 		}
+		[HttpGet]
+		public async Task<IActionResult> ExpiredEvent()
+		{
+			var userId = CurrentUserId;
+			if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+			try
+			{
+				var events = await _eventService.GetExpiredEventsAsync(userId);
+				var vm = new OrganizerExpiredEventViewModel
+				{
+					Events = events
+				};
+				return View("~/Views/Event/ExpiredEvent.cshtml", vm);
+			}
+			catch (Exception)
+			{
+				SetError("Đã xảy ra lỗi khi tải danh sách sự kiện hết hạn.");
+				return View("~/Views/Event/ExpiredEvent.cshtml", new OrganizerExpiredEventViewModel());
+			}
+		}
 
-		
+
 	}
 }
