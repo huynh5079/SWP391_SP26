@@ -121,6 +121,7 @@ namespace AEMS_Solution.Controllers.Common
                         
                     case DataAccess.Enum.NotificationType.SystemBroadcast:
                         return RedirectToAction("Index", "Home");
+                    
                 }
             }
 

@@ -67,7 +67,8 @@ namespace AEMS_Solution.Hubs
 
                 await Clients.Group(senderUserId).SendAsync("ReceivePrivateMessage", message);
                 await Clients.Group(receiverUserId).SendAsync("ReceivePrivateMessage", message);
-            }
+				
+			}
             catch (Exception ex) when (ex is KeyNotFoundException || ex is UnauthorizedAccessException || ex is InvalidOperationException || ex is ArgumentException)
             {
                 throw new HubException(ex.Message);

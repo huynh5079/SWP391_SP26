@@ -195,10 +195,7 @@
                     /* swallow chat partial errors */
                 }
 
-                <div class="header-icon">
-                    <i class="bi bi-bell"></i>
-                    <div class="notification-badge"></div>
-                </div>
+                @await Component.InvokeAsync("Notification")
 
                 <a href="#" class="support-link">
                     <i class="bi bi-question-circle"></i>
