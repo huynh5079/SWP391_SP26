@@ -137,6 +137,18 @@
                                     <div class="fs-4 fw-semibold">@(Model.Quiz.MaxAttempts?.ToString() ?? "Unlimited")</div>
                                 </div>
                             </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Quiz start time</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.QuizStartTime?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Quiz end time</div>
+                                    <div class="fs-6 fw-semibold">@(Model.Quiz.QuizEndTime?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -315,6 +327,12 @@
             <form asp-action="Edit" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" asp-for="Quiz.EventQuizId" />
+                <input type="hidden" asp-for="Quiz.EventId" />
+                <input type="hidden" asp-for="EventId" />
+                <input type="hidden" asp-for="Quiz.Type" />
+                <input type="hidden" asp-for="Quiz.TopicId" />
+                <input type="hidden" asp-for="Quiz.FileQuiz" />
+                <input type="hidden" asp-for="Quiz.LiveQuizLink" />
                 <div class="modal-header">
                     <h5 class="modal-title" id="editQuizModalLabel">Quiz Setup</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -333,6 +351,18 @@
                         <input asp-for="Quiz.MaxAttempts" class="form-control" type="number" min="0" placeholder="0 or leave empty for unlimited" />
                         <small class="text-muted">Enter 0 or leave empty for unlimited submissions.</small>
                     </div>
+                    <div class="mb-3">
+                        <label asp-for="Quiz.TimeLimit" class="form-label">Time limit (minutes)</label>
+                        <input asp-for="Quiz.TimeLimit" class="form-control" type="number" min="0" placeholder="0 or leave empty for unlimited" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Quiz.QuizStartTime" class="form-label">Quiz start time</label>
+                        <input asp-for="Quiz.QuizStartTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Quiz.QuizEndTime" class="form-label">Quiz end time</label>
+                        <input asp-for="Quiz.QuizEndTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
+                    </div>
                     <div class="form-check form-switch mb-3">
                         <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" />
                         <label asp-for="Quiz.AllowReview" class="form-check-label">Allow Review after Submission</label>
@@ -349,4 +379,56 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('editQuizModal');
+            if (!modal) return;
+
+            const timeLimitInput = modal.querySelector('input[name="Quiz.TimeLimit"]');
+            const startInput = modal.querySelector('input[name="Quiz.QuizStartTime"]');
+            const endInput = modal.querySelector('input[name="Quiz.QuizEndTime"]');
+            let isEndTimeManuallyEdited = false;
+
+            function toDateTimeLocalValue(date) {
+                const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+                return local.toISOString().slice(0, 16);
+            }
+
+            function syncScheduleFromTimeLimit() {
+                if (!timeLimitInput || !startInput || !endInput) return;
+
+                const minutes = parseInt(timeLimitInput.value || '0', 10);
+                if (!Number.isFinite(minutes) || minutes <= 0) return;
+
+                if (!startInput.value) {
+                    startInput.value = toDateTimeLocalValue(new Date());
+                }
+
+                const startDate = new Date(startInput.value);
+                if (Number.isNaN(startDate.getTime())) return;
+
+                const calculatedEnd = new Date(startDate.getTime() + (minutes * 60000));
+                if (!endInput.value || !isEndTimeManuallyEdited) {
+                    endInput.value = toDateTimeLocalValue(calculatedEnd);
+                }
+            }
+
+            timeLimitInput?.addEventListener('input', function () {
+                isEndTimeManuallyEdited = false;
+                if (startInput) {
+                    startInput.value = toDateTimeLocalValue(new Date());
+                }
+                syncScheduleFromTimeLimit();
+            });
+            startInput?.addEventListener('change', function () {
+                isEndTimeManuallyEdited = false;
+                syncScheduleFromTimeLimit();
+            });
+            endInput?.addEventListener('input', function () {
+                isEndTimeManuallyEdited = true;
+            });
+
+            syncScheduleFromTimeLimit();
+        });
+    </script>
 }

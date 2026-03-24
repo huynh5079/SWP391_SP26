@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
@@ -37,6 +37,12 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 				if (!Uri.TryCreate(quizset.LiveQuizLink, UriKind.Absolute, out _))
 					throw new ArgumentException("Link live quiz không hợp lệ.");
 			}
+
+			if (quizset.TimeLimit.HasValue && quizset.TimeLimit < 0)
+				throw new ArgumentException("TimeLimit >= 0");
+
+			if (quizset.QuizStartTime.HasValue && quizset.QuizEndTime.HasValue && quizset.QuizEndTime <= quizset.QuizStartTime)
+				throw new ArgumentException("QuizEndTime phải lớn hơn QuizStartTime.");
 		}
 
 		public void ValidateAddQuestion(AddQuizQuestionRequestDto question)
@@ -92,6 +98,9 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 
 			if (dto.TimeLimit.HasValue && dto.TimeLimit < 0)
 				throw new ArgumentException("TimeLimit >= 0");
+
+			if (dto.QuizStartTime.HasValue && dto.QuizEndTime.HasValue && dto.QuizEndTime <= dto.QuizStartTime)
+				throw new ArgumentException("QuizEndTime phải lớn hơn QuizStartTime.");
 
 			if (!Enum.IsDefined(typeof(QuizTypeEnum), dto.Type))
 				throw new ArgumentException("Quiz type không hợp lệ.");
@@ -150,6 +159,21 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 		{
 			if (questions == null || !questions.Any())
 				throw new Exception("Quiz phải có ít nhất 1 câu hỏi");
+		}
+
+		public void ValidatePublishQuiz(DataAccess.Entities.EventQuiz quiz)
+		{
+			if (quiz == null)
+				throw new ArgumentNullException(nameof(quiz));
+
+			if (quiz.Event == null)
+				throw new InvalidOperationException("Quiz không gắn với sự kiện hợp lệ.");
+
+			// Nếu thời gian hiện tại chưa đến thời gian bắt đầu sự kiện thì không cho publish
+			if (quiz.Event.StartTime > DateTime.UtcNow)
+			{
+				throw new InvalidOperationException($"Sự kiện chưa diễn ra (Bắt đầu lúc: {quiz.Event.StartTime:dd/MM/yyyy HH:mm}). Không thể publish quiz.");
+			}
 		}
 	}
 }

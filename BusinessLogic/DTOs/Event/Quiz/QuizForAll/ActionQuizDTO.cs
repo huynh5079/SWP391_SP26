@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
 
@@ -24,6 +24,9 @@ namespace BusinessLogic.DTOs.Event.Quiz.QuizForAll
     public class GetCurrentQuizSessionResponseDto
     {
         public StudentQuizSessionDto? Session { get; set; }
+        public QuizSummaryContract? Quiz { get; set; }
+        public QuizTimeLimitDto? Limit { get; set; }
+        public int QuestionCount { get; set; }
     }
 
 	public class SubmitQuizAnswerDto
@@ -45,7 +48,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.QuizForAll
 		public string QuizId { get; set; } = string.Empty;
 		public string StudentQuizScoreId { get; set; } = string.Empty;
 		public int Score { get; set; }
-		public bool IsPassed { get; set; }
+		public bool? IsPassed { get; set; }
 		public bool AllowReview { get; set; }
 		public bool IsTimedOut { get; set; }
 		public DateTime SubmittedAt { get; set; }

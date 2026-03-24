@@ -20,6 +20,8 @@ public partial class StudentQuizScore: BaseEntity
 
     public int AttemptNumber { get; set; }
 
+    public bool? IsPassed { get; set; }
+
     public StudentQuizScoreStatusEnum Status { get; set; }
     
 	//public DateTime? SubmittedAt { get; set; }

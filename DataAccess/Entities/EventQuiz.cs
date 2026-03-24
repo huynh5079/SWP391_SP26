@@ -28,6 +28,8 @@ public partial class EventQuiz : BaseEntity
 	public string? FileQuiz { get; set; }
 	public string? LiveQuizLink { get; set; }
 	public bool AllowReview { get; set; }
+	public DateTime? QuizStartTime { get; set; }
+	public DateTime? QuizEndTime { get; set; }
 	public virtual Event Event { get; set; } = null!;
 	public virtual QuizSet? QuizSet { get; set; }
     //for submission

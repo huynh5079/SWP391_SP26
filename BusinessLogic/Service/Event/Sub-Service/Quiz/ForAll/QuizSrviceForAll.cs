@@ -31,8 +31,22 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
             var quiz = await GetQuizForStudentAsync(request.QuizId);
             if (quiz.Status != QuizStatusEnum.Published)
                 throw new InvalidOperationException("Quiz chưa được publish.");
+
+            if (quiz.Event == null)
+                throw new InvalidOperationException("Quiz không gắn với sự kiện hợp lệ.");
+
+            if (quiz.Event.StartTime > DateTime.UtcNow)
+                throw new InvalidOperationException("Sự kiện chưa diễn ra, không thể làm quiz.");
+
+            if (quiz.Event.EndTime < DateTime.UtcNow)
+                throw new InvalidOperationException("Sự kiện đã kết thúc, không thể làm quiz.");
+
             if (quiz.QuestionSetStatus != QuestionSetEnum.Available || !quiz.EventQuizQuestions.Any())
                 throw new InvalidOperationException("Quiz chưa có câu hỏi để làm bài.");
+			if (quiz.QuizStartTime.HasValue && DateTime.UtcNow < quiz.QuizStartTime.Value)
+				throw new InvalidOperationException("Quiz chưa đến thời gian bắt đầu.");
+			if (quiz.QuizEndTime.HasValue && DateTime.UtcNow > quiz.QuizEndTime.Value)
+				throw new InvalidOperationException("Quiz đã hết thời gian làm bài.");
 
 			var allSessions = (await _uow.StudentQuizScores.GetAllAsync(
 				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId)).ToList();
@@ -109,20 +123,27 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 			var session = await _uow.StudentQuizScores.GetAsync(
 				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId && x.Status == StudentQuizScoreStatusEnum.InProgress,
 				q => q.Include(x => x.StudentAnswers));
-
-			if (session == null)
-			{
-				return new GetCurrentQuizSessionResponseDto();
-			}
-
 			var questions = quiz.EventQuizQuestions
 				.Where(x => x.DeletedAt == null)
 				.OrderBy(x => x.OrderIndex)
 				.Select(MapQuestionContract)
 				.ToList();
 
+			if (session == null)
+			{
+				return new GetCurrentQuizSessionResponseDto
+				{
+					Quiz = MapQuizSummaryContract(quiz, questions.Count),
+					Limit = BuildTimeLimit(quiz, quiz.QuizStartTime, 1),
+					QuestionCount = questions.Count
+				};
+			}
+
 			return new GetCurrentQuizSessionResponseDto
 			{
+				Quiz = MapQuizSummaryContract(quiz, questions.Count),
+				Limit = BuildTimeLimit(quiz, session.StartedAt, session.AttemptNumber),
+				QuestionCount = questions.Count,
 				Session = new StudentQuizSessionDto
 				{
 					StudentQuizScoreId = session.Id,
@@ -205,6 +226,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 				}
 
 				session.Score = totalScore;
+				session.IsPassed = totalScore >= (quiz.PassingScore ?? 0);
 				session.SubmittedAt = submittedAt;
 				session.Status = StudentQuizScoreStatusEnum.Submitted;
 				await _uow.StudentQuizScores.UpdateAsync(session);
@@ -241,7 +263,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
         {
             var quiz = await _uow.EventQuiz.GetAsync(
                 x => x.Id == quizId,
-                q => q.Include(x => x.EventQuizQuestions)
+                q => q.Include(x => x.Event)
+                    .Include(x => x.EventQuizQuestions)
                     .Include(x => x.QuizSet)
                     .Include(x => x.StudentQuizScores));
 
@@ -297,6 +320,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
                 QuestionSetStatus = quiz.QuestionSetStatus,
                 PassingScore = quiz.PassingScore,
                 TimeLimit = quiz.TimeLimit,
+				QuizStartTime = quiz.QuizStartTime,
+				QuizEndTime = quiz.QuizEndTime,
 				AllowReview = quiz.AllowReview,
                 IsActive = quiz.IsActive,
                 QuestionCount = questionCount,

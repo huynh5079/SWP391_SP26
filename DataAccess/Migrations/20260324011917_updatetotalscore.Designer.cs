@@ -4,6 +4,7 @@ using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(AEMSContext))]
-    partial class AEMSContextModelSnapshot : ModelSnapshot
+    [Migration("20260324011917_updatetotalscore")]
+    partial class updatetotalscore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -845,15 +848,9 @@ namespace DataAccess.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasDefaultValue("Available");
 
-                    b.Property<DateTime?>("QuizEndTime")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("QuizSetId")
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("QuizStartTime")
-                        .HasColumnType("datetime2");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1934,9 +1931,6 @@ namespace DataAccess.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)")
                         .HasColumnName("QuizId");
-
-                    b.Property<bool?>("IsPassed")
-                        .HasColumnType("bit");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
