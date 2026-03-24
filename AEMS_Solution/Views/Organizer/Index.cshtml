@@ -1,4 +1,4 @@
-﻿@model AEMS_Solution.Models.Organizer.OrganizerDashboardViewModel
+@model AEMS_Solution.Models.Organizer.OrganizerDashboardViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "Organizer Dashboard";
@@ -7,142 +7,104 @@
 
 <div class="container-fluid py-4">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-end mb-4">
         <div>
-            <h1 class="h3 mb-0 text-gray-800">Organizer - Dashboard</h1>
-            <p class="text-muted small">Manage events and track upcoming activities</p>
-        </div>
-
-        <div class="d-flex gap-2 flex-wrap">
-            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-sm btn-primary shadow-sm">
-                <i class="bi bi-plus-circle"></i> Create Event
-            </a>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-primary shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-journal-plus"></i> Create Quiz
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload"><i class="bi bi-upload me-2"></i>Upload File</a></li>
-                </ul>
-            </div>
-            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="myevents" class="btn btn-sm btn-outline-primary shadow-sm">
-                <i class="bi bi-calendar-event"></i> My Events
-            </a>
-                <a asp-controller="EventQuiz" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
-                    <i class="bi bi-list-check"></i> Quiz
-                </a>
-            <a asp-controller="Topic" asp-action="Index" class="btn btn-sm btn-outline-secondary shadow-sm">
-                <i class="bi bi-tags"></i> Topics
-            </a>
-            <a asp-controller="Location" asp-action="Index" class="btn btn-sm btn-outline-success shadow-sm">
-                <i class="bi bi-geo-alt"></i> Locations
-            </a>
-            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="myeventsdelete" class="btn btn-sm btn-outline-primary shadow-sm">
-                <i class="bi bi-trash"></i> Deleted Events
-            </a>
+            <div class="dashboard-overview-label">Dashboard Overview</div>
+            <h1 class="page-title">Organizer - Dashboard</h1>
+            <p class="page-subtitle">Manage events and track upcoming activities</p>
         </div>
     </div>
 
+    <!-- Dashboard Tabs -->
+    <div class="dashboard-tabs">
+        <a asp-controller="Organizer" asp-action="MyEvents" class="dashboard-tab active">My Events</a>
+        <a asp-controller="EventQuiz" asp-action="Index" class="dashboard-tab">Quiz</a>
+        <a asp-controller="Topic" asp-action="Index" class="dashboard-tab">Topics</a>
+        <a asp-controller="Location" asp-action="Index" class="dashboard-tab">Locations</a>
+    </div>
     <!-- Stats Cards Row -->
-    <div class="row mb-4">
+    <div class="row g-4 mb-4">
         <!-- Total Events -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Total Events</p>
-                            <h3 class="mb-0 text-primary">@Model.Stats.TotalEvents</h3>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-calendar-check text-primary" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Total Events</div>
+                    <div class="stat-value">@Model.Stats.TotalEvents</div>
+                </div>
+                <div class="stat-icon icon-purple">
+                    <i class="bi bi-calendar-check"></i>
                 </div>
             </div>
         </div>
 
         <!-- Upcoming Events -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Upcoming</p>
-                            <h3 class="mb-0 text-info">@Model.Stats.UpcomingEvents</h3>
-                        </div>
-                        <div class="bg-info bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-clock-history text-info" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Upcoming</div>
+                    <div class="stat-value">@Model.Stats.UpcomingEvents</div>
+                </div>
+                <div class="stat-icon icon-blue">
+                    <i class="bi bi-clock-history"></i>
                 </div>
             </div>
         </div>
 
         <!-- Registrations Today -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Registrations Today</p>
-                            <h3 class="mb-0 text-success">@Model.RegistrationsToday</h3>
-                        </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-person-check text-success" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Registrations Today</div>
+                    <div class="stat-value">@Model.RegistrationsToday</div>
+                </div>
+                <div class="stat-icon icon-blue">
+                    <i class="bi bi-person-badge"></i>
                 </div>
             </div>
         </div>
 
         <!-- Draft Events -->
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Draft</p>
-                            <h3 class="mb-0 text-warning">@Model.Stats.DraftEvents</h3>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-file-text text-warning" style="font-size: 1.5rem;"></i>
-                        </div>
-                    </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Draft</div>
+                    <div class="stat-value">@Model.Stats.DraftEvents</div>
+                </div>
+                <div class="stat-icon icon-gray">
+                    <i class="bi bi-pencil-square"></i>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Deposit Collected Card -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="text-muted small text-uppercase fw-bold mb-1">Deposit Collected This Month</p>
-                            <h2 class="mb-0 text-danger">@Model.DepositCollectedThisMonth.ToString("C")</h2>
-                        </div>
-                        <div class="bg-danger bg-opacity-10 p-3 rounded">
-                            <i class="bi bi-cash-coin text-danger" style="font-size: 2rem;"></i>
-                        </div>
-                    </div>
+    <div class="row shadow-sm mx-0 mb-4 rounded-4" style="overflow: hidden;">
+        <div class="col-12 p-0">
+            <div class="revenue-card">
+                <div class="revenue-label">
+                    <i class="bi bi-cash-stack"></i> Revenue Tracking
+                </div>
+                <div class="revenue-title">Deposit Collected This Month</div>
+                <div class="revenue-amount">
+                    @Model.DepositCollectedThisMonth.ToString("C")
+                    <span class="revenue-trend">
+                        +0%<i class="bi bi-graph-up-arrow ms-1" style="font-size:0.8rem"></i>
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Charts Row -->
-    <div class="row mb-4">
+    <div class="row g-4 mb-4">
         <!-- Registration Trend Chart -->
         <div class="col-md-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-bottom">
-                    <h5 class="mb-0">Registration Trend (Last 7 Days)</h5>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title mb-0">Registration Trend</h5>
+                    <span class="chart-subtitle">Last 7 Days</span>
                 </div>
-                <div class="card-body">
+                <div style="height: 300px;">
                     <canvas id="registrationTrendChart"></canvas>
                 </div>
             </div>
@@ -150,84 +112,106 @@
 
         <!-- Event Status Distribution -->
         <div class="col-md-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-bottom">
-                    <h5 class="mb-0">Event Status Distribution</h5>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title mb-0">Event Status</h5>
                 </div>
-                <div class="card-body">
-                    <canvas id="statusDistributionChart"></canvas>
+                <div class="doughnut-wrapper">
+                    <canvas id="statusDistributionChart" style="max-height: 220px;"></canvas>
+                    <div class="doughnut-inner-text">
+                        <div class="val">@Model.Stats.TotalEvents</div>
+                        <div class="lbl">TOTAL</div>
+                    </div>
                 </div>
+                <!-- Custom Legend -->
+                <ul class="status-legend mt-4 px-2">
+                    @{
+                        var chartColors = new[] { "#1e3a8a", "#4f46e5", "#cbd5e1", "#e2e8f0", "#0ea5e9", "#f59e0b", "#ef4444" };
+                        int colorIndex = 0;
+                        if (Model.EventStatusDistribution != null)
+                        {
+                            foreach (var item in Model.EventStatusDistribution)
+                            {
+                                <li>
+                                    <div class="status-legend-item">
+                                        <span class="status-dot" style="background-color: @chartColors[colorIndex % chartColors.Length];"></span>
+                                        <span>@item.Key</span>
+                                    </div>
+                                    <span class="status-value">@item.Value</span>
+                                </li>
+                                colorIndex++;
+                            }
+                        }
+                    }
+                </ul>
             </div>
         </div>
     </div>
 
-    <!-- Recent Events Table -->
+    <!-- Recent Events -->
     <div class="row">
         <div class="col-md-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Recent Events</h5>
-                    <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body">
-                    @if (Model.RecentEvents != null && Model.RecentEvents.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Event Name</th>
-                                        <th>Start Time</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var evt in Model.RecentEvents)
-                                    {
-                                        <tr>
-                                            <td>
-                                                <strong>@evt.Title</strong>
-                                            </td>
-                                            <td>
-                                                @evt.StartTime.ToString("dd/MM/yyyy HH:mm")
-                                            </td>
-                                            <td>
-                                                @{
-                                                    string badgeClass = evt.Status switch
-                                                    {
-                                                        EventStatusEnum.Draft => "bg-secondary",
-                                                        EventStatusEnum.Pending => "bg - warning",
-                                                        EventStatusEnum.Approved => "bg-success",
-                                                        EventStatusEnum.Happening => "bg-info",
-                                                        EventStatusEnum.Completed => "bg-primary",
-                                                        EventStatusEnum.Rejected => "bg-danger",
-                                                        EventStatusEnum.Cancelled => "bg-dark",
-                                                        _ => "bg-secondary"
-                                                    };
-                                                }
-                                                <span class="badge @badgeClass">@evt.Status</span>
-                                            </td>
-                                            <td>
-                                                <a asp-controller="Event" asp-action="Edit" asp-route-id="@evt.EventId" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> You don't have any events yet.
-                            <a asp-controller="Organizer" asp-action="Manage" asp-route-action="create" class="alert-link">Create a new event</a>
-                        </div>
-                    }
-                </div>
+            <div class="section-header">
+                <h5 class="section-title">Recent Events</h5>
+                <a asp-controller="Organizer" asp-action="MyEvents" class="view-all-link">View All <i class="bi bi-arrow-right-short"></i></a>
             </div>
+
+            @if (Model.RecentEvents != null && Model.RecentEvents.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 bg-white shadow-sm border-0 rounded-3" style="overflow:hidden;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0">Event Name</th>
+                                <th class="border-0">Start Time</th>
+                                <th class="border-0">Status</th>
+                                <th class="border-0">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var evt in Model.RecentEvents)
+                            {
+                                <tr>
+                                    <td class="align-middle"><strong>@evt.Title</strong></td>
+                                    <td class="align-middle">@evt.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="align-middle">
+                                        @{
+                                            string badgeClass = evt.Status switch
+                                            {
+                                                EventStatusEnum.Draft => "bg-secondary",
+                                                EventStatusEnum.Pending => "bg-warning",
+                                                EventStatusEnum.Approved => "bg-success",
+                                                EventStatusEnum.Happening => "bg-info",
+                                                EventStatusEnum.Completed => "bg-primary",
+                                                EventStatusEnum.Rejected => "bg-danger",
+                                                EventStatusEnum.Cancelled => "bg-dark",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @badgeClass">@evt.Status</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <a asp-controller="Event" asp-action="Edit" asp-route-id="@evt.EventId" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            Edit
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="empty-state-card shadow-sm border-0 mt-2">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-calendar-x"></i>
+                    </div>
+                    <h4 class="empty-state-title">No active events found</h4>
+                    <p class="empty-state-text">You don't have any events yet. Create a new event to start managing your activities.</p>
+                    <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-solid-primary rounded-3 px-4 py-2">Create a new event</a>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -235,41 +219,49 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Registration Trend Chart (Line Chart)
+        // Registration Trend Chart (Bar Chart)
         const registrationCtx = document.getElementById('registrationTrendChart').getContext('2d');
         new Chart(registrationCtx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RegistrationTrendLabels)),
                 datasets: [{
                     label: 'Registrations',
                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RegistrationTrendData)),
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#0d6efd',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4
+                    backgroundColor: '#e2e8f0', // Light gray/purple bars
+                    hoverBackgroundColor: '#4f46e5', // Primary color on hover
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: true,
-                        position: 'top'
+                        display: false // Hide default legend
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        padding: 10,
+                        cornerRadius: 8,
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
                         ticks: {
-                            stepSize: 1
+                            font: { size: 10, weight: 'bold' },
+                            color: '#94a3b8'
                         }
+                    },
+                    y: {
+                        display: false, // Hide y-axis entirely as per mockup
+                        beginAtZero: true,
                     }
                 }
             }
@@ -284,24 +276,30 @@
                 datasets: [{
                     data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.EventStatusDistribution.Values.ToList())),
                     backgroundColor: [
-                        '#6c757d', // Draft
-                        '#ffc107', // Pending
-                        '#28a745', // Approved
-                        '#17a2b8', // Happening
-                        '#007bff', // Completed
-                        '#dc3545', // Rejected
-                        '#343a40'  // Cancelled
+                        '#1e3a8a', // Dark blue (Draft/Published depending on data)
+                        'var(--primary)', // Solid blue
+                        '#cbd5e1', // Light gray
+                        '#e2e8f0', // Gray
+                        '#0ea5e9', // Cyan
+                        '#f59e0b', // Amber/Warning
+                        '#ef4444'  // Red/Danger
                     ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
+                    borderWidth: 0,
+                    hoverOffset: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                cutout: '75%', // Make it an outline doughnut
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        display: false // Custom HTML legend is used instead
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        padding: 10,
+                        cornerRadius: 8,
                     }
                 }
             }

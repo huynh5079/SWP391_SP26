@@ -29,11 +29,16 @@
                     Overview
                 </a>
             </li>
-            <li class="nav-item">
-                <a href="#" class="nav-link">
+            <li class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-calendar-event"></i>
-                    Events
+                    Events Data
                 </a>
+                <ul class="dropdown-menu border-0 shadow-sm" style="background-color: #0f172a; margin-left: 10px;">
+                    <li><a class="dropdown-item text-white opacity-75" href="@Url.Action("Index", "Department")"><i class="bi bi-building me-2"></i> Departments</a></li>
+                    <li><a class="dropdown-item text-white opacity-75" href="@Url.Action("Index", "Topic")"><i class="bi bi-tags me-2"></i> Topics</a></li>
+                    <li><a class="dropdown-item text-white opacity-75" href="@Url.Action("Index", "Location")"><i class="bi bi-geo-alt me-2"></i> Locations</a></li>
+                </ul>
             </li>
             <li class="nav-item">
                 <a href="@Url.Action("Index", "UserManagement")" class="nav-link">
