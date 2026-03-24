@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.AddQuestion;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
@@ -15,5 +15,6 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 		void ValidatePassingScorewithQuestion(int? passingScore, IEnumerable<QuizQuestionContract> questions);
 		void ValidateCheckDuplicateQuestion(IEnumerable<QuizQuestionContract> questions);
 		void ValidateQuestionCount(IEnumerable<QuizQuestionContract> questions);
+		void ValidatePublishQuiz(DataAccess.Entities.EventQuiz quiz);
 	}
 }

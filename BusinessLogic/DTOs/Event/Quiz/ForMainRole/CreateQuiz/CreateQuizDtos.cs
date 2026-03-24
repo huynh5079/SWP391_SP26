@@ -13,6 +13,9 @@ namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz
         public string Title { get; set; } = string.Empty;
         public QuizTypeEnum Type { get; set; }
         public int? PassingScore { get; set; }
+        public int? TimeLimit { get; set; }
+        public DateTime? QuizStartTime { get; set; }
+        public DateTime? QuizEndTime { get; set; }
         public string? FileQuiz { get; set; }
         public string? LiveQuizLink { get; set; }
         public bool AllowReview { get; set; }

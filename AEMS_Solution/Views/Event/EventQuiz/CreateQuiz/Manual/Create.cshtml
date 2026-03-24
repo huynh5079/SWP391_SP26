@@ -72,9 +72,27 @@
                     </div>
 
                     <div class="col-md-6">
+                        <label asp-for="Quiz.TimeLimit" class="form-label">Time limit (minutes)</label>
+                        <input asp-for="Quiz.TimeLimit" class="form-control" type="number" min="0" placeholder="0 or empty for unlimited" />
+                        <span asp-validation-for="Quiz.TimeLimit" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
                         <label asp-for="Quiz.MaxAttempts" class="form-label">Max Attempts</label>
                         <input asp-for="Quiz.MaxAttempts" class="form-control" type="number" min="0" placeholder="Enter max attempts (0 for unlimited)" />
                         <span asp-validation-for="Quiz.MaxAttempts" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Quiz.QuizStartTime" class="form-label">Quiz start time</label>
+                        <input asp-for="Quiz.QuizStartTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
+                        <span asp-validation-for="Quiz.QuizStartTime" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Quiz.QuizEndTime" class="form-label">Quiz end time</label>
+                        <input asp-for="Quiz.QuizEndTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
+                        <span asp-validation-for="Quiz.QuizEndTime" class="text-danger"></span>
                     </div>
 
                     <div class="col-12 d-none js-live-quiz-link-group">
@@ -245,8 +263,36 @@
             const typeSelect = document.querySelector('.js-quiz-type');
             const liveLinkGroup = document.querySelector('.js-live-quiz-link-group');
             const liveLinkInput = document.querySelector('.js-live-quiz-link-input');
+            const timeLimitInput = document.querySelector('input[name="Quiz.TimeLimit"]');
+            const startInput = document.querySelector('input[name="Quiz.QuizStartTime"]');
+            const endInput = document.querySelector('input[name="Quiz.QuizEndTime"]');
             const questionsContainer = document.getElementById('manual-questions-container');
             const addQuestionButton = document.getElementById('add-question-btn');
+            let isEndTimeManuallyEdited = false;
+
+            function toDateTimeLocalValue(date) {
+                const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+                return local.toISOString().slice(0, 16);
+            }
+
+            function syncScheduleFromTimeLimit() {
+                if (!timeLimitInput || !startInput || !endInput) return;
+
+                const minutes = parseInt(timeLimitInput.value || '0', 10);
+                if (!Number.isFinite(minutes) || minutes <= 0) return;
+
+                if (!startInput.value) {
+                    startInput.value = toDateTimeLocalValue(new Date());
+                }
+
+                const startDate = new Date(startInput.value);
+                if (Number.isNaN(startDate.getTime())) return;
+
+                const calculatedEnd = new Date(startDate.getTime() + (minutes * 60000));
+                if (!endInput.value || !isEndTimeManuallyEdited) {
+                    endInput.value = toDateTimeLocalValue(calculatedEnd);
+                }
+            }
 
             function toggleLiveQuizLink() {
                 const isLiveQuiz = typeSelect && typeSelect.value === '3';
@@ -552,7 +598,19 @@
             });
 
             typeSelect?.addEventListener('change', toggleLiveQuizLink);
+            timeLimitInput?.addEventListener('input', function () {
+                isEndTimeManuallyEdited = false;
+                syncScheduleFromTimeLimit();
+            });
+            startInput?.addEventListener('change', function () {
+                isEndTimeManuallyEdited = false;
+                syncScheduleFromTimeLimit();
+            });
+            endInput?.addEventListener('input', function () {
+                isEndTimeManuallyEdited = true;
+            });
             toggleLiveQuizLink();
+            syncScheduleFromTimeLimit();
             questionsContainer?.querySelectorAll('.manual-question-item').forEach(function (card) {
                 bindQuestionCard(card);
             });
