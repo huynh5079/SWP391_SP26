@@ -896,7 +896,14 @@
                                         }
                                         else if (quiz.Status == DataAccess.Enum.QuizStatusEnum.Published)
                                         {
-                                            <a class="btn btn-sm btn-primary" href="@Url.Action("ShowQuiz", "EventQuiz", new { area = "", eventId = Model.EventId, quizId = quiz.QuizId })">Bắt đầu</a>
+                                            if (quiz.CanTake)
+                                            {
+                                                <a class="btn btn-sm btn-primary" href="@Url.Action("ShowQuiz", "EventQuiz", new { area = "", eventId = Model.EventId, quizId = quiz.QuizId })">Bắt đầu</a>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-secondary" disabled title="Sự kiện chưa diễn ra hoặc đã kết thúc">Bắt đầu</button>
+                                            }
                                         }
                                         else
                                         {

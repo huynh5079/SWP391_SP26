@@ -46,6 +46,8 @@ namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts
         public QuestionSetEnum QuestionSetStatus { get; set; }
         public int? PassingScore { get; set; }
         public int? TimeLimit { get; set; }
+        public DateTime? QuizStartTime { get; set; }
+        public DateTime? QuizEndTime { get; set; }
         public bool AllowReview { get; set; }
         public bool IsActive { get; set; }
         public int? MaxAttempts { get; set; }

@@ -876,6 +876,10 @@ public partial class AEMSContext : DbContext
 				.HasColumnName("QuizId")
 				.HasMaxLength(450);
 
+			// DB cột vẫn tên TotalScore (InitialDb); map Score -> TotalScore
+			entity.Property(e => e.Score)
+				.HasColumnName("TotalScore");
+
 			entity.HasIndex(e => new { e.EventQuizId, e.StudentId, e.AttemptNumber }, "UIX_StudentQuizScore_EventQuiz_Student")
 				.IsUnique()
 				.HasFilter("[DeletedAt] IS NULL AND [QuizId] IS NOT NULL AND [StudentId] IS NOT NULL");

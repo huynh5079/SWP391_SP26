@@ -268,7 +268,8 @@ namespace BusinessLogic.Service.Student
                     TimeLimit = q.TimeLimit,
                     AllowReview = q.AllowReview,
                     PassingScore = q.PassingScore,
-                    IsTaken = taken != null && taken.Status == DataAccess.Enum.StudentQuizScoreStatusEnum.Submitted
+                    IsTaken = taken != null && taken.Status == DataAccess.Enum.StudentQuizScoreStatusEnum.Submitted,
+                    CanTake = q.Status == QuizStatusEnum.Published && now >= ev.StartTime && now <= ev.EndTime
                 });
             }
 

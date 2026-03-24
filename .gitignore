@@ -213,3 +213,10 @@ Python/TestGPU-CPU/
 build_errors_utf8.txt
 build_errors_utf8_v2.txt
 build_output.txt
+.tmpbuild
+.tmpbuild2
+.tmpbuild3
+.tmpbuild4
+.tmpbuild5
+build_log.txt
+build_error.txt

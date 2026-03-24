@@ -436,6 +436,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 var request = _mapper.Map<UpdateQuizSetRequestDto>(vm.Quiz);
                 request.UserId = userId;
                 request.QuizId = vm.Quiz.EventQuizId;
+                request.EventId = string.IsNullOrWhiteSpace(vm.Quiz.EventId) ? vm.EventId : vm.Quiz.EventId;
 
                 await _quizService.UpdateQuizSetAsync(request);
                 SetSuccess("Cập nhật thông tin quiz thành công.");

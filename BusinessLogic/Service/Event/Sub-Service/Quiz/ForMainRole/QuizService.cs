@@ -127,6 +127,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				QuestionSetStatus = quiz.QuestionSetStatus,
 				PassingScore = quiz.PassingScore,
 				TimeLimit = quiz.TimeLimit,
+				QuizStartTime = quiz.QuizStartTime,
+				QuizEndTime = quiz.QuizEndTime,
 				AllowReview = quiz.AllowReview,
 				IsActive = quiz.IsActive,
 				QuestionCount = questionCount,
@@ -700,6 +702,13 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				throw new InvalidOperationException("Bạn không có quyền tạo quiz cho event này.");
 			if (eventDataForAdd.StartTime <= DateTime.UtcNow)
 				throw new Exception("Sự kiện đã bắt đầu, không thể tạo quiz");
+			var (normalizedQuizStartTime, normalizedQuizEndTime) = NormalizeQuizSchedule(
+				request.QuizStartTime,
+				request.QuizEndTime,
+				request.TimeLimit,
+				eventDataForAdd.StartTime,
+				eventDataForAdd.EndTime);
+			ValidateQuizScheduleWithinEventWindow(normalizedQuizStartTime, normalizedQuizEndTime, eventDataForAdd.StartTime, eventDataForAdd.EndTime);
 			await ValidateDuplicateQuizTitleInSemesterAsync(organizer, eventDataForAdd, request.Title);
 
 			using var transaction = await _uow.BeginTransactionAsync();
@@ -754,6 +763,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					Title = request.Title,
 					Type = request.Type,
 					PassingScore = request.PassingScore,
+					TimeLimit = request.TimeLimit,
+					QuizStartTime = normalizedQuizStartTime,
+					QuizEndTime = normalizedQuizEndTime,
 					QuestionSetStatus = questionCount > 0 ? QuestionSetEnum.Available : QuestionSetEnum.NA,
 					FileQuiz = quizSet.FileQuiz,
 					LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null,
@@ -795,7 +807,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		public async Task<PublishQuizResponseDto> PublishQuizAsync(PublishQuizRequestDto request)
 		{
-			var quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId ?? string.Empty, q => q.Include(x => x.EventQuizQuestions));
+			var quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId ?? string.Empty, q => q.Include(x => x.Event).Include(x => x.EventQuizQuestions));
+			_validator.ValidatePublishQuiz(quiz);
 
 			if (quiz.QuestionSetStatus != QuestionSetEnum.Available || !quiz.EventQuizQuestions.Any(x => x.DeletedAt == null))
 				throw new InvalidOperationException("Quiz chưa có câu hỏi để publish.");
@@ -1172,21 +1185,38 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				q => q.Include(x => x.QuizSet)
 					.Include(x => x.StudentQuizScores)
 					.Include(x => x.EventQuizQuestions));
-			if (quiz.Status == QuizStatusEnum.Published)
-				throw new InvalidOperationException("Quiz đang mở, không thể chỉnh sửa");
 			if (quiz.EventId != request.EventId)
 				throw new InvalidOperationException("Quiz không thuộc event này");
 
 			var eventData = await _uow.Events.GetByIdAsync(request.EventId);
 			if (eventData == null)
 				throw new ArgumentException("Event không tồn tại.");
-			if (eventData.StartTime <= DateTime.UtcNow)
+			if (quiz.Status != QuizStatusEnum.Published && eventData.StartTime <= DateTime.UtcNow)
 				throw new Exception("Sự kiện đã bắt đầu, không thể cập nhật Quiz");
+
+			var (normalizedQuizStartTime, normalizedQuizEndTime) = NormalizeQuizSchedule(
+				request.QuizStartTime ?? quiz.QuizStartTime,
+				request.QuizEndTime ?? quiz.QuizEndTime,
+				request.TimeLimit,
+				eventData.StartTime,
+				eventData.EndTime);
+			ValidateQuizScheduleWithinEventWindow(normalizedQuizStartTime, normalizedQuizEndTime, eventData.StartTime, eventData.EndTime);
+
+			if (quiz.Status == QuizStatusEnum.Published)
+			{
+				if (quiz.TimeLimit.HasValue && request.TimeLimit.HasValue && request.TimeLimit.Value < quiz.TimeLimit.Value)
+					throw new InvalidOperationException("Quiz đang mở, chỉ có thể tăng Time limit để gia hạn.");
+
+				if (quiz.QuizEndTime.HasValue && normalizedQuizEndTime.HasValue && normalizedQuizEndTime.Value < quiz.QuizEndTime.Value)
+					throw new InvalidOperationException("Quiz đang mở, chỉ có thể gia hạn thêm thời gian kết thúc.");
+			}
 
 			quiz.Title = request.Title;
 			quiz.Type = request.Type;
 			quiz.PassingScore = request.PassingScore;
 			quiz.TimeLimit = request.TimeLimit;
+			quiz.QuizStartTime = normalizedQuizStartTime;
+			quiz.QuizEndTime = normalizedQuizEndTime;
 			quiz.LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null;
 			quiz.AllowReview = request.AllowReview;
 			quiz.MaxAttemptSubmission = request.MaxAttempts;
@@ -1212,6 +1242,68 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			{
 				Quiz = MapQuizSummaryContract(quiz, quiz.QuizSet, questionCount, attemptCount, passedCount)
 			};
+		}
+
+		private static DateTime? ToUtcIfSpecified(DateTime? value)
+		{
+			if (!value.HasValue)
+				return null;
+
+			if (value.Value.Kind == DateTimeKind.Utc)
+				return value.Value;
+
+			if (value.Value.Kind == DateTimeKind.Local)
+				return value.Value.ToUniversalTime();
+
+			return DateTime.SpecifyKind(value.Value, DateTimeKind.Local).ToUniversalTime();
+		}
+
+		private static (DateTime? QuizStartTime, DateTime? QuizEndTime) NormalizeQuizSchedule(
+			DateTime? quizStartTime,
+			DateTime? quizEndTime,
+			int? timeLimit,
+			DateTime eventStartTime,
+			DateTime? eventEndTime)
+		{
+			var normalizedQuizStart = ToUtcIfSpecified(quizStartTime);
+			var normalizedQuizEnd = ToUtcIfSpecified(quizEndTime);
+			var normalizedEventStart = eventStartTime.Kind == DateTimeKind.Utc ? eventStartTime : eventStartTime.ToUniversalTime();
+
+			if (timeLimit.HasValue && timeLimit.Value > 0)
+			{
+				normalizedQuizStart ??= DateTime.UtcNow;
+				if (normalizedQuizStart.Value < normalizedEventStart)
+				{
+					normalizedQuizStart = normalizedEventStart;
+				}
+
+				var minimumEndByLimit = normalizedQuizStart.Value.AddMinutes(timeLimit.Value);
+				if (!normalizedQuizEnd.HasValue || normalizedQuizEnd.Value < minimumEndByLimit)
+				{
+					normalizedQuizEnd = minimumEndByLimit;
+				}
+			}
+
+			return (normalizedQuizStart, normalizedQuizEnd);
+		}
+
+		private static void ValidateQuizScheduleWithinEventWindow(DateTime? quizStartTime, DateTime? quizEndTime, DateTime eventStartTime, DateTime? eventEndTime)
+		{
+			var normalizedQuizStart = ToUtcIfSpecified(quizStartTime);
+			var normalizedQuizEnd = ToUtcIfSpecified(quizEndTime);
+			var normalizedEventStart = eventStartTime.Kind == DateTimeKind.Utc ? eventStartTime : eventStartTime.ToUniversalTime();
+			var normalizedEventEnd = eventEndTime.HasValue
+				? (eventEndTime.Value.Kind == DateTimeKind.Utc ? eventEndTime.Value : eventEndTime.Value.ToUniversalTime())
+				: (DateTime?)null;
+
+			if (normalizedQuizStart.HasValue && normalizedQuizEnd.HasValue && normalizedQuizEnd <= normalizedQuizStart)
+				throw new ArgumentException("Thời gian kết thúc quiz phải lớn hơn thời gian bắt đầu.");
+
+			if (normalizedQuizStart.HasValue && normalizedQuizStart < normalizedEventStart)
+				throw new ArgumentException("Thời gian bắt đầu quiz phải >= thời gian bắt đầu sự kiện.");
+
+			if (normalizedEventEnd.HasValue && normalizedQuizEnd.HasValue && normalizedQuizEnd > normalizedEventEnd)
+				throw new ArgumentException("Thời gian kết thúc quiz phải <= thời gian kết thúc sự kiện.");
 		}
 
 

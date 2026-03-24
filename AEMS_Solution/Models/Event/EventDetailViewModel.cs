@@ -257,7 +257,7 @@ namespace AEMS_Solution.Models.Event
 		public StudentMiniVm? Student { get; set; }
 
 		public int TotalScore { get; set; }
-		public bool IsPassed { get; set; }
+		public bool? IsPassed { get; set; }
 		public DateTime SubmittedAt { get; set; }
 	}
 

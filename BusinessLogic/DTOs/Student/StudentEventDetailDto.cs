@@ -75,6 +75,8 @@ namespace BusinessLogic.DTOs.Student
         public int? PassingScore { get; set; }
         // true if the current student has already submitted this quiz
         public bool IsTaken { get; set; }
+        // true if the student can take/start the quiz (event is happening)
+        public bool CanTake { get; set; }
     }
     public class EventAgendaItemDto
     {
