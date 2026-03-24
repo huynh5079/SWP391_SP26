@@ -16,6 +16,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.UpdateQuiz
         public string? FileQuiz { get; set; }
         public string? LiveQuizLink { get; set; }
         public bool AllowReview { get; set; }
+        public int? MaxAttempts { get; set; }
     }
 
     public class UpdateQuizSetResponseDto

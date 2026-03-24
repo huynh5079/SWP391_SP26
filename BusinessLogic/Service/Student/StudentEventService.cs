@@ -8,6 +8,8 @@ using System.Data;
 
 using BusinessLogic.Helper;
 using BusinessLogic.Service.System;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
+using BusinessLogic.DTOs.Event.Quiz.QuizForAll;
 
 namespace BusinessLogic.Service.Student
 {
@@ -151,8 +153,9 @@ namespace BusinessLogic.Service.Student
                        .Include(x => x.Semester)
                        .Include(x => x.Department)
                        .Include(x => x.Organizer).ThenInclude(o => o!.User)
-                       .Include(x => x.Tickets)
+                .Include(x => x.Tickets)
                        .Include(x => x.EventDocuments)
+                       .Include(x => x.EventQuizzes).ThenInclude(eq => eq.EventQuizQuestions)
                // Include agendas and speaker profiles/users for richer agenda info
                .Include(x => x.EventAgenda).ThenInclude(ag => ag.StudentSpeaker).ThenInclude(s => s.User)
                .Include(x => x.EventAgenda).ThenInclude(ag => ag.StaffSpeaker).ThenInclude(s => s.User)
@@ -250,6 +253,25 @@ namespace BusinessLogic.Service.Student
                     }).ToList();
             }
 
+            // After building documents and agendas and before return, fetch quizzes
+            var quizzes = new List<StudentEventQuizItemDto>();
+            var eventQuizzes = ev.EventQuizzes?.Where(q => q.DeletedAt == null).ToList() ?? new List<DataAccess.Entities.EventQuiz>();
+            foreach (var q in eventQuizzes)
+            {
+                var taken = await _uow.StudentQuizScores.GetAsync(s => s.EventQuizId == q.Id && s.StudentId == profile.Id && s.DeletedAt == null);
+                quizzes.Add(new StudentEventQuizItemDto
+                {
+                    QuizId = q.Id,
+                    Title = q.Title,
+                    Status = q.Status,
+                    QuestionCount = q.EventQuizQuestions?.Count(x => x.DeletedAt == null) ?? 0,
+                    TimeLimit = q.TimeLimit,
+                    AllowReview = q.AllowReview,
+                    PassingScore = q.PassingScore,
+                    IsTaken = taken != null && taken.Status == DataAccess.Enum.StudentQuizScoreStatusEnum.Submitted
+                });
+            }
+
             return new StudentEventDetailDto
             {
                 EventId = ev.Id,
@@ -278,6 +300,8 @@ namespace BusinessLogic.Service.Student
                 CanRegister = isPublic && isFuture && !isRegistered && registeredCount < ev.MaxCapacity && !isInWaitlist,
                 CanCancel = isRegistered && isFuture,
                 TicketId = myTicket?.Id,
+                TicketCode = myTicket?.TicketCode,
+                QRCodeBase64 = myTicket != null ? QRCodeGeneratorHelper.GenerateQRCodeBase64(myTicket.Id) : null,
                 //IsFull = registeredCount >= ev.MaxCapacity,
                 IsInWaitlist = isInWaitlist,
                 WaitlistPosition = waitlistEntry?.Position,
@@ -292,7 +316,8 @@ namespace BusinessLogic.Service.Student
                 Agendas = agendas,
                 Documents = documents,
                 ParticipationRole = participationRole,
-                Teams = teams
+                Teams = teams,
+                Quizzes = quizzes
             };
         }
 

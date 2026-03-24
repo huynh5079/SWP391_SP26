@@ -1,4 +1,5 @@
 using DataAccess.Enum;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
 
 namespace BusinessLogic.DTOs.Student
 {
@@ -37,8 +38,10 @@ namespace BusinessLogic.DTOs.Student
         public bool CanRegister { get; set; }   // Published + future + not registered + not full
         public bool CanCancel { get; set; }      // Registered + event hasn't started
 
-        // Ticket id for cancel action
+        // Ticket info for display
         public string? TicketId { get; set; }
+        public string? TicketCode { get; set; }
+        public string? QRCodeBase64 { get; set; }
 
         // Waitlist state
         public bool IsInWaitlist { get; set; }
@@ -53,9 +56,25 @@ namespace BusinessLogic.DTOs.Student
         public List<EventAgendaItemDto>? Agendas { get; set; }
         public List<EventDocumentDto>? Documents { get; set; }
 
+        // Quizzes available for this event (student-facing summary)
+        public List<StudentEventQuizItemDto>? Quizzes { get; set; } = new();
+
         // Participation info (speaker / team member)
         public string? ParticipationRole { get; set; } // "Ban tổ chức" / "Diễn giả" / "Khách tham dự" / null
         public List<EventTeamReadOnlyDto>? Teams { get; set; }
+    }
+
+    public class StudentEventQuizItemDto
+    {
+        public string QuizId { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public QuizStatusEnum Status { get; set; }
+        public int QuestionCount { get; set; }
+        public int? TimeLimit { get; set; }
+        public bool AllowReview { get; set; }
+        public int? PassingScore { get; set; }
+        // true if the current student has already submitted this quiz
+        public bool IsTaken { get; set; }
     }
     public class EventAgendaItemDto
     {

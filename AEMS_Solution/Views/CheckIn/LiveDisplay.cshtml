@@ -36,7 +36,7 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), 
-                        url('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop');
+                        url('@(string.IsNullOrEmpty(ViewBag.ThumbnailUrl as string) ? "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" : ViewBag.ThumbnailUrl)');
             background-size: cover;
             background-position: center;
             filter: blur(10px);
@@ -64,8 +64,8 @@
         }
 
         .event-logo {
-            width: 50px;
-            height: 50px;
+            width: 100px;
+            height: 100px;
             background: var(--primary-gradient);
             border-radius: 12px;
             display: flex;
@@ -113,13 +113,23 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
+        .user-avatar {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--glass-border);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            margin-bottom: 1.5rem;
+        }
+
         .user-name {
             font-size: 5rem;
             font-weight: 800;
             background: linear-gradient(to right, #fff, #cbd5e1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin: 1.5rem 0;
+            margin: 0 0 1.5rem 0;
             line-height: 1.1;
         }
 
@@ -150,10 +160,17 @@
 
     <div class="main-container">
         <div class="event-info">
-            <div class="event-logo">
-                <i class="bi bi-calendar-event-fill fs-4"></i>
+            <div class="event-logo" style="overflow: hidden;">
+                @if (string.IsNullOrEmpty(ViewBag.ThumbnailUrl as string))
+                {
+                    <i class="bi bi-calendar-event-fill" style="font-size: 2.5rem;"></i>
+                }
+                else
+                {
+                    <img src="@ViewBag.ThumbnailUrl" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block;" />
+                }
             </div>
-            <h4 class="fw-bold mb-0">AEMS System</h4>
+            <h4 class="fw-bold mb-0 mt-2">@(string.IsNullOrEmpty(ViewBag.EventTitle as string) ? "AEMS System" : ViewBag.EventTitle)</h4>
             <p class="text-muted small">Live Check-in Display</p>
         </div>
 
@@ -166,10 +183,11 @@
         </div>
 
         <!-- Welcome Card (Dynamic) -->
-        <div id="welcome-card" class="welcome-card animate__animated">
+        <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
+            <img id="display-avatar" src="" class="user-avatar" alt="Avatar" style="display: none;" />
             <div class="welcome-text">Chào mừng</div>
-            <div id="display-name" class="user-name">Nguyễn Văn A</div>
-            <div class="welcome-text">đến với sự kiện <span class="emoji-float">🫶</span></div>
+            <div id="display-name" class="user-name text-center">Nguyễn Văn A</div>
+            <div class="welcome-text text-center">đến với sự kiện <span class="emoji-float d-inline-block mt-2">🫶</span></div>
         </div>
 
         <div class="footer-brand">POWERED BY AEMS SOLUTION</div>
@@ -183,7 +201,26 @@
         const defaultView = document.getElementById('default-view');
         const welcomeCard = document.getElementById('welcome-card');
         const displayName = document.getElementById('display-name');
+        const displayAvatar = document.getElementById('display-avatar');
         const statusText = document.querySelector('.default-state p');
+        const bgOverlay = document.getElementById('bg-overlay');
+
+        // Setup Background Slideshow
+        const imageUrlsRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ImageUrls ?? new List<string>()));
+        const imageUrls = Array.isArray(imageUrlsRaw) ? imageUrlsRaw : [];
+        const defaultThumbnail = '@(string.IsNullOrEmpty(ViewBag.ThumbnailUrl as string) ? "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" : ViewBag.ThumbnailUrl)';
+
+        if (imageUrls.length > 0) {
+            let currentImageIndex = 0;
+            bgOverlay.style.backgroundImage = `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url('${imageUrls[0]}')`;
+
+            if (imageUrls.length > 1) {
+                setInterval(() => {
+                    currentImageIndex = (currentImageIndex + 1) % imageUrls.length;
+                    bgOverlay.style.backgroundImage = `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url('${imageUrls[currentImageIndex]}')`;
+                }, 8000); // 8s
+            }
+        }
 
         // SignalR Setup
         const connection = new signalR.HubConnectionBuilder()
@@ -197,7 +234,6 @@
                 console.log("SignalR Connected.");
                 statusText.innerHTML = '<span class="status-dot"></span> Đã kết nối với hệ thống';
                 
-                // Join Group for this Event
                 await connection.invoke("JoinEventGroup", eventId);
                 console.log("Joined Event Group:", eventId);
             } catch (err) {
@@ -207,31 +243,34 @@
             }
         };
 
-        connection.on("ReceiveCheckIn", (receivedEventId, fullName, message) => {
-            console.log("Check-in data received:", { receivedEventId, fullName, message });
+        connection.on("ReceiveCheckIn", (receivedEventId, fullName, message, avatarUrl) => {
+            console.log("Check-in data received:", { receivedEventId, fullName, message, avatarUrl });
             
             if (receivedEventId === eventId) {
-                showWelcome(fullName);
+                showWelcome(fullName, avatarUrl);
             }
         });
 
         let welcomeTimeout = null;
 
-        function showWelcome(name) {
-            // Clear existing timeout if any
+        function showWelcome(name, avatarUrl) {
             if (welcomeTimeout) clearTimeout(welcomeTimeout);
 
-            // Update UI
             displayName.innerText = name;
             
-            // Switch views with animation
+            if (avatarUrl) {
+                displayAvatar.src = avatarUrl;
+                displayAvatar.style.display = 'block';
+            } else {
+                displayAvatar.style.display = 'none';
+            }
+            
             defaultView.style.display = 'none';
-            welcomeCard.style.display = 'block';
-            welcomeCard.className = 'welcome-card animate__animated animate__zoomIn';
+            welcomeCard.style.display = 'flex';
+            welcomeCard.className = 'welcome-card animate__animated d-flex flex-column align-items-center animate__zoomIn';
 
-            // Auto-hide after 8 seconds
             welcomeTimeout = setTimeout(() => {
-                welcomeCard.className = 'welcome-card animate__animated animate__zoomOut';
+                welcomeCard.className = 'welcome-card animate__animated d-flex flex-column align-items-center animate__zoomOut';
                 setTimeout(() => {
                     welcomeCard.style.display = 'none';
                     defaultView.style.display = 'flex';

@@ -254,5 +254,13 @@ namespace DataAccess.Enum
 		Summer,
 		Fall,
 	}
+	public enum SubmissionStatus
+	{
+		NotSubmitted,//chưa nộp
+		Draft, //đang làm chưa nộp
+		Submitted, //Đã nộp
+		Graded, //Đã chấm điểm
+		Late //Late
+	}
 
 }

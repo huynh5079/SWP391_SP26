@@ -828,6 +828,11 @@ namespace DataAccess.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<int?>("MaxAttemptSubmission")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int?>("PassingScore")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -854,6 +859,13 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SubmitStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("NotSubmitted");
 
                     b.Property<int?>("TimeLimit")
                         .ValueGeneratedOnAdd()
@@ -1897,6 +1909,11 @@ namespace DataAccess.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("AttemptNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1909,7 +1926,8 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("EventQuizId")
                         .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("QuizId");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1949,9 +1967,9 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.HasIndex(new[] { "EventQuizId", "StudentId" }, "UIX_StudentQuizScore_EventQuiz_Student")
+                    b.HasIndex(new[] { "EventQuizId", "StudentId", "AttemptNumber" }, "UIX_StudentQuizScore_EventQuiz_Student")
                         .IsUnique()
-                        .HasFilter("[DeletedAt] IS NULL AND [EventQuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
+                        .HasFilter("[DeletedAt] IS NULL AND [QuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
 
                     b.ToTable("StudentQuizScore", (string)null);
                 });

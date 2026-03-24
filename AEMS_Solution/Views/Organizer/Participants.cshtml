@@ -30,7 +30,13 @@
                     <h5 class="mb-0">Danh sách đăng ký (@Model.Participants.Count)</h5>
                     <p class="text-muted small mb-0">Sự kiện: <strong>@Model.EventTitle</strong></p>
                 </div>
-                <div class="col-auto">
+                <div class="col-auto d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addParticipantModal">
+                        <i class="bi bi-person-plus me-1"></i>Thêm người tham gia
+                    </button>
+                    <a href="@Url.Action("LiveDisplay", "CheckIn", new { eventId = Model.EventId })" target="_blank" class="btn btn-sm btn-outline-success" title="Mở màn hình chào mừng sự kiện">
+                        <i class="bi bi-display me-1"></i>Màn hình Welcome
+                    </a>
                     <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
                         <i class="bi bi-printer me-1"></i>In danh sách
                     </button>
@@ -48,13 +54,14 @@
                             <th>Trạng thái</th>
                             <th>Check-in</th>
                             <th>Check-out</th>
+                            <th class="text-end pe-4">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Model.Participants == null || !Model.Participants.Any())
                         {
                             <tr>
-                                <td colspan="6" class="text-center py-5">
+                                <td colspan="7" class="text-center py-5">
                                     <div class="text-muted">
                                         <i class="bi bi-people d-block display-4 mb-3"></i>
                                         <p>Chưa có ai đăng ký tham gia sự kiện này.</p>
@@ -125,6 +132,36 @@
                                             <span class="text-muted small">--:--</span>
                                         }
                                     </td>
+                                    <td class="text-end pe-4">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            @if (p.Status != TicketStatusEnum.Cancelled)
+                                            {
+                                                <!-- Resend Email -->
+                                                <form asp-action="ResendTicket" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="ticketId" value="@p.TicketId" />
+                                                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-info" title="Gửi lại email vé">
+                                                        <i class="bi bi-envelope"></i>
+                                                    </button>
+                                                </form>
+
+                                                <!-- Cancel Ticket -->
+                                                <form asp-action="CancelTicket" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="ticketId" value="@p.TicketId" />
+                                                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Hủy vé" onclick="return confirm('Bạn có chắc chắn muốn hủy vé của @p.FullName?')">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small italic">N/A</span>
+                                            }
+                                        </div>
+                                    </td>
                                 </tr>
                             }
                         }
@@ -134,6 +171,136 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Add Participant -->
+<div class="modal fade" id="addParticipantModal" tabindex="-1" aria-labelledby="addParticipantModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addParticipantModalLabel">Thêm người tham gia thủ công</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="ManualRegister" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="eventId" value="@Model.EventId" />
+                <input type="hidden" name="userId" id="selectedUserId" required />
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tìm kiếm sinh viên (Email hoặc Tên)</label>
+                        <div class="position-relative">
+                            <input type="text" id="userSearchInput" class="form-control" placeholder="Nhập email hoặc tên..." autocomplete="off">
+                            <div id="searchResultList" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1050; max-height: 200px; overflow-y: auto;">
+                                <!-- Results will be injected here -->
+                            </div>
+                        </div>
+                        <div id="selectedUserDisplay" class="mt-2 d-none">
+                            <div class="alert alert-info py-2 px-3 mb-0 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-person-check-fill me-2"></i>
+                                    <span id="selectedUserName" class="fw-bold"></span>
+                                    <div class="small text-muted" id="selectedUserEmail"></div>
+                                </div>
+                                <button type="button" class="btn-close btn-sm" onclick="clearUserSelection()"></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Hệ thống sẽ tạo vé mới và gửi email xác nhận kèm mã QR cho sinh viên này.
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitRegistration" disabled>Xác nhận đăng ký</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('userSearchInput');
+            const resultList = document.getElementById('searchResultList');
+            const selectedUserId = document.getElementById('selectedUserId');
+            const selectedUserDisplay = document.getElementById('selectedUserDisplay');
+            const selectedUserName = document.getElementById('selectedUserName');
+            const selectedUserEmail = document.getElementById('selectedUserEmail');
+            const btnSubmit = document.getElementById('btnSubmitRegistration');
+
+            let timeout = null;
+
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                const q = this.value.trim();
+                
+                if (q.length < 2) {
+                    resultList.classList.add('d-none');
+                    return;
+                }
+
+                timeout = setTimeout(() => {
+                    fetch(`/api/v1/lookup/users?q=${encodeURIComponent(q)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.isSuccess && data.data) {
+                                renderResults(data.data);
+                            }
+                        });
+                }, 300);
+            });
+
+            function renderResults(users) {
+                resultList.innerHTML = '';
+                if (users.length === 0) {
+                    resultList.innerHTML = '<div class="list-group-item text-muted">Không tìm thấy người dùng</div>';
+                } else {
+                    users.forEach(user => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <div class="fw-bold">${user.fullName}</div>
+                            <div class="small text-muted">${user.email} (${user.role})</div>
+                        `;
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            selectUser(user);
+                        });
+                        resultList.appendChild(item);
+                    });
+                }
+                resultList.classList.remove('d-none');
+            }
+
+            function selectUser(user) {
+                selectedUserId.value = user.id;
+                selectedUserName.textContent = user.fullName;
+                selectedUserEmail.textContent = user.email;
+                
+                selectedUserDisplay.classList.remove('d-none');
+                searchInput.value = '';
+                resultList.classList.add('d-none');
+                btnSubmit.disabled = false;
+            }
+
+            window.clearUserSelection = function() {
+                selectedUserId.value = '';
+                selectedUserDisplay.classList.add('d-none');
+                btnSubmit.disabled = true;
+            };
+
+            // Close results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !resultList.contains(e.target)) {
+                    resultList.classList.add('d-none');
+                }
+            });
+        });
+    </script>
+}
 
 <style>
     .avatar { flex-shrink: 0; }
@@ -149,4 +316,5 @@
     .bg-danger-subtle { background-color: #ffebee !important; }
     .text-danger { color: #d32f2f !important; }
     .border-danger { border-color: #ffcdd2 !important; }
+    .italic { font-style: italic; }
 </style>

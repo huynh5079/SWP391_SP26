@@ -6,6 +6,7 @@ using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuiz;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.GetQuizScores;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.QuizActions;
+using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UpdateQuiz;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UploadQuizFile;
 using BusinessLogic.Service.Event.Sub_Service.Quiz;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
@@ -425,6 +426,28 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             return RedirectToAction(nameof(Details), new { quizId });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(EventQuizViewModel vm)
+        {
+            try
+            {
+                var userId = EnsureCurrentUserId();
+                var request = _mapper.Map<UpdateQuizSetRequestDto>(vm.Quiz);
+                request.UserId = userId;
+                request.QuizId = vm.Quiz.EventQuizId;
+
+                await _quizService.UpdateQuizSetAsync(request);
+                SetSuccess("Cập nhật thông tin quiz thành công.");
+            }
+            catch (Exception ex)
+            {
+                SetError(ex.Message);
+            }
+
+            return RedirectToAction(nameof(Details), new { quizId = vm.Quiz.EventQuizId });
+        }
+
         private async Task LoadDropdowns(EventQuizViewModel vm)
         {
             try
@@ -619,5 +642,13 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
             return answers.FirstOrDefault() ?? string.Empty;
         }
-    }
+		[HttpGet]
+		[AllowAnonymous]
+		public IActionResult ShowQuiz(string? eventId, string? quizId)
+		{
+			ViewData["EventId"] = eventId ?? string.Empty;
+			ViewData["QuizId"] = quizId ?? string.Empty;
+			return View("~/Views/Event/EventQuiz/PageShowQuizForStudent/Index.cshtml");
+		}
+	}
 }

@@ -20,7 +20,8 @@ public partial class QuizSet : BaseEntity
 
     public bool IsActive { get; set; }
 
-    public virtual Topic? Topic { get; set; }
+
+	public virtual Topic? Topic { get; set; }
 
     public virtual StaffProfile? Organizer { get; set; }
 

@@ -210,3 +210,6 @@ kb/chunks.json
 kb/faiss.index
 kb/meta.json
 Python/TestGPU-CPU/
+build_errors_utf8.txt
+build_errors_utf8_v2.txt
+build_output.txt

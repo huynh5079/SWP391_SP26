@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +11,7 @@ namespace BusinessLogic.Service.Chat
 {
 	public interface IChatbotService
 	{
-		Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null);
+		Task<ChatbotResponseDto> AskQuestionAsync(string question, int topK = 5, string? sessionId = null, string? userId = null, string? role = null);
        Task<ChatbotConversationHistoryDto> GetConversationHistoryAsync(string? sessionId = null, int limit = 100);
 		Task<HealthStatusDto> CheckHealthAsync();
 		

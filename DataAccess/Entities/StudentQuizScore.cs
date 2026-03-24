@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 
@@ -18,11 +18,13 @@ public partial class StudentQuizScore: BaseEntity
 
     public DateTime? SubmittedAt { get; set; }
 
+    public int AttemptNumber { get; set; }
+
     public StudentQuizScoreStatusEnum Status { get; set; }
+    
+	//public DateTime? SubmittedAt { get; set; }
 
-    //public DateTime? SubmittedAt { get; set; }
-
-    public virtual EventQuiz? EventQuiz { get; set; }
+	public virtual EventQuiz? EventQuiz { get; set; }
 
     public virtual StudentProfile Student { get; set; } = null!;
 
