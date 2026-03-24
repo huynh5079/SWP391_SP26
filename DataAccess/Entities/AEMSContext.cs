@@ -871,11 +871,16 @@ public partial class AEMSContext : DbContext
 		{
 			entity.ToTable("StudentQuizScore");
 
+			// DB cột vẫn tên QuizId (InitialDb); map EventQuizId -> QuizId để INSERT không bị NULL
+			entity.Property(e => e.EventQuizId)
+				.HasColumnName("QuizId")
+				.HasMaxLength(450);
+
 			entity.HasIndex(e => new { e.EventQuizId, e.StudentId, e.AttemptNumber }, "UIX_StudentQuizScore_EventQuiz_Student")
 				.IsUnique()
-				.HasFilter("[DeletedAt] IS NULL AND [EventQuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
+				.HasFilter("[DeletedAt] IS NULL AND [QuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
 
-			entity.Property(e => e.EventQuizId).HasMaxLength(450);
+			// HasMaxLength đã gắn ở Property phía trên
 			entity.Property(e => e.AttemptNumber).HasDefaultValue(1);
 			entity.Property(e => e.Status)
 				.HasMaxLength(50)

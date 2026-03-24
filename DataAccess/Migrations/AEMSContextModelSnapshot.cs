@@ -1926,7 +1926,8 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("EventQuizId")
                         .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(450)")
+                        .HasColumnName("QuizId");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1968,7 +1969,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex(new[] { "EventQuizId", "StudentId", "AttemptNumber" }, "UIX_StudentQuizScore_EventQuiz_Student")
                         .IsUnique()
-                        .HasFilter("[DeletedAt] IS NULL AND [EventQuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
+                        .HasFilter("[DeletedAt] IS NULL AND [QuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
 
                     b.ToTable("StudentQuizScore", (string)null);
                 });
