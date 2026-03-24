@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -34,17 +34,23 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
             if (quiz.QuestionSetStatus != QuestionSetEnum.Available || !quiz.EventQuizQuestions.Any())
                 throw new InvalidOperationException("Quiz chưa có câu hỏi để làm bài.");
 
-			var session = await _uow.StudentQuizScores.GetAsync(
-				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId,
-				q => q.Include(x => x.StudentAnswers));
+			var allSessions = (await _uow.StudentQuizScores.GetAllAsync(
+				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId)).ToList();
 
-			if (session != null)
-				throw new InvalidOperationException("Quiz already started");
+			var inProgressSession = allSessions.FirstOrDefault(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
+			if (inProgressSession != null)
+				throw new InvalidOperationException("Bạn đang có một lượt làm bài chưa hoàn thành.");
 
-			session = new StudentQuizScore
+			var submittedCount = allSessions.Count(x => x.Status == StudentQuizScoreStatusEnum.Submitted);
+			var nextAttemptNumber = (allSessions.Select(x => x.AttemptNumber).DefaultIfEmpty(0).Max()) + 1;
+			if (quiz.MaxAttemptSubmission.HasValue && quiz.MaxAttemptSubmission.Value > 0 && submittedCount >= quiz.MaxAttemptSubmission.Value)
+				throw new InvalidOperationException($"Bạn đã đạt tối đa số lần nộp bài ({quiz.MaxAttemptSubmission.Value} lần).");
+
+			var session = new StudentQuizScore
 			{
 				EventQuizId = request.QuizId,
 				StudentId = request.StudentId,
+				AttemptNumber = nextAttemptNumber,
 				Score = 0,
 				StartedAt = DateTime.UtcNow,
 				Status = StudentQuizScoreStatusEnum.InProgress
@@ -57,7 +63,21 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 			}
 			catch (DbUpdateException)
 			{
-				throw new InvalidOperationException("Quiz already started");
+				var latestSessions = (await _uow.StudentQuizScores.GetAllAsync(
+					x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId)).ToList();
+				var hasInProgress = latestSessions.Any(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
+				if (hasInProgress)
+				{
+					throw new InvalidOperationException("Bạn đang có lượt làm bài chưa hoàn thành.");
+				}
+
+				var latestSubmittedCount = latestSessions.Count(x => x.Status == StudentQuizScoreStatusEnum.Submitted);
+				if (quiz.MaxAttemptSubmission.HasValue && quiz.MaxAttemptSubmission.Value > 0 && latestSubmittedCount >= quiz.MaxAttemptSubmission.Value)
+				{
+					throw new InvalidOperationException($"Bạn đã đạt tối đa số lần nộp bài ({quiz.MaxAttemptSubmission.Value} lần).");
+				}
+
+				throw new InvalidOperationException("Không thể tạo lượt làm bài mới. Vui lòng thử lại, hoặc liên hệ admin kiểm tra migration của StudentQuizScore.");
 			}
 
             var questions = quiz.EventQuizQuestions
@@ -73,7 +93,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
                     StudentQuizScoreId = session.Id,
                     Quiz = MapQuizSummaryContract(quiz, questions.Count),
                     Questions = questions,
-                    Limit = BuildTimeLimit(quiz, session.StartedAt)
+                    Limit = BuildTimeLimit(quiz, session.StartedAt, session.AttemptNumber)
                 }
             };
         }
@@ -108,7 +128,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 					StudentQuizScoreId = session.Id,
 					Quiz = MapQuizSummaryContract(quiz, questions.Count),
 					Questions = questions,
-					Limit = BuildTimeLimit(quiz, session.StartedAt)
+					Limit = BuildTimeLimit(quiz, session.StartedAt, session.AttemptNumber)
 				}
 			};
 		}
@@ -245,7 +265,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
                 q => q.Include(x => x.StudentAnswers));
         }
 
-        private static QuizTimeLimitDto BuildTimeLimit(EventQuiz quiz, DateTime? startedAt)
+        private static QuizTimeLimitDto BuildTimeLimit(EventQuiz quiz, DateTime? startedAt, int attemptNumber = 1)
         {
             DateTime? endsAt = quiz.TimeLimit.HasValue && quiz.TimeLimit.Value > 0 && startedAt.HasValue
                 ? startedAt.Value.AddMinutes(quiz.TimeLimit.Value)
@@ -256,6 +276,8 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
                 TimeLimitMinutes = quiz.TimeLimit,
                 StartedAt = startedAt,
                 EndsAt = endsAt,
+                AttemptNumber = attemptNumber,
+                MaxAttempts = quiz.MaxAttemptSubmission,
                 IsTimedOut = endsAt.HasValue && DateTime.UtcNow > endsAt.Value
             };
         }
@@ -278,6 +300,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 				AllowReview = quiz.AllowReview,
                 IsActive = quiz.IsActive,
                 QuestionCount = questionCount,
+				MaxAttempts = quiz.MaxAttemptSubmission,
                 AttemptCount = quiz.StudentQuizScores?.Count ?? 0,
                 PassedCount = quiz.StudentQuizScores?.Count(x => (x.Score ?? 0) >= (quiz.PassingScore ?? 0)) ?? 0,
                 CreatedAt = quiz.CreatedAt,

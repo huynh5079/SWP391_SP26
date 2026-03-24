@@ -4,6 +4,7 @@ using DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(AEMSContext))]
-    partial class AEMSContextModelSnapshot : ModelSnapshot
+    [Migration("20260323214856_UpdateStatusAndMaximumSubmissions")]
+    partial class UpdateStatusAndMaximumSubmissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1926,8 +1929,7 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("EventQuizId")
                         .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)")
-                        .HasColumnName("QuizId");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1969,7 +1971,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex(new[] { "EventQuizId", "StudentId", "AttemptNumber" }, "UIX_StudentQuizScore_EventQuiz_Student")
                         .IsUnique()
-                        .HasFilter("[DeletedAt] IS NULL AND [QuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
+                        .HasFilter("[DeletedAt] IS NULL AND [EventQuizId] IS NOT NULL AND [StudentId] IS NOT NULL");
 
                     b.ToTable("StudentQuizScore", (string)null);
                 });

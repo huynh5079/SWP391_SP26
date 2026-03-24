@@ -1,4 +1,4 @@
-﻿@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "Create Quiz from File";
@@ -64,6 +64,11 @@
                 <div class="mb-3">
                     <label class="form-label">Passing Score</label>
                     <input asp-for="Quiz.PassingScore" class="form-control" type="number" min="0" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Max Attempts</label>
+                    <input asp-for="Quiz.MaxAttempts" class="form-control" type="number" min="0" placeholder="0 or empty for unlimited" />
                 </div>
 
                 <div class="mb-3 d-none js-live-quiz-link-group">

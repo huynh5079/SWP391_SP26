@@ -132,6 +132,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				QuestionCount = questionCount,
 				AttemptCount = attemptCount,
 				PassedCount = passedCount,
+				MaxAttempts = quiz.MaxAttemptSubmission,
 				CreatedAt = quiz.CreatedAt,
 				UpdatedAt = quiz.UpdatedAt
 			};
@@ -607,12 +608,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			}
 
          var orderIndex = 1;
-			// Preload question bank map to avoid N+1 queries
-           var allQuestionBanks = (await _uow.QuestionBanks.GetAllAsync(x => x.DeletedAt == null)).ToList();
-			// Group by normalized question text to avoid duplicate-key exceptions and use culture-insensitive lower
-			var existingQuestions = allQuestionBanks
-				.GroupBy(x => (x.QuestionText ?? string.Empty).ToLowerInvariant())
-				.ToDictionary(g => g.Key, g => g.First());
+			var seenInUpload = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach (var questionDto in questions.Where(x => !string.IsNullOrWhiteSpace(x.QuestionText)))
 			{
 				var options = GetQuestionOptions(questionDto);
@@ -621,36 +617,38 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				{
 					continue;
 				}
-
 				var normalizedQuestionText = questionDto.QuestionText.Trim();
-               existingQuestions.TryGetValue(normalizedQuestionText.ToLower(), out var questionBank);
+				var optionA = options.OptionA?.Trim();
+				var optionB = options.OptionB?.Trim();
+				var optionC = string.IsNullOrWhiteSpace(options.OptionC) ? null : options.OptionC?.Trim();
+				var optionD = string.IsNullOrWhiteSpace(options.OptionD) ? null : options.OptionD?.Trim();
+				var fingerprint = string.Join("||",
+					normalizedQuestionText,
+					optionA ?? string.Empty,
+					optionB ?? string.Empty,
+					optionC ?? string.Empty,
+					optionD ?? string.Empty,
+					answer);
+				if (!seenInUpload.Add(fingerprint))
+				{
+					continue;
+				}
 
-           if (questionBank == null)
-			{
-				questionBank = new QuestionBank
+				var questionBank = new QuestionBank
 				{
 					TopicId = quizSet.TopicId,
 					OrganizerId = organizer.Id,
 					QuestionText = normalizedQuestionText,
-					OptionA = options.OptionA?.Trim(),
-					OptionB = options.OptionB?.Trim(),
-					OptionC = string.IsNullOrWhiteSpace(options.OptionC) ? null : options.OptionC?.Trim(),
-					OptionD = string.IsNullOrWhiteSpace(options.OptionD) ? null : options.OptionD?.Trim(),
+					OptionA = optionA,
+					OptionB = optionB,
+					OptionC = optionC,
+					OptionD = optionD,
 					CorrectAnswer = answer,
 					Explanation = string.IsNullOrWhiteSpace(questionDto.Explanation) ? null : questionDto.Explanation.Trim(),
 					Difficulty = questionDto.Difficulty
 				};
 
 				await _uow.QuestionBanks.CreateAsync(questionBank);
-				// persist later by caller; do not SaveChanges here
-			}
-
-				var existingQuizSetQuestion = await _uow.QuizSetQuestions.GetAsync(
-					x => x.QuizSetId == quizSet.Id && x.QuestionBankId == questionBank.Id && x.DeletedAt == null);
-				if (existingQuizSetQuestion != null)
-				{
-					continue;
-				}
 
 				await _uow.QuizSetQuestions.CreateAsync(new QuizSetQuestion
 				{
@@ -760,6 +758,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 					FileQuiz = quizSet.FileQuiz,
 					LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null,
 					AllowReview = request.AllowReview,
+					MaxAttemptSubmission = request.MaxAttempts,
 					Status = QuizStatusEnum.Draft,
 					IsActive = true
 				};
@@ -1190,6 +1189,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			quiz.TimeLimit = request.TimeLimit;
 			quiz.LiveQuizLink = request.Type == QuizTypeEnum.LiveQuiz ? request.LiveQuizLink?.Trim() : null;
 			quiz.AllowReview = request.AllowReview;
+			quiz.MaxAttemptSubmission = request.MaxAttempts;
 			if (quiz.QuizSet != null)
 			{
 				quiz.QuizSet.Title = request.Title;

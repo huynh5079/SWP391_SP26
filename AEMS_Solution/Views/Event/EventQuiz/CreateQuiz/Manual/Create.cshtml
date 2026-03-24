@@ -71,6 +71,12 @@
                         <span asp-validation-for="Quiz.PassingScore" class="text-danger"></span>
                     </div>
 
+                    <div class="col-md-6">
+                        <label asp-for="Quiz.MaxAttempts" class="form-label">Max Attempts</label>
+                        <input asp-for="Quiz.MaxAttempts" class="form-control" type="number" min="0" placeholder="Enter max attempts (0 for unlimited)" />
+                        <span asp-validation-for="Quiz.MaxAttempts" class="text-danger"></span>
+                    </div>
+
                     <div class="col-12 d-none js-live-quiz-link-group">
                         <label asp-for="Quiz.LiveQuizLink" class="form-label">Live quiz link</label>
                         <input asp-for="Quiz.LiveQuizLink" class="form-control js-live-quiz-link-input" type="url" placeholder="https://..." />

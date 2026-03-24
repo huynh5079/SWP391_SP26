@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 
@@ -30,6 +30,9 @@ public partial class EventQuiz : BaseEntity
 	public bool AllowReview { get; set; }
 	public virtual Event Event { get; set; } = null!;
 	public virtual QuizSet? QuizSet { get; set; }
+    //for submission
+	public int? MaxAttemptSubmission { get; set; }
+	public SubmissionStatus SubmitStatus { get; set; }
 	public virtual ICollection<EventQuizQuestion> EventQuizQuestions { get; set; } = new List<EventQuizQuestion>();
 
     public virtual ICollection<StudentQuizScore> StudentQuizScores { get; set; } = new List<StudentQuizScore>();

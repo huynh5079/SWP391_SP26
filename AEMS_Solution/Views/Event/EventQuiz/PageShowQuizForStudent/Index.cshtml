@@ -1,10 +1,11 @@
-﻿@using DocumentFormat.OpenXml.Office2010.PowerPoint
 @{
     Layout = "_Layout"; // adjust if your layout has a different name
+    var quizId = ViewData["QuizId"]?.ToString() ?? string.Empty;
+    var eventId = ViewData["EventId"]?.ToString() ?? string.Empty;
 }
 
 <!-- Student Quiz UI: replace placeholders with server-side data as needed -->
-<section id="student-quiz" class="container my-5">
+<section id="student-quiz" class="container my-5" data-quiz-id="@quizId" data-event-id="@eventId">
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card shadow-sm">
@@ -46,6 +47,8 @@
                         <li><strong>Thời lượng:</strong> <span id="info-duration">15 phút</span></li>
                         <li><strong>Số câu:</strong> <span id="info-questions">10</span></li>
                         <li><strong>Hình thức:</strong> Multiple choice</li>
+                        <li><strong>Số lần nộp tối đa:</strong> <span id="info-max-attempts">Không giới hạn</span></li>
+                        <li><strong>Lượt nộp hiện tại:</strong> <span id="info-current-attempt">1</span></li>
                     </ul>
 
                     <div class="mb-3">
@@ -82,18 +85,16 @@
 </style>
 
 <script>
-    // Simple client-side demo logic. Replace with server-driven rendering if needed.
-    (function(){
-        const sampleQuestions = [
-            { id: 1, text: 'What is .NET?', options: ['A framework','A database','A language','An OS'], correct: 0 },
-            { id: 2, text: 'C# is developed by?', options: ['Apple','Microsoft','Google','Facebook'], correct: 1 },
-            { id: 3, text: 'Which one is a Razor file extension?', options: ['.cshtml','.razor','.html','.cs'], correct: 0 }
-        ];
-
-        let questions = sampleQuestions; // TODO: replace by server data insertion
-        let answers = Array(questions.length).fill(null);
+    (function () {
+        const root = document.getElementById('student-quiz');
+        const quizId = root?.dataset.quizId || '';
+        const apiBase = '/api/v1/student-quiz';
+        let session = null;
+        let questions = [];
+        let answers = [];
         let index = 0;
-        let running = false;
+        let timerInterval = null;
+        let remaining = 0;
 
         const quizTitle = document.getElementById('quiz-title');
         const quizCount = document.getElementById('quiz-count');
@@ -106,120 +107,201 @@
         const progressBar = document.getElementById('quiz-progress');
         const timerEl = document.getElementById('timer');
         const questionNav = document.getElementById('question-nav');
+        const quizStatus = document.getElementById('quiz-status');
 
-        function renderQuestion(i){
-            const q = questions[i];
-            quizArea.innerHTML = '';
-            const container = document.createElement('div');
-            container.className = 'question-card';
-            container.innerHTML = `
-                <div class="mb-2"><strong>Câu ${i+1}:</strong></div>
-                <div class="mb-3">${q.text}</div>
-                <div class="list-group" id="options-${q.id}"></div>
-            `;
-            quizArea.appendChild(container);
+        function notify(message) { alert(message); }
 
-            const optionsEl = document.getElementById('options-' + q.id);
-            q.options.forEach((opt, idx) => {
-                const btn = document.createElement('button');
-                btn.className = 'list-group-item list-group-item-action option-btn';
-                btn.type = 'button';
-                btn.innerText = opt;
-                btn.onclick = () => selectOption(i, idx, btn);
-                if (answers[i] === idx) btn.classList.add('active');
-                optionsEl.appendChild(btn);
-            });
-
-            prevBtn.disabled = i === 0;
-            nextBtn.disabled = i === questions.length - 1;
-            updateProgress();
+        function normalizeType(typeOption) {
+            const value = String(typeOption ?? '').toLowerCase();
+            if (value === 'multiplechoice' || value === '2') return 'multiple';
+            if (value === 'truefalse' || value === '1') return 'single';
+            return 'single';
         }
 
-        function selectOption(qIndex, optIndex, btn){
-            answers[qIndex] = optIndex;
-            // update button states
-            const parent = btn.parentElement;
-            Array.from(parent.children).forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            updateNavPill(qIndex);
+        function toOptionList(options) {
+            return [
+                { key: 'A', text: options?.optionA },
+                { key: 'B', text: options?.optionB },
+                { key: 'C', text: options?.optionC },
+                { key: 'D', text: options?.optionD }
+            ].filter(x => x.text && x.text.trim() !== '');
         }
 
-        function updateProgress(){
-            const done = answers.filter(a => a !== null).length;
-            const pct = Math.round((done / questions.length) * 100);
-            progressBar.style.width = pct + '%';
-            progressBar.innerText = pct + '%';
-            document.getElementById('quiz-count').innerText = questions.length;
-        }
-
-        function renderNav(){
+        function renderNav() {
             questionNav.innerHTML = '';
-            questions.forEach((q, i) => {
+            questions.forEach((_, i) => {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-outline-secondary btn-sm';
-                if (answers[i] !== null) btn.classList.replace('btn-outline-secondary','btn-primary');
-                btn.innerText = i+1;
+                const hasAnswer = answers[i] && answers[i].length > 0;
+                if (hasAnswer) btn.classList.replace('btn-outline-secondary', 'btn-primary');
+                btn.innerText = i + 1;
                 btn.onclick = () => { index = i; renderQuestion(i); };
                 questionNav.appendChild(btn);
             });
         }
 
-        function updateNavPill(i){
-            const btn = questionNav.children[i];
-            if (!btn) return;
-            if (answers[i] !== null) btn.classList.replace('btn-outline-secondary','btn-primary');
-            else btn.classList.replace('btn-primary','btn-outline-secondary');
+        function renderQuestion(i) {
+            const q = questions[i];
+            const type = normalizeType(q.typeOption);
+            const opts = toOptionList(q.options);
+            quizArea.innerHTML = '';
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            card.innerHTML = `<div class="mb-2"><strong>Câu ${i + 1}:</strong></div><div class="mb-3">${q.questionText}</div>`;
+            const list = document.createElement('div');
+            list.className = 'list-group';
+
+            opts.forEach(opt => {
+                const item = document.createElement('label');
+                item.className = 'list-group-item list-group-item-action option-btn';
+                const checked = (answers[i] || []).includes(opt.key);
+                item.innerHTML = `
+                    <input type="${type === 'multiple' ? 'checkbox' : 'radio'}"
+                           name="q-${i}"
+                           value="${opt.key}"
+                           ${checked ? 'checked' : ''}
+                           style="margin-right:8px;" />
+                    <strong>${opt.key}.</strong> ${opt.text}
+                `;
+                item.querySelector('input').addEventListener('change', (e) => {
+                    if (type === 'multiple') {
+                        const set = new Set(answers[i] || []);
+                        if (e.target.checked) set.add(opt.key); else set.delete(opt.key);
+                        answers[i] = Array.from(set).sort();
+                    } else {
+                        answers[i] = [opt.key];
+                    }
+                    updateProgress();
+                    renderNav();
+                });
+                list.appendChild(item);
+            });
+
+            card.appendChild(list);
+            quizArea.appendChild(card);
+            prevBtn.disabled = i === 0;
+            nextBtn.disabled = i === questions.length - 1;
         }
 
-        prevBtn.addEventListener('click', () => { if (index>0) { index--; renderQuestion(index); } });
-        nextBtn.addEventListener('click', () => { if (index<questions.length-1) { index++; renderQuestion(index); } });
-        startBtn.addEventListener('click', () => startQuiz());
-        submitBtn.addEventListener('click', () => submitQuiz());
+        function updateProgress() {
+            const done = answers.filter(a => a && a.length > 0).length;
+            const pct = questions.length > 0 ? Math.round((done / questions.length) * 100) : 0;
+            progressBar.style.width = pct + '%';
+            progressBar.innerText = pct + '%';
+        }
 
-        // demo timer (no server sync)
-        let timerInterval = null;
-        let remaining = 15 * 60; // seconds default
-        function startTimer(seconds){
-            remaining = seconds;
+        function tick() {
+            if (remaining <= 0) {
+                clearInterval(timerInterval);
+                timerEl.innerText = '00:00';
+                submitQuiz(true);
+                return;
+            }
+            remaining--;
+            const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+            const ss = String(remaining % 60).padStart(2, '0');
+            timerEl.innerText = `${mm}:${ss}`;
+        }
+
+        function startTimer() {
             clearInterval(timerInterval);
-            timerInterval = setInterval(()=>{
-                if (remaining<=0){ clearInterval(timerInterval); timerEl.innerText = '00:00'; submitQuiz(); return; }
-                remaining--;
-                const mm = String(Math.floor(remaining/60)).padStart(2,'0');
-                const ss = String(remaining%60).padStart(2,'0');
-                timerEl.innerText = `${mm}:${ss}`;
-            }, 1000);
+            timerInterval = setInterval(tick, 1000);
+            tick();
         }
 
-        function startQuiz(){
-            running = true;
-            document.getElementById('quiz-status').innerText = 'In progress';
+        function applySession(data) {
+            session = data;
+            questions = data.questions || [];
+            answers = Array(questions.length).fill(null).map(() => []);
+            quizTitle.innerText = data.quiz?.title || 'Quiz';
+            quizCount.innerText = questions.length;
+            document.getElementById('info-questions').innerText = questions.length;
+            document.getElementById('info-duration').innerText = `${data.limit?.timeLimitMinutes ?? 0} phút`;
+            document.getElementById('info-max-attempts').innerText = data.limit?.maxAttempts > 0 ? data.limit.maxAttempts : 'Không giới hạn';
+            document.getElementById('info-current-attempt').innerText = data.limit?.attemptNumber ?? 1;
+            quizStatus.innerText = 'In progress';
+            quizEmpty.classList.add('d-none');
             startBtn.classList.add('d-none');
             submitBtn.classList.remove('d-none');
-            quizEmpty.classList.add('d-none');
+            submitBtn.disabled = false;
+            index = 0;
             renderNav();
             renderQuestion(0);
-            startTimer(15*60); // replace with real duration
-            renderNav();
+            const endsAt = data.limit?.endsAt ? new Date(data.limit.endsAt).getTime() : null;
+            remaining = endsAt ? Math.max(0, Math.floor((endsAt - Date.now()) / 1000)) : (data.limit?.timeLimitMinutes || 0) * 60;
+            timerEl.innerText = '--:--';
+            if (remaining > 0) startTimer();
         }
 
-        function submitQuiz(){
-            clearInterval(timerInterval);
-            // simple scoring (only works for sampleQuestions)
-            let score = 0;
-            answers.forEach((a, i) => { if (a === questions[i].correct) score++; });
-            quizArea.innerHTML = `<div class="text-center p-4"><h3>Kết quả</h3><p class="mb-1">Bạn được <strong>${score} / ${questions.length}</strong></p><small class="text-muted">(Demo client-side)</small></div>`;
-            document.getElementById('quiz-status').innerText = 'Completed';
+        async function request(url, method, body) {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || 'Có lỗi xảy ra.');
+            return data;
+        }
+
+        async function loadCurrent() {
+            if (!quizId) {
+                notify('Thiếu quizId. Vui lòng quay lại trang chi tiết sự kiện và bấm Bắt đầu từ đúng quiz.');
+                startBtn.disabled = true;
+                return;
+            }
+            try {
+                const current = await request(`${apiBase}/current?quizId=${encodeURIComponent(quizId)}`, 'GET');
+                if (current?.session) {
+                    applySession(current.session);
+                } else {
+                    quizStatus.innerText = 'Ready';
+                    startBtn.classList.remove('d-none');
+                    submitBtn.classList.add('d-none');
+                }
+            } catch (e) {
+                notify(e.message);
+                startBtn.disabled = true;
+            }
+        }
+
+        async function startQuiz() {
+            try {
+                const result = await request(`${apiBase}/start`, 'POST', { quizId });
+                applySession(result.session);
+            } catch (e) {
+                notify(e.message);
+            }
+        }
+
+        async function submitQuiz(isAuto) {
+            if (!session?.studentQuizScoreId) return;
             submitBtn.disabled = true;
+            clearInterval(timerInterval);
+            try {
+                const payload = {
+                    quizId,
+                    studentQuizScoreId: session.studentQuizScoreId,
+                    answers: questions.map((q, i) => ({
+                        questionBankId: q.questionBankId,
+                        selectedAnswer: (answers[i] || []).join(',')
+                    }))
+                };
+                const result = await request(`${apiBase}/submit`, 'POST', payload);
+                quizStatus.innerText = 'Completed';
+                quizArea.innerHTML = `<div class="text-center p-4"><h3>Kết quả</h3><p class="mb-1">Bạn được <strong>${result.score} / ${questions.length}</strong></p><small class="text-muted">${isAuto ? 'Hết thời gian làm bài' : 'Đã nộp bài thành công'}</small></div>`;
+                startBtn.classList.add('d-none');
+                submitBtn.classList.add('d-none');
+            } catch (e) {
+                notify(e.message);
+                submitBtn.disabled = false;
+            }
         }
 
-        // initialize summary info
-        document.getElementById('info-questions').innerText = questions.length;
-        document.getElementById('info-duration').innerText = '15 phút';
-        quizTitle.innerText = 'Demo Quiz - Thử nghiệm';
-        quizCount.innerText = questions.length;
-        timerEl.innerText = '15:00';
-
-        // If you want to render questions from server, inject a JSON payload into a script tag and assign to `questions` variable above.
+        prevBtn.addEventListener('click', () => { if (index > 0) { index--; renderQuestion(index); } });
+        nextBtn.addEventListener('click', () => { if (index < questions.length - 1) { index++; renderQuestion(index); } });
+        startBtn.addEventListener('click', startQuiz);
+        submitBtn.addEventListener('click', () => submitQuiz(false));
+        loadCurrent();
     })();
 </script>
