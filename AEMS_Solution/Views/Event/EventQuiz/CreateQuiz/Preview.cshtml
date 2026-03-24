@@ -1,7 +1,8 @@
 @model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
 @{
     ViewData["Title"] = "Quiz Preview";
-    Layout = "_Organizerlayout";
+    bool isOrganizer = User.IsInRole("Organizer");
+    Layout = isOrganizer ? "_Organizerlayout" : "~/Views/Shared/_Layout.cshtml";
     var hasQuestions = Model.Questions != null && Model.Questions.Any();
     var hasFile = !string.IsNullOrWhiteSpace(Model.Quiz?.FileQuiz);
     var filePath = hasFile ? Url.Content("~/" + Model.Quiz!.FileQuiz!.TrimStart('/')) : string.Empty;
@@ -28,8 +29,15 @@
             <p class="text-muted small mb-0">Read-only preview of the quiz content.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
-            <a asp-action="Details" asp-route-quizId="@Model.Quiz.EventQuizId" class="btn btn-sm btn-outline-primary">Manage quiz</a>
+            @if (isOrganizer)
+            {
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+                <a asp-action="Details" asp-route-quizId="@Model.Quiz?.EventQuizId" class="btn btn-sm btn-outline-primary">Manage quiz</a>
+            }
+            else
+            {
+                <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">Go Back</a>
+            }
             @if (hasFile)
             {
                 <a href="@filePath" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Open file</a>
@@ -94,7 +102,7 @@
                 else
                 {
                     <div class="mx-auto" style="max-width: 980px;">
-                        @for (var i = 0; i < Model.Questions.Count; i++)
+                        @for (var i = 0; i < Model.Questions!.Count; i++)
                         {
                             var question = Model.Questions[i];
                             var isAnswerA = HasCorrectAnswer(question, "A");

@@ -36,6 +36,7 @@ namespace BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts
         public string SemesterName { get; set; } = string.Empty;
         public QuizSetVisibilityEnum SharingStatus { get; set; } = QuizSetVisibilityEnum.Private;
         public string? TopicId { get; set; }
+        public string? TopicName { get; set; }
         public string? OrganizerId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }

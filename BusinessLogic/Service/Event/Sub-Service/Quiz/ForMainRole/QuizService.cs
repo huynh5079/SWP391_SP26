@@ -18,6 +18,7 @@ using BusinessLogic.Service.ValidationData.Quiz;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
+using DataAccess.Helper;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.EntityFrameworkCore;
@@ -117,6 +118,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
                 SemesterName = quiz.Event?.Semester?.Name.ToString() ?? quiz.Event?.Semester?.Code ?? string.Empty,
 				SharingStatus = quizSet?.SharingStatus ?? QuizSetVisibilityEnum.Private,
 				TopicId = quizSet?.TopicId,
+				TopicName = quiz.Event?.Topic?.Name ?? quizSet?.Topic?.Name ?? string.Empty,
 				OrganizerId = quizSet?.OrganizerId,
 				Title = quiz.Title,
 				Description = quizSet?.Description,
@@ -794,7 +796,36 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 		public async Task<PreviewQuizResponseDto> PreviewQuizAsync(PreviewQuizRequestDto request)
 		{
-			await GetOwnedQuizAsync(request.QuizId, request.UserId ?? string.Empty);
+			// Try to get as organizer first.
+			EventQuiz? quiz = null;
+			try
+			{
+				quiz = await GetOwnedQuizAsync(request.QuizId, request.UserId ?? string.Empty, q => q.Include(x => x.Event));
+			}
+			catch
+			{
+				// Not an organizer or not owner. Check if it's a student with a score.
+				quiz = await _uow.EventQuiz.GetAsync(
+					x => x.Id == request.QuizId,
+					q => q.Include(x => x.Event)
+						.Include(x => x.StudentQuizScores)
+							.ThenInclude(x => x.Student));
+
+				if (quiz == null)
+					throw new KeyNotFoundException("Quiz không tồn tại.");
+
+				var hasScore = quiz.StudentQuizScores.Any(s => s.Student.UserId == request.UserId && s.DeletedAt == null);
+				if (!hasScore)
+					throw new InvalidOperationException("Bạn không có quyền xem preview quiz này.");
+
+				// Check if event has ended OR AllowReview is true for students
+				bool eventEnded = quiz.Event.EndTime < DateTimeHelper.GetVietnamTime();
+				if (!quiz.AllowReview && !eventEnded)
+				{
+					throw new InvalidOperationException("Bạn chưa thể xem kết quả lúc này (kết quả sẽ có sau khi sự kiện kết thúc).");
+				}
+			}
+
 			var detail = await GetQuizDetailAsync(new GetQuizDetailRequestDto { QuizId = request.QuizId });
 			if (detail == null)
 				throw new KeyNotFoundException("Quiz không tồn tại.");
@@ -1088,8 +1119,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			var quiz = await _uow.EventQuiz.GetAsync(
 				q => q.Id == request.QuizId,
 				q => q.Include(x => x.QuizSet)
+                        .ThenInclude(x => x!.Topic)
 					.Include(x => x.Event)
 						.ThenInclude(x => x!.Semester)
+					.Include(x => x.Event)
+						.ThenInclude(x => x!.Topic)
 					.Include(x => x.StudentQuizScores)
 					.Include(x => x.EventQuizQuestions));
 			if (quiz == null)
