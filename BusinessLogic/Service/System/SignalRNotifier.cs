@@ -1,9 +1,9 @@
 using BusinessLogic.Service.System;
 using Microsoft.AspNetCore.SignalR;
-using AEMS_Solution.Hubs;
+using BusinessLogic.Hubs;
 using System.Threading.Tasks;
 
-namespace AEMS_Solution.Services
+namespace BusinessLogic.Service.System
 {
     public class SignalRNotifier : ISignalRNotifier
     {

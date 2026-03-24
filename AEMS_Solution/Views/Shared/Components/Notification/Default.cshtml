@@ -236,7 +236,8 @@
                     { iconClass = "type-warning"; iconName = "bx-star"; }
                     else if (item.Type == "SystemError")
                     { iconClass = "type-critical"; iconName = "bx-bug"; }
-
+                    else if (item.Type == "NewChatMessage")
+                    {iconClass = "type-info";iconName = "bx-message-rounded-dots";}
                     <a href="/Notification/ClickAndRoute?notiId=@item.Id" class="notif-item @(item.IsRead == true ? "" : "unread")">
                         <div class="notif-icon-circle @iconClass">
                             <i class='bx @iconName'></i>

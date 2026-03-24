@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-    namespace AEMS_Solution.Hubs
+namespace BusinessLogic.Hubs
 {
     [Authorize]
     public class NotificationHub : Hub

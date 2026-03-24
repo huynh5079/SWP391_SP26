@@ -1,14 +1,7 @@
 using System.Collections.Concurrent;
 
-namespace AEMS_Solution.Services
+namespace BusinessLogic.Service.Chat.ChatforUser
 {
-    public interface IChatPresenceTracker
-    {
-        void UserConnected(string userId);
-        void UserDisconnected(string userId);
-        bool IsOnline(string userId);
-    }
-
     public class ChatPresenceTracker : IChatPresenceTracker
     {
         private readonly ConcurrentDictionary<string, int> _connections = new();

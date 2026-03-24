@@ -16,6 +16,6 @@ namespace DataAccess.Enum
         EventRejected,
         EventChangeRequested,
         SystemBroadcast,
-        ChatSignalRWithUser
-    }
+		NewChatMessage
+	}
 }

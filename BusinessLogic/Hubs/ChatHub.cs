@@ -1,10 +1,9 @@
 using System.Security.Claims;
-using AEMS_Solution.Services;
 using BusinessLogic.Service.Chat.ChatforUser;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
-namespace AEMS_Solution.Hubs
+namespace BusinessLogic.Hubs
 {
     [Authorize]
     public class ChatHub : Hub
@@ -67,8 +66,7 @@ namespace AEMS_Solution.Hubs
 
                 await Clients.Group(senderUserId).SendAsync("ReceivePrivateMessage", message);
                 await Clients.Group(receiverUserId).SendAsync("ReceivePrivateMessage", message);
-				
-			}
+            }
             catch (Exception ex) when (ex is KeyNotFoundException || ex is UnauthorizedAccessException || ex is InvalidOperationException || ex is ArgumentException)
             {
                 throw new HubException(ex.Message);

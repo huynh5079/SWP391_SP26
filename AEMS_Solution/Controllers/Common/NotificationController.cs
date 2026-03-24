@@ -121,8 +121,11 @@ namespace AEMS_Solution.Controllers.Common
                         
                     case DataAccess.Enum.NotificationType.SystemBroadcast:
                         return RedirectToAction("Index", "Home");
-                    
-                }
+                    case DataAccess.Enum.NotificationType.NewChatMessage:
+                        // Assuming RelatedEntityId is the other user's ID for chat
+                        return RedirectToAction("Conversation", "Chat", new { otherUserId = noti.RelatedEntityId });
+
+				}
             }
 
             // Default fallback

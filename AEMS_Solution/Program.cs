@@ -3,8 +3,8 @@ using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event;
 using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
 using AEMS_Solution.Configurations;
-using AEMS_Solution.Hubs;
-using AEMS_Solution.Services;
+using BusinessLogic.Hubs;
+using BusinessLogic.Service.Chat.ChatforUser;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
 using BusinessLogic.Service.Chat.ChatforUser;
@@ -69,7 +69,7 @@ builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
-builder.Services.AddScoped<BusinessLogic.Service.System.ISignalRNotifier, AEMS_Solution.Services.SignalRNotifier>();
+builder.Services.AddScoped<BusinessLogic.Service.System.ISignalRNotifier, BusinessLogic.Service.System.SignalRNotifier>();
 builder.Services.AddSingleton<IChatPresenceTracker, ChatPresenceTracker>();
 builder.Services.AddHostedService<BusinessLogic.Service.Admin.UserLockExpirationService>();
 builder.Services.AddHostedService<BusinessLogic.Service.Event.EventStatusExpirationService>();
@@ -285,7 +285,7 @@ app.UseAuthorization();
 // ==========================================
 
 // SignalR Hubs
-app.MapHub<AEMS_Solution.Hubs.NotificationHub>("/hub/v1/notification");
+app.MapHub<NotificationHub>("/hub/v1/notification");
 app.MapHub<ChatHub>("/hub/v1/chat");
 
 // MVC Default Route
