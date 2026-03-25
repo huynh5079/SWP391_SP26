@@ -244,13 +244,11 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 					IsTimedOut = false,
 					SubmittedAt = submittedAt,
 					Answers = resultAnswers,
-					ReviewQuestions = quiz.AllowReview
-						? quiz.EventQuizQuestions
+					ReviewQuestions = quiz.EventQuizQuestions
 							.Where(x => x.DeletedAt == null)
 							.OrderBy(x => x.OrderIndex)
 							.Select(MapReviewQuestionContract)
 							.ToList()
-						: new List<QuizQuestionContract>()
 				};
 			}
 			catch

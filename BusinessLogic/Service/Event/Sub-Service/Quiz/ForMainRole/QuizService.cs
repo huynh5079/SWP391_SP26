@@ -817,13 +817,6 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 				var hasScore = quiz.StudentQuizScores.Any(s => s.Student.UserId == request.UserId && s.DeletedAt == null);
 				if (!hasScore)
 					throw new InvalidOperationException("Bạn không có quyền xem preview quiz này.");
-
-				// Check if event has ended OR AllowReview is true for students
-				bool eventEnded = quiz.Event.EndTime < DateTimeHelper.GetVietnamTime();
-				if (!quiz.AllowReview && !eventEnded)
-				{
-					throw new InvalidOperationException("Bạn chưa thể xem kết quả lúc này (kết quả sẽ có sau khi sự kiện kết thúc).");
-				}
 			}
 
 			var detail = await GetQuizDetailAsync(new GetQuizDetailRequestDto { QuizId = request.QuizId });

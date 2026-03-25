@@ -92,7 +92,7 @@ class AemsMessengerLayout {
             }
 
             const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
-            if (eventPath.includes(this.root) || this.root.contains(event.target)) {
+            if (eventPath.includes(this.root) || this.root.contains(event.target) || event.target.closest('[data-open-chat-user]')) {
                 return;
             }
 
@@ -140,6 +140,7 @@ class AemsMessengerLayout {
     }
 
     async openPanel() {
+        console.log('Opening messenger panel...');
         this.panel.classList.add('open');
         this.panel.setAttribute('aria-hidden', 'false');
 
@@ -153,11 +154,13 @@ class AemsMessengerLayout {
     }
 
     async openChatWith(contactId) {
+        console.log('openChatWith called for userId:', contactId);
         if (!contactId) {
             return;
         }
 
         await this.openPanel();
+        console.log('Panel opened, checking status for contactId:', contactId);
 
         if (!this.contacts.some(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase())) {
             await this.loadContacts(false);
