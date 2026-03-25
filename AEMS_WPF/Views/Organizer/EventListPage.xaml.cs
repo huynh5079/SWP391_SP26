@@ -35,11 +35,18 @@ namespace AEMS_WPF.Views.Organizer
             NavigationService.Navigate(new CreateEventPage(_user));
         }
 
+        private void BtnDetails_Click(object sender, RoutedEventArgs e)
+        {
+            // Show details - Logic can be added later or navigate to DetailsPage
+            MessageBox.Show("Event details functionality is coming soon!", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void BtnParticipants_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Event.EventListDto eventItem)
+            using var scope = App.ServiceProvider.CreateScope();
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Role.Organizer.EventListDto eventItem)
             {
-                NavigationService.Navigate(new ParticipantListPage(_user, eventItem.Id, eventItem.Title));
+                NavigationService.Navigate(new ParticipantListPage(_user, Guid.Parse(eventItem.EventId), eventItem.Title));
             }
         }
     }
