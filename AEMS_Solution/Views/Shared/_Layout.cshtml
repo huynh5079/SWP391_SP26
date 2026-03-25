@@ -360,6 +360,27 @@
                 window.setInterval(() => updateCountdown(element), 1000);
             });
         })();
+
+        // Auto-open chat from notification bell click (openChatWith query param)
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            const openChatWith = params.get('openChatWith');
+            if (!openChatWith) return;
+
+            // Clean URL without reload
+            const cleanUrl = window.location.pathname + (params.toString().replace(/openChatWith=[^&]*&?/, '') ? '?' + params.toString().replace(/openChatWith=[^&]*&?/, '').replace(/&$/, '') : '');
+            history.replaceState(null, '', cleanUrl);
+
+            // Wait for messenger layout to init, then open chat
+            const tryOpen = (attempts) => {
+                if (window.aemsMessengerLayout) {
+                    document.dispatchEvent(new CustomEvent('aems:open-chat', { detail: { userId: openChatWith } }));
+                } else if (attempts > 0) {
+                    setTimeout(() => tryOpen(attempts - 1), 300);
+                }
+            };
+            setTimeout(() => tryOpen(10), 500);
+        })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
