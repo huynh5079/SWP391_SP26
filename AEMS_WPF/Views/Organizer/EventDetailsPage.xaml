@@ -32,8 +32,28 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                <Button Content="Back to List" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click" Margin="0,0,15,0" VerticalAlignment="Center"/>
-                <Button x:Name="BtnEdit" Content="Edit Event" Style="{StaticResource PrimaryButtonStyle}" Click="BtnEdit_Click" VerticalAlignment="Center"/>
+                <Button x:Name="BtnBack" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click" Margin="0,0,15,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Back to List" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                
+                <Button x:Name="BtnSubmit" Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" Click="BtnSubmit_Click" Margin="0,0,10,0" Visibility="Collapsed"/>
+                
+                <Button x:Name="BtnEdit" Style="{StaticResource ModernButtonStyle}" Click="BtnEdit_Click" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Edit Details" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="BtnDelete" Background="Transparent" Foreground="#ef4444" BorderThickness="0" Click="BtnDelete_Click" VerticalAlignment="Center" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Delete Draft" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
 
