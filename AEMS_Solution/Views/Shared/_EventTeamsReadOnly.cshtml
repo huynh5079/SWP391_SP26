@@ -50,9 +50,9 @@
                                                     {
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-primary"
-                                                                onclick="(function(uid){ if(window.aemsMessengerLayout){ window.aemsMessengerLayout.openChatWith(uid); } else { document.dispatchEvent(new CustomEvent('aems:open-chat',{detail:{userId:uid}})); } })('@member.UserId'); return false;"
-                                                                title="Chat với @member.MemberName">
-                                                            <i class="bi bi-chat-dots me-1"></i>Chat
+                                                                data-open-chat-user="@member.UserId"
+                                                                title="Nhắn tin với @member.MemberName">
+                                                            <i class="bi bi-chat-dots me-1"></i>Nhắn tin
                                                         </button>
                                                     }
                                             </li>

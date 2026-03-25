@@ -818,8 +818,8 @@
                                         <i class="bi bi-person-vcard"></i> View Profile
                                     </a>
                                     <button type="button" class="ev-org-btn ev-org-btn-fill"
-                                            onclick="(function(uid){ if(window.aemsMessengerLayout){ window.aemsMessengerLayout.openChatWith(uid); } else { document.dispatchEvent(new CustomEvent('aems:open-chat',{detail:{userId:uid}})); } })('@Model.OrganizerUserId'); return false;">
-                                        <i class="bi bi-chat-dots"></i> Chat
+                                            data-open-chat-user="@Model.OrganizerUserId">
+                                        <i class="bi bi-chat-dots"></i> Nhắn tin
                                     </button>
                                 }
                             </div>

@@ -15,6 +15,7 @@ namespace DataAccess.Enum
         EventUpdated,
         EventRejected,
         EventChangeRequested,
-        SystemBroadcast
-    }
+        SystemBroadcast,
+		NewChatMessage
+	}
 }

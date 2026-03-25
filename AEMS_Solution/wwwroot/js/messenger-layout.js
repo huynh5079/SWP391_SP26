@@ -159,11 +159,11 @@ class AemsMessengerLayout {
 
         await this.openPanel();
 
-        if (!this.contacts.some(x => x.userId === contactId)) {
+        if (!this.contacts.some(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase())) {
             await this.loadContacts(false);
         }
 
-        if (!this.contacts.some(x => x.userId === contactId)) {
+        if (!this.contacts.some(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase())) {
             // User is allowed but has no chat history yet — fetch their info and inject as temp contact
             try {
                 const res = await fetch(`${this.conversationUrl}?otherUserId=${encodeURIComponent(contactId)}`, {
@@ -314,7 +314,7 @@ class AemsMessengerLayout {
 
     async selectContact(contactId) {
         this.activeContactId = contactId;
-        const contact = this.contacts.find(x => x.userId === contactId);
+        const contact = this.contacts.find(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase());
         if (!contact) {
             return;
         }
@@ -364,7 +364,7 @@ class AemsMessengerLayout {
 
     renderMessages() {
         const conversation = this.conversations[this.activeContactId] || [];
-        const contact = this.contacts.find(x => x.userId === this.activeContactId);
+        const contact = this.contacts.find(x => x.userId === this.activeContactId || (x.userId && this.activeContactId && String(x.userId).toLowerCase() === String(this.activeContactId).toLowerCase()));
         const lastReadMineMessageId = [...conversation]
             .reverse()
             .find(message => message.senderId === this.currentUserId && message.isReadByReceiver === true)?.messageId;
@@ -450,12 +450,27 @@ class AemsMessengerLayout {
 
         this.conversations[contactId].push(message);
 
-        const contact = this.contacts.find(x => x.userId === contactId);
+        const isFromOther = message.senderId !== this.currentUserId;
+        const isChatInFocus = (this.activeContactId === contactId || (this.activeContactId && contactId && String(this.activeContactId).toLowerCase() === String(contactId).toLowerCase())) && this.panel.classList.contains('open');
+
+        const contact = this.contacts.find(x => x.userId === contactId || (x.userId && contactId && String(x.userId).toLowerCase() === String(contactId).toLowerCase()));
         if (contact) {
             contact.lastMessage = message.content;
             contact.lastMessageAt = message.sentAt;
-            if (!(this.activeContactId === contactId && this.panel.classList.contains('open'))) {
+            if (!isChatInFocus) {
                 contact.unreadCount = (contact.unreadCount || 0) + 1;
+
+                // Update notification bell badge when receiving a message from someone else
+                if (isFromOther) {
+                    this._incrementNotifBadge();
+                    if (typeof toastr !== 'undefined') {
+                        toastr.info(
+                            message.content.length > 60 ? message.content.substring(0, 60) + '...' : message.content,
+                            'Tin nhắn mới từ ' + (contact.fullName || 'Người dùng'),
+                            { timeOut: 4000, closeButton: true, progressBar: true, positionClass: 'toast-top-right' }
+                        );
+                    }
+                }
             } else {
                 contact.unreadCount = 0;
                 if (this.connection) {
@@ -467,6 +482,10 @@ class AemsMessengerLayout {
                 }
             }
         } else {
+            // Contact not yet in list — still increment the bell if message is from someone else
+            if (isFromOther) {
+                this._incrementNotifBadge();
+            }
             await this.loadContacts(false);
         }
 
@@ -477,6 +496,34 @@ class AemsMessengerLayout {
         this.renderContacts();
         this.updateFabBadge();
     }
+
+    _incrementNotifBadge() {
+        let badge = document.querySelector('.notif-badge.alert-count');
+        if (badge) {
+            const cur = parseInt(badge.innerText) || 0;
+            badge.innerText = cur + 1;
+            badge.style.display = '';
+            // ensure badge visible with count
+            badge.style.width = 'auto';
+            badge.style.height = 'auto';
+            badge.style.padding = '2px 5px';
+            badge.style.fontSize = '10px';
+        } else {
+            // Badge doesn't exist (was 0) — create it
+            const bellBtn = document.querySelector('.notif-bell-btn');
+            if (bellBtn) {
+                const newBadge = document.createElement('span');
+                newBadge.className = 'notif-badge alert-count';
+                newBadge.innerText = '1';
+                newBadge.style.width = 'auto';
+                newBadge.style.height = 'auto';
+                newBadge.style.padding = '2px 5px';
+                newBadge.style.fontSize = '10px';
+                bellBtn.prepend(newBadge);
+            }
+        }
+    }
+
 
     async handleRecalledMessage(message) {
         const contactId = message.senderId === this.currentUserId ? message.receiverId : message.senderId;
@@ -491,7 +538,7 @@ class AemsMessengerLayout {
             this.conversations[contactId].push(message);
         }
 
-        const contact = this.contacts.find(x => x.userId === contactId);
+        const contact = this.contacts.find(x => x.userId === contactId || (x.userId && contactId && String(x.userId).toLowerCase() === String(contactId).toLowerCase()));
         if (contact) {
             const lastMessage = this.conversations[contactId][this.conversations[contactId].length - 1];
             if (lastMessage) {

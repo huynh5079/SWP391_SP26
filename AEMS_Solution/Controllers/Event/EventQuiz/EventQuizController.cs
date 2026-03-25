@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 
 namespace AEMS_Solution.Controllers.Event.EventQuiz
 {
-    [Authorize(Roles = "Organizer")]
+    [Authorize(Roles = "Organizer,Student")]
     public class EventQuizController : BaseController
     {
         private readonly IQuizService _quizService;
@@ -40,6 +40,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
         }
 
         [HttpGet]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Index(string? eventId, string? scope)
         {
             var vm = new EventQuizViewModel();
@@ -67,6 +68,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
         }
 
         [HttpGet]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> QuestionBank(string? semester, string? eventTitle, string? title)
         {
             var vm = new EventQuizViewModel
@@ -113,6 +115,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
         }
 
         [HttpGet]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Create(string? eventId, string? mode)
         {
             mode = NormalizeCreateMode(mode);
@@ -127,6 +130,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Create(EventQuizViewModel vm, string? mode)
         {
             mode = NormalizeCreateMode(mode);
@@ -201,6 +205,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
         }
 
         [HttpGet]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Details(string quizId)
         {
             var vm = new EventQuizViewModel();
@@ -249,7 +254,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             var vm = new EventQuizViewModel();
             try
             {
-                var userId = EnsureCurrentUserId();
+                var userId = CurrentUserId ?? string.Empty;
                 var preview = await _quizService.PreviewQuizAsync(new PreviewQuizRequestDto
                 {
                     QuizId = quizId,
@@ -261,21 +266,14 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     throw new InvalidOperationException("Quiz không tồn tại.");
                 }
 
-                var organizerEvents = await _organizerService.GetMyEventsAsync(userId);
-                var ownerEvent = organizerEvents.FirstOrDefault(x => x.EventId == preview.Preview.Quiz.EventId);
-                if (ownerEvent == null)
-                {
-                    throw new InvalidOperationException("Không tìm thấy quiz thuộc organizer hiện tại.");
-                }
-
                 vm = _mapper.Map<EventQuizViewModel>(preview.Preview);
-                vm.EventTitle = ownerEvent.Title;
-                vm.TopicName = ownerEvent.TopicName ?? string.Empty;
+                vm.EventTitle = preview.Preview.Quiz.EventTitle;
+                vm.TopicName = preview.Preview.Quiz.TopicName ?? string.Empty;
             }
             catch (Exception ex)
             {
                 SetError(ex.Message);
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Index", "Home");
             }
 
             return View("~/Views/Event/EventQuiz/CreateQuiz/Preview.cshtml", vm);
@@ -283,6 +281,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> AddQuestion(string quizId, EventQuizViewModel vm)
         {
             try
@@ -324,6 +323,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Share(string quizId)
         {
             try
@@ -348,6 +348,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Restore(string quizId)
         {
             try
@@ -372,6 +373,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Delete(string quizId)
         {
             try
@@ -395,6 +397,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost("upload-multiple")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> UploadFile(string quizId, EventQuizViewModel vm)
         {
             try
@@ -428,6 +431,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Organizer")]
         public async Task<IActionResult> Edit(EventQuizViewModel vm)
         {
             try

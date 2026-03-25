@@ -9,6 +9,7 @@ using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
+using DataAccess.Helper;
 
 namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 {
@@ -35,25 +36,25 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
             if (quiz.Event == null)
                 throw new InvalidOperationException("Quiz không gắn với sự kiện hợp lệ.");
 
-            if (quiz.Event.StartTime > DateTime.UtcNow)
+            if (quiz.Event.StartTime > DateTimeHelper.GetVietnamTime())
                 throw new InvalidOperationException("Sự kiện chưa diễn ra, không thể làm quiz.");
 
-            if (quiz.Event.EndTime < DateTime.UtcNow)
+            if (quiz.Event.EndTime < DateTimeHelper.GetVietnamTime())
                 throw new InvalidOperationException("Sự kiện đã kết thúc, không thể làm quiz.");
 
             if (quiz.QuestionSetStatus != QuestionSetEnum.Available || !quiz.EventQuizQuestions.Any())
                 throw new InvalidOperationException("Quiz chưa có câu hỏi để làm bài.");
-			if (quiz.QuizStartTime.HasValue && DateTime.UtcNow < quiz.QuizStartTime.Value)
+			if (quiz.QuizStartTime.HasValue && DateTimeHelper.GetVietnamTime() < quiz.QuizStartTime.Value)
 				throw new InvalidOperationException("Quiz chưa đến thời gian bắt đầu.");
-			if (quiz.QuizEndTime.HasValue && DateTime.UtcNow > quiz.QuizEndTime.Value)
+			if (quiz.QuizEndTime.HasValue && DateTimeHelper.GetVietnamTime() > quiz.QuizEndTime.Value)
 				throw new InvalidOperationException("Quiz đã hết thời gian làm bài.");
 
 			var allSessions = (await _uow.StudentQuizScores.GetAllAsync(
 				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId)).ToList();
 
-			var inProgressSession = allSessions.FirstOrDefault(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
-			if (inProgressSession != null)
-				throw new InvalidOperationException("Bạn đang có một lượt làm bài chưa hoàn thành.");
+			var inProgressSession = allSessions.Any(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
+			if (inProgressSession)
+				throw new InvalidOperationException("Bạn đang còn lượt làm bài chưa hoàn thành.");
 
 			var submittedCount = allSessions.Count(x => x.Status == StudentQuizScoreStatusEnum.Submitted);
 			var nextAttemptNumber = (allSessions.Select(x => x.AttemptNumber).DefaultIfEmpty(0).Max()) + 1;
@@ -66,7 +67,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 				StudentId = request.StudentId,
 				AttemptNumber = nextAttemptNumber,
 				Score = 0,
-				StartedAt = DateTime.UtcNow,
+				StartedAt = DateTimeHelper.GetVietnamTime(),
 				Status = StudentQuizScoreStatusEnum.InProgress
 			};
 
@@ -168,7 +169,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
             if (session.Status == StudentQuizScoreStatusEnum.Submitted)
                 throw new InvalidOperationException("Quiz đã được nộp.");
 
-            var submittedAt = DateTime.UtcNow;
+            var submittedAt = DateTimeHelper.GetVietnamTime();
             var isTimedOut = quiz.TimeLimit.HasValue
                 && quiz.TimeLimit.Value > 0
                 && session.StartedAt.HasValue
@@ -301,7 +302,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
                 EndsAt = endsAt,
                 AttemptNumber = attemptNumber,
                 MaxAttempts = quiz.MaxAttemptSubmission,
-                IsTimedOut = endsAt.HasValue && DateTime.UtcNow > endsAt.Value
+                IsTimedOut = endsAt.HasValue && DateTimeHelper.GetVietnamTime() > endsAt.Value
             };
         }
 

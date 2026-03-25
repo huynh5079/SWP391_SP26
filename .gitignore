@@ -220,3 +220,8 @@ build_output.txt
 .tmpbuild5
 build_log.txt
 build_error.txt
+build_errors_utf8_v3.txt
+coursera_label - coursera_label.csv
+cleaned_multi_label_dataset (2).xlsx
+Python/Data/
+

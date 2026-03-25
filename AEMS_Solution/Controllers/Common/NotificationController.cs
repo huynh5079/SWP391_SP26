@@ -121,7 +121,12 @@ namespace AEMS_Solution.Controllers.Common
                         
                     case DataAccess.Enum.NotificationType.SystemBroadcast:
                         return RedirectToAction("Index", "Home");
-                }
+                    case DataAccess.Enum.NotificationType.NewChatMessage:
+                        if (!string.IsNullOrEmpty(noti.RelatedEntityId))
+                            return Redirect($"/?openChatWith={Uri.EscapeDataString(noti.RelatedEntityId)}");
+                        return RedirectToAction("Index", "Home");
+
+				}
             }
 
             // Default fallback
