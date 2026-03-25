@@ -16,18 +16,24 @@
 
         <!-- Header Section -->
         <Grid Grid.Row="0" Margin="30,30,30,20">
-            <StackPanel>
-                <TextBlock x:Name="txtTitle" Text="Loading Event Details..." FontSize="32" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                <TextBlock x:Name="txtTitle" Text="Loading Event Details..." FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,10" TextWrapping="Wrap"/>
                 <StackPanel Orientation="Horizontal">
-                    <Border Background="#3334d399" CornerRadius="10" Padding="10,4" Margin="0,0,10,0">
+                    <Border x:Name="borderStatus" Background="#3334d399" CornerRadius="10" Padding="10,4" Margin="0,0,10,0">
                         <TextBlock x:Name="txtStatus" Text="STATUS" Foreground="#34d399" FontSize="12" FontWeight="SemiBold"/>
                     </Border>
-                    <TextBlock x:Name="txtDateTime" Text="Date &amp; Time Info" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtDateTime" Text="Date &amp; Time Info" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" FontSize="14"/>
                 </StackPanel>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Content="Back to List" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click" Margin="0,0,15,0"/>
-                <Button x:Name="BtnEdit" Content="Edit Event" Style="{StaticResource ModernButtonStyle}" Click="BtnEdit_Click"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Content="Back to List" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                <Button x:Name="BtnEdit" Content="Edit Event" Style="{StaticResource PrimaryButtonStyle}" Click="BtnEdit_Click" VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
 
