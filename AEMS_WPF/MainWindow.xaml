@@ -1,0 +1,78 @@
+<Window x:Class="AEMS_WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AEMS_WPF"
+        mc:Ignorable="d"
+        Title="AEMS - Management Dashboard" Height="720" Width="1280"
+        WindowStartupLocation="CenterScreen"
+        Background="#0f172a">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{StaticResource NavbarGradient}" BorderBrush="{StaticResource LowWhiteBrush}" BorderThickness="0,0,1,0">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header / Logo -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,10,0,40">
+                    <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource PrimaryButtonGradient}">
+                        <TextBlock Text="&#xE787;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="AEMS" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                </StackPanel>
+
+                <!-- Navigation Menu -->
+                <StackPanel Grid.Row="1" x:Name="MenuPanel">
+                    <TextBlock Text="MANAGEMENT" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
+                    
+                    <!-- Role-based items will be handled or hidden here -->
+                    <Button x:Name="BtnDashboard" Content="Dashboard" Tag="&#xE80F;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click"/>
+                    <Button x:Name="BtnEvents" Content="Events" Tag="&#xE787;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click"/>
+                    <Button x:Name="BtnApprovals" Content="Approvals" Tag="&#xE73E;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click" Visibility="Collapsed"/>
+                    <Button x:Name="BtnUsers" Content="Users" Tag="&#xE716;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click" Visibility="Collapsed"/>
+                    
+                    <Border Height="1" Background="{StaticResource LowWhiteBrush}" Margin="0,20"/>
+                    
+                    <TextBlock Text="SYSTEM" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
+                    <Button x:Name="BtnNotifications" Content="Notifications" Tag="&#xEA8F;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click"/>
+                    <Button x:Name="BtnErrorLogs" Content="Error Logs" Tag="&#xE7BA;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click" Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- Profile / Bottom -->
+                <StackPanel Grid.Row="2" Margin="0,20,0,10">
+                    <Border Height="1" Background="{StaticResource LowWhiteBrush}" Margin="0,0,0,20"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource LowWhiteBrush}">
+                             <TextBlock x:Name="txtUserInitial" Text="A" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="txtUserName" Text="Staff Name" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock x:Name="txtUserRole" Text="Role" Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+                    <Button Content="Sign Out" Foreground="#f87171" Background="Transparent" BorderThickness="0" Margin="0,15,0,0" HorizontalAlignment="Left" Cursor="Hand" Click="Logout_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Border Grid.Column="1" Background="#0f172a" Margin="20">
+            <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
+        </Border>
+    </Grid>
+</Window>

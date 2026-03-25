@@ -1,0 +1,122 @@
+<Application x:Class="AEMS_WPF.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AEMS_WPF"
+             StartupUri="Views/Auth/LoginWindow.xaml">
+    <Application.Resources>
+        <!-- Colors from AEMS Web -->
+        <Color x:Key="PrimaryBlueColor">#0f172a</Color>
+        <Color x:Key="SecondaryBlueColor">#1e293b</Color>
+        <Color x:Key="IndigoAccentColor">#6366f1</Color>
+        <Color x:Key="PurpleAccentColor">#8b5cf6</Color>
+        <Color x:Key="TextWhiteColor">#FFFFFF</Color>
+        <Color x:Key="LowWhiteColor">#14FFFFFF</Color> <!-- rgba(255,255,255,0.08) -->
+        <Color x:Key="TextMutedColor">#9ca3af</Color>
+
+        <SolidColorBrush x:Key="PrimaryBlueBrush" Color="{StaticResource PrimaryBlueColor}"/>
+        <SolidColorBrush x:Key="SecondaryBlueBrush" Color="{StaticResource SecondaryBlueColor}"/>
+        <SolidColorBrush x:Key="IndigoAccentBrush" Color="{StaticResource IndigoAccentColor}"/>
+        <SolidColorBrush x:Key="PurpleAccentBrush" Color="{StaticResource PurpleAccentColor}"/>
+        <SolidColorBrush x:Key="TextWhiteBrush" Color="{StaticResource TextWhiteColor}"/>
+        <SolidColorBrush x:Key="LowWhiteBrush" Color="{StaticResource LowWhiteColor}"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}"/>
+
+        <LinearGradientBrush x:Key="NavbarGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#0f172a" Offset="0"/>
+            <GradientStop Color="#1e293b" Offset="1"/>
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="PrimaryButtonGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#6366f1" Offset="0"/>
+            <GradientStop Color="#8b5cf6" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- Base Styles -->
+        <Style TargetType="Button" x:Key="PrimaryButtonStyle">
+            <Setter Property="Background" Value="{StaticResource PrimaryButtonGradient}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TextBox" x:Key="ModernTextBoxStyle">
+            <Setter Property="Background" Value="{StaticResource LowWhiteBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="PasswordBox" x:Key="ModernPasswordBoxStyle">
+            <Setter Property="Background" Value="{StaticResource LowWhiteBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" x:Key="SidebarButtonStyle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="Padding" Value="15,12"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe MDL2 Assets" FontSize="18" Width="25" VerticalAlignment="Center"/>
+                                <ContentPresenter Margin="15,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource LowWhiteBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource PrimaryButtonGradient}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Application.Resources>
+</Application>
