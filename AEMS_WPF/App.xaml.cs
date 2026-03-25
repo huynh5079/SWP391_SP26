@@ -4,6 +4,8 @@ using BusinessLogic.Options;
 using BusinessLogic.Service.Auth;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Organizer.CheckIn;
+using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.ValidationData.Event;
 using BusinessLogic.Storage;
@@ -62,9 +64,11 @@ namespace AEMS_WPF
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IDropdownService, DropdownService>();
             services.AddScoped<ISignalRNotifier, DummySignalRNotifier>();
+            services.AddScoped<ICheckInService, CheckInService>();
             
             // Validation
             services.AddScoped<IEventValidator, EventValidator>();
+            services.AddScoped<IOrganizerValidator, OrganizerValidator>();
 
             // Storage
             services.Configure<CloudinaryOptions>(Configuration.GetSection("Cloudinary"));
