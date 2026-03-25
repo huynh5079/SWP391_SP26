@@ -1,22 +1,23 @@
-using System.Threading.Tasks;
 using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Models.Approver;
+using AEMS_Solution.Models.Approver.Manage;
 using AEMS_Solution.Models.Event.EventAgenda;
 using AEMS_Solution.Models.Event.Semester;
 using AutoMapper;
-using AEMS_Solution.Models.Approver;
+using BusinessLogic.DTOs.Event.Location;
 using BusinessLogic.DTOs.Event.Semester;
 using BusinessLogic.Service.Approval;
-using BusinessLogic.DTOs.Event.Location;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Semester;
-using DataAccess.Repositories.Abstraction;
 using DataAccess.Enum;
+using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using AEMS_Solution.Models.Approver.Manage;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Net.NetworkInformation;
+using System.Threading.Tasks;
 
 namespace AEMS_Solution.Controllers.Dashboards
 {
@@ -456,9 +457,15 @@ namespace AEMS_Solution.Controllers.Dashboards
         }
 
         [HttpGet]
-        public async Task<IActionResult> PendingApprovals(string? search, int page = 1, int pageSize = 20)
+        public async Task<IActionResult> PendingApprovals(string? search, string? status = "Pending", int page = 1, int pageSize = 20)
         {
-            var list = await _queryService.GetPendingEventsAsync(CurrentUserId, search, null, page, pageSize);
+            // Treat empty string or "all" as requesting all statuses (null passed to query service)
+            var statusFilter = string.IsNullOrWhiteSpace(status) || status.Trim().Equals("all", System.StringComparison.OrdinalIgnoreCase)
+                ? null
+                : status;
+
+            // Pass computed statusFilter to the query service so tabs (Approved/Rejected/All) actually filter results
+            var list = await _queryService.GetPendingEventsAsync(CurrentUserId, search, statusFilter, page, pageSize);
 
             var vm = new PendingApprovalsViewModel();
             foreach (var e in list)
@@ -471,14 +478,16 @@ namespace AEMS_Solution.Controllers.Dashboards
                     EndTime = e.EndTime ?? System.DateTime.MinValue,
                     Status = e.Status,
                     ThumbnailUrl = e.ThumbnailUrl,
-					Location = e.Location,
+                    Location = e.Location,
                     OrganizerName = e.OrganizerName,
                     OrganizerEmail = e.OrganizerEmail,
-					LastApprovalComment = e.LastApprovalComment
-				});
+                    LastApprovalComment = e.LastApprovalComment
+                });
             }
 
             vm.Search = search;
+            // Keep the original status value for tab highlighting in the view (empty string for All)
+            vm.Status = status ?? string.Empty;
             vm.Page = page;
             vm.PageSize = pageSize;
 
@@ -509,7 +518,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 .Take(5)
                 .ToList();
 
-            foreach(var e in recentPending)
+            foreach (var e in recentPending)
             {
                 vm.RecentPendingEvents.Add(new ApproverEventCardVm
                 {
