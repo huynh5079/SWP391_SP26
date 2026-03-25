@@ -136,6 +136,14 @@ namespace AEMS_WPF.Views.Organizer
             }
         }
 
+        private void BtnExpenses_Click(object sender, RoutedEventArgs e)
+        {
+            if (_details != null)
+            {
+                NavigationService.Navigate(new ExpenseSubmissionPage(_user, Guid.Parse(_details.EventId), _details.Title));
+            }
+        }
+
         private void BtnDownload_Click(object sender, RoutedEventArgs e)
         {
              if (sender is Button btn && btn.DataContext is EventDocumentDto doc)

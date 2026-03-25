@@ -171,6 +171,29 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Budget & Expenses -->
+                    <Border x:Name="borderBudget" Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="FINANCIAL SUMMARY" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,20"/>
+                            
+                            <Grid Margin="0,0,0,15">
+                                <TextBlock Text="Planned Budget" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtPlannedBudget" Text="0 VND" Foreground="White" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,0,0,15">
+                                <TextBlock Text="Actual Expenses" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtActualExpenses" Text="0 VND" Foreground="#34d399" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+
+                            <Border Background="{StaticResource IndigoAccentBrush}" CornerRadius="4" Height="4" Margin="0,5,0,15">
+                                <Border x:Name="progressBudget" Background="#34d399" HorizontalAlignment="Left" Width="0" CornerRadius="4"/>
+                            </Border>
+
+                            <Button x:Name="BtnManageExpenses" Content="Manage Expenses" Style="{StaticResource ModernButtonStyle}" Click="BtnExpenses_Click"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Rating -->
                     <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25">
                         <StackPanel>
