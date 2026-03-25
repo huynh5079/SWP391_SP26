@@ -381,6 +381,26 @@
             };
             setTimeout(() => tryOpen(10), 500);
         })();
+
+        // Handle Chat button clicks (data-open-chat-user attribute)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-open-chat-user]');
+            if (!btn) return;
+            
+            e.preventDefault();
+            const userId = btn.dataset.openChatUser;
+            if (!userId) return;
+
+            console.log('Chat button clicked for userId:', userId);
+
+            if (window.aemsMessengerLayout) {
+                console.log('Messenger ready, calling openChatWithImmediately');
+                window.aemsMessengerLayout.openChatWith(userId);
+            } else {
+                console.log('Messenger not ready, dispatching aems:open-chat event');
+                document.dispatchEvent(new CustomEvent('aems:open-chat', { detail: { userId } }));
+            }
+        });
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
