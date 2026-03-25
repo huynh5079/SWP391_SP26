@@ -65,7 +65,7 @@
                 <th>Time</th>
                 <th>Status</th>
                 <th class="text-center">Action</th>
-                <th>Event Performance<th/>
+                <th style="width: 200px;">Event Performance</th>
             </tr>
         </thead>
         <tbody>
@@ -171,6 +171,19 @@
                             }
 
                         </div>
+                    <td class="text-center align-middle">
+                        <div style="height: 120px; width: 180px; margin: 0 auto;">
+                            @if (e.AvgRating > 0)
+                            {
+                                <canvas id="chart-@e.EventId"></canvas>
+                            }
+                            else
+                            {
+                                <div class="h-100 d-flex align-items-center justify-content-center">
+                                    <small class="text-muted">No data</small>
+                                </div>
+                            }
+                        </div>
                     </td>
                 </tr>
             }
@@ -199,8 +212,64 @@
         </nav>
         <div class="text-muted">Page @Model.Page of @Model.TotalPages (@Model.TotalItems total items)</div>
     }
-    @section Scripts {
-
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                @foreach (var e in Model.Events.Where(x => x.AvgRating > 0))
+                {
+                    <text>
+                    (function() {
+                        const ctx = document.getElementById('chart-@e.EventId').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Tech', 'Content', 'Inst', 'Assess', 'Gen'],
+                                datasets: [{
+                                    label: 'Sentiment Score',
+                                    data: [
+                                        @e.TechnicalAvg.ToString("F2"),
+                                        @e.ContentAvg.ToString("F2"),
+                                        @e.InstructorAvg.ToString("F2"),
+                                        @e.AssessmentAvg.ToString("F2"),
+                                        @e.GeneralSentimentAvg.ToString("F2")
+                                    ],
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.7)',
+                                        'rgba(54, 162, 235, 0.7)',
+                                        'rgba(255, 206, 86, 0.7)',
+                                        'rgba(75, 192, 192, 0.7)',
+                                        'rgba(153, 102, 255, 0.7)'
+                                    ],
+                                    borderRadius: 4
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'x',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: { enabled: true }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 1,
+                                        ticks: { display: false },
+                                        grid: { display: false }
+                                    },
+                                    x: {
+                                        ticks: { font: { size: 9 } },
+                                        grid: { display: false }
+                                    }
+                                }
+                            }
+                        });
+                    })();
+                    </text>
+                }
+            });
+        </script>
         <script>
             (function () {
                 document.querySelectorAll('.view-detail').forEach(btn => {

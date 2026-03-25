@@ -691,6 +691,17 @@ public partial class AEMSContext : DbContext
 				.HasMaxLength(50)
 				.HasConversion<string>()
 				.HasDefaultValue(FeedbackStatusEnum.NA);
+
+			entity.Property(e => e.Label);
+			entity.Property(e => e.Technical);
+			entity.Property(e => e.Content);
+			entity.Property(e => e.Instructor);
+			entity.Property(e => e.Asessment);
+			entity.Property(e => e.Label_Text).HasMaxLength(50);
+			entity.Property(e => e.Technical_Text).HasMaxLength(50);
+			entity.Property(e => e.Content_Text).HasMaxLength(50);
+			entity.Property(e => e.Instructor_Text).HasMaxLength(50);
+			entity.Property(e => e.Assessment_Text).HasMaxLength(50);
 		});
 
 		modelBuilder.Entity<Notification>(entity =>

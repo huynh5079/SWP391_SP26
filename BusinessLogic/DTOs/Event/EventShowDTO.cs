@@ -202,6 +202,13 @@ public class EventListDto
     public int ReminderCount { get; set; }
     public int NotificationCount { get; set; }
     public int UnreadNotificationCount { get; set; }
+
+    // Aggregated Sentiment Data for Event Performance Chart
+    public double TechnicalAvg { get; set; }
+    public double ContentAvg { get; set; }
+    public double InstructorAvg { get; set; }
+    public double AssessmentAvg { get; set; }
+    public double GeneralSentimentAvg { get; set; }
 }
 
 public class EventListItemDto

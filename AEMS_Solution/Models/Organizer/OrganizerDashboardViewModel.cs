@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
 
@@ -109,6 +109,13 @@ namespace AEMS_Solution.Models.Organizer
 		public bool CanCancel { get; set; }
 		public bool IsOwnedByCurrentUser { get; set; }
 		public bool IsPubliclyVisible { get; set; }
+
+		// Aggregated Sentiment Data for Event Performance Chart
+		public double TechnicalAvg { get; set; }
+		public double ContentAvg { get; set; }
+		public double InstructorAvg { get; set; }
+		public double AssessmentAvg { get; set; }
+		public double GeneralSentimentAvg { get; set; }
 	}
 
 	// Tóm tắt feedback gần đây
