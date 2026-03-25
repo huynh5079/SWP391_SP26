@@ -44,8 +44,10 @@ namespace AEMS_WPF.Views.Organizer
 
         private void BtnDetails_Click(object sender, RoutedEventArgs e)
         {
-            // Show details - Logic can be added later or navigate to DetailsPage
-            MessageBox.Show("Event details functionality is coming soon!", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Role.Organizer.EventListDto eventItem)
+            {
+                NavigationService.Navigate(new EventDetailsPage(_user, eventItem.EventId));
+            }
         }
 
         private void BtnParticipants_Click(object sender, RoutedEventArgs e)
