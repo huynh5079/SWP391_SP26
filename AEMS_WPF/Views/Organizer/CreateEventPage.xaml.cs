@@ -1,3 +1,5 @@
+using System.Windows;
+using System.Windows.Controls;
 using BusinessLogic.Service.Event;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.DTOs.Authentication.Login;
