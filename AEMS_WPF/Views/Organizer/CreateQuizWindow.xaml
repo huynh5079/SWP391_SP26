@@ -1,0 +1,84 @@
+<Window x:Class="AEMS_WPF.Views.Organizer.CreateQuizWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Create New Quiz" Height="600" Width="800"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource PrimaryBlueBrush}">
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="CREATE NEW QUIZ" FontSize="24" FontWeight="Bold" Foreground="White" Margin="0,0,0,25"/>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Quiz Title" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                <TextBox x:Name="txtTitle" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,20"/>
+
+                <TextBlock Text="Description" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                <TextBox x:Name="txtDescription" Style="{StaticResource ModernTextBoxStyle}" Height="100" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,20"/>
+
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="Type" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                        <ComboBox x:Name="cbType" Style="{StaticResource ModernComboBoxStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="Time Limit (mins)" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                        <TextBox x:Name="txtTimeLimit" Style="{StaticResource ModernTextBoxStyle}" Text="30"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                        <TextBlock Text="Passing Score (%)" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                        <TextBox x:Name="txtPassingScore" Style="{StaticResource ModernTextBoxStyle}" Text="50"/>
+                    </StackPanel>
+                </Grid>
+
+                <CheckBox x:Name="chkAllowReview" Content="Allow participants to review their answers" Foreground="White" Margin="0,0,0,25"/>
+
+                <Border BorderBrush="{StaticResource TextMutedBrush}" BorderThickness="0,1,0,0" Margin="0,0,0,25"/>
+
+                <Grid Margin="0,0,0,15">
+                    <TextBlock Text="QUESTIONS" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    <Button Content="+ Add Question" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Right" Padding="15,5" Click="BtnAddQuestion_Click"/>
+                </Grid>
+
+                <ItemsControl x:Name="icQuestions">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="10" Padding="15" Margin="0,0,0,15">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding Order, StringFormat='Question {0}'}" Foreground="{StaticResource TextMutedBrush}" FontWeight="Bold"/>
+                                        <Button Content="Remove" Foreground="#f87171" Background="Transparent" BorderThickness="0" HorizontalAlignment="Right" Click="BtnRemoveQuestion_Click" Tag="{Binding}"/>
+                                    </Grid>
+                                    <TextBox Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,10"/>
+                                    
+                                    <!-- Simple choice simulation for now -->
+                                    <TextBlock Text="Choices (comma separated, first one is correct)" Foreground="Gray" FontSize="11" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding RawChoices, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" FontSize="13"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Cancel" Style="{StaticResource ModernButtonStyle}" Width="100" Margin="0,0,15,0" Click="BtnCancel_Click"/>
+            <Button Content="Save Draft" Style="{StaticResource PrimaryButtonStyle}" Width="150" Click="BtnSave_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
