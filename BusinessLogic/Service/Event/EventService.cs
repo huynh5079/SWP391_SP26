@@ -49,16 +49,26 @@ public class EventService : IEventService
 		int checkedIn = e.Tickets?.Count(t => t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled && t.CheckInTime != null) ?? 0;
 		int waitlist = e.EventWaitlists?.Count(w => w.DeletedAt == null) ?? 0;
 		double avg = 0;
+		double techAvg = 0, contentAvg = 0, instAvg = 0, assessAvg = 0, labelAvg = 0;
+
 		if (e.Feedbacks != null && e.Feedbacks.Count > 0)
 		{
-			var ratings = e.Feedbacks
-				.Where(f => f.DeletedAt == null && f.RatingEvent != null)
-				.Select(f => (int)f.RatingEvent!.Value)
-				.ToList();
-
-			if (ratings.Count > 0)
+			var validFeedbacks = e.Feedbacks.Where(f => f.DeletedAt == null).ToList();
+			if (validFeedbacks.Count > 0)
 			{
-				avg = ratings.Average();
+				var ratings = validFeedbacks
+					.Where(f => f.RatingEvent != null)
+					.Select(f => (int)f.RatingEvent!.Value)
+					.ToList();
+
+				if (ratings.Count > 0) avg = ratings.Average();
+
+				// Aggregated Sentiment Data
+				if (validFeedbacks.Any(f => f.Technical != null)) techAvg = validFeedbacks.Where(f => f.Technical != null).Average(f => f.Technical!.Value);
+				if (validFeedbacks.Any(f => f.Content != null)) contentAvg = validFeedbacks.Where(f => f.Content != null).Average(f => f.Content!.Value);
+				if (validFeedbacks.Any(f => f.Instructor != null)) instAvg = validFeedbacks.Where(f => f.Instructor != null).Average(f => f.Instructor!.Value);
+				if (validFeedbacks.Any(f => f.Asessment != null)) assessAvg = validFeedbacks.Where(f => f.Asessment != null).Average(f => f.Asessment!.Value);
+				if (validFeedbacks.Any(f => f.Label != null)) labelAvg = validFeedbacks.Where(f => f.Label != null).Average(f => f.Label!.Value);
 			}
 		}
 
@@ -110,6 +120,11 @@ public class EventService : IEventService
 			HasThumbnail = !string.IsNullOrWhiteSpace(e.ThumbnailUrl),
 			IsOwnedByCurrentUser = isOwnedByCurrentUser,
 			IsPubliclyVisible = isPubliclyVisible,
+			TechnicalAvg = techAvg,
+			ContentAvg = contentAvg,
+			InstructorAvg = instAvg,
+			AssessmentAvg = assessAvg,
+			GeneralSentimentAvg = labelAvg
 		};
 	}
 

@@ -122,8 +122,9 @@ builder.Services.AddScoped<BusinessLogic.Storage.IFileStorageService, BusinessLo
 // TODO: Register RedisService when implemented
 // AutoMapper - register all loaded assemblies
 builder.Services.AddAutoMapper(cfg => { }, AppDomain.CurrentDomain.GetAssemblies());
-// HttpClient (External Services like PayOS)
+// HttpClient (External Services like PayOS, Deep Learning)
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<BusinessLogic.Service.Event.Sub_Service.Feedback.DeepLearningService.DLService>();
 
 // SignalR
 builder.Services.AddSignalR();
