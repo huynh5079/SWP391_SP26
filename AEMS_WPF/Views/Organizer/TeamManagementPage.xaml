@@ -1,0 +1,108 @@
+<Page x:Class="AEMS_WPF.Views.Organizer.TeamManagementPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AEMS_WPF.Views.Organizer"
+      mc:Ignorable="d" 
+      d:DesignHeight="700" d:DesignWidth="1000"
+      Title="Team Management">
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,30">
+            <StackPanel>
+                <TextBlock x:Name="txtEventTitle" Text="Team Management" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                <TextBlock Text="Organize participants into teams and record activity scores." Foreground="{StaticResource TextMutedBrush}" FontSize="14"/>
+            </StackPanel>
+            <Button Content="Back" HorizontalAlignment="Right" VerticalAlignment="Center" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click"/>
+        </Grid>
+
+        <!-- Tool Bar -->
+        <Border Grid.Row="1" Background="{StaticResource LowWhiteBrush}" CornerRadius="12" Padding="15" Margin="0,0,0,20">
+            <Grid>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="+ New Team" Style="{StaticResource PrimaryButtonStyle}" Click="BtnAddTeam_Click" Margin="0,0,10,0"/>
+                    <Button Content="Randomize Teams" Background="Transparent" BorderThickness="1" BorderBrush="{StaticResource TextMutedBrush}" Foreground="White" Padding="15,8" Click="BtnRandomize_Click"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="Total Teams:" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock x:Name="txtTotalTeams" Text="0" Foreground="White" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Teams Grid / List -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="icTeams">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="20" Margin="0,0,0,20">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Team Header -->
+                                <Grid Grid.Row="0" Margin="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="40" Height="40" CornerRadius="8" Background="{StaticResource IndigoAccentBrush}" Margin="0,0,15,0">
+                                            <TextBlock Text="T" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TeamName}" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Description}" Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <StackPanel Margin="0,0,20,0" VerticalAlignment="Center">
+                                            <TextBlock Text="SCORE" Foreground="{StaticResource TextMutedBrush}" FontSize="10" HorizontalAlignment="Right"/>
+                                            <TextBlock Text="{Binding Score}" Foreground="#fbbf24" FontSize="20" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                        </StackPanel>
+                                        <Button Content="Edit Score" Style="{StaticResource ModernButtonStyle}" Click="BtnEditScore_Click" DataContext="{Binding}" Margin="0,0,10,0"/>
+                                        <Button Content="Remove" Foreground="#f87171" Background="Transparent" BorderThickness="0" Click="BtnDeleteTeam_Click" DataContext="{Binding}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Members Count -->
+                                <Border Grid.Row="1" Background="{StaticResource LowWhiteBrush}" Height="1" Margin="0,0,0,15"/>
+                                
+                                <Grid Grid.Row="2">
+                                     <StackPanel>
+                                        <TextBlock Text="MEMBERS" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,10"/>
+                                        <ItemsControl ItemsSource="{Binding TeamMembers}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1AFFFFFF" CornerRadius="10" Padding="10,5" Margin="0,0,10,10">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding MemberName}" Foreground="White" FontSize="12"/>
+                                                            <Button Content="×" Foreground="{StaticResource TextMutedBrush}" Background="Transparent" BorderThickness="0" Margin="5,0,0,0" Click="BtnRemoveMember_Click" DataContext="{Binding}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Content="+ Add Member" Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Left" Width="120" Margin="0,5,0,0" Click="BtnAddMember_Click" DataContext="{Binding}"/>
+                                     </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</Page>

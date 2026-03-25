@@ -23,11 +23,18 @@ namespace AEMS_WPF.Views.Organizer
         {
             try
             {
-                // In a real scenario, we'd filter by the current organizer's ID
-                // var events = await _eventService.GetAllEventsAsync();
-                // dgEvents.ItemsSource = events;
+                var events = await _eventService.GetMyEventsAsync(_user.Id);
+                dgEvents.ItemsSource = events;
+
+                // Update counters
+                txtTotalEvents.Text = events.Count.ToString();
+                txtPendingEvents.Text = events.Count(e => e.Status == DataAccess.Enum.EventStatusEnum.Pending).ToString();
+                txtActiveEvents.Text = events.Count(e => e.Status == DataAccess.Enum.EventStatusEnum.Published).ToString();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading events: {ex.Message}", "AEMS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void BtnCreate_Click(object sender, RoutedEventArgs e)
@@ -48,6 +55,27 @@ namespace AEMS_WPF.Views.Organizer
             {
                 NavigationService.Navigate(new ParticipantListPage(_user, Guid.Parse(eventItem.EventId), eventItem.Title));
             }
+        }
+
+        private void BtnTeams_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Role.Organizer.EventListDto eventItem)
+            {
+                NavigationService.Navigate(new TeamManagementPage(_user, Guid.Parse(eventItem.EventId), eventItem.Title));
+            }
+        }
+
+        private void BtnExpenses_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Role.Organizer.EventListDto eventItem)
+            {
+                NavigationService.Navigate(new ExpenseSubmissionPage(_user, Guid.Parse(eventItem.EventId), eventItem.Title));
+            }
+        }
+
+        private void BtnQuiz_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Quiz and Feedback creation is coming in the next phase!", "AEMS", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
