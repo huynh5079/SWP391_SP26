@@ -23,77 +23,90 @@ namespace BusinessLogic.Service.Approval
 			_uow = uow;
 			_notificationService = notificationService;
 		}
-		public async Task<List<EventItemDto>> GetPendingEventsAsync(string? approverUserId, string? search, string? status, int page = 1, int pageSize = 10)
-		{
-			if (page <= 0) page = 1;
-			if (pageSize <= 0) pageSize = 10;
+        public async Task<List<EventItemDto>> GetPendingEventsAsync(
+    string? approverUserId, string? search, string? status,
+    int page = 1, int pageSize = 10)
+        {
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 10;
 
-			string? approverStaffId = null;
-			if (!string.IsNullOrWhiteSpace(approverUserId))
-			{
-				approverStaffId = (await _uow.StaffProfiles.GetAsync(s => s.UserId == approverUserId))?.Id;
-			}
+            string? approverStaffId = null;
+            if (!string.IsNullOrWhiteSpace(approverUserId))
+            {
+                approverStaffId = (await _uow.StaffProfiles
+                    .GetAsync(s => s.UserId == approverUserId))?.Id;
+            }
 
-			var list = await _uow.Events.GetAllAsync(
-				e => e.Status == EventStatusEnum.Pending
-					&& e.DeletedAt == null
-					&& (approverStaffId == null || e.OrganizerId != approverStaffId),
-				q => q.Include(x => x.ApprovalLogs)
-					.Include(x => x.Location)
-					.Include(x => x.Organizer!)
-						.ThenInclude(x => x!.User));
+            // ✅ Bỏ filter cứng Status == Pending
+            // Lấy tất cả events, filter status linh hoạt bên dưới
+            var list = await _uow.Events.GetAllAsync(
+                e => e.DeletedAt == null &&
+                     (approverStaffId == null || e.OrganizerId != approverStaffId),
+                q => q.Include(x => x.ApprovalLogs)
+                       .Include(x => x.Location)
+                       .Include(x => x.Organizer!)
+                           .ThenInclude(x => x!.User));
 
-			if (!string.IsNullOrWhiteSpace(search))
-			{
-				search = search.Trim();
-				list = list.Where(e =>
-					e.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
-					|| (e.Organizer != null && e.Organizer.User != null && e.Organizer.User.FullName != null
-						&& e.Organizer.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase))
-					|| (e.Organizer != null && e.Organizer.User != null && e.Organizer.User.Email != null
-						&& e.Organizer.User.Email.Contains(search, StringComparison.OrdinalIgnoreCase)))
-					.ToList();
-			}
+            // ✅ Filter status linh hoạt
+            if (!string.IsNullOrWhiteSpace(status) &&
+                Enum.TryParse<EventStatusEnum>(status, true, out var statusEnum))
+            {
+                list = list.Where(e => e.Status == statusEnum).ToList();
+            }
+            else if (string.IsNullOrWhiteSpace(status))
+            {
+                // Nếu không truyền status → mặc định lấy Pending
+                list = list.Where(e => e.Status == EventStatusEnum.Pending).ToList();
+            }
 
-			list = list
-				.OrderByDescending(e => e.UpdatedAt)
-				.Skip((page - 1) * pageSize)
-				.Take(pageSize)
-				.ToList();
+            // Filter search
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                search = search.Trim();
+                list = list.Where(e =>
+                    e.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    (e.Organizer?.User?.FullName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (e.Organizer?.User?.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
 
-			var items = list.Select(e =>
-			{
-				var lastLog = e.ApprovalLogs?
-					.Where(l => l.DeletedAt == null)
-					.OrderByDescending(l => l.CreatedAt)
-					.FirstOrDefault();
+            list = list
+                .OrderByDescending(e => e.UpdatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
 
-				return new EventItemDto
-				{
-					OrganizerId = e.OrganizerId,
-					OrganizerName = e.Organizer?.User?.FullName,
-					OrganizerEmail = e.Organizer?.User?.Email,
-					Id = e.Id,
-					Title = e.Title,
-					StartTime = e.StartTime,
-					EndTime = e.EndTime,
-					Status = e.Status,
-					ThumbnailUrl = e.ThumbnailUrl,
-					Location = e.Location != null
-						? (!string.IsNullOrWhiteSpace(e.Location.Address) ? e.Location.Address : e.Location.Name)
-						: null,
-					LastApprovalComment = lastLog?.Comment
-				};
-			}).ToList();
+            return list.Select(e =>
+            {
+                var lastLog = e.ApprovalLogs?
+                    .Where(l => l.DeletedAt == null)
+                    .OrderByDescending(l => l.CreatedAt)
+                    .FirstOrDefault();
 
-			return items;
+                return new EventItemDto
+                {
+                    OrganizerId = e.OrganizerId,
+                    OrganizerName = e.Organizer?.User?.FullName,
+                    OrganizerEmail = e.Organizer?.User?.Email,
+                    Id = e.Id,
+                    Title = e.Title,
+                    StartTime = e.StartTime,
+                    EndTime = e.EndTime,
+                    Status = e.Status,
+                    ThumbnailUrl = e.ThumbnailUrl,
+                    Location = e.Location != null
+                        ? (!string.IsNullOrWhiteSpace(e.Location.Address)
+                            ? e.Location.Address : e.Location.Name)
+                        : null,
+                    LastApprovalComment = lastLog?.Comment
+                };
+            }).ToList();
+        }
 
-		}
-
-		// =========================
-		// QUERY: Logs of a specific event
-		// =========================
-		public async Task<List<ApprovalLogDto>> GetApprovalLogsAsync(string eventId)
+        // =========================
+        // QUERY: Logs of a specific event
+        // =========================
+        public async Task<List<ApprovalLogDto>> GetApprovalLogsAsync(string eventId)
 		{
 			// 1) Lấy toàn bộ log (hoặc nếu repo có overload filter thì dùng filter luôn)
 			var list = await _uow.EventApprovalLogs.GetAllAsync(l => l.EventId == eventId && l.DeletedAt == null); ;

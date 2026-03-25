@@ -1,24 +1,192 @@
 @model AEMS_Solution.Models.Approver.PendingApprovalsViewModel
+@using DataAccess.Enum
 @{
-    ViewData["Title"] = "Approval - Pending Events";
+    ViewData["Title"] = "Approval - Events";
     Layout = "_Approvallayout";
+
+    string TabClass(string tabStatus) =>
+        string.Equals(Model.Status, tabStatus, StringComparison.OrdinalIgnoreCase)
+            ? "btn btn-sm btn-primary fw-semibold app-tab active"
+            : "btn btn-sm btn-outline-secondary app-tab";
+
+    string BadgeClass(EventStatusEnum status) => status switch
+    {
+        EventStatusEnum.Approved => "bg-success",
+        EventStatusEnum.Rejected => "bg-danger",
+        EventStatusEnum.Pending => "bg-warning text-dark",
+        EventStatusEnum.Published => "bg-info text-dark",
+        EventStatusEnum.Upcoming => "bg-primary",
+        EventStatusEnum.Happening => "bg-info text-dark",
+        EventStatusEnum.Completed => "bg-success",
+        EventStatusEnum.Cancelled => "bg-dark",
+        _ => "bg-secondary"
+    };
 }
 
-<div class="container mt-4">
-    <h2 class="mb-4">📋 Pending Approvals</h2>
+<style>
+    /* Page wrapper tweaks */
+    .container.approvals {
+        max-width: 1200px;
+        margin-top: 28px;
+        padding: 22px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+    }
 
-    <form class="row g-2 mb-3" method="get" asp-controller="Approver" asp-action="PendingApprovals">
-        <div class="col-auto">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search event or organizer..." />
+    h2 {
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.65rem;
+    }
+
+    /* Tab buttons */
+    .app-tab {
+        border-radius: 10px;
+        padding: 8px 14px;
+        box-shadow: none;
+        transition: transform .08s ease, box-shadow .12s ease;
+    }
+    .app-tab:hover { transform: translateY(-2px); }
+    .app-tab.active { box-shadow: 0 6px 14px rgba(13,110,253,0.12); }
+
+    /* Search input */
+    .form-control {
+        min-width: 320px;
+        border-radius: 10px;
+        height: 44px;
+    }
+    .btn-primary {
+        border-radius: 10px;
+        height: 44px;
+        padding: 0 18px;
+    }
+
+    /* Table styling */
+    .styled-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        border-radius: 10px;
+    }
+    .styled-table thead th {
+        background: #111827;
+        color: #fff;
+        font-weight: 700;
+        border: none;
+        vertical-align: middle;
+        padding: 14px;
+    }
+    .styled-table tbody td {
+        background: #fff;
+        vertical-align: middle;
+        padding: 14px;
+        border: none;
+        color: #374151;
+    }
+    .styled-table tbody tr + tr td {
+        border-top: 1px solid #eef2f6;
+    }
+    .styled-table tbody tr:hover td {
+        background: #fbfdff;
+        transform: translateY(-1px);
+    }
+
+    /* Thumbnail */
+    .thumb-md {
+        width: 100px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #eef2f6;
+    }
+
+    /* Status badge */
+    .status-badge {
+        font-weight: 700;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+    }
+
+    /* Action button styles (consistent look) */
+    .btn-approve, .btn-reject, .btn-change, .btn-view, .btn-budget {
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.82rem;
+        box-shadow: 0 4px 12px rgba(2,6,23,0.04);
+    }
+    .btn-approve { background: linear-gradient(180deg,#13b58a,#059669); border: none; color:#fff; }
+    .btn-reject  { background: linear-gradient(180deg,#f97373,#dc2626); border: none; color:#fff; }
+    .btn-change  { background: linear-gradient(180deg,#f59e0b,#d97706); border: none; color:#fff; }
+    .btn-view    { background: linear-gradient(180deg,#60a5fa,#2563eb); border: none; color:#fff; }
+    .btn-budget  { background: linear-gradient(180deg,#94a3b8,#475569); border: none; color:#fff; }
+
+    /* Smaller spacing for action group */
+    .action-group > a { margin-right: 6px; margin-bottom: 6px; display:inline-block; }
+
+    /* Responsive tweaks */
+    @@media (max-width: 940px) {
+        .container.approvals { padding: 14px; }
+        .form-control { min-width: 180px; }
+        .thumb-md { width: 84px; height: 56px; }
+    }
+</style>
+
+<div class="container approvals mt-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap">
+        <div class="me-3">
+            <h2 class="mb-2">📋 Event Approvals</h2>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-controller="Approver" asp-action="PendingApprovals"
+                   asp-route-search="@Model.Search"
+                   asp-route-status="Pending"
+                   class="@TabClass("Pending")">
+                    <i class="bi bi-hourglass-split me-1"></i> Pending
+                </a>
+                <a asp-controller="Approver" asp-action="PendingApprovals"
+                   asp-route-search="@Model.Search"
+                   asp-route-status="Approved"
+                   class="@TabClass("Approved")">
+                    <i class="bi bi-check-circle me-1"></i> Approved
+                </a>
+                <a asp-controller="Approver" asp-action="PendingApprovals"
+                   asp-route-search="@Model.Search"
+                   asp-route-status="Rejected"
+                   class="@TabClass("Rejected")">
+                    <i class="bi bi-x-circle me-1"></i> Rejected
+                </a>
+            </div>
         </div>
 
+        <div class="d-flex align-items-start">
+            <a asp-controller="Approver" asp-action="Index"
+               class="btn btn-outline-secondary"
+               style="white-space: nowrap;">
+                <i class="bi bi-arrow-left-circle me-1"></i> Approver Dashboard
+            </a>
+        </div>
+    </div>
+
+    <form class="row g-2 mb-3" method="get"
+          asp-controller="Approver" asp-action="PendingApprovals">
+        <input type="hidden" name="status" value="@Model.Status" />
         <div class="col-auto">
-            <button class="btn btn-primary">Filter</button>
+            <input type="text" name="search" value="@Model.Search"
+                   class="form-control"
+                   placeholder="Search event or organizer..." />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary">
+                <i class="bi bi-search me-1"></i> Search
+            </button>
         </div>
     </form>
-
-    <table class="table table-bordered table-hover shadow">
-        <thead class="table-dark">
+    <table class="table styled-table shadow">
+        <thead>
             <tr>
                 <th>Thumbnail</th>
                 <th>Title</th>
@@ -28,40 +196,84 @@
                 <th>Status</th>
                 <th>Last Reason</th>
                 <th>Action</th>
-                <th>Detail Event<th/>
+                <th>Detail</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var e in Model.Events)
+            @if (!Model.Events.Any())
             {
                 <tr>
-                    <td style="width:120px">
-                        @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
-                        {
-                            var fallbackUrl = "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(e.Title ?? "Event") + "&size=128&background=f3f4f6&color=9ca3af&bold=true";
-                            <img src="@e.ThumbnailUrl" class="img-fluid rounded" onerror="this.onerror=null;this.src='@fallbackUrl';" />
-                        }
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox" style="font-size:2rem;"></i>
+                        <p class="mt-2 mb-0">Không có sự kiện nào.</p>
                     </td>
-                    <td><strong>@e.Title</strong></td>
-                    <td>
-                        <div><strong>@(string.IsNullOrWhiteSpace(e.OrganizerName) ? "-" : e.OrganizerName)</strong></div>
-                        <div class="text-muted small">@(string.IsNullOrWhiteSpace(e.OrganizerEmail) ? string.Empty : e.OrganizerEmail)</div>
-                    </td>
-                    <td>@e.Location</td>
-                    <td>
-                        @e.StartTime.ToString("dd/MM/yyyy HH:mm")<br />→<br />@e.EndTime.ToString("dd/MM/yyyy HH:mm")
-                    </td>
-                    <td>
-                        <span class="badge bg-warning text-dark">@e.Status</span>
-                    </td>
-                    <td class="text-break" style="max-width:200px;">@(!string.IsNullOrWhiteSpace(e.LastApprovalComment) ? e.LastApprovalComment : "")</td>
-                    <td>
-                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="approve" class="btn btn-sm btn-success">Approve</a>
-                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="reject" class="btn btn-sm btn-danger ms-1">Reject</a>
-                        <a asp-controller="Approver" asp-action="DescriptAction" asp-route-id="@e.EventId" asp-route-operation="requestchange" class="btn btn-sm btn-warning ms-1">Request Change</a>
-                    </td>
-                    <td><a asp-action="Detail" asp-route-id="@e.EventId" class="btn btn-sm btn-info">View</a><td/>
                 </tr>
+            }
+            else
+            {
+                @foreach (var e in Model.Events)
+                {
+                    <tr>
+                        <td style="width:120px">
+                            @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
+                            {
+                                var fallback = "https://ui-avatars.com/api/?name=" +
+                                Uri.EscapeDataString(e.Title ?? "Event") +
+                                "&size=128&background=f3f4f6&color=9ca3af&bold=true";
+                                <img src="@e.ThumbnailUrl" class="thumb-md"
+                                     onerror="this.onerror=null;this.src='@fallback';" />
+                            }
+                        </td>
+                        <td><strong>@e.Title</strong></td>
+                        <td>
+                            <div><strong>@(string.IsNullOrWhiteSpace(e.OrganizerName) ? "-" : e.OrganizerName)</strong></div>
+                            <div class="text-muted small">@e.OrganizerEmail</div>
+                        </td>
+                        <td>@e.Location</td>
+                        <td>
+                            @e.StartTime.ToString("dd/MM/yyyy HH:mm")
+                            <br />→<br />
+                            @e.EndTime.ToString("dd/MM/yyyy HH:mm")
+                        </td>
+                        <td>
+                            <span class="status-badge @BadgeClass(e.Status)">@e.Status</span>
+                        </td>
+                        <td class="text-break" style="max-width:200px;">
+                            @(!string.IsNullOrWhiteSpace(e.LastApprovalComment)
+                                                ? e.LastApprovalComment : "—")
+                        </td>
+                        <td>
+                            @if (e.Status == EventStatusEnum.Pending)
+                            {
+                                <div class="action-group">
+                                    <a asp-controller="Approver" asp-action="DescriptAction"
+                                       asp-route-id="@e.EventId"
+                                       asp-route-operation="approve"
+                                       class="btn btn-sm btn-success btn-approve">Approve</a>
+                                    <a asp-controller="Approver" asp-action="DescriptAction"
+                                       asp-route-id="@e.EventId"
+                                       asp-route-operation="reject"
+                                       class="btn btn-sm btn-danger btn-reject ms-1">Reject</a>
+                                    <a asp-controller="Approver" asp-action="DescriptAction"
+                                       asp-route-id="@e.EventId"
+                                       asp-route-operation="requestchange"
+                                       class="btn btn-sm btn-warning btn-change ms-1">Request Change</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-action="Detail" asp-route-id="@e.EventId"
+                               class="btn btn-sm btn-info btn-view">View</a>
+                            <a asp-controller="BudgetApproval" asp-action="Review"
+                               asp-route-eventId="@e.EventId"
+                               class="btn btn-sm btn-secondary btn-budget ms-1">Budget</a>
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
     </table>

@@ -549,19 +549,17 @@
         font-size: 0.85rem;
     }
 
-    @@media (max-width: 900px) {
-        .edp-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .edp-agenda-grid {
-            grid-template-columns: 1fr;
-        }
+    /* Budget iframe */
+    .edp-budget-frame {
+        width: 100%;
+        height: 520px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
     }
 
-    @@media (max-width: 500px) {
-        .edp-info-grid {
-            grid-template-columns: 1fr 1fr;
+    @@media (max-width:900px) {
+        .edp-budget-frame {
+            height: 420px;
         }
     }
 </style>
@@ -653,6 +651,9 @@
                     {
                         <span class="edp-tab-count">@Model.ApprovalLogs.Count</span>
                     }
+                </button>
+                <button class="edp-tab-btn" onclick="edpTab('budget',this)">
+                    Budget
                 </button>
             </div>
 
@@ -812,6 +813,29 @@
                 </table>
             </div>
 
+            <!-- Tab: Budget -->
+            <div id="edp-budget" class="edp-tab-pane">
+                <p class="edp-section-label">Budget</p>
+                <p class="edp-desc-text">
+                    Click the button below to open the budget review for this event. You can view full budget details there.
+                </p>
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <a asp-controller="BudgetApproval" asp-action="Review"
+                       asp-route-eventId="@Model.EventId"
+                       class="btn btn-primary" target="_blank">
+                        <i class="bi bi-cash-stack me-1"></i> Open Budget Review (new tab)
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary" onclick="toggleBudgetInline(true)">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Load inline
+                    </button>
+                </div>
+
+                <div id="edp-budget-inline" style="display:none;">
+                    <iframe id="edp-budget-frame" class="edp-budget-frame"
+                        src="@Url.Action("Review", "BudgetApproval", new { eventId = Model.EventId })"></iframe>
+                </div>
+            </div>
+
         </div>
 
         <!-- ── RIGHT COLUMN ── -->
@@ -866,6 +890,19 @@
             document.querySelectorAll('.edp-tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('edp-' + name).classList.add('active');
             btn.classList.add('active');
+        }
+
+        function toggleBudgetInline(show) {
+            const cont = document.getElementById('edp-budget-inline');
+            if (!cont) return;
+            cont.style.display = show ? 'block' : 'none';
+            if (show) {
+                // ensure iframe has proper src (already set server-side)
+                const frame = document.getElementById('edp-budget-frame');
+                if (frame && !frame.src) {
+                    frame.src = '@Url.Action("Review", "BudgetApproval", new { eventId = Model.EventId })';
+                }
+            }
         }
     </script>
 }

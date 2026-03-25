@@ -14,11 +14,24 @@
             </h4>
             <small class="text-muted">@Model.EventTitle</small>
         </div>
-        <a asp-controller="Organizer" asp-action="Manage"
-           asp-route-operation="myevents"
-           class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i> Quay lại My Events
-        </a>
+
+        @* If current viewer is an Approver, show back to Approver dashboard.
+           Otherwise keep original "Quay lại My Events" for Organizers. *@
+        @if (Model.IsApprover)
+        {
+            <a asp-controller="Approver" asp-action="Index"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại Approver Dashboard
+            </a>
+        }
+        else
+        {
+            <a asp-controller="Organizer" asp-action="Manage"
+               asp-route-operation="myevents"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại My Events
+            </a>
+        }
     </div>
 
     
