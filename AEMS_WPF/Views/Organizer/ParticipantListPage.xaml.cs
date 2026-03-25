@@ -5,6 +5,8 @@ using BusinessLogic.DTOs.Authentication.Login;
 using BusinessLogic.Service.Event;
 using Microsoft.Extensions.DependencyInjection;
 
+using BusinessLogic.Service.Organizer.CheckIn;
+
 namespace AEMS_WPF.Views.Organizer
 {
     public partial class ParticipantListPage : Page
@@ -12,6 +14,7 @@ namespace AEMS_WPF.Views.Organizer
         private readonly LoggedInUserDto _user;
         private readonly Guid _eventId;
         private readonly IEventService _eventService;
+        private readonly ICheckInService _checkInService;
 
         public ParticipantListPage(LoggedInUserDto user, Guid eventId, string eventTitle)
         {
@@ -20,6 +23,7 @@ namespace AEMS_WPF.Views.Organizer
             _eventId = eventId;
             txtEventTitle.Text = eventTitle;
             _eventService = App.ServiceProvider.GetRequiredService<IEventService>();
+            _checkInService = App.ServiceProvider.GetRequiredService<ICheckInService>();
             
             LoadParticipants();
         }
@@ -28,10 +32,8 @@ namespace AEMS_WPF.Views.Organizer
         {
             try
             {
-                // Note: IEventService might need a method to get participants
-                // For now we simulate or use existing if available
-                // var participants = await _eventService.GetParticipantsAsync(_eventId);
-                // dgParticipants.ItemsSource = participants;
+                var participants = await _checkInService.GetParticipantsAsync(_eventId.ToString());
+                dgParticipants.ItemsSource = participants;
             }
             catch (Exception ex)
             {
@@ -46,17 +48,50 @@ namespace AEMS_WPF.Views.Organizer
 
         private void BtnScanQR_Click(object sender, RoutedEventArgs e)
         {
-            // Navigation to QR Scanner
+            NavigationService.Navigate(new AttendanceMonitorPage(_user, _eventId, txtEventTitle.Text));
         }
 
-        private void BtnCheckIn_Click(object sender, RoutedEventArgs e)
+        private async void BtnCheckIn_Click(object sender, RoutedEventArgs e)
         {
-            // Logic to manually check-in a participant
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Role.Organizer.EventParticipantDto participant)
+            {
+                try
+                {
+                    var response = await _checkInService.ProcessCheckInAsync(new BusinessLogic.DTOs.Ticket.CheckInRequestDto
+                    {
+                        EventId = _eventId.ToString(),
+                        QrPayload = participant.TicketId // CheckInService uses TicketId as QrPayload usually
+                    }, _user.Id);
+
+                    MessageBox.Show(response.Message, "Check-in", MessageBoxButton.OK, response.IsSuccess ? MessageBoxImage.Information : MessageBoxImage.Warning);
+                    if (response.IsSuccess) LoadParticipants();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
-        private void BtnRemove_Click(object sender, RoutedEventArgs e)
+        private async void BtnRemove_Click(object sender, RoutedEventArgs e)
         {
-            // Logic to remove registration
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Role.Organizer.EventParticipantDto participant)
+            {
+                var result = MessageBox.Show($"Are you sure you want to cancel the ticket for {participant.FullName}?", "Confirm Cancellation", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        await _checkInService.CancelTicketAsync(participant.TicketId, _user.Id);
+                        MessageBox.Show("Ticket cancelled successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                        LoadParticipants();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
         }
     }
 }

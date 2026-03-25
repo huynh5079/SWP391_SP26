@@ -1,0 +1,168 @@
+<Page x:Class="AEMS_WPF.Views.Organizer.EventDetailsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AEMS_WPF.Views.Organizer"
+      mc:Ignorable="d" 
+      d:DesignHeight="800" d:DesignWidth="1000"
+      Title="Event Details">
+
+    <Grid Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header Section -->
+        <Grid Grid.Row="0" Margin="30,30,30,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                <TextBlock x:Name="txtTitle" Text="Loading Event Details..." FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal">
+                    <Border x:Name="borderStatus" Background="#3334d399" CornerRadius="10" Padding="10,4" Margin="0,0,10,0">
+                        <TextBlock x:Name="txtStatus" Text="STATUS" Foreground="#34d399" FontSize="12" FontWeight="SemiBold"/>
+                    </Border>
+                    <TextBlock x:Name="txtDateTime" Text="Date &amp; Time Info" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" FontSize="14"/>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                <Button Content="Back to List" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                <Button x:Name="BtnEdit" Content="Edit Event" Style="{StaticResource PrimaryButtonStyle}" Click="BtnEdit_Click" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="30,0,30,30">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Column: Description, Agendas, Documents -->
+                <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                    <!-- Description -->
+                    <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="ABOUT THIS EVENT" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,15"/>
+                            <TextBlock x:Name="txtDescription" Text="Event description goes here..." Foreground="White" FontSize="14" TextWrapping="Wrap" LineHeight="20"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Agendas -->
+                    <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="EVENT AGENDA" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,15"/>
+                            <ItemsControl x:Name="icAgendas">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{StaticResource LowWhiteBrush}" BorderThickness="0,0,0,1" Padding="0,15">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding StartTime, StringFormat='HH:mm'}" Foreground="{StaticResource IndigoAccentBrush}" FontSize="14" FontWeight="Bold" Width="60" VerticalAlignment="Top"/>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding SessionName}" Foreground="White" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                                    <TextBlock Text="{Binding SpeakerInfo}" Foreground="{StaticResource TextMutedBrush}" FontSize="13" Margin="0,0,0,5"/>
+                                                    <TextBlock Text="{Binding Location}" Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Documents -->
+                    <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25">
+                        <StackPanel>
+                            <TextBlock Text="RESOURCES &amp; DOCUMENTS" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,15"/>
+                            <ItemsControl x:Name="icDocuments">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,10">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="" FontFamily="Segoe MDL2 Assets" Foreground="{StaticResource IndigoAccentBrush}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding FileName}" Foreground="White" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <Button Content="Download" HorizontalAlignment="Right" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnDownload_Click"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right Column: Stats, Location, Team Info -->
+                <StackPanel Grid.Column="1">
+                    <!-- Registration Stats -->
+                    <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="REGISTRATION SUMMARY" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,20"/>
+                            
+                            <Grid Margin="0,0,0,15">
+                                <TextBlock Text="Total Capacity" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtCapacity" Text="0" Foreground="White" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,0,0,15">
+                                <TextBlock Text="Registered" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtRegistered" Text="0" Foreground="#34d399" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,20">
+                                <TextBlock Text="Waitlist" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtWaitlist" Text="0" Foreground="#fbbf24" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+
+                            <Button Content="View Participants" Style="{StaticResource PrimaryButtonStyle}" Click="BtnParticipants_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Location & Details -->
+                    <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="LOGISTICS" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,15"/>
+                            
+                            <StackPanel Margin="0,0,0,15">
+                                <TextBlock Text="Venue" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="txtLocation" Text="Not Specified" Foreground="White" FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,0,15">
+                                <TextBlock Text="Department" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="txtDepartment" Text="N/A" Foreground="White" FontWeight="SemiBold"/>
+                            </StackPanel>
+
+                             <StackPanel>
+                                <TextBlock Text="Semester" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="txtSemester" Text="N/A" Foreground="White" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Rating -->
+                    <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="25">
+                        <StackPanel>
+                            <TextBlock Text="USER RATING" Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,15"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock x:Name="txtRating" Text="0.0" FontSize="36" FontWeight="Bold" Foreground="#fbbf24" VerticalAlignment="Center"/>
+                                <TextBlock Text="/ 5.0" Foreground="{StaticResource TextMutedBrush}" FontSize="18" VerticalAlignment="Bottom" Margin="5,0,0,8"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>

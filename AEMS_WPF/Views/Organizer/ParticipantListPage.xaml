@@ -90,20 +90,20 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="10" Padding="8,3" HorizontalAlignment="Left">
-                                    <TextBlock Text="{Binding RegistrationStatus}" FontSize="12" Foreground="White"/>
+                                    <TextBlock Text="{Binding Status}" FontSize="12" Foreground="White"/>
                                 </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     
-                    <DataGridTextColumn Header="Registered At" Binding="{Binding CreatedAt, StringFormat='dd/MM/yyyy'}" Width="120"/>
+                    <DataGridTextColumn Header="Check-in Time" Binding="{Binding CheckInTime, StringFormat='HH:mm dd/MM'}" Width="150"/>
                     
                     <DataGridTemplateColumn Header="Actions" Width="150">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <Button Content="Check-in" Click="BtnCheckIn_Click" Background="Transparent" Foreground="#34d399" BorderThickness="0" Cursor="Hand" Visibility="{Binding CanCheckIn, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                    <Button Content="Remove" Click="BtnRemove_Click" Background="Transparent" Foreground="#f87171" BorderThickness="0" Cursor="Hand" Margin="10,0,0,0"/>
+                                    <Button Content="Check-in" Click="BtnCheckIn_Click" Background="Transparent" Foreground="#34d399" BorderThickness="0" Cursor="Hand" Margin="0,0,10,0"/>
+                                    <Button Content="Remove" Click="BtnRemove_Click" Background="Transparent" Foreground="#f87171" BorderThickness="0" Cursor="Hand"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

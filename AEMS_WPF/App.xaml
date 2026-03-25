@@ -6,36 +6,14 @@
     <Application.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         
-        <Style TargetType="Button" x:Key="ModernButtonStyle">
-            <Setter Property="Background" Value="{StaticResource LowWhiteBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{StaticResource IndigoAccentBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <!-- Colors from AEMS Web -->
-        <Color x:Key="PrimaryBlueColor">#0f172a</Color>
-        <Color x:Key="SecondaryBlueColor">#1e293b</Color>
-        <Color x:Key="IndigoAccentColor">#6366f1</Color>
-        <Color x:Key="PurpleAccentColor">#8b5cf6</Color>
+        <Color x:Key="PrimaryBlueColor">#1e293b</Color>
+        <Color x:Key="SecondaryBlueColor">#334155</Color>
+        <Color x:Key="IndigoAccentColor">#818cf8</Color>
+        <Color x:Key="PurpleAccentColor">#a78bfa</Color>
         <Color x:Key="TextWhiteColor">#FFFFFF</Color>
-        <Color x:Key="LowWhiteColor">#14FFFFFF</Color> <!-- rgba(255,255,255,0.08) -->
-        <Color x:Key="TextMutedColor">#9ca3af</Color>
+        <Color x:Key="LowWhiteColor">#26FFFFFF</Color> <!-- Lighter (15%) -->
+        <Color x:Key="TextMutedColor">#cbd5e1</Color> <!-- Lighter Muted -->
 
         <SolidColorBrush x:Key="PrimaryBlueBrush" Color="{StaticResource PrimaryBlueColor}"/>
         <SolidColorBrush x:Key="SecondaryBlueBrush" Color="{StaticResource SecondaryBlueColor}"/>
@@ -55,12 +33,34 @@
             <GradientStop Color="#8b5cf6" Offset="1"/>
         </LinearGradientBrush>
 
+        <Style TargetType="Button" x:Key="ModernButtonStyle">
+            <Setter Property="Background" Value="{StaticResource LowWhiteBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource IndigoAccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Base Styles -->
         <Style TargetType="Button" x:Key="PrimaryButtonStyle">
             <Setter Property="Background" Value="{StaticResource PrimaryButtonGradient}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="15,8"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="25,12"/>
+            <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -83,8 +83,8 @@
             <Setter Property="Background" Value="{StaticResource LowWhiteBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="15,12"/>
+            <Setter Property="FontSize" Value="15"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -112,11 +112,39 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridRow">
+                        <Border x:Name="DGR_Border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="5">
+                            <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="DGR_Border" Property="Background" Value="#1A6366F1"/> <!-- Subtly Indigo -->
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="DGR_Border" Property="Background" Value="#336366F1"/> <!-- Darker Indigo -->
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+
         <Style TargetType="Button" x:Key="SidebarButtonStyle">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
             <Setter Property="Padding" Value="15,12"/>
             <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="FontSize" Value="15"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">

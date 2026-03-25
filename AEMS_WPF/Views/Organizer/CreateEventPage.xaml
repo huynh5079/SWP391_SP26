@@ -60,12 +60,12 @@
                             
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="Semester" Foreground="White" Margin="0,0,0,8"/>
-                                <ComboBox x:Name="cbSemester" DisplayMemberPath="Text" SelectedValuePath="Id"/>
+                                <ComboBox x:Name="cbSemester" DisplayMemberPath="Text" SelectedValuePath="Id" IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Text"/>
                             </StackPanel>
                             
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="Department" Foreground="White" Margin="0,0,0,8"/>
-                                <ComboBox x:Name="cbDepartment" DisplayMemberPath="Text" SelectedValuePath="Id"/>
+                                <ComboBox x:Name="cbDepartment" DisplayMemberPath="Text" SelectedValuePath="Id" IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Text"/>
                             </StackPanel>
                         </Grid>
 
@@ -78,7 +78,7 @@
                             
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="Topic" Foreground="White" Margin="0,0,0,8"/>
-                                <ComboBox x:Name="cbTopic" DisplayMemberPath="Text" SelectedValuePath="Id"/>
+                                <ComboBox x:Name="cbTopic" DisplayMemberPath="Text" SelectedValuePath="Id" IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Text"/>
                             </StackPanel>
                             
                             <StackPanel Grid.Column="2">
@@ -113,7 +113,7 @@
 
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="Location / Meeting Link" Foreground="White" Margin="0,0,0,8"/>
-                                <ComboBox x:Name="cbLocation" DisplayMemberPath="Text" SelectedValuePath="Id" Margin="0,0,0,10"/>
+                                <ComboBox x:Name="cbLocation" DisplayMemberPath="Text" SelectedValuePath="Id" IsEditable="True" IsTextSearchEnabled="True" TextSearch.TextPath="Text" Margin="0,0,0,10"/>
                                 <TextBox x:Name="txtMeetingUrl" Style="{StaticResource ModernTextBoxStyle}" Tag="Online Meeting Link (if any)..."/>
                             </StackPanel>
                         </Grid>

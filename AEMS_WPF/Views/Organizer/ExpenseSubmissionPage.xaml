@@ -1,0 +1,70 @@
+<Page x:Class="AEMS_WPF.Views.Organizer.ExpenseSubmissionPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AEMS_WPF.Views.Organizer"
+      mc:Ignorable="d" 
+      d:DesignHeight="600" d:DesignWidth="800"
+      Title="Expense Submission">
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,30">
+            <StackPanel>
+                <TextBlock x:Name="txtEventTitle" Text="Submit Actual Expenses" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                <TextBlock Text="Record final costs and upload proof of payment (receipts/bills)." Foreground="{StaticResource TextMutedBrush}" FontSize="14"/>
+            </StackPanel>
+            <Button Content="Back" HorizontalAlignment="Right" VerticalAlignment="Center" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click"/>
+        </Grid>
+
+        <!-- Form & Upload -->
+        <Border Grid.Row="2" Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="30">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Form Fields -->
+                <StackPanel Grid.Column="0" Margin="0,0,30,0">
+                    <TextBlock Text="Expense Details" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
+                    
+                    <TextBlock Text="Expense Name / Description" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                    <TextBox x:Name="txtExpenseName" Style="{StaticResource ModernTextBoxStyle}" Tag="e.g., F&amp;B, Logistics, T-shirts" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Actual Amount (VND)" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                    <TextBox x:Name="txtAmount" Style="{StaticResource ModernTextBoxStyle}" Tag="0.00" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Payment Date" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
+                    <DatePicker x:Name="dpPaymentDate" Margin="0,0,0,25" />
+
+                    <Button x:Name="BtnSubmit" Content="Submit for Audit" Style="{StaticResource PrimaryButtonStyle}" Height="45" Click="BtnSubmit_Click"/>
+                </StackPanel>
+
+                <!-- Right: Receipt Upload -->
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Proof of Payment" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
+                    
+                    <Border x:Name="borderReceipt" Background="#1AFFFFFF" BorderThickness="2" BorderBrush="{StaticResource LowWhiteBrush}" CornerRadius="12" Height="250" Margin="0,0,0,15">
+                        <Grid>
+                            <StackPanel x:Name="stackPlaceholder" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="&#xE104;" FontFamily="Segoe MDL2 Assets" FontSize="48" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                <TextBlock Text="Click to upload receipt image" Foreground="{StaticResource TextMutedBrush}"/>
+                            </StackPanel>
+                            <Image x:Name="imgReceipt" Stretch="Uniform" Margin="5"/>
+                            <Button x:Name="BtnUpload" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="BtnUpload_Click"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="Please ensure the receipt clearly shows the amount, date, and vendor information." Foreground="{StaticResource TextMutedBrush}" FontSize="12" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

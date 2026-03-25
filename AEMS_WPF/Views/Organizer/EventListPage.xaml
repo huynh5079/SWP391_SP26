@@ -66,7 +66,7 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Event Title" Binding="{Binding Title}" Width="*"/>
                     <DataGridTextColumn Header="Date" Binding="{Binding StartTime, StringFormat='dd/MM/yyyy'}" Width="120"/>
-                    <DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="150"/>
+                    <DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="150"/>
                     <DataGridTemplateColumn Header="Status" Width="120">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -79,10 +79,13 @@
                     <DataGridTemplateColumn Header="Actions" Width="180">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="Details" Background="Transparent" Foreground="{StaticResource IndigoAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnDetails_Click" Margin="0,0,10,0"/>
-                                    <Button Content="Participants" Background="Transparent" Foreground="{StaticResource PurpleAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnParticipants_Click"/>
-                                </StackPanel>
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Button Content="Details" Background="Transparent" Foreground="{StaticResource IndigoAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnDetails_Click" Margin="0,0,10,0"/>
+                                        <Button Content="Participants" Background="Transparent" Foreground="{StaticResource PurpleAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnParticipants_Click" Margin="0,0,10,0"/>
+                                        <Button Content="Teams" Background="Transparent" Foreground="#34d399" BorderThickness="0" Cursor="Hand" Click="BtnTeams_Click" Margin="0,0,10,0"/>
+                                        <Button Content="Expenses" Background="Transparent" Foreground="#fbbf24" BorderThickness="0" Cursor="Hand" Click="BtnExpenses_Click" Margin="0,0,10,0"/>
+                                        <Button Content="Quiz" Background="Transparent" Foreground="#f87171" BorderThickness="0" Cursor="Hand" Click="BtnQuiz_Click"/>
+                                    </WrapPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
