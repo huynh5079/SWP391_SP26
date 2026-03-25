@@ -1,0 +1,84 @@
+<Page x:Class="AEMS_WPF.Views.Organizer.CreateEventPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AEMS_WPF.Views.Organizer"
+      mc:Ignorable="d" 
+      d:DesignHeight="800" d:DesignWidth="800"
+      Title="Create New Event">
+
+    <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,0,40">
+                <!-- Header -->
+                <Grid Margin="0,0,0,30">
+                    <StackPanel>
+                        <TextBlock Text="Submit New Event" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                        <TextBlock Text="Fill in the details below to request a new event approval." Foreground="{StaticResource TextMutedBrush}" FontSize="14"/>
+                    </StackPanel>
+                    <Button x:Name="BtnBack" Content="Back to List" HorizontalAlignment="Right" VerticalAlignment="Center" Background="Transparent" Foreground="{StaticResource TextMutedBrush}" BorderThickness="0" Click="BtnBack_Click"/>
+                </Grid>
+
+                <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="30">
+                    <StackPanel>
+                        <TextBlock Text="BASIC INFORMATION" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,20"/>
+                        
+                        <TextBlock Text="Event Title" Foreground="White" Margin="0,0,0,8"/>
+                        <TextBox x:Name="txtTitle" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,20" Tag="Event Name..."/>
+
+                        <TextBlock Text="Description" Foreground="White" Margin="0,0,0,8"/>
+                        <TextBox x:Name="txtDescription" Style="{StaticResource ModernTextBoxStyle}" Height="100" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Start Date &amp; Time" Foreground="White" Margin="0,0,0,8"/>
+                                <DatePicker x:Name="dpStart" Margin="0,0,0,10"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="End Date &amp; Time" Foreground="White" Margin="0,0,0,8"/>
+                                <DatePicker x:Name="dpEnd"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="LOGISTICS" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,10,0,20"/>
+
+                        <Grid Margin="0,0,0,20">
+                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Event Mode" Foreground="White" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="cbMode" SelectedIndex="0">
+                                    <ComboBoxItem Content="Offline"/>
+                                    <ComboBoxItem Content="Online"/>
+                                    <ComboBoxItem Content="Hybrid"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Max Capacity" Foreground="White" Margin="0,0,0,8"/>
+                                <TextBox x:Name="txtCapacity" Style="{StaticResource ModernTextBoxStyle}" Text="100"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Location / Meeting Link" Foreground="White" Margin="0,0,0,8"/>
+                        <TextBox x:Name="txtLocationLink" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,30"/>
+
+                        <Button Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" Height="50" Click="BtnSubmit_Click"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>
