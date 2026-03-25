@@ -26,54 +26,62 @@
     <div class="row g-4 mb-4">
         <!-- Total Events -->
         <div class="col-md-3">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Total Events</div>
-                    <div class="stat-value">@Model.Stats.TotalEvents</div>
+            <a asp-controller="Organizer" asp-action="MyEvents" class="text-decoration-none">
+                <div class="stat-card hover-lift">
+                    <div>
+                        <div class="stat-label text-dark">Total Events</div>
+                        <div class="stat-value text-dark">@Model.Stats.TotalEvents</div>
+                    </div>
+                    <div class="stat-icon icon-purple">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
                 </div>
-                <div class="stat-icon icon-purple">
-                    <i class="bi bi-calendar-check"></i>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Upcoming Events -->
         <div class="col-md-3">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Upcoming</div>
-                    <div class="stat-value">@Model.Stats.UpcomingEvents</div>
+            <a asp-controller="Organizer" asp-action="MyEvents" class="text-decoration-none">
+                <div class="stat-card hover-lift">
+                    <div>
+                        <div class="stat-label text-dark">Upcoming</div>
+                        <div class="stat-value text-dark">@Model.Stats.UpcomingEvents</div>
+                    </div>
+                    <div class="stat-icon icon-blue">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
                 </div>
-                <div class="stat-icon icon-blue">
-                    <i class="bi bi-clock-history"></i>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Registrations Today -->
         <div class="col-md-3">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Registrations Today</div>
-                    <div class="stat-value">@Model.RegistrationsToday</div>
+            <a asp-controller="Organizer" asp-action="MyEvents" class="text-decoration-none">
+                <div class="stat-card hover-lift">
+                    <div>
+                        <div class="stat-label text-dark">Registrations Today</div>
+                        <div class="stat-value text-dark">@Model.RegistrationsToday</div>
+                    </div>
+                    <div class="stat-icon icon-blue">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
                 </div>
-                <div class="stat-icon icon-blue">
-                    <i class="bi bi-person-badge"></i>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- Draft Events -->
         <div class="col-md-3">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Draft</div>
-                    <div class="stat-value">@Model.Stats.DraftEvents</div>
+            <a asp-controller="Organizer" asp-action="MyEvents" class="text-decoration-none">
+                <div class="stat-card hover-lift">
+                    <div>
+                        <div class="stat-label text-dark">Draft</div>
+                        <div class="stat-value text-dark">@Model.Stats.DraftEvents</div>
+                    </div>
+                    <div class="stat-icon icon-gray">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
                 </div>
-                <div class="stat-icon icon-gray">
-                    <i class="bi bi-pencil-square"></i>
-                </div>
-            </div>
+            </a>
         </div>
     </div>
 

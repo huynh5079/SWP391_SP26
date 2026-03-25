@@ -57,6 +57,8 @@
   <ItemGroup>
     <!-- Tránh restart/reload server khi upload file vào thư mục wwwroot/uploads -->
     <Watch Remove="wwwroot\uploads\**" />
+    <Content Remove="Views\Event\Feedback\ManageFeedbackforMainRole\ReviewFeedbackForOrganizer.cshtml" />
+    <Compile Include="Views\Event\Feedback\ManageFeedbackforMainRole\ReviewFeedbackForOrganizer.cshtml" />
     <Content Update="wwwroot\uploads\**" Watch="false" />
   </ItemGroup>
 
@@ -83,7 +85,6 @@
 
   <ItemGroup>
     <Folder Include="BaseAction%28ValidforController%29\Chat\" />
-    <Folder Include="Views\Event\Feedback\ManageFeedbackforMainRole\" />
   </ItemGroup>
 
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.schemastore.org/azure-iot-edgeagent-deployment-1.1.json" /></VisualStudio></ProjectExtensions>

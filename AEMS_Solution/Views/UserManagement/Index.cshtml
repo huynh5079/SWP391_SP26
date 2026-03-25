@@ -225,24 +225,30 @@
                     <div class="mb-2 d-none" id="lockReactivateAtWrapper">
                         <label for="lockReactivateAt" class="form-label">Mở khóa tự động lúc</label>
                         <div class="row g-2">
-                            <div class="col-4">
-                                <input type="number" id="lockYear" class="form-control" min="2000" max="9999" placeholder="Năm" />
-                            </div>
-                            <div class="col-4">
-                                <input type="number" id="lockMonth" class="form-control" min="1" max="12" placeholder="Tháng" />
-                            </div>
-                            <div class="col-4">
-                                <input type="number" id="lockDay" class="form-control" min="1" max="31" placeholder="Ngày" />
-                            </div>
-                            <div class="col-4">
-                                <input type="number" id="lockHour" class="form-control" min="0" max="23" placeholder="Giờ" />
-                            </div>
-                            <div class="col-4">
-                                <input type="number" id="lockMinute" class="form-control" min="0" max="59" placeholder="Phút" />
-                            </div>
-                            <div class="col-4">
-                                <input type="number" id="lockSecond" class="form-control" min="0" max="59" placeholder="Giây" />
-                            </div>
+                                <div class="col-4">
+                                    <label class="form-label small text-muted">Số năm</label>
+                                    <input type="number" id="lockYear" class="form-control" min="0" placeholder="0" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small text-muted">Số tháng</label>
+                                    <input type="number" id="lockMonth" class="form-control" min="0" placeholder="0" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small text-muted">Số ngày</label>
+                                    <input type="number" id="lockDay" class="form-control" min="0" placeholder="0" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small text-muted">Số giờ</label>
+                                    <input type="number" id="lockHour" class="form-control" min="0" placeholder="0" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small text-muted">Số phút</label>
+                                    <input type="number" id="lockMinute" class="form-control" min="0" placeholder="0" />
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small text-muted">Số giây</label>
+                                    <input type="number" id="lockSecond" class="form-control" min="0" placeholder="0" />
+                                </div>
                         </div>
                         <input type="hidden" id="lockReactivateAt" name="ReactivateAt" />
                     </div>

@@ -180,10 +180,10 @@
 
     <div class="main-wrapper">
         <header class="top-header">
-            <div class="search-container">
+            <form asp-controller="Organizer" asp-action="MyEvents" method="get" class="search-container m-0 border-0">
                 <i class="bi bi-search"></i>
-                <input type="text" class="search-input" placeholder="Search events..." />
-            </div>
+                <input type="text" name="search" class="search-input" placeholder="Search events..." value="@Context.Request.Query["search"]" />
+            </form>
 
             <div class="header-actions">
                 <style>

@@ -1,0 +1,113 @@
+@model IEnumerable<AEMS_Solution.Models.Admin.AdminFeedbackViewModel>
+@{
+    ViewData["Title"] = "Event Feedbacks";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Participant Feedbacks</h1>
+        <p class="page-subtitle">Review feedback and satisfaction ratings collected before, during, and after events.</p>
+    </div>
+</div>
+
+<div class="glass-card">
+    <div class="card-title-box">
+        <h5 class="card-title mb-0">Feedback Records</h5>
+    </div>
+
+    <div class="table-responsive">
+        <table class="events-table w-100 table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Participant</th>
+                    <th>Timing</th>
+                    <th>Rating</th>
+                    <th>Comment</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var fw in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div class="event-title">@fw.EventName</div>
+                            </td>
+                            <td>
+                                <div class="fw-500 text-dark" style="font-weight: 500; color: #1e293b;">@fw.StudentName</div>
+                                @if (!string.IsNullOrEmpty(fw.StudentCode))
+                                {
+                                    <div class="text-muted" style="font-size: 0.85rem; color: #828fa3;">@fw.StudentCode</div>
+                                }
+                            </td>
+                            <td>
+                                @if (fw.Status == DataAccess.Enum.FeedbackStatusEnum.BeforeEvent)
+                                {
+                                    <span class="status-pill upcoming">Before Event</span>
+                                }
+                                else if (fw.Status == DataAccess.Enum.FeedbackStatusEnum.AfterEvent)
+                                {
+                                    <span class="status-pill completed">After Event</span>
+                                }
+                                else if (fw.Status == DataAccess.Enum.FeedbackStatusEnum.DuringEvent)
+                                {
+                                    <span class="status-pill ongoing">During Event</span>
+                                }
+                                else
+                                {
+                                    <span class="status-pill" style="background-color:#f1f5f9; color:#64748b;">N/A</span>
+                                }
+                            </td>
+                            <td>
+                                @if (fw.Rating.HasValue)
+                                {
+                                    int stars = (int)fw.Rating.Value;
+                                    <div class="text-warning" style="color: #f59e0b;">
+                                        @for (int i = 0; i < stars; i++)
+                                        {
+                                            <i class="bi bi-star-fill"></i>
+                                        }
+                                        @for (int i = 0; i < 5 - stars; i++)
+                                        {
+                                            <i class="bi bi-star"></i>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" style="color: #828fa3;">No Rating</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@fw.Comment">
+                                    @(string.IsNullOrEmpty(fw.Comment) ? "No comment" : fw.Comment)
+                                </div>
+                            </td>
+                            <td>
+                                <div class="event-date">
+                                    @(fw.CreatedAt.HasValue ? fw.CreatedAt.Value.ToString("dd MMM yyyy") : "-")
+                                </div>
+                                <div class="event-time" style="color: #94a3b8; font-size: 0.8rem;">
+                                    @(fw.CreatedAt.HasValue ? fw.CreatedAt.Value.ToString("hh:mm tt") : "")
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted" style="color: #828fa3;">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No feedback records found.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
