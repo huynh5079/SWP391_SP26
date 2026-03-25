@@ -5,21 +5,21 @@
 
 <div class="chatbot-launcher" id="chatbotLauncher">
     <button type="button" class="chatbot-fab" id="chatbotToggle" aria-label="Mở chatbot">
-        <i class="bi bi-pencil-square"></i>
+        <i class="bi bi-chat-dots-fill"></i>
     </button>
 
     <div class="chatbot-panel shadow-lg" id="chatbotPanel" aria-hidden="true">
         <div class="chatbot-header">
             <div class="chatbot-avatar">
-                <span>@initials</span>
+                <span class="avatar-initials">@initials</span>
                 <span class="status-dot"></span>
             </div>
             <div class="chatbot-meta">
-                <div class="title">Chatbot AEMS</div>
-                <div class="subtitle">Sẵn sàng hỗ trợ</div>
+                <div class="title">Chatbot Assistant</div>
+                <div class="subtitle">ACTIVE NOW</div>
             </div>
             <div class="chatbot-header-actions ms-auto">
-                <button type="button" class="chatbot-icon-btn ghost" id="chatbotStartBtn" title="Bắt đầu chat" aria-label="Bắt đầu chat">
+                <button type="button" class="chatbot-icon-btn ghost" id="chatbotStartBtn" title="Bắt đầu chat" aria-label="Bắt đầu chat" style="display:none;">
                     <i class="bi bi-pencil-square"></i>
                 </button>
                 <button type="button" class="chatbot-icon-btn ghost" id="chatbotClose" aria-label="Đóng chatbot">
@@ -29,18 +29,29 @@
         </div>
 
         <div class="chatbot-body">
+            <div class="chatbot-date-divider"><span>HÔM NAY</span></div>
             <div class="chatbot-log" id="chatbotLog" aria-live="polite">
                 <div class="chatbot-msg bot">
-                    <div class="msg-author">Chatbot AEMS</div>
-                    <div class="msg-text">Sẵn sàng hỗ trợ bạn tra cứu lịch sự kiện, vé và thông tin chung.</div>
+                    <div class="msg-text">Xin chào! Sẵn sàng hỗ trợ bạn tra cứu lịch sự kiện, vé và thông tin chung.</div>
+                    <div class="msg-time">@DateTime.Now.ToString("HH:mm")</div>
                 </div>
             </div>
-            <form class="chatbot-input" onsubmit="return false;">
-                <input id="chatbotInput" type="text" placeholder="Aa" autocomplete="off" />
-                <button type="button" id="chatbotSend" aria-label="Gửi câu hỏi">
-                    <i class="bi bi-send"></i>
-                </button>
-            </form>
+            <div class="chatbot-input-area">
+                <form class="chatbot-input-wrapper" onsubmit="return false;">
+                    <button type="button" class="action-btn" aria-label="Emoji">
+                        <i class="bi bi-emoji-smile"></i>
+                    </button>
+                    <input id="chatbotInput" type="text" placeholder="Nhập tin nhắn..." autocomplete="off" />
+                    <button type="button" id="chatbotSend" aria-label="Gửi câu hỏi">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="chatbot-suggestions">
+                <button type="button" class="suggestion-chip" onclick="document.getElementById('chatbotInput').value=this.innerText">Đăng ký sự kiện</button>
+                <button type="button" class="suggestion-chip" onclick="document.getElementById('chatbotInput').value=this.innerText">Xem lịch trình</button>
+                <button type="button" class="suggestion-chip" onclick="document.getElementById('chatbotInput').value=this.innerText">Hỗ trợ kỹ thuật</button>
+            </div>
         </div>
     </div>
 </div>

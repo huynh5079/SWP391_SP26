@@ -1,67 +1,121 @@
 @model BusinessLogic.DTOs.Student.StudentEventBrowseDto
 @{
-    string statusClass = Model.Status switch
+    string badgeColor = "bg-white text-dark";
+    string dotColor = "";
+    string badgeText = Model.Status.ToString().ToUpper();
+    bool showDot = false;
+
+    if (Model.IsRegistered)
     {
-        DataAccess.Enum.EventStatusEnum.Upcoming  => "bg-info text-dark",
-        DataAccess.Enum.EventStatusEnum.Happening => "bg-success",
-        DataAccess.Enum.EventStatusEnum.Published => "bg-primary",
-        _                                          => "bg-secondary"
-    };
-}
-<div class="card h-100 shadow-sm @(Model.IsRegistered ? "border-success border-2" : "")">
-    @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
+        badgeColor = "text-success";
+        dotColor = "text-success";
+        badgeText = "REGISTERED";
+        showDot = true;
+    }
+    else if (Model.Status == DataAccess.Enum.EventStatusEnum.Cancelled)
     {
-        <img src="@Model.ThumbnailUrl" class="card-img-top" alt="@Model.Title"
-             style="height: 140px; object-fit: cover;">
+        badgeColor = "text-secondary";
+        badgeText = "CANCELLED";
+    }
+    else if (Model.Status == DataAccess.Enum.EventStatusEnum.Draft)
+    {
+        badgeColor = "text-secondary";
+        badgeText = "DRAFT";
+    }
+    // Handle Expired or other pass through
+    else if (Model.StartTime < DateTime.Now && Model.Status != DataAccess.Enum.EventStatusEnum.Happening)
+    {
+        badgeColor = "text-secondary";
+        badgeText = "EXPIRED";
+    }
+    else if (Model.IsFull)
+    {
+        badgeColor = "text-danger";
+        badgeText = "FULL";
+        showDot = true;
+        dotColor = "text-danger";
     }
     else
     {
-        <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
-             style="height: 90px;">
-            <i class="bi bi-calendar-event text-muted" style="font-size: 2rem;"></i>
-        </div>
+        badgeColor = "text-primary";
+        badgeText = Model.Status.ToString().ToUpper();
     }
-    <div class="card-body pb-1">
-        <div class="d-flex justify-content-between mb-1">
-            <span class="badge @statusClass">@Model.Status</span>
-            <div>
-                @if (!string.IsNullOrEmpty(Model.ParticipationRole))
-                {
-                    <span class="badge bg-warning text-dark me-1" title="Vai trò tham gia">@Model.ParticipationRole</span>
-                }
-                
-                @if (Model.IsRegistered)
-                {
-                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Đã đăng ký</span>
-                }
-                else if (Model.IsFull)
-                {
-                    <span class="badge bg-danger">Hết chỗ</span>
-                }
-            </div>
-        </div>
-        <h6 class="card-title fw-bold mb-1 text-truncate" title="@Model.Title">@Model.Title</h6>
-        <div class="small text-muted">
-            <i class="bi bi-clock me-1"></i>@Model.StartTime.ToString("dd/MM/yyyy HH:mm")
-        </div>
-        @if (!string.IsNullOrEmpty(Model.Location))
+}
+
+<div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden" style="background-color: #ffffff;">
+    <div class="position-relative">
+        @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
         {
-            <div class="small text-muted text-truncate">
-                <i class="bi bi-geo-alt me-1"></i>@Model.Location
+            <img src="@Model.ThumbnailUrl" class="card-img-top" alt="@Model.Title"
+                 style="height: 180px; object-fit: cover; width: 100%;">
+        }
+        else
+        {
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                 style="height: 180px;">
+                <i class="bi bi-calendar-event text-secondary opacity-25" style="font-size: 3rem;"></i>
+                @if (Model.Status == DataAccess.Enum.EventStatusEnum.Draft)
+                {
+                    <div class="position-absolute text-secondary" style="bottom: 20px; font-size: 0.85rem;">
+                        Pending Poster Upload
+                    </div>
+                }
             </div>
         }
-        <div class="small text-muted">
-            <i class="bi bi-people me-1"></i>@Model.RegisteredCount / @Model.MaxCapacity chỗ
-            @if (!Model.IsFull)
+        
+        <span class="position-absolute top-0 end-0 m-3 badge rounded-pill px-3 py-2 shadow-sm text-uppercase" 
+              style="background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); font-size: 0.75rem; letter-spacing: 0.5px; @(badgeColor.Contains("text-") ? "" : "color: #475569;")">
+            @if (showDot)
             {
-                <span class="text-success">(@Model.AvailableSeats trống)</span>
+                <i class="bi bi-circle-fill @dotColor me-1" style="font-size: 6px; vertical-align: middle;"></i>
             }
-        </div>
+            <span class="@badgeColor">@badgeText</span>
+        </span>
     </div>
-    <div class="card-footer bg-transparent border-0 pt-0">
-        <a asp-controller="StudentEvent" asp-action="Detail" asp-route-id="@Model.EventId"
-           class="btn btn-sm btn-outline-primary w-100">
-            Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
-        </a>
+    
+    <div class="card-body p-4 d-flex flex-column">
+        @if (!string.IsNullOrEmpty(Model.ParticipationRole))
+        {
+            <div class="mb-2">
+                <span class="badge bg-light text-secondary border px-2 py-1">@Model.ParticipationRole</span>
+            </div>
+        }
+        
+        <h5 class="card-title fw-bold mb-4" style="color: #1f2937; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="@Model.Title">
+            @Model.Title
+        </h5>
+        
+        <div class="row g-3 mb-4">
+            <div class="col-6 d-flex align-items-center text-secondary" style="font-size: 0.9rem;">
+                <i class="bi bi-calendar3 me-2 text-muted"></i>
+                <span class="text-truncate">@Model.StartTime.ToString("MMM dd, yyyy")</span>
+            </div>
+            <div class="col-6 d-flex align-items-center text-secondary" style="font-size: 0.9rem;">
+                <i class="bi bi-clock me-2 text-muted"></i>
+                <span class="text-truncate">@Model.StartTime.ToString("hh:mm tt")</span>
+            </div>
+            
+            <div class="col-6 d-flex align-items-center text-secondary" style="font-size: 0.9rem;">
+                <i class="bi bi-building me-2 text-muted"></i>
+                <span class="text-truncate" title="@Model.Location">@(string.IsNullOrEmpty(Model.Location) ? "TBA" : Model.Location)</span>
+            </div>
+            <div class="col-6 d-flex align-items-center text-secondary" style="font-size: 0.9rem;">
+                <i class="bi bi-people me-2 text-muted"></i>
+                <span class="text-truncate">
+                    @Model.RegisteredCount / @Model.MaxCapacity chỗ
+                    @if (!Model.IsFull)
+                    {
+                        <span class="text-success ms-1">(@Model.AvailableSeats trống)</span>
+                    }
+                </span>
+            </div>
+        </div>
+        
+        <div class="mt-auto pt-2">
+            <a asp-controller="StudentEvent" asp-action="Detail" asp-route-id="@Model.EventId" 
+               class="text-decoration-none fw-semibold" style="color: #4b5563; font-size: 0.95rem;">
+                View Details <i class="bi bi-chevron-right ms-1" style="font-size: 0.8rem;"></i>
+            </a>
+        </div>
     </div>
 </div>

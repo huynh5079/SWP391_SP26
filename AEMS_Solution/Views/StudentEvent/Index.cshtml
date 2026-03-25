@@ -18,7 +18,6 @@
     const int PX_PER_H   = 60;     // pixels per hour
     int totalHours  = GRID_END - GRID_START;               // 24 h
     int gridHeight  = totalHours * PX_PER_H;               // 1440 px
-    // Labels every 2 hours: 0,2,4,...,24
     var timeSlots   = Enumerable.Range(0, totalHours / 2 + 1).Select(i => GRID_START + i * 2).ToArray();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -32,385 +31,496 @@
         int h = (int)((e - s).TotalMinutes * PX_PER_H / 60.0);
         return Math.Max(h, 24);
     }
-    string EventBg(BusinessLogic.DTOs.Student.StudentEventBrowseDto ev) =>
-        ev.IsRegistered ? "#1a8754" :
-        ev.Status == DataAccess.Enum.EventStatusEnum.Happening ? "#0d6efd" :
-        ev.Status == DataAccess.Enum.EventStatusEnum.Upcoming  ? "#0a9dbe" :
-        "#4361ee";
-    string FormatH(int h) => h < 12 ? $"{h} AM" : h == 12 ? "12 PM" : $"{h-12} PM";
+    
+    string FormatH(int h) => h < 12 ? $"{h} AM" : h == 12 ? "12 PM" : $"{h - 12} PM";
+    
     string DayLabel(DayOfWeek d) => d switch {
         DayOfWeek.Monday    => "T2", DayOfWeek.Tuesday  => "T3",
         DayOfWeek.Wednesday => "T4", DayOfWeek.Thursday => "T5",
         DayOfWeek.Friday    => "T6", DayOfWeek.Saturday => "T7",
         _                   => "CN"
     };
+
+    string GetEventClass(BusinessLogic.DTOs.Student.StudentEventBrowseDto ev)
+    {
+        if (ev.Status == DataAccess.Enum.EventStatusEnum.Completed) return "event-finished";
+        if (ev.Status == DataAccess.Enum.EventStatusEnum.Happening) return "event-happening";
+        if (ev.IsRegistered) return "event-registered";
+        return "event-upcoming";
+    }
 }
 
 <style>
-    .gc-wrap    { border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; background: #fff; }
-
-    /* header */
-    .gc-header  { display: grid; grid-template-columns: 52px repeat(7, 1fr);
-                  border-bottom: 2px solid #dee2e6; background: #f8f9fa; }
-    .gc-hcell   { text-align: center; padding: 7px 4px; border-left: 1px solid #dee2e6; }
+    .page-wrapper {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        max-width: 1320px;
+        margin: 0 auto;
+    }
+    
+    .stats-panel {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 18px 20px;
+        box-shadow: inset 0 0 0 1px #f1f5f9;
+    }
+    .stat-item {
+        min-width: 110px;
+    }
+    .stat-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #94a3b8;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    .stat-value {
+        font-size: 1.6rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+    
+    /* Toolbar elements */
+    .btn-white {
+        background-color: white;
+        color: #1e293b;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-white:hover {
+        background-color: #f8fafc;
+        color: #0f172a;
+    }
+    
+    .nav-arrows a {
+        background: transparent;
+        color: #64748b;
+        border: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+    }
+    .nav-arrows a:hover {
+        background: white;
+        color: #1e293b;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .search-input {
+        min-width: 260px;
+        background-color: #f1f5f9 !important;
+        font-size: 0.9rem;
+    }
+    .search-input:focus {
+        border-color: #cbd5e1;
+        box-shadow: none;
+        background-color: white !important;
+    }
+    .search-icon-box {
+        background-color: #f1f5f9;
+        border: none;
+        padding-right: 0;
+    }
+    
+    /* New Grid Board */
+    .gc-wrap { 
+        border: 1px solid #e2e8f0; 
+        border-radius: 12px; 
+        overflow: hidden; 
+        background: #fff; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+    }
+    
+    .gc-header { 
+        display: grid; 
+        grid-template-columns: 60px repeat(7, 1fr);
+        border-bottom: 1px solid #e2e8f0; 
+        background: #ffffff; 
+    }
+    .gc-hcell { 
+        text-align: center; 
+        padding: 12px 4px; 
+        border-left: 1px solid #f1f5f9; 
+    }
     .gc-hcell:first-child { border-left: none; }
-    .gc-hcell .dn { font-size: .7rem; color: #6c757d; text-transform: uppercase; }
-    .gc-hcell .dd { font-size: 1.1rem; font-weight: 700; line-height: 1.4; }
-    .gc-hcell.today .dd { background: #0d6efd; color: #fff; border-radius: 50%;
-                           width: 30px; height: 30px; display: inline-flex;
-                           align-items: center; justify-content: center; font-size: .95rem; }
+    
+    .col-day-name {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #94a3b8;
+        letter-spacing: 1px;
+        margin-bottom: 2px;
+        text-transform: uppercase;
+    }
+    .col-day-num {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #1e293b;
+    }
+    .gc-hcell.today .col-day-name, .gc-hcell.today .col-day-num {
+        color: #2563eb;
+    }
+    .gc-hcell.today .col-day-num {
+        background: #eff6ff;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
 
-    /* body */
     .gc-scroller { max-height: 720px; overflow-y: auto; }
-    .gc-body    { display: grid; grid-template-columns: 52px repeat(7, 1fr);
-                  position: relative; height: @(gridHeight)px; }
-    .gc-tcol    { position: relative; background: #f8f9fa; border-right: 1px solid #dee2e6; }
-    .gc-tlabel  { position: absolute; right: 5px; font-size: .65rem; color: #6c757d;
-                  transform: translateY(-50%); white-space: nowrap; user-select: none; }
-    .gc-dcol    { position: relative; border-left: 1px solid #dee2e6; }
-    .gc-dcol.today-col { background: rgba(13,110,253,.03); }
-    .gc-gridline { position: absolute; left: 0; right: 0; border-top: 1px solid #e9ecef;
-                   pointer-events: none; }
-    .gc-gridline.major { border-top-color: #d0d4d8; }
+    .gc-body { 
+        display: grid; 
+        grid-template-columns: 60px repeat(7, 1fr);
+        position: relative; 
+        height: @(gridHeight)px; 
+    }
+    
+    .gc-tcol { 
+        position: relative; 
+        background: #ffffff; 
+        border-right: 1px solid #e2e8f0; 
+    }
+    .gc-tlabel { 
+        position: absolute; 
+        right: 10px; 
+        font-size: 0.65rem; 
+        font-weight: 600;
+        color: #64748b;
+        transform: translateY(-50%); 
+        white-space: nowrap; 
+        user-select: none; 
+    }
+    
+    .gc-dcol { 
+        position: relative; 
+        border-left: 1px solid #f1f5f9; 
+    }
+    .gc-dcol.today-col { background: rgba(37,99,235,0.015); } /* subtle blue tint for today */
+    
+    .gc-gridline { 
+        position: absolute; left: 0; right: 0; 
+        border-top: 1px solid #f8fafc; pointer-events: none; 
+    }
+    .gc-gridline.major { border-top-color: #e2e8f0; }
 
     /* now line */
-    .gc-nowline { position: absolute; left: -1px; right: 0; height: 2px;
-                  background: #dc3545; z-index: 6; pointer-events: none; }
-    .gc-nowline::before { content:''; position: absolute; left: -5px; top: -4px;
-                          width: 10px; height: 10px; border-radius: 50%; background: #dc3545; }
+    .gc-nowline { 
+        position: absolute; left: 0; right: 0; height: 2px;
+        background: #ef4444; z-index: 6; pointer-events: none; 
+    }
+    .gc-nowline::before { 
+        content:''; position: absolute; left: -4px; top: -4px;
+        width: 10px; height: 10px; border-radius: 50%; background: #ef4444; 
+    }
 
-    /* event pill */
+    /* Event Pill (absolute positioned block) */
     .ev-pill {
-        position: absolute; left: 3px; right: 3px;
-        border-radius: 5px; padding: 3px 6px;
-        font-size: .71rem; line-height: 1.25; color: #fff;
+        position: absolute; left: 4px; right: 4px;
+        border-radius: 8px; padding: 6px 8px;
+        font-size: 0.72rem; line-height: 1.3;
         overflow: hidden; text-decoration: none;
         display: flex; flex-direction: column; justify-content: flex-start;
-        box-shadow: 0 1px 4px rgba(0,0,0,.22);
-        transition: filter .12s, box-shadow .12s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: filter 0.15s, box-shadow 0.15s, transform 0.15s;
         z-index: 4;
+        border: 1px solid transparent;
     }
-    .ev-pill:hover { filter: brightness(1.13); box-shadow: 0 3px 10px rgba(0,0,0,.3); color: #fff; z-index: 10; }
-    .ev-pill .ep-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ev-pill .ep-sub   { font-size: .63rem; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ev-pill .ep-reg   { font-size: .6rem; opacity: .8; margin-bottom: 1px; }
+    .ev-pill:hover { 
+        filter: brightness(0.95); 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        color: inherit; 
+        z-index: 10; 
+        transform: translateY(-1px);
+    }
+    
+    .ep-title { font-weight: 700; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+    .ep-time { font-size: 0.68rem; font-weight: 600; opacity: 0.9; margin-bottom: 2px; }
+    .ep-sub { font-size: 0.68rem; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 3px; }
+    .ep-reg { font-size: 0.65rem; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 2px; }
 
+    /* Event Themes suitable for absolute blocks */
+    /* 1. Upcoming / Announced (Blue solid like image or blue bordered) 
+       The image shows Solid Blue for events. Let's make "Announced/Upcoming" Solid Blue
+       Wait, let's keep consistent with our legend. */
+    .event-upcoming {
+        background: #4f46e5; /* Indigo */
+        color: #ffffff;
+        border: 1px solid #4338ca;
+    }
+    .event-upcoming:hover { color: #ffffff; }
+
+    .event-happening {
+        background: #2563eb; /* Blue */
+        color: #ffffff;
+        border: 1px solid #1d4ed8;
+        box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .event-happening:hover { color: #ffffff; }
+
+    .event-registered {
+        background: #10b981; /* Green */
+        color: #ffffff;
+        border: 1px solid #059669;
+    }
+    .event-registered:hover { color: #ffffff; }
+
+    .event-finished {
+        background: #94a3b8; /* Grey bg */
+        color: #ffffff;
+        border: 1px solid #64748b;
+    }
+    .event-finished:hover { color: #ffffff; }
+    
+    /* Clusters */
     .ev-cluster-btn {
         position: absolute;
-        left: 3px;
-        right: 3px;
-        border: 0;
-        border-radius: 6px;
-        background: #3558e6;
-        color: #fff;
+        left: 4px; right: 4px;
+        border: 0; border-radius: 8px;
+        background: #f1f5f9; color: #475569;
+        border: 1px solid #cbd5e1;
         padding: 4px 6px;
-        font-size: .72rem;
-        text-align: left;
-        box-shadow: 0 1px 4px rgba(0,0,0,.22);
+        font-size: 0.72rem; text-align: left;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         z-index: 5;
     }
+    .ev-cluster-btn:hover { background: #e2e8f0; }
 
-    .ev-cluster-btn:hover { filter: brightness(1.1); }
-
-    .ev-cluster-menu {
-        min-width: 260px;
-        max-width: 320px;
-        max-height: 300px;
-        overflow-y: auto;
-        font-size: .82rem;
-        z-index: 2000;
+    /* Legend */
+    .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
     }
-
-    .day-dd-menu {
-        max-height: 280px;
-        overflow-y: auto;
-        min-width: 280px;
-        font-size: .82rem;
-    }
+    
+    .hover-lift { transition: transform 0.2s; }
+    .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }
 </style>
 
-<div class="container-fluid py-3" style="max-width: 1320px;">
+<div class="page-wrapper py-4 px-2">
 
-    @* ─── Top bar ──────────────────────────────────────────────────────────── *@
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h5 class="mb-0 fw-bold me-auto">
-            <i class="bi bi-calendar-week me-2 text-primary"></i>Lịch sự kiện
-        </h5>
-        
-        <div class="d-flex gap-3 me-3">
-            <div class="bg-white rounded px-3 py-2 border shadow-sm d-flex align-items-center">
-                <i class="bi bi-ticket-perforated text-success fs-4 me-2"></i>
-                <div>
-                    <div class="text-muted" style="font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Đã Đăng Ký</div>
-                    <div class="fs-5 fw-bold text-dark lh-1">@Model.Stats.TotalRegistered</div>
-                </div>
-            </div>
-            <div class="bg-white rounded px-3 py-2 border shadow-sm d-flex align-items-center">
-                <i class="bi bi-clock-history text-info fs-4 me-2"></i>
-                <div>
-                    <div class="text-muted" style="font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Tuần Này</div>
-                    <div class="fs-5 fw-bold text-dark lh-1">@Model.Stats.UpcomingThisWeek</div>
-                </div>
-            </div>
-            <div class="bg-white rounded px-3 py-2 border shadow-sm d-flex align-items-center">
-                <i class="bi bi-chat-dots @(Model.Stats.PendingFeedbacks > 0 ? "text-warning" : "text-secondary") fs-4 me-2"></i>
-                <div>
-                    <div class="text-muted" style="font-size: 0.75rem; font-weight: bold; text-transform: uppercase;">Cần Feedback</div>
-                    <div class="fs-5 fw-bold text-dark lh-1">@Model.Stats.PendingFeedbacks</div>
-                </div>
-            </div>
+    <!-- Header & Stats -->
+    <div class="row mb-5 align-items-center">
+        <!-- Titles -->
+        <div class="col-lg-5 mb-4 mb-lg-0">
+            <h1 class="fw-bold mb-2" style="font-size: 2.4rem; color: #0f172a; letter-spacing: -1px;">Lịch sự kiện</h1>
+            <p class="text-muted" style="font-size: 1.05rem; line-height: 1.6;">Quản lý các sự kiện và lịch làm việc của bạn trong tuần này.</p>
         </div>
-
-        @* Week nav *@
-        <div class="d-flex align-items-center gap-1">
-            <a asp-action="Index" asp-route-weekOffset="0" asp-route-search="@search"
-               class="btn btn-sm btn-outline-secondary">Hôm nay</a>
-            <a asp-action="Index" asp-route-weekOffset="@(weekOffset-1)" asp-route-search="@search"
-               class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
-            <a asp-action="Index" asp-route-weekOffset="@(weekOffset+1)" asp-route-search="@search"
-               class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
-            <span class="fw-semibold ms-1 text-nowrap">
-                @if (weekOffset == 0)
-                {
-                    <span class="badge bg-primary me-1">Tuần này</span>
-                }
-                @weekStart.ToString("dd/MM") – @weekEnd.ToString("dd/MM/yyyy")
-            </span>
-        </div>
-
-        @* Search *@
-        <form method="get" class="d-flex gap-1">
-            <input type="hidden" name="weekOffset" value="@weekOffset" />
-            <div class="input-group input-group-sm">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" name="search" value="@search" class="form-control"
-                       placeholder="Tìm sự kiện…" style="width:170px;" />
-            </div>
-            <button type="submit" class="btn btn-sm btn-primary">Tìm</button>
-            @if (!string.IsNullOrEmpty(search))
-            {
-                <a asp-action="Index" asp-route-weekOffset="@weekOffset"
-                   class="btn btn-sm btn-outline-secondary">✕</a>
-            }
-        </form>
         
-        <a asp-action="MyEvents" asp-controller="StudentEvent" class="btn btn-sm btn-outline-success">
-            <i class="bi bi-ticket-detailed me-1"></i>Vé của tôi
-        </a>
+        <!-- Stats Panel -->
+        <div class="col-lg-7 d-flex flex-column align-items-lg-end">
+            <div class="stats-panel d-flex align-items-center mb-3">
+                <div class="stat-item text-center px-lg-4 px-3 border-end border-light">
+                    <div class="stat-label">ĐÃ ĐĂNG KÝ</div>
+                    <div class="stat-value text-primary">@Model.Stats.TotalRegistered.ToString("D2")</div>
+                </div>
+                <div class="stat-item text-center px-lg-4 px-3 border-end border-light">
+                    <div class="stat-label">TUẦN NÀY</div>
+                    <div class="stat-value text-success">@Model.Stats.UpcomingThisWeek.ToString("D2")</div>
+                </div>
+                <div class="stat-item text-center px-lg-4 px-3">
+                    <div class="stat-label">CẦN FEEDBACK</div>
+                    <div class="stat-value text-secondary">@Model.Stats.PendingFeedbacks.ToString("D2")</div>
+                </div>
+            </div>
+            
+            <a asp-action="MyEvents" asp-controller="StudentEvent" class="btn btn-white shadow-sm fw-bold rounded-pill px-4 py-2 hover-lift d-inline-flex align-items-center">
+                <i class="bi bi-ticket-detailed-fill text-primary me-2"></i> My Tickets
+            </a>
+        </div>
     </div>
 
-    @* ─── Calendar card ────────────────────────────────────────────────────── *@
-    <div class="gc-wrap shadow-sm">
+    <!-- Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <!-- Date Navigation -->
+        <div class="d-flex align-items-center gap-3">
+            <a asp-action="Index" asp-route-weekOffset="0" asp-route-search="@search" 
+               class="btn btn-white fw-bold shadow-sm rounded-pill px-4 py-2">Hôm nay</a>
+            
+            <div class="d-flex rounded-pill bg-light border p-1 nav-arrows">
+                <a asp-action="Index" asp-route-weekOffset="@(weekOffset - 1)" asp-route-search="@search" class="rounded-circle text-decoration-none">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                <a asp-action="Index" asp-route-weekOffset="@(weekOffset + 1)" asp-route-search="@search" class="rounded-circle text-decoration-none">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+            
+            <h5 class="mb-0 fw-bold ms-2 text-dark" style="font-size: 1.25rem;">Tháng @weekStart.Month, @weekStart.Year</h5>
+        </div>
 
-        @* Header *@
+        <!-- Search Form ONLY (View toggle removed per request) -->
+        <div class="d-flex align-items-center gap-3">
+            <form method="get" class="d-flex m-0">
+                <input type="hidden" name="weekOffset" value="@weekOffset" />
+                <div class="input-group shadow-sm rounded-pill overflow-hidden">
+                    <span class="input-group-text search-icon-box text-muted ps-4"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@search" class="form-control search-input border-0 py-2" placeholder="Tìm kiếm sự kiện...">
+                </div>
+                <button type="submit" class="d-none">Tìm</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Calendar Time Grid Board -->
+    <div class="gc-wrap">
+        <!-- Header Row -->
         <div class="gc-header">
-            <div class="gc-hcell"></div>
+            <div class="gc-hcell"></div> <!-- Time column empty header -->
             @for (int dayIndex = 0; dayIndex < days.Count; dayIndex++)
             {
                 var day = days[dayIndex];
                 bool isToday = day.Date == today;
-                var dayItems = Model.Events
-                    .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
-                    .OrderBy(e => e.StartTime)
-                    .ToList();
-                int cnt = dayItems.Count;
                 <div class="gc-hcell @(isToday ? "today" : "")">
-                    <div class="dn">@DayLabel(day.DayOfWeek)</div>
-                    <div class="dd">@day.Day</div>
-                    @if (cnt > 0)
-                    {
-                        var ddId = $"dayEventDropdown_{dayIndex}";
-                        <div class="dropdown">
-                            <button class="badge rounded-pill border-0"
-                                    id="@ddId"
-                                    type="button"
-                                    data-bs-toggle="dropdown"
-                                    aria-expanded="false"
-                                    style="font-size:.58rem;background:#e8f0fe;color:#4361ee;padding:1px 5px;cursor:pointer;">
-                                @cnt
-                            </button>
-                            <ul class="dropdown-menu day-dd-menu text-start" aria-labelledby="@ddId">
-                                @foreach (var item in dayItems)
-                                {
-                                    <li>
-                                        <a class="dropdown-item" asp-action="Detail" asp-route-id="@item.EventId">
-                                            <div class="fw-semibold text-truncate">@item.Title</div>
-                                            <div class="text-muted small">@item.StartTime.ToString("HH:mm") – @item.EndTime.ToString("HH:mm")</div>
-                                        </a>
-                                    </li>
-                                }
-                            </ul>
-                        </div>
-                    }
+                    <div class="col-day-name">@DayLabel(day.DayOfWeek)</div>
+                    <div class="col-day-num">@day.Day</div>
                 </div>
             }
         </div>
 
-        @* Body *@
+        <!-- Body Grid -->
         <div class="gc-scroller">
-        <div class="gc-body">
-
-            @* Time label column *@
-            <div class="gc-tcol">
-                @foreach (var h in timeSlots)
-                {
-                    <span class="gc-tlabel" style="top:@((h - GRID_START) * PX_PER_H)px;">@FormatH(h)</span>
-                }
-            </div>
-
-            @* Day columns *@
-            @for (int dayIndex = 0; dayIndex < days.Count; dayIndex++)
-            {
-                var day = days[dayIndex];
-                bool isToday = day.Date == today;
-                var dayEvts  = Model.Events
-                    .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
-                    .OrderBy(e => e.StartTime)
-                    .ToList();
-
-                var normalized = dayEvts
-                    .Select(ev =>
-                    {
-                        var visStart = ev.StartTime.Date < day.Date
-                            ? day.Date.AddHours(GRID_START)
-                            : (ev.StartTime.Hour < GRID_START ? day.Date.AddHours(GRID_START) : ev.StartTime);
-                        var visEnd = ev.EndTime.Date > day.Date
-                            ? day.Date.AddHours(GRID_END)
-                            : (ev.EndTime.Hour > GRID_END ? day.Date.AddHours(GRID_END) : ev.EndTime);
-
-                        return (Ev: ev, Start: visStart, End: visEnd);
-                    })
-                    .Where(x => x.Start < day.Date.AddHours(GRID_END) && x.End > day.Date.AddHours(GRID_START))
-                    .OrderBy(x => x.Start)
-                    .ThenBy(x => x.End)
-                    .ToList();
-
-                var clusters = new List<(DateTime Start, DateTime End, List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End)> Items)>();
-                int idx = 0;
-                while (idx < normalized.Count)
-                {
-                    int clusterEnd = idx;
-                    DateTime clusterMaxEnd = normalized[idx].End;
-
-                    while (clusterEnd + 1 < normalized.Count && normalized[clusterEnd + 1].Start < clusterMaxEnd)
-                    {
-                        clusterEnd++;
-                        if (normalized[clusterEnd].End > clusterMaxEnd)
-                        {
-                            clusterMaxEnd = normalized[clusterEnd].End;
-                        }
-                    }
-
-                    var clusterItems = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End)>();
-                    for (int c = idx; c <= clusterEnd; c++) clusterItems.Add(normalized[c]);
-                    clusters.Add((clusterItems.Min(x => x.Start), clusterItems.Max(x => x.End), clusterItems));
-
-                    idx = clusterEnd + 1;
-                }
-
-                <div class="gc-dcol @(isToday ? "today-col" : "")">
-
-                    @* Grid lines *@
+            <div class="gc-body">
+                <!-- Time Labels -->
+                <div class="gc-tcol">
                     @foreach (var h in timeSlots)
                     {
-                        <div class="gc-gridline major" style="top:@((h - GRID_START) * PX_PER_H)px;"></div>
+                        <span class="gc-tlabel" style="top:@((h - GRID_START) * PX_PER_H)px;">@FormatH(h)</span>
                     }
-                    @* Minor lines at each hour *@
-                    @for (int mh = GRID_START + 1; mh < GRID_END; mh++)
-                    {
-                        if (!timeSlots.Contains(mh))
-                        {
-                            <div class="gc-gridline" style="top:@((mh - GRID_START) * PX_PER_H)px;"></div>
-                        }
-                    }
-
-                    @* Now line *@
-                    @if (isToday)
-                    {
-                        var now = DateTime.Now;
-                        if (now.Hour >= GRID_START && now.Hour < GRID_END)
-                        {
-                            <div class="gc-nowline" style="top:@TopPx(now)px;"></div>
-                        }
-                    }
-
-                    @* Events *@
-                    @for (int ci = 0; ci < clusters.Count; ci++)
-                    {
-                        var cluster = clusters[ci];
-                        int top = TopPx(cluster.Start);
-                        int ht = HeightPx(cluster.Start, cluster.End);
-
-                        if (cluster.Items.Count == 1)
-                        {
-                            var item = cluster.Items[0];
-                            string bg = EventBg(item.Ev);
-                            <a asp-action="Detail" asp-route-id="@item.Ev.EventId"
-                               class="ev-pill"
-                               style="top:@(top)px; height:@(ht)px; background:@bg;"
-                               title="@item.Ev.Title&#10;@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")@(item.Ev.Location != null ? "\n" + item.Ev.Location : "")">
-                                @if (item.Ev.IsRegistered)
-                                {
-                                    <span class="ep-reg">✓ Đã đăng ký</span>
-                                }
-                                <span class="ep-title">@item.Ev.Title</span>
-                                @if (ht >= 36)
-                                {
-                                    <span class="ep-sub">@item.Ev.StartTime.ToString("HH:mm") – @item.Ev.EndTime.ToString("HH:mm")</span>
-                                }
-                                @if (ht >= 56 && !string.IsNullOrEmpty(item.Ev.Location))
-                                {
-                                    <span class="ep-sub"><i class="bi bi-geo-alt"></i> @item.Ev.Location</span>
-                                }
-                            </a>
-                        }
-                        else
-                        {
-                            var clusterId = $"dayCluster_{dayIndex}_{ci}";
-                            <div class="dropdown" style="position:absolute; top:@(top)px; left:3px; right:3px; z-index:7;">
-                                <button class="ev-cluster-btn"
-                                        id="@clusterId"
-                                        type="button"
-                                        data-bs-toggle="dropdown"
-                                        aria-expanded="false"
-                                        title="Có @cluster.Items.Count sự kiện gần/trùng giờ. Bấm để xem danh sách.">
-                                    <div class="fw-semibold">@cluster.Items.Count sự kiện</div>
-                                    <div style="font-size:.64rem;opacity:.9;">@cluster.Start.ToString("HH:mm") – @cluster.End.ToString("HH:mm")</div>
-                                </button>
-                                <ul class="dropdown-menu ev-cluster-menu" aria-labelledby="@clusterId">
-                                    @foreach (var x in cluster.Items.OrderBy(x => x.Start))
-                                    {
-                                        <li>
-                                            <a class="dropdown-item" asp-action="Detail" asp-route-id="@x.Ev.EventId">
-                                                <div class="fw-semibold text-truncate">@x.Ev.Title</div>
-                                                <div class="text-muted small">@x.Ev.StartTime.ToString("HH:mm") – @x.Ev.EndTime.ToString("HH:mm")</div>
-                                                @if (!string.IsNullOrWhiteSpace(x.Ev.Location))
-                                                {
-                                                    <div class="small"><i class="bi bi-geo-alt"></i> @x.Ev.Location</div>
-                                                }
-                                            </a>
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-                        }
-                    }
-
                 </div>
-            }
-        </div>
+
+                <!-- Day Columns -->
+                @for (int dayIndex = 0; dayIndex < days.Count; dayIndex++)
+                {
+                    var day = days[dayIndex];
+                    bool isToday = day.Date == today;
+
+                    // Normalize event boundaries to fit within the day visually
+                    var dayEvts = Model.Events
+                        .Where(e => e.StartTime.Date <= day.Date && e.EndTime.Date >= day.Date)
+                        .Select(ev =>
+                        {
+                            var visStart = day.Date.Add(ev.StartTime.TimeOfDay);
+                            var visEnd = day.Date.Add(ev.EndTime.TimeOfDay);
+                            if (visEnd <= visStart) {
+                                visEnd = visStart.AddHours(24);
+                            }
+                            return (Ev: ev, Start: visStart, End: visEnd);
+                        })
+                        .Where(x => x.Start < day.Date.AddHours(GRID_END) && x.End > day.Date.AddHours(GRID_START))
+                        .OrderBy(x => x.Start).ThenBy(x => x.End)
+                        .ToList();
+
+                    // Cluster overlapping events
+                    var clusters = new List<(DateTime Start, DateTime End, List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End)> Items)>();
+                    int idx = 0;
+                    while (idx < dayEvts.Count)
+                    {
+                        int clusterEnd = idx;
+                        DateTime clusterMaxEnd = dayEvts[idx].End;
+                        while (clusterEnd + 1 < dayEvts.Count && dayEvts[clusterEnd + 1].Start < clusterMaxEnd)
+                        {
+                            clusterEnd++;
+                            if (dayEvts[clusterEnd].End > clusterMaxEnd) clusterMaxEnd = dayEvts[clusterEnd].End;
+                        }
+                        var items = new List<(BusinessLogic.DTOs.Student.StudentEventBrowseDto Ev, DateTime Start, DateTime End)>();
+                        for (int c = idx; c <= clusterEnd; c++) items.Add(dayEvts[c]);
+                        clusters.Add((items.Min(x => x.Start), items.Max(x => x.End), items));
+                        idx = clusterEnd + 1;
+                    }
+
+                    <div class="gc-dcol @(isToday ? "today-col" : "")">
+                        <!-- Horizontal Grid Lines -->
+                        @foreach (var h in timeSlots)
+                        {
+                            <div class="gc-gridline major" style="top:@((h - GRID_START) * PX_PER_H)px;"></div>
+                        }
+                        @for (int mh = GRID_START + 1; mh < GRID_END; mh++)
+                        {
+                            if (!timeSlots.Contains(mh))
+                            {
+                                <div class="gc-gridline" style="top:@((mh - GRID_START) * PX_PER_H)px;"></div>
+                            }
+                        }
+
+                        <!-- Current Time Line -->
+                        @if (isToday)
+                        {
+                            var now = DateTime.Now;
+                            if (now.Hour >= GRID_START && now.Hour < GRID_END)
+                            {
+                                <div class="gc-nowline" style="top:@TopPx(now)px;"></div>
+                            }
+                        }
+
+                        <!-- Event Blocks -->
+                        @for (int ci = 0; ci < clusters.Count; ci++)
+                        {
+                            var cluster = clusters[ci];
+                            int top = TopPx(cluster.Start);
+                            int ht = HeightPx(cluster.Start, cluster.End);
+
+                            if (cluster.Items.Count == 1)
+                            {
+                                var item = cluster.Items[0];
+                                <a asp-action="Detail" asp-route-id="@item.Ev.EventId"
+                                   class="ev-pill @GetEventClass(item.Ev)"
+                                   style="top:@(top)px; height:@(ht)px;"
+                                   title="@item.Ev.Title&#10;@item.Ev.StartTime.ToString("HH:mm") - @item.Ev.EndTime.ToString("HH:mm")">
+                                    
+                                    @if (item.Ev.IsRegistered) {
+                                        <div class="ep-reg"><i class="bi bi-check2-circle"></i> Đã đăng ký</div>
+                                    }
+                                    <div class="ep-title">@item.Ev.Title</div>
+                                    
+                                    @if (ht >= 40) {
+                                        <div class="ep-time">@item.Ev.StartTime.ToString("HH:mm") - @item.Ev.EndTime.ToString("HH:mm")</div>
+                                    }
+                                    @if (ht >= 60 && !string.IsNullOrEmpty(item.Ev.Location)) {
+                                        <div class="ep-sub"><i class="bi bi-geo-alt-fill"></i> @item.Ev.Location</div>
+                                    }
+                                </a>
+                            }
+                            else
+                            {
+                                // Cluster dropdown for overlapping events
+                                var clusterId = $"dayCluster_{dayIndex}_{ci}";
+                                <div class="dropdown" style="position:absolute; top:@(top)px; left:4px; right:4px; z-index:7;">
+                                    <button class="ev-cluster-btn" id="@clusterId" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <div class="fw-bold text-dark">@cluster.Items.Count sự kiện</div>
+                                        <div style="font-size:0.65rem;">@cluster.Start.ToString("HH:mm") - @cluster.End.ToString("HH:mm")</div>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-sm" aria-labelledby="@clusterId" style="font-size: 0.8rem; min-width: 200px;">
+                                        @foreach (var x in cluster.Items.OrderBy(x => x.Start))
+                                        {
+                                            <li>
+                                                <a class="dropdown-item py-2" asp-action="Detail" asp-route-id="@x.Ev.EventId">
+                                                    <div class="fw-semibold text-wrap">@x.Ev.Title</div>
+                                                    <div class="text-muted small border-bottom pb-1 mb-1">@x.Ev.StartTime.ToString("HH:mm") - @x.Ev.EndTime.ToString("HH:mm")</div>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
         </div>
     </div>
 
-    @* ─── Legend ───────────────────────────────────────────────────────────── *@
-    <div class="d-flex flex-wrap align-items-center gap-3 mt-2" style="font-size:.77rem; color:#555;">
-        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#1a8754;vertical-align:middle;"></span> Đã đăng ký</span>
-        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#0d6efd;vertical-align:middle;"></span> Đang diễn ra</span>
-        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#0a9dbe;vertical-align:middle;"></span> Sắp diễn ra</span>
-        <span><span style="display:inline-block;width:11px;height:11px;border-radius:2px;background:#4361ee;vertical-align:middle;"></span> Đã công bố</span>
-        @if (!Model.Events.Any())
-        {
-            <span class="text-muted ms-auto"><i class="bi bi-info-circle me-1"></i>Không có sự kiện trong tuần này</span>
-        }
+    <!-- Legend -->
+    <div class="d-flex flex-wrap justify-content-center gap-4 text-muted mt-4" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
+        <span class="d-flex align-items-center gap-2"><span class="legend-dot" style="background:#10b981;"></span> Đã đăng ký (Registered)</span>
+        <span class="d-flex align-items-center gap-2"><span class="legend-dot" style="background:#2563eb;"></span> Đang diễn ra (Ongoing)</span>
+        <span class="d-flex align-items-center gap-2"><span class="legend-dot" style="background:#94a3b8;"></span> Đã kết thúc (Finished)</span>
+        <span class="d-flex align-items-center gap-2"><span class="legend-dot" style="background:#4f46e5;"></span> Thông báo (Announced)</span>
     </div>
+
 </div>

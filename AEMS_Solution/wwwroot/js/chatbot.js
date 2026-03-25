@@ -198,33 +198,17 @@ class ChatbotManager {
     addMessageToLog(content, role, sources = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `chatbot-msg ${role}`;
+        const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
         if (role === 'user') {
             messageDiv.innerHTML = `
-                <div class="msg-author">Bạn</div>
                 <div class="msg-text">${this.escapeHtml(content)}</div>
+                <div class="msg-time">${time}</div>
             `;
         } else {
-            // Sources display hidden per user request
-            // let sourcesHtml = '';
-            // if (sources && sources.length > 0) {
-            //     sourcesHtml = `
-            //         <div class="msg-sources">
-            //             <small><strong>Nguồn:</strong></small>
-            //             <ul>
-            //                 ${sources.map(s => {
-            //             const score = (s.score * 100).toFixed(1);
-            //             const title = s.meta?.title || s.meta?.source || 'Không rõ';
-            //             return `<li><small>${this.escapeHtml(title)} (${score}%)</small></li>`;
-            //         }).join('')}
-            //             </ul>
-            //         </div>
-            //     `;
-            // }
-
             messageDiv.innerHTML = `
-                <div class="msg-author">Chatbot AEMS</div>
                 <div class="msg-text">${this.escapeHtml(content)}</div>
+                <div class="msg-time">${time}</div>
             `;
         }
 
