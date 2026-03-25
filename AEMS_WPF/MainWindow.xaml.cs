@@ -47,7 +47,7 @@ namespace AEMS_WPF
                         MainFrame.Navigate(new Views.Dashboard.OverviewPage(_user));
                         break;
                     case "BtnEvents":
-                        MainFrame.Navigate(new Views.Organizer.EventListPage());
+                        MainFrame.Navigate(new Views.Organizer.EventListPage(_user));
                         break;
                     case "BtnNotifications":
                         MainFrame.Navigate(new Views.Common.NotificationPage());

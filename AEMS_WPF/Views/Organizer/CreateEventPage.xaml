@@ -22,6 +22,7 @@
 
                 <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="15" Padding="30">
                     <StackPanel>
+                        <!-- Basic Info -->
                         <TextBlock Text="BASIC INFORMATION" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,20"/>
                         
                         <TextBlock Text="Event Title" Foreground="White" Margin="0,0,0,8"/>
@@ -48,7 +49,51 @@
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="LOGISTICS" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,10,0,20"/>
+                        <!-- Relations -->
+                        <TextBlock Text="RELATIONS &amp; CLASSIFICATION" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,10,0,20"/>
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Semester" Foreground="White" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="cbSemester" DisplayMemberPath="Text" SelectedValuePath="Id"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Department" Foreground="White" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="cbDepartment" DisplayMemberPath="Text" SelectedValuePath="Id"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Topic" Foreground="White" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="cbTopic" DisplayMemberPath="Text" SelectedValuePath="Id"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Event Type" Foreground="White" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="cbType">
+                                    <ComboBoxItem Content="Seminar" IsSelected="True"/>
+                                    <ComboBoxItem Content="Competition"/>
+                                    <ComboBoxItem Content="Workshop"/>
+                                    <ComboBoxItem Content="Outdoor"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Logistics -->
+                        <TextBlock Text="LOGISTICS &amp; CAPACITY" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,10,0,20"/>
 
                         <Grid Margin="0,0,0,20">
                              <Grid.ColumnDefinitions>
@@ -67,13 +112,71 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="Max Capacity" Foreground="White" Margin="0,0,0,8"/>
-                                <TextBox x:Name="txtCapacity" Style="{StaticResource ModernTextBoxStyle}" Text="100"/>
+                                <TextBlock Text="Location / Meeting Link" Foreground="White" Margin="0,0,0,8"/>
+                                <ComboBox x:Name="cbLocation" DisplayMemberPath="Text" SelectedValuePath="Id" Margin="0,0,0,10"/>
+                                <TextBox x:Name="txtMeetingUrl" Style="{StaticResource ModernTextBoxStyle}" Tag="Online Meeting Link (if any)..."/>
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="Location / Meeting Link" Foreground="White" Margin="0,0,0,8"/>
-                        <TextBox x:Name="txtLocationLink" Style="{StaticResource ModernTextBoxStyle}" Margin="0,0,0,30"/>
+                        <Grid Margin="0,0,0,20">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Max Capacity" Foreground="White" Margin="0,0,0,8"/>
+                                <TextBox x:Name="txtCapacity" Style="{StaticResource ModernTextBoxStyle}" Text="100"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Deposit Required" Foreground="White" Margin="0,0,0,8"/>
+                                <CheckBox x:Name="chkIsDeposit" Content="Requires Deposit" Foreground="White" Margin="0,5,0,5"/>
+                                <TextBox x:Name="txtDepositAmount" Style="{StaticResource ModernTextBoxStyle}" Tag="Amount (VND)..." IsEnabled="{Binding IsChecked, ElementName=chkIsDeposit}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Reg. Open Date" Foreground="White" Margin="0,0,0,8"/>
+                                <DatePicker x:Name="dpRegOpen"/>
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Reg. Close Date" Foreground="White" Margin="0,0,0,8"/>
+                                <DatePicker x:Name="dpRegClose"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Agenda -->
+                        <TextBlock Text="AGENDA &amp; SESSIONS" Foreground="{StaticResource IndigoAccentBrush}" FontSize="12" FontWeight="Bold" Margin="0,10,0,10"/>
+                        <Grid Margin="0,0,0,10">
+                            <Button x:Name="BtnAddSession" Content="+ Add Session" HorizontalAlignment="Right" Click="BtnAddSession_Click" Style="{StaticResource ModernButtonStyle}" Width="120" Height="30"/>
+                        </Grid>
+                        
+                        <DataGrid x:Name="dgAgenda" AutoGenerateColumns="False" CanUserAddRows="False" 
+                                  Background="Transparent" BorderThickness="0" Margin="0,0,0,20" 
+                                  MinHeight="150" HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Session Name" Binding="{Binding SessionName}" Width="*"/>
+                                <DataGridTextColumn Header="Time" Binding="{Binding StartTime, StringFormat=HH:mm}" Width="80"/>
+                                <DataGridTextColumn Header="Speaker" Binding="{Binding SpeakerInfo}" Width="150"/>
+                                <DataGridTemplateColumn Width="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="Remove" Click="BtnRemoveSession_Click" Background="Transparent" Foreground="Red" BorderThickness="0"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
 
                         <Button Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" Height="50" Click="BtnSubmit_Click"/>
                     </StackPanel>

@@ -60,6 +60,7 @@ namespace AEMS_WPF
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IEventService, EventService>();
             services.AddScoped<IDashboardService, DashboardService>();
+            services.AddScoped<IDropdownService, DropdownService>();
             services.AddScoped<ISignalRNotifier, DummySignalRNotifier>();
             
             // Validation

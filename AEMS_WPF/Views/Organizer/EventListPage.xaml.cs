@@ -1,3 +1,4 @@
+using BusinessLogic.DTOs.Authentication.Login;
 using System.Windows;
 using System.Windows.Controls;
 using BusinessLogic.Service.Event;
@@ -7,11 +8,13 @@ namespace AEMS_WPF.Views.Organizer
 {
     public partial class EventListPage : Page
     {
+        private readonly LoggedInUserDto _user;
         private readonly IEventService _eventService;
 
-        public EventListPage()
+        public EventListPage(LoggedInUserDto user)
         {
             InitializeComponent();
+            _user = user;
             _eventService = App.ServiceProvider.GetRequiredService<IEventService>();
             LoadEvents();
         }
@@ -29,7 +32,7 @@ namespace AEMS_WPF.Views.Organizer
 
         private void BtnCreate_Click(object sender, RoutedEventArgs e)
         {
-            NavigationService.Navigate(new CreateEventPage());
+            NavigationService.Navigate(new CreateEventPage(_user));
         }
 
         private void BtnDetails_Click(object sender, RoutedEventArgs e)
