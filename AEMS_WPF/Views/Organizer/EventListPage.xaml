@@ -76,10 +76,13 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Actions" Width="100">
+                    <DataGridTemplateColumn Header="Actions" Width="180">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Content="Details" Background="Transparent" Foreground="{StaticResource IndigoAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnDetails_Click"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Details" Background="Transparent" Foreground="{StaticResource IndigoAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnDetails_Click" Margin="0,0,10,0"/>
+                                    <Button Content="Participants" Background="Transparent" Foreground="{StaticResource PurpleAccentBrush}" BorderThickness="0" Cursor="Hand" Click="BtnParticipants_Click"/>
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

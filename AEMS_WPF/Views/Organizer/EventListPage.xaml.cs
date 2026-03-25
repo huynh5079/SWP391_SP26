@@ -35,9 +35,12 @@ namespace AEMS_WPF.Views.Organizer
             NavigationService.Navigate(new CreateEventPage(_user));
         }
 
-        private void BtnDetails_Click(object sender, RoutedEventArgs e)
+        private void BtnParticipants_Click(object sender, RoutedEventArgs e)
         {
-            // Show details
+            if (sender is Button btn && btn.DataContext is BusinessLogic.DTOs.Event.EventListDto eventItem)
+            {
+                NavigationService.Navigate(new ParticipantListPage(_user, eventItem.Id, eventItem.Title));
+            }
         }
     }
 }
