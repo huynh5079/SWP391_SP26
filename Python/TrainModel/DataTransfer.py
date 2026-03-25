@@ -6,7 +6,7 @@ import os
 
 def analyze_sentiment():
     # File paths
-    input_file = r'd:\PROJECT_SWP_SP26\swp391_sp26-develop\Python\TrainModel\data\cleaned_multi_label_dataset (2).xlsx'
+    input_file = r'D:\PROJECT_SWP_SP26\swp391_sp26-develop\Python\Data\coursera_label - coursera_label.csv'
     
     # Check if file exists
     if not os.path.exists(input_file):
@@ -14,7 +14,7 @@ def analyze_sentiment():
         return
 
     print(f"Loading data from {input_file}...")
-    df = pd.read_excel(input_file)
+    df = pd.read_csv(input_file, on_bad_lines='skip')
 
     # Categories to analyze
     categories = ['Technical', 'Content', 'Instructor', 'General', 'Assessment']
@@ -66,7 +66,7 @@ def analyze_sentiment():
     # Save the updated file (Writing back to the same file as requested)
     output_file = input_file
     print(f"Saving results to {output_file}...")
-    df.to_excel(output_file, index=False)
+    df.to_csv(output_file, index=False)
     print("Done!")
 
 if __name__ == "__main__":

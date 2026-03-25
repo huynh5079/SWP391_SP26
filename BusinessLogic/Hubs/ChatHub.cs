@@ -1,5 +1,8 @@
 using System.Security.Claims;
+using BusinessLogic.DTOs;
 using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.System;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,11 +13,12 @@ namespace BusinessLogic.Hubs
     {
         private readonly IChatUserService _chatUserService;
         private readonly IChatPresenceTracker _presenceTracker;
-
-        public ChatHub(IChatUserService chatUserService, IChatPresenceTracker presenceTracker)
+        private readonly INotificationService _notificationService;
+        public ChatHub(IChatUserService chatUserService, IChatPresenceTracker presenceTracker, INotificationService notificationService)
         {
             _chatUserService = chatUserService;
             _presenceTracker = presenceTracker;
+            _notificationService = notificationService;
         }
 
         public override async Task OnConnectedAsync()
@@ -66,6 +70,16 @@ namespace BusinessLogic.Hubs
 
                 await Clients.Group(senderUserId).SendAsync("ReceivePrivateMessage", message);
                 await Clients.Group(receiverUserId).SendAsync("ReceivePrivateMessage", message);
+
+                // Gửi thông báo lên chuông cho người nhận
+                await _notificationService.SendNotificationAsync(new SendNotificationRequest
+                {
+                    ReceiverId = receiverUserId,
+                    Title = "Tin nhắn mới",
+                    Message = content.Length > 60 ? content[..60] + "..." : content,
+                    Type = NotificationType.NewChatMessage,
+                    RelatedEntityId = senderUserId
+                });
             }
             catch (Exception ex) when (ex is KeyNotFoundException || ex is UnauthorizedAccessException || ex is InvalidOperationException || ex is ArgumentException)
             {

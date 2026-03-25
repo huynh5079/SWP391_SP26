@@ -238,19 +238,39 @@
                     { iconClass = "type-critical"; iconName = "bx-bug"; }
                     else if (item.Type == "NewChatMessage")
                     {iconClass = "type-info";iconName = "bx-message-rounded-dots";}
-                    <a href="/Notification/ClickAndRoute?notiId=@item.Id" class="notif-item @(item.IsRead == true ? "" : "unread")">
-                        <div class="notif-icon-circle @iconClass">
-                            <i class='bx @iconName'></i>
-                        </div>
-                        <div class="notif-content">
-                            <p class="notif-item-title">@item.Title</p>
-                            <p class="notif-item-desc">@item.Message</p>
-                            <span class="notif-item-time">
-                                <i class='bx bx-time-five'></i>
-                                @item.CreatedAt.ToString("dd/MM HH:mm")
-                            </span>
-                        </div>
-                    </a>
+                    @if (item.Type == "NewChatMessage" && !string.IsNullOrEmpty(item.RelatedEntityId))
+                    {
+                        <a href="#" data-chat-user-id="@item.RelatedEntityId" class="notif-item notif-chat-item @(item.IsRead == true ? "" : "unread")">
+                            <div class="notif-icon-circle @iconClass">
+                                <i class='bx @iconName'></i>
+                            </div>
+                            <div class="notif-content">
+                                <p class="notif-item-title">@item.Title</p>
+                                <p class="notif-item-desc">@item.Message</p>
+                                <span class="notif-item-time">
+                                    <i class='bx bx-time-five'></i>
+                                    @item.CreatedAt.ToString("dd/MM HH:mm")
+                                </span>
+                            </div>
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="/Notification/ClickAndRoute?notiId=@item.Id" class="notif-item @(item.IsRead == true ? "" : "unread")">
+                            <div class="notif-icon-circle @iconClass">
+                                <i class='bx @iconName'></i>
+                            </div>
+                            <div class="notif-content">
+                                <p class="notif-item-title">@item.Title</p>
+                                <p class="notif-item-desc">@item.Message</p>
+                                <span class="notif-item-time">
+                                    <i class='bx bx-time-five'></i>
+                                    @item.CreatedAt.ToString("dd/MM HH:mm")
+                                </span>
+                            </div>
+                        </a>
+                    }
+
                 }
             }
             else
@@ -327,5 +347,24 @@ document.addEventListener('click', function (e) {
     if (!panel.contains(e.target)) {
         panel.style.display = 'none';
     }
+});
+
+// Click handler for NewChatMessage notifications
+document.addEventListener('click', function (e) {
+    var chatItem = e.target.closest('.notif-chat-item');
+    if (!chatItem) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    var userId = chatItem.dataset.chatUserId;
+    if (!userId) return;
+
+    // Hide notification panel
+    var panel = document.getElementById('notifFloatingPanel');
+    if (panel) panel.style.display = 'none';
+
+    // Open messenger with the sender
+    document.dispatchEvent(new CustomEvent('aems:open-chat', { detail: { userId: userId } }));
 });
 </script>
