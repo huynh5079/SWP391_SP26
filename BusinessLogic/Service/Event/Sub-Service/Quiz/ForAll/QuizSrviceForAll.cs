@@ -52,9 +52,9 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll
 			var allSessions = (await _uow.StudentQuizScores.GetAllAsync(
 				x => x.EventQuizId == request.QuizId && x.StudentId == request.StudentId)).ToList();
 
-			var inProgressSession = allSessions.FirstOrDefault(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
-			if (inProgressSession != null)
-				throw new InvalidOperationException("Bạn đang có một lượt làm bài chưa hoàn thành.");
+			var inProgressSession = allSessions.Any(x => x.Status == StudentQuizScoreStatusEnum.InProgress);
+			if (inProgressSession)
+				throw new InvalidOperationException("Bạn đang còn lượt làm bài chưa hoàn thành.");
 
 			var submittedCount = allSessions.Count(x => x.Status == StudentQuizScoreStatusEnum.Submitted);
 			var nextAttemptNumber = (allSessions.Select(x => x.AttemptNumber).DefaultIfEmpty(0).Max()) + 1;

@@ -159,11 +159,11 @@ class AemsMessengerLayout {
 
         await this.openPanel();
 
-        if (!this.contacts.some(x => x.userId === contactId)) {
+        if (!this.contacts.some(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase())) {
             await this.loadContacts(false);
         }
 
-        if (!this.contacts.some(x => x.userId === contactId)) {
+        if (!this.contacts.some(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase())) {
             // User is allowed but has no chat history yet — fetch their info and inject as temp contact
             try {
                 const res = await fetch(`${this.conversationUrl}?otherUserId=${encodeURIComponent(contactId)}`, {
@@ -314,7 +314,7 @@ class AemsMessengerLayout {
 
     async selectContact(contactId) {
         this.activeContactId = contactId;
-        const contact = this.contacts.find(x => x.userId === contactId);
+        const contact = this.contacts.find(x => String(x.userId).toLowerCase() === String(contactId).toLowerCase());
         if (!contact) {
             return;
         }
@@ -364,7 +364,7 @@ class AemsMessengerLayout {
 
     renderMessages() {
         const conversation = this.conversations[this.activeContactId] || [];
-        const contact = this.contacts.find(x => x.userId === this.activeContactId);
+        const contact = this.contacts.find(x => x.userId === this.activeContactId || (x.userId && this.activeContactId && String(x.userId).toLowerCase() === String(this.activeContactId).toLowerCase()));
         const lastReadMineMessageId = [...conversation]
             .reverse()
             .find(message => message.senderId === this.currentUserId && message.isReadByReceiver === true)?.messageId;
@@ -451,9 +451,9 @@ class AemsMessengerLayout {
         this.conversations[contactId].push(message);
 
         const isFromOther = message.senderId !== this.currentUserId;
-        const isChatInFocus = this.activeContactId === contactId && this.panel.classList.contains('open');
+        const isChatInFocus = (this.activeContactId === contactId || (this.activeContactId && contactId && String(this.activeContactId).toLowerCase() === String(contactId).toLowerCase())) && this.panel.classList.contains('open');
 
-        const contact = this.contacts.find(x => x.userId === contactId);
+        const contact = this.contacts.find(x => x.userId === contactId || (x.userId && contactId && String(x.userId).toLowerCase() === String(contactId).toLowerCase()));
         if (contact) {
             contact.lastMessage = message.content;
             contact.lastMessageAt = message.sentAt;
@@ -538,7 +538,7 @@ class AemsMessengerLayout {
             this.conversations[contactId].push(message);
         }
 
-        const contact = this.contacts.find(x => x.userId === contactId);
+        const contact = this.contacts.find(x => x.userId === contactId || (x.userId && contactId && String(x.userId).toLowerCase() === String(contactId).toLowerCase()));
         if (contact) {
             const lastMessage = this.conversations[contactId][this.conversations[contactId].length - 1];
             if (lastMessage) {
