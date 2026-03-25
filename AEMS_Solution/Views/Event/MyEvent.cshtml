@@ -70,7 +70,8 @@
         <tbody>
             @foreach (var e in Model.Events.Where(x => x.Status != EventStatusEnum.Expired))
             {
-                <tr>
+                var isMatch = !string.IsNullOrEmpty(Model.Search) && e.Title.Contains(Model.Search, StringComparison.OrdinalIgnoreCase);
+                <tr class="@(isMatch ? "table-warning" : "")">
                     <td style="width:120px">
                         @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
                         {
