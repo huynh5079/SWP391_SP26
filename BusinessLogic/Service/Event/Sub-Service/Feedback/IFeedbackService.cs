@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,6 +20,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		//include rating and comment
 		Task<EventFeedbackSummaryDto>UpdateFeedback(string feedbackId, string? comment, double rating);
 		Task<List<EventTopRatingDto>> GetTopRatedEvents(int top);
+		Task<int> AnalyzeEventFeedbacksAsync(string eventId);
 
 
 

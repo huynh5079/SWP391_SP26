@@ -1245,8 +1245,9 @@ namespace DataAccess.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("Asessment")
-                        .HasColumnType("int");
+                    b.Property<int?>("Assessment")
+                        .HasColumnType("int")
+                        .HasColumnName("Asessment");
 
                     b.Property<string>("Assessment_Text")
                         .HasMaxLength(50)

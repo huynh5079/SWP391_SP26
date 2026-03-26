@@ -17,6 +17,7 @@ using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Quiz;
 using BusinessLogic.Service.Event.Sub_Service.Quiz.ForAll;
 using BusinessLogic.Service.Event.Sub_Service.Semester;
+using BusinessLogic.Service.Event.Sub_Service.Feedback;
 using BusinessLogic.Service.Event.Sub_Service.Ticket;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.Organizer;
@@ -108,6 +109,7 @@ builder.Services.AddScoped<IApproverCommandService, ApproverService>();
 builder.Services.AddScoped<ICheckInService, CheckInService>();
 // Student services
 builder.Services.AddScoped<IStudentEventService, StudentEventService>();
+builder.Services.AddScoped<IFeedBackService, FeedbackService>();
 // Organizer CheckIn service
 builder.Services.AddScoped<ICheckInService, CheckInService>();
 builder.Services.AddScoped<IOrganizerValidator, OrganizerValidator>();

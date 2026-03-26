@@ -67,7 +67,7 @@ public class EventService : IEventService
 				if (validFeedbacks.Any(f => f.Technical != null)) techAvg = validFeedbacks.Where(f => f.Technical != null).Average(f => f.Technical!.Value);
 				if (validFeedbacks.Any(f => f.Content != null)) contentAvg = validFeedbacks.Where(f => f.Content != null).Average(f => f.Content!.Value);
 				if (validFeedbacks.Any(f => f.Instructor != null)) instAvg = validFeedbacks.Where(f => f.Instructor != null).Average(f => f.Instructor!.Value);
-				if (validFeedbacks.Any(f => f.Asessment != null)) assessAvg = validFeedbacks.Where(f => f.Asessment != null).Average(f => f.Asessment!.Value);
+				if (validFeedbacks.Any(f => f.Assessment != null)) assessAvg = validFeedbacks.Where(f => f.Assessment != null).Average(f => f.Assessment!.Value);
 				if (validFeedbacks.Any(f => f.Label != null)) labelAvg = validFeedbacks.Where(f => f.Label != null).Average(f => f.Label!.Value);
 			}
 		}
@@ -105,6 +105,7 @@ public class EventService : IEventService
 			CheckedInCount = checkedIn,
 			WaitlistCount = waitlist,
 			AvgRating = avg,
+			FeedbackCount = e.Feedbacks?.Count(f => f.DeletedAt == null) ?? 0,
 			Mode = e.Mode?.ToString(),
 			MeetingUrl = e.MeetingUrl,
 			CreatedAt = e.CreatedAt,
@@ -120,11 +121,11 @@ public class EventService : IEventService
 			HasThumbnail = !string.IsNullOrWhiteSpace(e.ThumbnailUrl),
 			IsOwnedByCurrentUser = isOwnedByCurrentUser,
 			IsPubliclyVisible = isPubliclyVisible,
-			TechnicalAvg = techAvg,
-			ContentAvg = contentAvg,
-			InstructorAvg = instAvg,
-			AssessmentAvg = assessAvg,
-			GeneralSentimentAvg = labelAvg
+			TechnicalAvg = techAvg * 5,
+			ContentAvg = contentAvg * 5,
+			InstructorAvg = instAvg * 5,
+			AssessmentAvg = assessAvg * 5,
+			GeneralSentimentAvg = labelAvg * 5
 		};
 	}
 
@@ -427,6 +428,11 @@ public class EventService : IEventService
 		if (status.HasValue && Enum.TryParse<EventStatusEnum>(status.ToString(), true, out var parsedStatus))
 		{
 			items = items.Where(x => x.Status == parsedStatus).ToList();
+		}
+		else
+		{
+			// Default filter: exclude expired events from "My Events" list
+			items = items.Where(x => x.Status != EventStatusEnum.Expired).ToList();
 		}
 		if (!string.IsNullOrWhiteSpace(semesterId))
 		{
