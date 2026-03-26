@@ -4,100 +4,409 @@
     Layout = "_Layout";
 }
 
-<div class="container-fluid px-4 mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-0 text-primary fw-bold"><i class="bi bi-buildings me-2"></i>Quản lý Phòng Ban</h2>
-            <p class="text-muted mb-0">Hệ thống quản lý danh sách phòng ban trong trường</p>
-        </div>
-        <a asp-action="Create" class="btn btn-primary shadow-sm rounded-pill px-4">
-            <i class="bi bi-plus-circle me-2"></i>Thêm Phòng Ban Mới
-        </a>
-    </div>
-
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+<style>
+    .dept-page-bg {
+        background: #f7f8fc;
+        min-height: 100vh;
+        padding: 2rem 0;
     }
 
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+    .dept-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
     }
 
-    <div class="card shadow border-0 rounded-4 mb-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4">Tên Phòng Ban</th>
-                            <th>Mã Phòng Ban (Code)</th>
-                            <th class="text-center" style="width: 150px;">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Departments.Any())
+    .dept-title-area h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .dept-title-area p {
+        color: #64748b;
+        font-size: 0.93rem;
+        margin: 0;
+    }
+
+    .dept-add-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        padding: 0.65rem 1.5rem;
+        border-radius: 50px;
+        border: none;
+        text-decoration: none;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .dept-add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+        color: #fff;
+    }
+
+    .dept-table-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #e8edf3;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.035);
+        overflow: hidden;
+    }
+
+    .dept-table-card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .dept-table-card-header .label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+
+    .dept-table-card-header .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .dept-table-card-header .icon-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+
+    .dept-table-card-header .icon-btn:hover {
+        background: #e0e7ff;
+        color: #4f46e5;
+        border-color: #c7d2fe;
+    }
+
+    /* Main table */
+    .dept-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .dept-table thead tr th {
+        background: #f8fafc;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        padding: 0.75rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .dept-table tbody tr {
+        border-bottom: 1px solid #f8fafc;
+        transition: background 0.15s;
+    }
+
+    .dept-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .dept-table tbody tr:hover {
+        background: #fafbff;
+    }
+
+    .dept-table tbody td {
+        padding: 1.1rem 1.5rem;
+        vertical-align: middle;
+    }
+
+    .dept-name {
+        font-size: 0.93rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .dept-code-badge {
+        display: inline-block;
+        background: #eff0fd;
+        color: #4f46e5;
+        font-weight: 700;
+        font-size: 0.72rem;
+        letter-spacing: 0.03em;
+        padding: 0.3rem 0.7rem;
+        border-radius: 6px;
+    }
+
+    .dept-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .dept-action-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+
+    .dept-action-btn.edit {
+        color: #4f46e5;
+    }
+
+    .dept-action-btn.edit:hover {
+        background: #e0e7ff;
+        border-color: #c7d2fe;
+        color: #4338ca;
+    }
+
+    .dept-action-btn.delete {
+        color: #ef4444;
+    }
+
+    .dept-action-btn.delete:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #dc2626;
+    }
+
+    /* Modal */
+    .dept-modal .modal-content {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+
+    .dept-modal .modal-header {
+        border-bottom: none;
+        padding: 1.5rem 1.5rem 0.75rem;
+    }
+
+    .dept-modal .modal-body {
+        padding: 0.75rem 1.5rem 1.25rem;
+        font-size: 0.92rem;
+        color: #334155;
+    }
+
+    .dept-modal .modal-footer {
+        border-top: 1px solid #f1f5f9;
+        padding: 1rem 1.5rem 1.25rem;
+    }
+
+    .dept-empty {
+        text-align: center;
+        padding: 3.5rem 0;
+        color: #94a3b8;
+    }
+
+    .dept-empty i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 0.75rem;
+    }
+
+    .dept-empty p {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    /* Search */
+    .dept-search-wrapper {
+        position: relative;
+        min-width: 220px;
+    }
+
+    .dept-search-wrapper i {
+        position: absolute;
+        top: 50%;
+        left: 0.75rem;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 0.85rem;
+        pointer-events: none;
+    }
+
+    #deptSearch {
+        padding-left: 2.2rem;
+        padding-right: 1rem;
+        height: 36px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        background: #f8fafc;
+        width: 100%;
+        transition: all 0.2s;
+        outline: none;
+    }
+
+    #deptSearch:focus {
+        border-color: #a5b4fc;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.25);
+    }
+
+    .dept-count-badge {
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.2rem 0.6rem;
+        border-radius: 20px;
+        margin-left: 0.5rem;
+    }
+</style>
+
+<div class="dept-page-bg">
+    <div class="container-fluid px-4">
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3 mb-3" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3 mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <div class="dept-header">
+            <div class="dept-title-area">
+                <h1><i class="bi bi-bar-chart-steps" style="color:#4f46e5;"></i> Quản lý Phòng Ban</h1>
+                <p>Hệ thống quản lý danh sách phòng ban trong trường</p>
+            </div>
+            <a asp-action="Create" class="dept-add-btn">
+                <i class="bi bi-plus-circle-fill"></i> Thêm Phòng Ban Mới
+            </a>
+        </div>
+
+        <div class="dept-table-card">
+            <div class="dept-table-card-header">
+                <span class="label">
+                    Danh sách đơn vị
+                    <span class="dept-count-badge" id="deptCount">@Model.Departments.Count</span>
+                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="dept-search-wrapper">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="deptSearch" placeholder="Tìm kiếm phòng ban..." autocomplete="off" />
+                    </div>
+                    <div class="actions">
+                        <span class="icon-btn" title="Lọc"><i class="bi bi-funnel"></i></span>
+                        <span class="icon-btn" title="Xuất dữ liệu"><i class="bi bi-download"></i></span>
+                    </div>
+                </div>
+            </div>
+
+            <table class="dept-table" id="deptTable">
+                <thead>
+                    <tr>
+                        <th>Tên Phòng Ban</th>
+                        <th>Mã Phòng Ban (Code)</th>
+                        <th style="text-align:right;">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody id="deptTableBody">
+                    @if (Model.Departments.Any())
+                    {
+                        @foreach (var dept in Model.Departments)
                         {
-                            @foreach (var dept in Model.Departments)
-                            {
-                                <tr>
-                                    <td class="ps-4">
-                                        <div class="fw-semibold text-dark">@dept.Name</div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary rounded-pill px-3 py-2">@dept.Code</span>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <div class="d-flex justify-content-center gap-2">
-                                            <a asp-action="Edit" asp-route-id="@dept.Id" class="btn btn-sm btn-outline-primary rounded-circle" title="Chỉnh sửa">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" onclick="confirmDelete('@dept.Id', '@dept.Name')" title="Xóa">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="3" class="text-center py-5 text-muted">
-                                    <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
-                                    Chưa có phòng ban nào trong hệ thống.
+                            <tr class="dept-row" data-name="@dept.Name.ToLower()" data-code="@dept.Code.ToLower()">
+                                <td><span class="dept-name">@dept.Name</span></td>
+                                <td><span class="dept-code-badge">@dept.Code</span></td>
+                                <td>
+                                    <div class="dept-actions">
+                                        <a asp-action="Edit" asp-route-id="@dept.Id" class="dept-action-btn edit" title="Chỉnh sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" class="dept-action-btn delete" onclick="confirmDelete('@dept.Id', '@Html.Raw(dept.Name.Replace("'", "\\'"))')" title="Xóa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
-                    </tbody>
-                </table>
+                    }
+                    else
+                    {
+                        <tr id="emptyRow">
+                            <td colspan="3">
+                                <div class="dept-empty">
+                                    <i class="bi bi-building-slash"></i>
+                                    <p>Chưa có phòng ban nào trong hệ thống.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="text-center py-4 d-none" id="noSearchResult">
+                <i class="bi bi-search text-muted" style="font-size:1.5rem;"></i>
+                <p class="text-muted small mt-2 mb-0">Không tìm thấy phòng ban nào phù hợp.</p>
             </div>
         </div>
+
     </div>
 </div>
 
-<!-- Modal Xóa -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+<!-- Delete Confirmation Modal -->
+<div class="modal fade dept-modal" id="deleteModal" tabindex="-1" aria-label="Xác nhận xóa" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa</h5>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 Bạn có chắc chắn muốn xóa phòng ban <strong id="deleteTargetName"></strong>?<br />
                 <span class="text-muted small">Lưu ý: Không thể xóa nếu có người dùng hoặc sự kiện đang thuộc phòng ban này.</span>
             </div>
-            <div class="modal-footer border-top-0 pt-0">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
                 <form asp-action="Delete" method="post" id="deleteForm">
+                    @Html.AntiForgeryToken()
                     <input type="hidden" name="id" id="deleteTargetId" />
                     <button type="submit" class="btn btn-danger rounded-pill px-4">Xóa ngay</button>
                 </form>
@@ -111,8 +420,25 @@
         function confirmDelete(id, name) {
             document.getElementById('deleteTargetId').value = id;
             document.getElementById('deleteTargetName').innerText = name;
-            var myModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-            myModal.show();
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
         }
+
+        // Live search filter
+        document.getElementById('deptSearch').addEventListener('input', function () {
+            const kw = this.value.trim().toLowerCase();
+            const rows = document.querySelectorAll('.dept-row');
+            let visible = 0;
+
+            rows.forEach(row => {
+                const name = row.dataset.name || '';
+                const code = row.dataset.code || '';
+                const match = !kw || name.includes(kw) || code.includes(kw);
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+
+            document.getElementById('deptCount').textContent = visible;
+            document.getElementById('noSearchResult').classList.toggle('d-none', visible > 0 || rows.length === 0);
+        });
     </script>
 }
