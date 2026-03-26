@@ -5,193 +5,1045 @@
     Layout = "_Organizerlayout";
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<style>
+    /* ============================================================
+       CREATE QUIZ FROM FILE — PREMIUM UI
+    ============================================================ */
+    :root {
+        --uf-primary:      #6366f1;
+        --uf-primary-dark: #4f46e5;
+        --uf-secondary:    #8b5cf6;
+        --uf-bg:           #f0f2ff;
+        --uf-card:         #ffffff;
+        --uf-border:       #e0e7ff;
+        --uf-text:         #1e1b4b;
+        --uf-muted:        #6b7280;
+        --uf-radius:       16px;
+        --uf-shadow:       0 8px 32px rgba(99,102,241,.10);
+        --uf-focus:        0 0 0 3px rgba(99,102,241,.22);
+        --uf-green:        #22c55e;
+        --uf-red:          #ef4444;
+        --uf-amber:        #f59e0b;
+    }
+
+    /* ── Page wrapper ── */
+    .uf-page {
+        background: var(--uf-bg);
+        min-height: 100vh;
+        padding: 2rem 0 4rem;
+    }
+
+    /* ── Animations ── */
+    @@keyframes uf-fadein {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: none; }
+    }
+    @@keyframes uf-float {
+        0%, 100% { transform: translateY(0); }
+        50%       { transform: translateY(-8px); }
+    }
+    @@keyframes uf-pulse-ring {
+        0%   { box-shadow: 0 0 0 0 rgba(99,102,241,.35); }
+        70%  { box-shadow: 0 0 0 14px rgba(99,102,241,0); }
+        100% { box-shadow: 0 0 0 0   rgba(99,102,241,0); }
+    }
+    @@keyframes uf-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+    }
+    @@keyframes uf-shimmer {
+        0%   { background-position: -400px 0; }
+        100% { background-position: 400px 0; }
+    }
+    @@keyframes uf-pop {
+        0%   { transform: scale(.8); opacity: 0; }
+        70%  { transform: scale(1.08); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    @@keyframes uf-dash {
+        to { stroke-dashoffset: 0; }
+    }
+
+    /* ── Header ── */
+    .uf-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        animation: uf-fadein .4s ease both;
+    }
+    .uf-header-title {
+        font-size: 1.9rem;
+        font-weight: 900;
+        color: var(--uf-text);
+        margin-bottom: .25rem;
+        letter-spacing: -.025em;
+    }
+    .uf-header-title span {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .uf-header-sub {
+        color: var(--uf-muted);
+        font-size: .88rem;
+        margin: 0;
+    }
+    .uf-header-actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .uf-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .82rem;
+        font-weight: 700;
+        padding: .6rem 1.2rem;
+        border-radius: 30px;
+        border: none;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all .2s;
+        white-space: nowrap;
+    }
+    .uf-btn-outline {
+        background: #fff;
+        color: var(--uf-primary);
+        border: 1.5px solid var(--uf-primary);
+    }
+    .uf-btn-outline:hover { background: var(--uf-primary); color: #fff; transform: translateY(-1px); }
+    .uf-btn-ghost {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1.5px solid #e2e8f0;
+    }
+    .uf-btn-ghost:hover { background: #e2e8f0; }
+    .uf-btn-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(99,102,241,.35);
+        font-size: .95rem;
+        padding: .75rem 2.2rem;
+    }
+    .uf-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 7px 20px rgba(99,102,241,.42);
+        color: #fff;
+    }
+    .uf-btn-info {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1.5px solid #bfdbfe;
+    }
+    .uf-btn-info:hover { background: #dbeafe; }
+
+    /* ── Layout: two-column on large ── */
+    .uf-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 1.5rem;
+        align-items: start;
+    }
+    @@media(max-width: 1100px) { .uf-layout { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .uf-card {
+        background: var(--uf-card);
+        border-radius: var(--uf-radius);
+        border: 1px solid var(--uf-border);
+        box-shadow: var(--uf-shadow);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        animation: uf-fadein .4s ease both;
+    }
+    .uf-card-header {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        padding: 1.1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+    .uf-card-header-icon {
+        width: 38px;
+        height: 38px;
+        background: rgba(255,255,255,.18);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .uf-card-header-title { font-size: 1rem; font-weight: 800; color: #fff; margin: 0; }
+    .uf-card-header-sub   { font-size: .78rem; color: rgba(255,255,255,.75); margin: 0; }
+    .uf-card-body { padding: 1.75rem; }
+
+    /* ── Form controls ── */
+    .uf-label {
+        font-size: .75rem;
+        font-weight: 800;
+        color: var(--uf-text);
+        margin-bottom: .4rem;
+        display: block;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+    .uf-input, .uf-select {
+        width: 100%;
+        padding: .72rem 1rem;
+        border: 1.5px solid #e0e7ff;
+        border-radius: 10px;
+        font-size: .9rem;
+        color: var(--uf-text);
+        background: #fafbff;
+        transition: all .2s;
+        outline: none;
+    }
+    .uf-input:focus, .uf-select:focus {
+        background: #fff;
+        border-color: var(--uf-primary);
+        box-shadow: var(--uf-focus);
+    }
+    .uf-hint  { font-size: .75rem; color: var(--uf-muted); margin-top: .3rem; }
+    .uf-error { font-size: .78rem; color: var(--uf-red); margin-top: .25rem; display: block; }
+
+    /* ── Grid helpers ── */
+    .uf-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @@media(max-width: 640px) { .uf-grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── Toggle switch ── */
+    .uf-switch-wrap {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: .85rem 1.1rem;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        cursor: pointer;
+        transition: background .15s;
+    }
+    .uf-switch-wrap:hover { background: #f0f2ff; border-color: #c7d2fe; }
+    .uf-switch-wrap .form-check-input {
+        width: 2.3rem;
+        height: 1.25rem;
+        cursor: pointer;
+        accent-color: var(--uf-primary);
+    }
+    .uf-switch-label { font-size: .88rem; font-weight: 600; color: var(--uf-text); margin: 0; cursor: pointer; }
+
+    /* ── File Drop Zone ── */
+    .uf-dropzone {
+        border: 2.5px dashed #c7d2fe;
+        border-radius: 16px;
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        background: #f5f3ff;
+        cursor: pointer;
+        transition: all .22s;
+        position: relative;
+        overflow: hidden;
+    }
+    .uf-dropzone::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+        background-size: 400px 100%;
+        animation: uf-shimmer 2.5s infinite;
+        opacity: 0;
+        transition: opacity .3s;
+    }
+    .uf-dropzone:hover       { border-color: var(--uf-primary); background: #ede9fe; }
+    .uf-dropzone:hover::before { opacity: 1; }
+    .uf-dropzone.drag-over   { border-color: var(--uf-green); background: #f0fdf4; transform: scale(1.01); }
+    .uf-dropzone.has-file    { border-color: var(--uf-green); background: #f0fdf4; border-style: solid; }
+
+    .uf-dropzone-icon {
+        width: 72px;
+        height: 72px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto .75rem;
+        font-size: 1.8rem;
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(99,102,241,.30);
+        animation: uf-float 3s ease-in-out infinite;
+        transition: all .2s;
+    }
+    .uf-dropzone:hover .uf-dropzone-icon { animation: uf-pulse-ring 1.2s ease infinite; }
+    .uf-dropzone.has-file .uf-dropzone-icon {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        box-shadow: 0 6px 18px rgba(34,197,94,.30);
+        animation: uf-pop .4s ease both;
+    }
+
+    .uf-dropzone-title {
+        font-weight: 800;
+        font-size: 1rem;
+        color: #4f46e5;
+        margin-bottom: .3rem;
+    }
+    .uf-dropzone-sub {
+        font-size: .82rem;
+        color: var(--uf-muted);
+        margin-bottom: .75rem;
+    }
+    .uf-dropzone-formats {
+        display: flex;
+        justify-content: center;
+        gap: .5rem;
+        margin-bottom: .75rem;
+        flex-wrap: wrap;
+    }
+    .uf-format-chip {
+        font-size: .68rem;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: .2rem .55rem;
+        border-radius: 6px;
+        border: 1px solid;
+    }
+    .uf-format-pdf  { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+    .uf-format-docx { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+    .uf-format-txt  { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+
+    .uf-file-chosen {
+        display: none;
+        align-items: center;
+        gap: .6rem;
+        margin-top: .75rem;
+        padding: .6rem 1rem;
+        background: #dcfce7;
+        border-radius: 10px;
+        border: 1px solid #86efac;
+        font-size: .85rem;
+        font-weight: 700;
+        color: #15803d;
+        animation: uf-pop .3s ease;
+    }
+    .uf-file-chosen i { font-size: 1.1rem; }
+    .uf-file-chosen.show { display: flex; }
+
+    .uf-file-input-hidden {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* ── Warning banner ── */
+    .uf-warning {
+        display: flex;
+        align-items: flex-start;
+        gap: .65rem;
+        padding: .9rem 1.1rem;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 10px;
+        font-size: .83rem;
+        color: #92400e;
+        margin-top: .9rem;
+        font-weight: 500;
+    }
+    .uf-warning i { font-size: 1rem; margin-top: .05rem; color: #d97706; flex-shrink: 0; }
+
+    /* ── Right sidebar cards ── */
+    .uf-tip-card {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+        border-radius: var(--uf-radius);
+        box-shadow: 0 8px 28px rgba(30,27,75,.35);
+        padding: 1.5rem;
+        color: #fff;
+        margin-bottom: 1.5rem;
+        animation: uf-fadein .5s .15s ease both;
+        position: relative;
+        overflow: hidden;
+    }
+    .uf-tip-card::after {
+        content: '📄';
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 5rem;
+        opacity: .06;
+    }
+    .uf-tip-card-title { font-size: .95rem; font-weight: 800; margin-bottom: .85rem; display: flex; align-items: center; gap: .5rem; }
+    .uf-tip-card-title i { color: #a5b4fc; }
+
+    .uf-tip-item {
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        margin-bottom: .75rem;
+        font-size: .83rem;
+        color: rgba(255,255,255,.82);
+        line-height: 1.5;
+    }
+    .uf-tip-item:last-child { margin-bottom: 0; }
+    .uf-tip-item i { color: #a5b4fc; margin-top: .1rem; flex-shrink: 0; }
+    .uf-tip-item code {
+        background: rgba(165,180,252,.15);
+        color: #c7d2fe;
+        padding: .05rem .35rem;
+        border-radius: 4px;
+        font-size: .78rem;
+    }
+
+    .uf-steps-card {
+        background: var(--uf-card);
+        border-radius: var(--uf-radius);
+        border: 1px solid var(--uf-border);
+        box-shadow: var(--uf-shadow);
+        padding: 1.25rem 1.5rem;
+        animation: uf-fadein .5s .25s ease both;
+    }
+    .uf-steps-title { font-size: .85rem; font-weight: 800; color: var(--uf-text); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+    .uf-steps-title i { color: var(--uf-primary); }
+
+    .uf-step {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+        padding-bottom: .9rem;
+        border-bottom: 1px dashed #e0e7ff;
+        margin-bottom: .9rem;
+    }
+    .uf-step:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .uf-step-num {
+        width: 26px;
+        height: 26px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .72rem;
+        font-weight: 900;
+        flex-shrink: 0;
+    }
+    .uf-step-text { font-size: .82rem; color: #374151; line-height: 1.5; }
+    .uf-step-text strong { color: var(--uf-text); }
+
+    /* ── Submit bar ── */
+    .uf-submit-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.75rem;
+        background: #fff;
+        border-radius: var(--uf-radius);
+        border: 1px solid var(--uf-border);
+        box-shadow: var(--uf-shadow);
+        flex-wrap: wrap;
+        gap: 1rem;
+        animation: uf-fadein .5s .3s ease both;
+    }
+    .uf-submit-info { font-size: .85rem; color: var(--uf-muted); }
+    .uf-submit-info strong { color: var(--uf-text); }
+    .uf-submit-actions { display: flex; gap: .75rem; align-items: center; }
+
+    /* ── Validation summary ── */
+    .uf-val-summary {
+        background: #fee2e2;
+        border-radius: 12px;
+        padding: .9rem 1.2rem;
+        font-size: .88rem;
+        color: #dc2626;
+        margin-bottom: 1.25rem;
+        border: 1px solid #fca5a5;
+    }
+
+    /* ── Live link group ── */
+    .uf-live-group { position: relative; }
+    .uf-live-group > i {
+        position: absolute;
+        top: 50%; left: 1rem;
+        transform: translateY(-50%);
+        color: #6366f1;
+        pointer-events: none;
+        font-size: .9rem;
+    }
+    .uf-live-group .uf-input { padding-left: 2.6rem; }
+
+    /* ── Info modal ── */
+    .uf-modal .modal-content {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    }
+    .uf-modal .modal-header { border-bottom: none; padding: 1.5rem 1.5rem .5rem; }
+    .uf-modal .modal-body   { padding: 1rem 1.5rem 1.25rem; }
+    .uf-modal .modal-footer { border-top: 1px solid #f1f5f9; padding: 1rem 1.5rem; }
+
+    .uf-code-block {
+        background: #1e1b4b;
+        color: #c7d2fe;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        font-family: 'Cascadia Code', Consolas, monospace;
+        font-size: .82rem;
+        line-height: 1.7;
+        max-height: 240px;
+        overflow-y: auto;
+        margin-top: .75rem;
+        white-space: pre;
+    }
+    .uf-code-block::-webkit-scrollbar { width: 6px; }
+    .uf-code-block::-webkit-scrollbar-track { background: rgba(255,255,255,.05); }
+    .uf-code-block::-webkit-scrollbar-thumb { background: rgba(165,180,252,.4); border-radius: 3px; }
+
+    /* ── Uploading spinner overlay ── */
+    .uf-uploading-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(30,27,75,.55);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+    .uf-uploading-overlay.show { display: flex; }
+    .uf-uploading-box {
+        background: #fff;
+        border-radius: 20px;
+        padding: 2.5rem 3rem;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        animation: uf-pop .4s ease;
+        min-width: 260px;
+    }
+    .uf-spinner-icon {
+        width: 60px; height: 60px;
+        border: 4px solid #ede9fe;
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        margin: 0 auto .75rem;
+        animation: uf-spin .9s linear infinite;
+    }
+    .uf-uploading-text { font-size: .95rem; font-weight: 700; color: #4f46e5; }
+    .uf-uploading-sub  { font-size: .8rem; color: #64748b; margin-top: .3rem; }
+</style>
+
+<!-- Uploading overlay -->
+<div class="uf-uploading-overlay" id="ufUploadingOverlay">
+    <div class="uf-uploading-box">
+        <div class="uf-spinner-icon"></div>
+        <div class="uf-uploading-text">Đang xử lý file...</div>
+        <div class="uf-uploading-sub">Vui lòng đợi trong giây lát.</div>
+    </div>
+</div>
+
+<div class="uf-page">
+<div class="container-fluid px-4">
+
+    <!-- ── Page Header ── -->
+    <div class="uf-header">
         <div>
-            <h1 class="h3 mb-1">Create Quiz from File</h1>
-            <p class="text-muted small mb-0">Upload a quiz file after entering the quiz information.</p>
+            <h1 class="uf-header-title">
+                <i class="bi bi-file-earmark-arrow-up me-2" style="color:#6366f1;"></i>
+                Create Quiz <span>from File</span>
+            </h1>
+            <p class="uf-header-sub">Upload a quiz file after entering the quiz information. Supported: PDF, DOCX, TXT.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-pencil-square me-1"></i>Switch to Manual
+        <div class="uf-header-actions">
+            <a asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId"
+               class="uf-btn uf-btn-outline">
+                <i class="bi bi-pencil-square"></i> Switch to Manual
             </a>
-            <a asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-collection me-1"></i>Switch to Question Bank
+            <a asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId"
+               class="uf-btn uf-btn-outline">
+                <i class="bi bi-collection"></i> Switch to Question Bank
             </a>
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+            <a asp-action="Index" class="uf-btn uf-btn-ghost">
+                <i class="bi bi-arrow-left"></i> Back to list
+            </a>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            <div class="alert alert-light border d-flex align-items-start gap-2 mb-4">
-                <i class="bi bi-upload text-primary"></i>
-                <div>Create the quiz and upload a file in one step. Supported formats: PDF, DOCX, TXT.</div>
-            </div>
+    @{
+        var hasErrors = ViewData.ModelState.Values.Any(v => v.Errors.Any());
+    }
+    @if (hasErrors)
+    {
+        <div class="uf-val-summary">
+            <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Please fix the following errors:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@err.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
 
-            <form asp-action="Create" asp-route-mode="upload" method="post" enctype="multipart/form-data">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-                <div class="mb-3">
-                    <label class="form-label">Event</label>
-                    <select asp-for="EventId" asp-items="Model.Events" class="form-select">
-                        <option value="">Select event</option>
-                    </select>
-                    <span asp-validation-for="EventId" class="text-danger"></span>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Topic</label>
-                    <select asp-for="TopicId" asp-items="Model.Topics" class="form-select">
-                        <option value="">Select topic</option>
-                    </select>
-                    <span asp-validation-for="TopicId" class="text-danger"></span>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Title</label>
-                    <input asp-for="Quiz.Title" class="form-control" />
-                    <span asp-validation-for="Quiz.Title" class="text-danger"></span>
+    <form asp-action="Create" asp-route-mode="upload" method="post" enctype="multipart/form-data" id="uploadForm">
+
+        <div class="uf-layout">
+
+            <!-- ── LEFT COLUMN: Quiz Settings ── -->
+            <div>
+
+                <!-- Settings Card -->
+                <div class="uf-card">
+                    <div class="uf-card-header">
+                        <div class="uf-card-header-icon"><i class="bi bi-gear-fill"></i></div>
+                        <div>
+                            <div class="uf-card-header-title">Quiz Settings</div>
+                            <div class="uf-card-header-sub">Configure the quiz details, rules, and schedule</div>
+                        </div>
+                    </div>
+                    <div class="uf-card-body">
+
+                        <!-- Event + Topic -->
+                        <div class="uf-grid-2 mb-3">
+                            <div>
+                                <label asp-for="EventId" class="uf-label">Event <span class="text-danger">*</span></label>
+                                <select asp-for="EventId" asp-items="Model.Events" class="uf-select">
+                                    <option value="">— Select event —</option>
+                                </select>
+                                <span asp-validation-for="EventId" class="uf-error"></span>
+                            </div>
+                            <div>
+                                <label asp-for="TopicId" class="uf-label">Topic</label>
+                                <select asp-for="TopicId" asp-items="Model.Topics" class="uf-select">
+                                    <option value="">— Select topic —</option>
+                                </select>
+                                <span asp-validation-for="TopicId" class="uf-error"></span>
+                            </div>
+                        </div>
+
+                        <!-- Quiz Title -->
+                        <div class="mb-3">
+                            <label asp-for="Quiz.Title" class="uf-label">Quiz Title <span class="text-danger">*</span></label>
+                            <input asp-for="Quiz.Title" class="uf-input" placeholder="Enter a descriptive title for your quiz…" />
+                            <span asp-validation-for="Quiz.Title" class="uf-error"></span>
+                        </div>
+
+                        <!-- Type + Passing Score -->
+                        <div class="uf-grid-2 mb-3">
+                            <div>
+                                <label asp-for="Quiz.Type" class="uf-label">Quiz Type</label>
+                                <select asp-for="Quiz.Type" class="uf-select js-quiz-type">
+                                    <option value="0">🎯 Practice</option>
+                                    <option value="1">📝 Exam</option>
+                                    <option value="2">📋 Survey</option>
+                                    <option value="3">⚡ Live Quiz</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label asp-for="Quiz.PassingScore" class="uf-label">Passing Score</label>
+                                <input asp-for="Quiz.PassingScore" class="uf-input" type="number" min="0" placeholder="e.g. 70" />
+                                <span asp-validation-for="Quiz.PassingScore" class="uf-error"></span>
+                            </div>
+                        </div>
+
+                        <!-- Time Limit + Max Attempts -->
+                        <div class="uf-grid-2 mb-3">
+                            <div>
+                                <label asp-for="Quiz.TimeLimit" class="uf-label">Time Limit (minutes)</label>
+                                <input asp-for="Quiz.TimeLimit" class="uf-input" type="number" min="0" placeholder="0 or empty = unlimited" />
+                                <span class="uf-hint"><i class="bi bi-clock me-1"></i>Leave empty for unlimited time.</span>
+                                <span asp-validation-for="Quiz.TimeLimit" class="uf-error"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Quiz.MaxAttempts" class="uf-label">Max Attempts</label>
+                                <input asp-for="Quiz.MaxAttempts" class="uf-input" type="number" min="0" placeholder="0 = unlimited" />
+                                <span asp-validation-for="Quiz.MaxAttempts" class="uf-error"></span>
+                            </div>
+                        </div>
+
+                        <!-- Start / End Time -->
+                        <div class="uf-grid-2 mb-3">
+                            <div>
+                                <label asp-for="Quiz.QuizStartTime" class="uf-label">Quiz Start Time</label>
+                                <input asp-for="Quiz.QuizStartTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="uf-input" type="datetime-local" />
+                                <span asp-validation-for="Quiz.QuizStartTime" class="uf-error"></span>
+                            </div>
+                            <div>
+                                <label asp-for="Quiz.QuizEndTime" class="uf-label">Quiz End Time</label>
+                                <input asp-for="Quiz.QuizEndTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="uf-input" type="datetime-local" />
+                                <span asp-validation-for="Quiz.QuizEndTime" class="uf-error"></span>
+                            </div>
+                        </div>
+
+                        <!-- Live Quiz Link -->
+                        <div class="mb-3 d-none js-live-quiz-link-group">
+                            <label asp-for="Quiz.LiveQuizLink" class="uf-label">Live Quiz Link</label>
+                            <div class="uf-live-group">
+                                <i class="bi bi-link-45deg"></i>
+                                <input asp-for="Quiz.LiveQuizLink" class="uf-input js-live-quiz-link-input" type="url" placeholder="https://kahoot.it/…" />
+                            </div>
+                            <span asp-validation-for="Quiz.LiveQuizLink" class="uf-error"></span>
+                        </div>
+
+                        <!-- Allow Review -->
+                        <div class="mb-3">
+                            <label class="uf-switch-wrap" for="Quiz_AllowReview">
+                                <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" id="Quiz_AllowReview" />
+                                <span class="uf-switch-label">
+                                    <i class="bi bi-eye me-1" style="color:#6366f1;"></i>
+                                    Cho phép học sinh xem đáp án sau khi nộp bài
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- Question Bank Visibility -->
+                        <div>
+                            <label asp-for="Quiz.SharingStatus" class="uf-label">Question Bank Visibility</label>
+                            <select asp-for="Quiz.SharingStatus" class="uf-select">
+                                <option value="@((int)QuizSetVisibilityEnum.Private)">🔒 Private — only used internally</option>
+                                <option value="@((int)QuizSetVisibilityEnum.Public)">🌐 Public (Community) — shared with others</option>
+                            </select>
+                            <span class="uf-hint">Private: chỉ dùng nội bộ. Public: chia sẻ cho toàn bộ community.</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Type</label>
-                    <select asp-for="Quiz.Type" class="form-select js-quiz-type">
-                        <option value="0">Practice</option>
-                        <option value="1">Exam</option>
-                        <option value="2">Survey</option>
-                        <option value="3">LiveQuiz</option>
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Passing Score</label>
-                    <input asp-for="Quiz.PassingScore" class="form-control" type="number" min="0" />
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Quiz.TimeLimit" class="form-label">Time limit (minutes)</label>
-                    <input asp-for="Quiz.TimeLimit" class="form-control" type="number" min="0" placeholder="0 or empty for unlimited" />
-                    <span asp-validation-for="Quiz.TimeLimit" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Max Attempts</label>
-                    <input asp-for="Quiz.MaxAttempts" class="form-control" type="number" min="0" placeholder="0 or empty for unlimited" />
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Quiz.QuizStartTime" class="form-label">Quiz start time</label>
-                    <input asp-for="Quiz.QuizStartTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
-                    <span asp-validation-for="Quiz.QuizStartTime" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Quiz.QuizEndTime" class="form-label">Quiz end time</label>
-                    <input asp-for="Quiz.QuizEndTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
-                    <span asp-validation-for="Quiz.QuizEndTime" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3 d-none js-live-quiz-link-group">
-                    <label asp-for="Quiz.LiveQuizLink" class="form-label">Live quiz link</label>
-                    <input asp-for="Quiz.LiveQuizLink" class="form-control js-live-quiz-link-input" type="url" placeholder="https://..." />
-                    <span asp-validation-for="Quiz.LiveQuizLink" class="text-danger"></span>
-                </div>
-
-                <div class="form-check form-switch mb-3">
-                    <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" />
-                    <label asp-for="Quiz.AllowReview" class="form-check-label">Cho phép học sinh xem đáp án sau khi nộp bài</label>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Quiz.SharingStatus" class="form-label">Question bank visibility</label>
-                    <select asp-for="Quiz.SharingStatus" class="form-select">
-                        <option value="@((int)QuizSetVisibilityEnum.Private)">Private</option>
-                        <option value="@((int)QuizSetVisibilityEnum.Public)">Public (Community)</option>
-                    </select>
-                    <div class="form-text">`Private` chỉ dùng nội bộ. `Public (Community)` sẽ chia sẻ cho community.</div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="form-label mb-0">Upload quiz file (PDF, DOCX, TXT)</label>
-                        <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#formatFileModal">
-                            <i class="bi bi-info-circle"></i> Xem hướng dẫn format
+                <!-- Upload File Card -->
+                <div class="uf-card">
+                    <div class="uf-card-header">
+                        <div class="uf-card-header-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+                        <div style="flex:1;">
+                            <div class="uf-card-header-title">Upload Quiz File</div>
+                            <div class="uf-card-header-sub">PDF, DOCX, or TXT — must match the required format</div>
+                        </div>
+                        <button type="button"
+                                class="uf-btn uf-btn-info"
+                                style="font-size:.8rem; padding:.45rem .9rem; border-radius:20px;"
+                                data-bs-toggle="modal"
+                                data-bs-target="#formatFileModal">
+                            <i class="bi bi-info-circle"></i> View Format Guide
                         </button>
                     </div>
-                    <input asp-for="FileUpload" class="form-control" type="file" accept=".pdf,.docx,.txt" />
-                    <div class="form-text text-warning mt-2">
-                        <i class="bi bi-exclamation-triangle"></i> Lưu ý: File tải lên phải theo đúng định dạng được hướng dẫn để hệ thống có thể nhận diện câu hỏi thành công.
+                    <div class="uf-card-body">
+
+                        <!-- Drop Zone -->
+                        <div class="uf-dropzone" id="ufDropzone" onclick="document.getElementById('fileInput').click();">
+                            <input asp-for="FileUpload"
+                                   class="uf-file-input-hidden"
+                                   type="file"
+                                   accept=".pdf,.docx,.txt"
+                                   id="fileInput"
+                                   onclick="event.stopPropagation();" />
+
+                            <div class="uf-dropzone-icon" id="ufDropIcon">
+                                <i class="bi bi-cloud-arrow-up-fill" id="ufDropIconInner"></i>
+                            </div>
+
+                            <div class="uf-dropzone-title" id="ufDropTitle">Click to browse or drag & drop</div>
+                            <div class="uf-dropzone-sub" id="ufDropSub">Select your quiz file to upload</div>
+
+                            <div class="uf-dropzone-formats">
+                                <span class="uf-format-chip uf-format-pdf">PDF</span>
+                                <span class="uf-format-chip uf-format-docx">DOCX</span>
+                                <span class="uf-format-chip uf-format-txt">TXT</span>
+                            </div>
+
+                            <div class="uf-file-chosen" id="ufFileChosen">
+                                <i class="bi bi-file-earmark-check-fill"></i>
+                                <span id="ufFileName">No file selected</span>
+                            </div>
+                        </div>
+
+                        <div class="uf-warning">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span>
+                                Lưu ý: File tải lên phải theo đúng định dạng được hướng dẫn để hệ thống có thể nhận diện
+                                câu hỏi thành công. Nhấn <strong>View Format Guide</strong> để xem chi tiết.
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Create Quiz</button>
-            </form>
+                <!-- Submit Bar -->
+                <div class="uf-submit-bar">
+                    <div class="uf-submit-info">
+                        <strong>Ready to create quiz?</strong> Check all settings before uploading.
+                    </div>
+                    <div class="uf-submit-actions">
+                        <a asp-action="Index" class="uf-btn uf-btn-ghost">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="uf-btn uf-btn-primary" id="ufSubmitBtn">
+                            <i class="bi bi-cloud-arrow-up-fill"></i> Create Quiz
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── RIGHT COLUMN: Guide ── -->
+            <div>
+
+                <!-- Dark tips card -->
+                <div class="uf-tip-card">
+                    <div class="uf-tip-card-title">
+                        <i class="bi bi-lightbulb-fill"></i> Quick Tips
+                    </div>
+                    <div class="uf-tip-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Mỗi câu hỏi bắt đầu bằng <code>Câu X:</code> hoặc <code>Question X:</code></span>
+                    </div>
+                    <div class="uf-tip-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Đáp án bắt đầu bằng <code>A.</code> <code>B.</code> <code>C.</code> <code>D.</code> hoặc <code>A)</code></span>
+                    </div>
+                    <div class="uf-tip-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Kèm đáp án đúng với <code>Đáp án: A</code> hoặc <code>Answer: A</code></span>
+                    </div>
+                    <div class="uf-tip-item">
+                        <i class="bi bi-exclamation-triangle-fill" style="color:#fbbf24;"></i>
+                        <span>File phải đúng format - hệ thống sẽ từ chối nếu không nhận diện được câu hỏi.</span>
+                    </div>
+                    <div class="uf-tip-item">
+                        <i class="bi bi-file-earmark-check-fill" style="color:#a5b4fc;"></i>
+                        <span>Kích thước file tối đa: <code>5MB</code>. Khuyến nghị dùng file <code>.TXT</code> cho độ chính xác cao nhất.</span>
+                    </div>
+                </div>
+
+                <!-- Steps card -->
+                <div class="uf-steps-card">
+                    <div class="uf-steps-title">
+                        <i class="bi bi-list-ol"></i> How it works
+                    </div>
+                    <div class="uf-step">
+                        <div class="uf-step-num">1</div>
+                        <div class="uf-step-text"><strong>Configure Quiz</strong> — Fill in all settings on the left (title, type, duration, schedule).</div>
+                    </div>
+                    <div class="uf-step">
+                        <div class="uf-step-num">2</div>
+                        <div class="uf-step-text"><strong>Prepare File</strong> — Format your questions according to the guide. Download the template if needed.</div>
+                    </div>
+                    <div class="uf-step">
+                        <div class="uf-step-num">3</div>
+                        <div class="uf-step-text"><strong>Upload</strong> — Drag & drop or click to browse. We accept <strong>PDF</strong>, <strong>DOCX</strong>, <strong>TXT</strong>.</div>
+                    </div>
+                    <div class="uf-step">
+                        <div class="uf-step-num">4</div>
+                        <div class="uf-step-text"><strong>Submit</strong> — Click "Create Quiz". The system will auto-parse the questions from your file.</div>
+                    </div>
+                    <div class="uf-step">
+                        <div class="uf-step-num">5</div>
+                        <div class="uf-step-text"><strong>Review</strong> — After creation, check the imported questions and make edits if needed.</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </form>
+
+</div>
+</div>
+
+<!-- ── Format File Modal ── -->
+<div class="modal fade uf-modal" id="formatFileModal" tabindex="-1" aria-labelledby="formatFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="formatFileModalLabel">
+                        <i class="bi bi-file-earmark-text me-2" style="color:#6366f1;"></i>
+                        Hướng dẫn định dạng file Upload
+                    </h5>
+                    <p class="text-muted small mb-0">File phải tuân theo đúng cấu trúc bên dưới để hệ thống có thể nhận diện.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:.9rem 1.1rem; margin-bottom:1.25rem;">
+                    <strong style="color:#1d4ed8; font-size:.88rem;"><i class="bi bi-info-circle-fill me-2"></i>Cấu trúc cơ bản:</strong>
+                    <ul class="mb-0 mt-2" style="font-size:.85rem; color:#1e40af;">
+                        <li>Mỗi câu hỏi cần đánh số bắt đầu bằng <code>Câu X:</code> hoặc <code>Question X:</code></li>
+                        <li>Các đáp án bắt đầu bằng <code>A.</code>, <code>B.</code>, <code>C.</code>, <code>D.</code> hoặc <code>A)</code></li>
+                        <li>Kèm theo đáp án đúng (tùy chọn) với mẫu <code>Đáp án: A</code> hoặc <code>Answer: A</code></li>
+                    </ul>
+                </div>
+
+                <div style="font-size:.85rem; font-weight:700; color:#1e1b4b; margin-bottom:.5rem;">
+                    📋 Ví dụ mẫu chuẩn 1 — Các đáp án xếp dọc:
+                </div>
+                <div class="uf-code-block">Câu 1: Thủ đô của Việt Nam là gì?
+A. Hồ Chí Minh
+B. Đà Nẵng
+C. Hà Nội
+D. Huế
+Đáp án: C
+
+Câu 2: HTML viết tắt của từ gì?
+A. Hyper Text Markup Language
+B. Hot Mail
+C. How to Make Lasagna
+Đáp án: A</div>
+
+                <div style="font-size:.85rem; font-weight:700; color:#1e1b4b; margin-bottom:.5rem; margin-top:1.25rem;">
+                    📋 Ví dụ mẫu chuẩn 2 — Các đáp án xếp ngang:
+                </div>
+                <div class="uf-code-block">Question 1: Returning home after the earthquake, Simon saw that his house was extremely chaotic.
+A. organised    B. tidy    C. messy    D. neat
+Answer: C
+
+Question 2: My uncle dreams of having a new house, so he plans to save up for it.
+A. leaves       B. moves   C. intends  D. quits
+Answer: C</div>
+
+                <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:.9rem 1.1rem; margin-top:1.25rem; font-size:.85rem; color:#92400e;">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                    <strong>Lưu ý quan trọng:</strong>
+                    Nếu file của bạn không đúng với định dạng trên, hệ thống sẽ <strong>không thể nhận diện</strong> và tự động thêm các câu hỏi vào quiz.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="uf-btn uf-btn-ghost" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Đóng cửa sổ
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<partial name="~/Views/Event/EventQuiz/CreateQuiz/Uploadfile/FormatFile.cshtml" />
-
-@section Scripts{
+@section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const typeSelect = document.querySelector('.js-quiz-type');
-            const liveLinkGroup = document.querySelector('.js-live-quiz-link-group');
-            const liveLinkInput = document.querySelector('.js-live-quiz-link-input');
-            const timeLimitInput = document.querySelector('input[name="Quiz.TimeLimit"]');
-            const startInput = document.querySelector('input[name="Quiz.QuizStartTime"]');
-            const endInput = document.querySelector('input[name="Quiz.QuizEndTime"]');
-            let isEndTimeManuallyEdited = false;
+    document.addEventListener('DOMContentLoaded', function () {
+        // ── Quiz type: live quiz link toggle ─────────────────────────────────
+        const typeSelect    = document.querySelector('.js-quiz-type');
+        const liveLinkGroup = document.querySelector('.js-live-quiz-link-group');
+        const liveLinkInput = document.querySelector('.js-live-quiz-link-input');
+        const timeLimitInput = document.querySelector('input[name="Quiz.TimeLimit"]');
+        const startInput     = document.querySelector('input[name="Quiz.QuizStartTime"]');
+        const endInput       = document.querySelector('input[name="Quiz.QuizEndTime"]');
+        let isEndTimeManuallyEdited = false;
 
-            function toDateTimeLocalValue(date) {
-                const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-                return local.toISOString().slice(0, 16);
+        function toDateTimeLocalValue(date) {
+            const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+            return local.toISOString().slice(0, 16);
+        }
+
+        function syncScheduleFromTimeLimit() {
+            if (!timeLimitInput || !startInput || !endInput) return;
+            const minutes = parseInt(timeLimitInput.value || '0', 10);
+            if (!Number.isFinite(minutes) || minutes <= 0) return;
+            if (!startInput.value) startInput.value = toDateTimeLocalValue(new Date());
+            const startDate = new Date(startInput.value);
+            if (Number.isNaN(startDate.getTime())) return;
+            const calcEnd = new Date(startDate.getTime() + minutes * 60000);
+            if (!endInput.value || !isEndTimeManuallyEdited) endInput.value = toDateTimeLocalValue(calcEnd);
+        }
+
+        function toggleLiveQuizLink() {
+            const isLive = typeSelect && typeSelect.value === '3';
+            liveLinkGroup?.classList.toggle('d-none', !isLive);
+            if (liveLinkInput) {
+                liveLinkInput.required = isLive;
+                if (!isLive) liveLinkInput.value = '';
             }
+        }
 
-            function syncScheduleFromTimeLimit() {
-                if (!timeLimitInput || !startInput || !endInput) return;
+        typeSelect?.addEventListener('change', toggleLiveQuizLink);
+        timeLimitInput?.addEventListener('input', () => { isEndTimeManuallyEdited = false; syncScheduleFromTimeLimit(); });
+        startInput?.addEventListener('change',   () => { isEndTimeManuallyEdited = false; syncScheduleFromTimeLimit(); });
+        endInput?.addEventListener('input',      () => { isEndTimeManuallyEdited = true; });
+        toggleLiveQuizLink();
+        syncScheduleFromTimeLimit();
 
-                const minutes = parseInt(timeLimitInput.value || '0', 10);
-                if (!Number.isFinite(minutes) || minutes <= 0) return;
+        // ── File Drop Zone ────────────────────────────────────────────────────
+        const dropzone    = document.getElementById('ufDropzone');
+        const fileInput   = document.getElementById('fileInput');
+        const dropIcon    = document.getElementById('ufDropIcon');
+        const dropIconInner = document.getElementById('ufDropIconInner');
+        const dropTitle   = document.getElementById('ufDropTitle');
+        const dropSub     = document.getElementById('ufDropSub');
+        const fileChosen  = document.getElementById('ufFileChosen');
+        const fileNameEl  = document.getElementById('ufFileName');
 
-                if (!startInput.value) {
-                    startInput.value = toDateTimeLocalValue(new Date());
-                }
+        function humanFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
 
-                const startDate = new Date(startInput.value);
-                if (Number.isNaN(startDate.getTime())) return;
+        function showFileChosen(file) {
+            dropzone.classList.add('has-file');
+            dropIconInner.className = 'bi bi-file-earmark-check-fill';
+            dropTitle.textContent   = file.name;
+            dropSub.textContent     = humanFileSize(file.size) + ' — ready to upload';
+            fileNameEl.textContent  = file.name;
+            fileChosen.classList.add('show');
+        }
 
-                const calculatedEnd = new Date(startDate.getTime() + (minutes * 60000));
-                if (!endInput.value || !isEndTimeManuallyEdited) {
-                    endInput.value = toDateTimeLocalValue(calculatedEnd);
-                }
-            }
+        function resetDropzone() {
+            dropzone.classList.remove('has-file', 'drag-over');
+            dropIconInner.className = 'bi bi-cloud-arrow-up-fill';
+            dropTitle.textContent   = 'Click to browse or drag & drop';
+            dropSub.textContent     = 'Select your quiz file to upload';
+            fileChosen.classList.remove('show');
+        }
 
-            function toggleLiveQuizLink() {
-                const isLiveQuiz = typeSelect && typeSelect.value === '3';
-                liveLinkGroup?.classList.toggle('d-none', !isLiveQuiz);
-
-                if (liveLinkInput) {
-                    liveLinkInput.required = isLiveQuiz;
-                    if (!isLiveQuiz) {
-                        liveLinkInput.value = '';
-                    }
-                }
-            }
-
-            typeSelect?.addEventListener('change', toggleLiveQuizLink);
-            timeLimitInput?.addEventListener('input', function () {
-                isEndTimeManuallyEdited = false;
-                syncScheduleFromTimeLimit();
-            });
-            startInput?.addEventListener('change', function () {
-                isEndTimeManuallyEdited = false;
-                syncScheduleFromTimeLimit();
-            });
-            endInput?.addEventListener('input', function () {
-                isEndTimeManuallyEdited = true;
-            });
-            toggleLiveQuizLink();
-            syncScheduleFromTimeLimit();
+        fileInput?.addEventListener('change', function () {
+            const file = this.files?.[0];
+            if (file) showFileChosen(file);
+            else resetDropzone();
         });
+
+        dropzone?.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        dropzone?.addEventListener('dragleave', function () {
+            this.classList.remove('drag-over');
+        });
+        dropzone?.addEventListener('drop', function (e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const file = e.dataTransfer?.files?.[0];
+            if (!file) return;
+            const ext = file.name.split('.').pop()?.toLowerCase();
+            if (!['pdf','docx','txt'].includes(ext)) {
+                alert('Chỉ hỗ trợ file PDF, DOCX, TXT.');
+                return;
+            }
+            // Transfer to input
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            showFileChosen(file);
+        });
+
+        // ── Form submit with loading overlay ─────────────────────────────────
+        const uploadForm    = document.getElementById('uploadForm');
+        const uploadOverlay = document.getElementById('ufUploadingOverlay');
+        const submitBtn     = document.getElementById('ufSubmitBtn');
+
+        uploadForm?.addEventListener('submit', function (e) {
+            const file = fileInput?.files?.[0];
+            if (!file) {
+                e.preventDefault();
+                dropzone?.classList.add('drag-over');
+                setTimeout(() => dropzone?.classList.remove('drag-over'), 600);
+                alert('Vui lòng chọn file trước khi tạo quiz.');
+                return;
+            }
+            // Show uploading overlay
+            uploadOverlay?.classList.add('show');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing…';
+            }
+        });
+    });
     </script>
 }
