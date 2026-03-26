@@ -5,616 +5,858 @@
     Layout = "_Organizerlayout";
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<style>
+    :root {
+        --qz-primary: #6366f1;
+        --qz-primary-dark: #4f46e5;
+        --qz-bg: #f0f2ff;
+        --qz-card: #ffffff;
+        --qz-border: #e0e7ff;
+        --qz-text: #1e1b4b;
+        --qz-muted: #6b7280;
+        --qz-radius: 16px;
+        --qz-shadow: 0 8px 32px rgba(99,102,241,.10);
+        --qz-focus: 0 0 0 3px rgba(99,102,241,.22);
+        --qz-green:  #22c55e;
+        --qz-red:    #ef4444;
+        --qz-amber:  #f59e0b;
+    }
+
+    /* ── Page ── */
+    .qz-page { background: var(--qz-bg); min-height: 100vh; padding: 2rem 0 4rem; }
+
+    /* ── Header ── */
+    .qz-header {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;
+    }
+    .qz-header-title { font-size: 1.85rem; font-weight: 900; color: var(--qz-text); margin-bottom: .25rem; letter-spacing: -.025em; }
+    .qz-header-sub   { color: var(--qz-muted); font-size: .88rem; margin: 0; }
+    .qz-header-actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+
+    .qz-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        font-size: .82rem; font-weight: 700; padding: .6rem 1.2rem;
+        border-radius: 30px; border: none; text-decoration: none;
+        cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .qz-btn-outline { background: #fff; color: var(--qz-primary); border: 1.5px solid var(--qz-primary); }
+    .qz-btn-outline:hover { background: var(--qz-primary); color: #fff; }
+    .qz-btn-ghost   { background: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; }
+    .qz-btn-ghost:hover { background: #e2e8f0; }
+    .qz-btn-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.35);
+    }
+    .qz-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(99,102,241,.42); color: #fff; }
+    .qz-btn-danger  { background: #fee2e2; color: #dc2626; border: 1.5px solid #fca5a5; }
+    .qz-btn-danger:hover { background: #dc2626; color: #fff; }
+    .qz-btn-success { background: #dcfce7; color: #16a34a; border: 1.5px solid #86efac; }
+    .qz-btn-success:hover { background: #16a34a; color: #fff; }
+
+    /* ── Section cards ── */
+    .qz-card {
+        background: var(--qz-card); border-radius: var(--qz-radius);
+        border: 1px solid var(--qz-border); box-shadow: var(--qz-shadow);
+        margin-bottom: 1.5rem; overflow: hidden;
+        animation: qz-fadein .35s ease both;
+    }
+    @@keyframes qz-fadein { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+    .qz-card-header {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        padding: 1.1rem 1.5rem;
+        display: flex; align-items: center; gap: .75rem;
+    }
+    .qz-card-header-icon {
+        width: 36px; height: 36px; background: rgba(255,255,255,.18);
+        border-radius: 10px; display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; color: #fff;
+    }
+    .qz-card-header-title { font-size: 1rem; font-weight: 800; color: #fff; margin: 0; }
+    .qz-card-header-sub   { font-size: .78rem; color: rgba(255,255,255,.75); margin: 0; }
+    .qz-card-body { padding: 1.75rem; }
+
+    /* ── Info banner ── */
+    .qz-info-banner {
+        display: flex; align-items: center; gap: .75rem; padding: .9rem 1.2rem;
+        background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe;
+        margin-bottom: 1.5rem; font-size: .88rem; color: #1d4ed8; font-weight: 500;
+    }
+    .qz-info-banner i { font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ── Form controls ── */
+    .qz-label {
+        font-size: .78rem; font-weight: 700; color: var(--qz-text);
+        margin-bottom: .4rem; display: block; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .qz-input, .qz-select, .qz-textarea {
+        width: 100%; padding: .72rem 1rem; border: 1.5px solid #e0e7ff;
+        border-radius: 10px; font-size: .9rem; color: var(--qz-text);
+        background: #fafbff; transition: all .2s; outline: none;
+    }
+    .qz-input:focus, .qz-select:focus, .qz-textarea:focus {
+        background: #fff; border-color: var(--qz-primary); box-shadow: var(--qz-focus);
+    }
+    .qz-textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+    .qz-hint { font-size: .75rem; color: var(--qz-muted); margin-top: .3rem; }
+    .qz-error { font-size: .78rem; color: var(--qz-red); margin-top: .25rem; display: block; }
+
+    /* ── Toggle switch ── */
+    .qz-switch-wrap {
+        display: flex; align-items: center; gap: .75rem; padding: .85rem 1.1rem;
+        background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
+    }
+    .qz-switch-wrap .form-check-input { width: 2.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--qz-primary); }
+    .qz-switch-label { font-size: .88rem; font-weight: 600; color: var(--qz-text); margin: 0; }
+
+    /* ── Progress bar (question count) ── */
+    .qz-progress-bar-wrap { height: 4px; background: #e0e7ff; border-radius: 2px; overflow: hidden; margin-top: .3rem; }
+    .qz-progress-bar { height: 100%; background: linear-gradient(90deg,#6366f1,#8b5cf6); border-radius: 2px; transition: width .4s; }
+
+    /* ── Question card ── */
+    .qz-question-card {
+        background: #fff; border-radius: 14px; border: 1.5px solid #e0e7ff;
+        box-shadow: 0 2px 12px rgba(99,102,241,.06); overflow: hidden;
+        transition: transform .2s, box-shadow .2s;
+        animation: qz-slidein .3s ease both;
+    }
+    @@keyframes qz-slidein { from { opacity:0; transform:translateX(-16px); } to { opacity:1; transform:none; } }
+    .qz-question-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,.12); }
+
+    .qz-question-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: .85rem 1.25rem; background: linear-gradient(135deg,#f0f2ff,#ede9fe);
+        border-bottom: 1px solid #e0e7ff;
+    }
+    .qz-question-badge {
+        display: flex; align-items: center; gap: .5rem;
+        font-size: .8rem; font-weight: 800; color: #4f46e5;
+    }
+    .qz-q-num {
+        width: 26px; height: 26px; background: var(--qz-primary); color: #fff;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: .75rem; font-weight: 900;
+    }
+    .qz-question-body { padding: 1.25rem; }
+
+    /* ── Answer option row ── */
+    .qz-answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+    @@media(max-width:640px) { .qz-answer-grid { grid-template-columns: 1fr; } }
+
+    .qz-answer-item {
+        display: flex; align-items: center; gap: .5rem;
+        border: 1.5px solid #e0e7ff; border-radius: 10px; padding: .55rem .75rem;
+        transition: all .18s; background: #fafbff; cursor: pointer;
+    }
+    .qz-answer-item:has(.js-answer-selector:checked) {
+        border-color: var(--qz-green); background: #f0fdf4;
+    }
+    .qz-answer-item.qz-answer-hidden { display: none !important; }
+
+    .qz-answer-letter {
+        width: 24px; height: 24px; border-radius: 6px; background: #e0e7ff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .72rem; font-weight: 900; color: #4f46e5; flex-shrink: 0;
+    }
+    .qz-answer-item:has(.js-answer-selector:checked) .qz-answer-letter {
+        background: #16a34a; color: #fff;
+    }
+
+    .qz-answer-checkbox { width: 16px; height: 16px; accent-color: var(--qz-green); cursor: pointer; flex-shrink: 0; }
+    .qz-answer-input {
+        flex: 1; border: none; background: transparent; font-size: .87rem; color: var(--qz-text);
+        outline: none; padding: 0; min-width: 0;
+    }
+    .qz-answer-input::placeholder { color: #a5b4fc; }
+    .qz-answer-input:read-only    { color: #4f46e5; font-weight: 600; }
+
+    /* ── Difficulty badge ── */
+    .qz-diff-easy   { background: #dcfce7; color: #16a34a; }
+    .qz-diff-medium { background: #fef9c3; color: #a16207; }
+    .qz-diff-hard   { background: #fee2e2; color: #dc2626; }
+
+    /* ── Add question btn ── */
+    .qz-add-q-btn {
+        display: flex; align-items: center; justify-content: center; gap: .5rem;
+        width: 100%; padding: 1rem; border: 2px dashed #c7d2fe; border-radius: 14px;
+        background: #f5f3ff; color: #6366f1; font-weight: 700; font-size: .9rem;
+        cursor: pointer; transition: all .2s; margin-top: .25rem;
+    }
+    .qz-add-q-btn:hover { border-color: var(--qz-primary); background: #ede9fe; transform: translateY(-1px); }
+
+    /* ── Summary footer ── */
+    .qz-submit-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1.25rem 1.75rem; background: #fff; border-radius: var(--qz-radius);
+        border: 1px solid var(--qz-border); box-shadow: var(--qz-shadow); margin-top: .5rem;
+        flex-wrap: wrap; gap: 1rem;
+    }
+    .qz-submit-info { font-size: .85rem; color: var(--qz-muted); }
+    .qz-submit-info strong { color: var(--qz-text); }
+    .qz-submit-actions { display: flex; gap: .75rem; align-items: center; }
+
+    /* ── Validation summary ── */
+    .qz-val-summary { background:#fee2e2; border-radius:12px; padding:.9rem 1.2rem; font-size:.88rem; color:#dc2626; margin-bottom:1.25rem; }
+
+    /* ── Live quiz link ── */
+    .qz-live-group { position:relative; }
+    .qz-live-group i { position:absolute; top:50%; left:1rem; transform:translateY(-50%); color:#6366f1; pointer-events:none; }
+    .qz-live-group .qz-input { padding-left:2.5rem; }
+
+    /* ── Grid helpers ── */
+    .qz-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .qz-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    .qz-full   { grid-column: 1 / -1; }
+    @@media(max-width:768px) { .qz-grid-2, .qz-grid-3 { grid-template-columns:1fr; } }
+
+    /* ── Question type chips ── */
+    .qz-type-chip { font-size:.7rem; font-weight:800; letter-spacing:.05em; padding:.2rem .55rem; border-radius:20px; }
+    .qz-type-0 { background:#ede9fe; color:#6d28d9; }
+    .qz-type-1 { background:#dbeafe; color:#1d4ed8; }
+    .qz-type-2 { background:#fef3c7; color:#92400e; }
+
+    /* ── Scroll to top for questions ── */
+    #manual-questions-container { display: flex; flex-direction: column; gap: 1rem; }
+</style>
+
+<div class="qz-page">
+<div class="container-fluid px-4">
+
+    <!-- Page Header -->
+    <div class="qz-header">
         <div>
-            <h1 class="h3 mb-1">Create Quiz Manually</h1>
-            <p class="text-muted small mb-0">Create the quiz and enter the questions manually on this page.</p>
+            <h1 class="qz-header-title">
+                <i class="bi bi-pencil-square me-2" style="color:#6366f1;"></i>Create Quiz Manually
+            </h1>
+            <p class="qz-header-sub">Create the quiz and enter the questions manually in one step.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-upload me-1"></i>Switch to Upload File
+        <div class="qz-header-actions">
+            <a asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId"
+               class="qz-btn qz-btn-outline">
+                <i class="bi bi-upload"></i> Switch to Upload File
             </a>
-            <a asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-collection me-1"></i>Switch to Question Bank
+            <a asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId"
+               class="qz-btn qz-btn-outline">
+                <i class="bi bi-collection"></i> Switch to Question Bank
             </a>
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to list</a>
+            <a asp-action="Index" class="qz-btn qz-btn-ghost">
+                <i class="bi bi-arrow-left"></i> Back to list
+            </a>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-4">
-            <div class="alert alert-light border d-flex align-items-start gap-2 mb-4">
-                <i class="bi bi-info-circle text-primary"></i>
-                <div>Create the quiz and enter the questions manually in one step.</div>
+    <form asp-action="Create" asp-route-mode="manual" method="post" id="quizForm">
+        @{
+            var validationItems = ViewData.ModelState.Values.SelectMany(v => v.Errors);
+        }
+        @if (validationItems.Any())
+        {
+            <div class="qz-val-summary">
+                <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Please fix the following errors:</strong>
+                <ul class="mb-0 mt-1">
+                    @foreach (var err in validationItems)
+                    {
+                        <li>@err.ErrorMessage</li>
+                    }
+                </ul>
             </div>
+        }
 
-            <form asp-action="Create" asp-route-mode="manual" method="post">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <!-- ── Quiz Settings Card ── -->
+        <div class="qz-card">
+            <div class="qz-card-header">
+                <div class="qz-card-header-icon"><i class="bi bi-gear-fill"></i></div>
+                <div>
+                    <div class="qz-card-header-title">Quiz Settings</div>
+                    <div class="qz-card-header-sub">Configure the quiz details and rules</div>
+                </div>
+            </div>
+            <div class="qz-card-body">
+                <div class="qz-info-banner">
+                    <i class="bi bi-info-circle-fill"></i>
+                    Create the quiz and enter the questions manually in one step. Fields marked with <strong class="ms-1">*</strong> are required.
+                </div>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label asp-for="EventId" class="form-label">Event</label>
-                        <select asp-for="EventId" asp-items="Model.Events" class="form-select">
-                            <option value="">Select event</option>
+                <!-- Row 1: Event + Topic -->
+                <div class="qz-grid-2 mb-3">
+                    <div>
+                        <label asp-for="EventId" class="qz-label">Event <span class="text-danger">*</span></label>
+                        <select asp-for="EventId" asp-items="Model.Events" class="qz-select">
+                            <option value="">— Select event —</option>
                         </select>
-                        <span asp-validation-for="EventId" class="text-danger"></span>
+                        <span asp-validation-for="EventId" class="qz-error"></span>
                     </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="TopicId" class="form-label">Topic</label>
-                        <select asp-for="TopicId" asp-items="Model.Topics" class="form-select">
-                            <option value="">Select topic</option>
+                    <div>
+                        <label asp-for="TopicId" class="qz-label">Topic</label>
+                        <select asp-for="TopicId" asp-items="Model.Topics" class="qz-select">
+                            <option value="">— Select topic —</option>
                         </select>
-                        <span asp-validation-for="TopicId" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-12">
-                        <label asp-for="Quiz.Title" class="form-label">Quiz title</label>
-                        <input asp-for="Quiz.Title" class="form-control" placeholder="Enter quiz title" />
-                        <span asp-validation-for="Quiz.Title" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.Type" class="form-label">Type</label>
-                        <select asp-for="Quiz.Type" class="form-select js-quiz-type">
-                            <option value="0">Practice</option>
-                            <option value="1">Exam</option>
-                            <option value="2">Survey</option>
-                            <option value="3">LiveQuiz</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.PassingScore" class="form-label">Passing score</label>
-                        <input asp-for="Quiz.PassingScore" class="form-control" type="number" min="0" placeholder="Enter passing score" />
-                        <span asp-validation-for="Quiz.PassingScore" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.TimeLimit" class="form-label">Time limit (minutes)</label>
-                        <input asp-for="Quiz.TimeLimit" class="form-control" type="number" min="0" placeholder="0 or empty for unlimited" />
-                        <span asp-validation-for="Quiz.TimeLimit" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.MaxAttempts" class="form-label">Max Attempts</label>
-                        <input asp-for="Quiz.MaxAttempts" class="form-control" type="number" min="0" placeholder="Enter max attempts (0 for unlimited)" />
-                        <span asp-validation-for="Quiz.MaxAttempts" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.QuizStartTime" class="form-label">Quiz start time</label>
-                        <input asp-for="Quiz.QuizStartTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
-                        <span asp-validation-for="Quiz.QuizStartTime" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.QuizEndTime" class="form-label">Quiz end time</label>
-                        <input asp-for="Quiz.QuizEndTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" type="datetime-local" />
-                        <span asp-validation-for="Quiz.QuizEndTime" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-12 d-none js-live-quiz-link-group">
-                        <label asp-for="Quiz.LiveQuizLink" class="form-label">Live quiz link</label>
-                        <input asp-for="Quiz.LiveQuizLink" class="form-control js-live-quiz-link-input" type="url" placeholder="https://..." />
-                        <span asp-validation-for="Quiz.LiveQuizLink" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="form-check form-switch mt-2">
-                            <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" />
-                            <label asp-for="Quiz.AllowReview" class="form-check-label">Cho phép học sinh xem đáp án sau khi nộp bài</label>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="Quiz.SharingStatus" class="form-label">Question bank visibility</label>
-                        <select asp-for="Quiz.SharingStatus" class="form-select">
-                            <option value="@((int)QuizSetVisibilityEnum.Private)">Private</option>
-                            <option value="@((int)QuizSetVisibilityEnum.Public)">Public (Community)</option>
-                        </select>
-                        <div class="form-text">`Private` chỉ dùng nội bộ. `Public (Community)` sẽ chia sẻ cho community.</div>
+                        <span asp-validation-for="TopicId" class="qz-error"></span>
                     </div>
                 </div>
 
-                <div class="border-top mt-4 pt-4">
-                    <div class="mb-3">
-                        <h2 class="h5 mb-1">Questions</h2>
-                        <p class="text-muted small mb-0">Support 3 question types: 4 Answers, True / False, and Multiple Choice.</p>
+                <!-- Row 2: Quiz Title -->
+                <div class="mb-3">
+                    <label asp-for="Quiz.Title" class="qz-label">Quiz Title <span class="text-danger">*</span></label>
+                    <input asp-for="Quiz.Title" class="qz-input" placeholder="Enter a descriptive title for your quiz…" />
+                    <span asp-validation-for="Quiz.Title" class="qz-error"></span>
+                </div>
+
+                <!-- Row 3: Type + Passing Score -->
+                <div class="qz-grid-2 mb-3">
+                    <div>
+                        <label asp-for="Quiz.Type" class="qz-label">Quiz Type</label>
+                        <select asp-for="Quiz.Type" class="qz-select js-quiz-type">
+                            <option value="0">🎯 Practice</option>
+                            <option value="1">📝 Exam</option>
+                            <option value="2">📋 Survey</option>
+                            <option value="3">⚡ Live Quiz</option>
+                        </select>
                     </div>
-
-                    <div id="manual-questions-container" class="d-flex flex-column gap-3">
-                        @for (var i = 0; i < Model.ManualQuestions.Count; i++)
-                        {
-                            var question = Model.ManualQuestions[i];
-                            var idPrefix = $"ManualQuestions_{i}__";
-                            var namePrefix = $"ManualQuestions[{i}]";
-                            var currentCorrectAnswers = (question.CorrectAnswer ?? string.Empty)
-                                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                            <div class="card border-0 shadow-sm manual-question-item" data-index="@i">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <span class="fw-semibold">Question <span class="question-number">@(i + 1)</span></span>
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-question-btn @(Model.ManualQuestions.Count == 1 ? "d-none" : string.Empty)">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label" for="@(idPrefix + "TypeOption")">Question type</label>
-                                            <select class="form-select js-question-type" id="@(idPrefix + "TypeOption")" name="@(namePrefix + ".TypeOption")" data-current-type="@((int)question.TypeOption)">
-                                                <option value="@((int)QuestionTypeOptionEnum.SingleChoice)">4 Answers</option>
-                                                <option value="@((int)QuestionTypeOptionEnum.MultipleChoice)">Multiple Choice</option>
-                                                <option value="@((int)QuestionTypeOptionEnum.TrueFalse)">True / False</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label" for="@(idPrefix + "Difficulty")">Difficulty</label>
-                                            <select class="form-select" id="@(idPrefix + "Difficulty")" name="@(namePrefix + ".Difficulty")">
-                                                @if (question.Difficulty == QuestionDifficultyEnum.Easy)
-                                                {
-                                                    <option value="0" selected>Easy</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="0">Easy</option>
-                                                }
-
-                                                @if (question.Difficulty == QuestionDifficultyEnum.Medium)
-                                                {
-                                                    <option value="1" selected>Medium</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="1">Medium</option>
-                                                }
-
-                                                @if (question.Difficulty == QuestionDifficultyEnum.Hard)
-                                                {
-                                                    <option value="2" selected>Hard</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="2">Hard</option>
-                                                }
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-3">
-                                        <label class="form-label" for="@(idPrefix + "QuestionText")">Question</label>
-                                        <textarea class="form-control" id="@(idPrefix + "QuestionText")" name="@(namePrefix + ".QuestionText")" rows="3" placeholder="Enter question content" required>@question.QuestionText</textarea>
-                                    </div>
-
-                                    <div class="mt-3">
-                                        <label class="form-label" for="@(idPrefix + "Explanation")">Explanation</label>
-                                        <textarea class="form-control" id="@(idPrefix + "Explanation")" name="@(namePrefix + ".Explanation")" rows="2" placeholder="Giải thích đáp án (không bắt buộc)">@question.Explanation</textarea>
-                                    </div>
-
-                                    <div class="row g-3 mt-1 js-answer-group-wrapper">
-                                        <div class="col-md-6 js-option-a-group">
-                                            <label class="form-label" for="@(idPrefix + "Options_OptionA")">Answer A</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                                    <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="A" />
-                                                </span>
-                                                <input class="form-control js-option-a border-start-0" id="@(idPrefix + "Options_OptionA")" name="@(namePrefix + ".Options.OptionA")" value="@question.Options.OptionA" placeholder="Enter answer A" />
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6 js-option-b-group">
-                                            <label class="form-label" for="@(idPrefix + "Options_OptionB")">Answer B</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                                    <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="B" />
-                                                </span>
-                                                <input class="form-control js-option-b border-start-0" id="@(idPrefix + "Options_OptionB")" name="@(namePrefix + ".Options.OptionB")" value="@question.Options.OptionB" placeholder="Enter answer B" />
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6 js-option-c-group">
-                                            <label class="form-label" for="@(idPrefix + "Options_OptionC")">Answer C</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                                    <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="C" />
-                                                </span>
-                                                <input class="form-control js-option-c border-start-0" id="@(idPrefix + "Options_OptionC")" name="@(namePrefix + ".Options.OptionC")" value="@question.Options.OptionC" placeholder="Enter answer C" />
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6 js-option-d-group">
-                                            <label class="form-label" for="@(idPrefix + "Options_OptionD")">Answer D</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                                    <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="D" />
-                                                </span>
-                                                <input class="form-control js-option-d border-start-0" id="@(idPrefix + "Options_OptionD")" name="@(namePrefix + ".Options.OptionD")" value="@question.Options.OptionD" placeholder="Enter answer D" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <input class="js-correct-answer-value" type="hidden" id="@(idPrefix + "CorrectAnswer")" name="@(namePrefix + ".CorrectAnswer")" value="@question.CorrectAnswer" />
-                                    <input type="hidden" id="@(idPrefix + "ScorePoint")" name="@(namePrefix + ".ScorePoint")" value="@(question.ScorePoint > 0 ? question.ScorePoint : 1)" />
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <div class="mt-3 d-flex justify-content-end">
-                        <button type="button" class="btn btn-outline-primary btn-sm" id="add-question-btn">
-                            <i class="bi bi-plus-circle me-1"></i>Add question
-                        </button>
+                    <div>
+                        <label asp-for="Quiz.PassingScore" class="qz-label">Passing Score</label>
+                        <input asp-for="Quiz.PassingScore" class="qz-input" type="number" min="0" placeholder="e.g. 70" />
+                        <span asp-validation-for="Quiz.PassingScore" class="qz-error"></span>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle me-1"></i>Create Quiz
-                    </button>
+                <!-- Row 4: Time limit + Max Attempts -->
+                <div class="qz-grid-2 mb-3">
+                    <div>
+                        <label asp-for="Quiz.TimeLimit" class="qz-label">Time Limit (minutes)</label>
+                        <input asp-for="Quiz.TimeLimit" class="qz-input" type="number" min="0" placeholder="0 or empty = unlimited" />
+                        <span class="qz-hint"><i class="bi bi-clock me-1"></i>Leave empty for unlimited time.</span>
+                        <span asp-validation-for="Quiz.TimeLimit" class="qz-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Quiz.MaxAttempts" class="qz-label">Max Attempts</label>
+                        <input asp-for="Quiz.MaxAttempts" class="qz-input" type="number" min="0" placeholder="0 = unlimited" />
+                        <span asp-validation-for="Quiz.MaxAttempts" class="qz-error"></span>
+                    </div>
                 </div>
-            </form>
+
+                <!-- Row 5: Start + End Time -->
+                <div class="qz-grid-2 mb-3">
+                    <div>
+                        <label asp-for="Quiz.QuizStartTime" class="qz-label">Quiz Start Time</label>
+                        <input asp-for="Quiz.QuizStartTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="qz-input" type="datetime-local" />
+                        <span asp-validation-for="Quiz.QuizStartTime" class="qz-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Quiz.QuizEndTime" class="qz-label">Quiz End Time</label>
+                        <input asp-for="Quiz.QuizEndTime" asp-format="{0:yyyy-MM-ddTHH:mm}" class="qz-input" type="datetime-local" />
+                        <span asp-validation-for="Quiz.QuizEndTime" class="qz-error"></span>
+                    </div>
+                </div>
+
+                <!-- Row 6: Live Quiz Link (hidden unless LiveQuiz type) -->
+                <div class="mb-3 d-none js-live-quiz-link-group">
+                    <label asp-for="Quiz.LiveQuizLink" class="qz-label">Live Quiz Link</label>
+                    <div class="qz-live-group">
+                        <i class="bi bi-link-45deg"></i>
+                        <input asp-for="Quiz.LiveQuizLink" class="qz-input js-live-quiz-link-input" type="url" placeholder="https://kahoot.it/..." />
+                    </div>
+                    <span asp-validation-for="Quiz.LiveQuizLink" class="qz-error"></span>
+                </div>
+
+                <!-- Row 7: Allow Review toggle -->
+                <div class="mb-3">
+                    <div class="qz-switch-wrap">
+                        <input asp-for="Quiz.AllowReview" class="form-check-input" type="checkbox" />
+                        <label asp-for="Quiz.AllowReview" class="qz-switch-label">
+                            <i class="bi bi-eye me-1 text-indigo-500"></i>
+                            Cho phép học sinh xem đáp án sau khi nộp bài
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Row 8: Question bank visibility -->
+                <div>
+                    <label asp-for="Quiz.SharingStatus" class="qz-label">Question Bank Visibility</label>
+                    <select asp-for="Quiz.SharingStatus" class="qz-select">
+                        <option value="@((int)QuizSetVisibilityEnum.Private)">🔒 Private — only used internally</option>
+                        <option value="@((int)QuizSetVisibilityEnum.Public)">🌐 Public (Community) — shared with others</option>
+                    </select>
+                    <span class="qz-hint">Private: chỉ dùng nội bộ. Public: chia sẻ cho toàn bộ community.</span>
+                </div>
+            </div>
         </div>
-    </div>
+
+        <!-- ── Questions Card ── -->
+        <div class="qz-card">
+            <div class="qz-card-header">
+                <div class="qz-card-header-icon"><i class="bi bi-list-check"></i></div>
+                <div style="flex:1;">
+                    <div class="qz-card-header-title">Questions</div>
+                    <div class="qz-card-header-sub">Supports 3 types: 4-Answer, True/False, and Multiple Choice</div>
+                </div>
+                <div style="text-align:right; color:rgba(255,255,255,.85); font-size:.82rem; font-weight:700;">
+                    <span id="qz-q-count">@Model.ManualQuestions.Count</span> question(s)
+                    <div class="qz-progress-bar-wrap mt-1" style="width:100px; margin-left:auto;">
+                        <div class="qz-progress-bar" id="qz-progress" style="width:@(Math.Min(Model.ManualQuestions.Count * 10, 100))%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="qz-card-body pb-3">
+
+                <!-- Question list -->
+                <div id="manual-questions-container">
+                    @for (var i = 0; i < Model.ManualQuestions.Count; i++)
+                    {
+                        var question   = Model.ManualQuestions[i];
+                        var idPrefix   = $"ManualQuestions_{i}__";
+                        var namePrefix = $"ManualQuestions[{i}]";
+                        var correctAnswers = (question.CorrectAnswer ?? string.Empty)
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                        <div class="qz-question-card manual-question-item" data-index="@i">
+                            <div class="qz-question-header">
+                                <div class="qz-question-badge">
+                                    <span class="qz-q-num question-number">@(i + 1)</span>
+                                    <span>Question</span>
+                                    <span class="qz-type-chip qz-type-@((int)question.TypeOption)">
+                                        @(question.TypeOption == QuestionTypeOptionEnum.SingleChoice ? "4 Answers"
+                                          : question.TypeOption == QuestionTypeOptionEnum.MultipleChoice ? "Multiple"
+                                          : "True/False")
+                                    </span>
+                                </div>
+                                <button type="button"
+                                        class="qz-btn qz-btn-danger remove-question-btn @(Model.ManualQuestions.Count == 1 ? "d-none" : "")"
+                                        style="padding:.35rem .75rem; font-size:.78rem;">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </div>
+                            <div class="qz-question-body">
+                                <!-- Type + Difficulty -->
+                                <div class="qz-grid-2 mb-3">
+                                    <div>
+                                        <label class="qz-label" for="@(idPrefix)TypeOption">Question Type</label>
+                                        <select class="qz-select js-question-type"
+                                                id="@(idPrefix)TypeOption"
+                                                name="@(namePrefix).TypeOption"
+                                                data-current-type="@((int)question.TypeOption)">
+                                            <option value="@((int)QuestionTypeOptionEnum.SingleChoice)">4 Answers (Single Choice)</option>
+                                            <option value="@((int)QuestionTypeOptionEnum.MultipleChoice)">Multiple Choice</option>
+                                            <option value="@((int)QuestionTypeOptionEnum.TrueFalse)">True / False</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="qz-label" for="@(idPrefix)Difficulty">Difficulty</label>
+                                        <select class="qz-select" id="@(idPrefix)Difficulty" name="@(namePrefix).Difficulty">
+                                            <option value="0" selected="@(question.Difficulty == QuestionDifficultyEnum.Easy)">🟢 Easy</option>
+                                            <option value="1" selected="@(question.Difficulty == QuestionDifficultyEnum.Medium)">🟡 Medium</option>
+                                            <option value="2" selected="@(question.Difficulty == QuestionDifficultyEnum.Hard)">🔴 Hard</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Question text -->
+                                <div class="mb-3">
+                                    <label class="qz-label" for="@(idPrefix)QuestionText">Question Content <span class="text-danger">*</span></label>
+                                    <textarea class="qz-textarea" id="@(idPrefix)QuestionText"
+                                              name="@(namePrefix).QuestionText"
+                                              placeholder="Enter your question here…"
+                                              required>@question.QuestionText</textarea>
+                                </div>
+
+                                <!-- Explanation -->
+                                <div class="mb-3">
+                                    <label class="qz-label" for="@(idPrefix)Explanation">
+                                        <i class="bi bi-lightbulb me-1 text-warning"></i>Explanation
+                                        <span class="qz-hint d-inline ms-1">(optional)</span>
+                                    </label>
+                                    <textarea class="qz-textarea" id="@(idPrefix)Explanation"
+                                              name="@(namePrefix).Explanation"
+                                              style="min-height:60px;"
+                                              placeholder="Explain the correct answer…">@question.Explanation</textarea>
+                                </div>
+
+                                <!-- Answer options -->
+                                <div>
+                                    <label class="qz-label"><i class="bi bi-check-circle me-1"></i>Answer Options — tick the correct one(s)</label>
+                                    <div class="qz-answer-grid js-answer-group-wrapper">
+
+                                        @* Option A *@
+                                        <div class="js-option-a-group">
+                                            <div class="qz-answer-item">
+                                                <span class="qz-answer-letter">A</span>
+                                                <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="A"
+                                                       @(correctAnswers.Contains("A") ? "checked" : "") />
+                                                <input class="qz-answer-input js-option-a"
+                                                       id="@(idPrefix)Options_OptionA"
+                                                       name="@(namePrefix).Options.OptionA"
+                                                       value="@question.Options.OptionA"
+                                                       placeholder="Answer A…" />
+                                                <input type="hidden" name="@(namePrefix).Options.OptionA" style="display:none;" class="qz-hidden-backup-a" />
+                                            </div>
+                                        </div>
+
+                                        @* Option B *@
+                                        <div class="js-option-b-group">
+                                            <div class="qz-answer-item">
+                                                <span class="qz-answer-letter">B</span>
+                                                <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="B"
+                                                       @(correctAnswers.Contains("B") ? "checked" : "") />
+                                                <input class="qz-answer-input js-option-b"
+                                                       id="@(idPrefix)Options_OptionB"
+                                                       name="@(namePrefix).Options.OptionB"
+                                                       value="@question.Options.OptionB"
+                                                       placeholder="Answer B…" />
+                                            </div>
+                                        </div>
+
+                                        @* Option C *@
+                                        <div class="js-option-c-group">
+                                            <div class="qz-answer-item">
+                                                <span class="qz-answer-letter">C</span>
+                                                <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="C"
+                                                       @(correctAnswers.Contains("C") ? "checked" : "") />
+                                                <input class="qz-answer-input js-option-c"
+                                                       id="@(idPrefix)Options_OptionC"
+                                                       name="@(namePrefix).Options.OptionC"
+                                                       value="@question.Options.OptionC"
+                                                       placeholder="Answer C…" />
+                                            </div>
+                                        </div>
+
+                                        @* Option D *@
+                                        <div class="js-option-d-group">
+                                            <div class="qz-answer-item">
+                                                <span class="qz-answer-letter">D</span>
+                                                <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="D"
+                                                       @(correctAnswers.Contains("D") ? "checked" : "") />
+                                                <input class="qz-answer-input js-option-d"
+                                                       id="@(idPrefix)Options_OptionD"
+                                                       name="@(namePrefix).Options.OptionD"
+                                                       value="@question.Options.OptionD"
+                                                       placeholder="Answer D…" />
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <!-- Hidden fields -->
+                                <input class="js-correct-answer-value" type="hidden"
+                                       id="@(idPrefix)CorrectAnswer"
+                                       name="@(namePrefix).CorrectAnswer"
+                                       value="@question.CorrectAnswer" />
+                                <input type="hidden"
+                                       id="@(idPrefix)ScorePoint"
+                                       name="@(namePrefix).ScorePoint"
+                                       value="@(question.ScorePoint > 0 ? question.ScorePoint : 1)" />
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Add Question button -->
+                <button type="button" class="qz-add-q-btn mt-3" id="add-question-btn">
+                    <i class="bi bi-plus-circle fs-5"></i> Add New Question
+                </button>
+
+            </div>
+        </div>
+
+        <!-- ── Submit Bar ── -->
+        <div class="qz-submit-bar">
+            <div class="qz-submit-info">
+                <strong id="qz-submit-count">@Model.ManualQuestions.Count</strong> question(s) ready to submit.
+                Double-check your correct answers before publishing.
+            </div>
+            <div class="qz-submit-actions">
+                <a asp-action="Index" class="qz-btn qz-btn-ghost">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+                <button type="submit" class="qz-btn qz-btn-primary" style="padding:.7rem 2rem; font-size:.95rem;">
+                    <i class="bi bi-check2-circle"></i> Create Quiz
+                </button>
+            </div>
+        </div>
+
+    </form>
+</div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const typeSelect = document.querySelector('.js-quiz-type');
-            const liveLinkGroup = document.querySelector('.js-live-quiz-link-group');
-            const liveLinkInput = document.querySelector('.js-live-quiz-link-input');
-            const timeLimitInput = document.querySelector('input[name="Quiz.TimeLimit"]');
-            const startInput = document.querySelector('input[name="Quiz.QuizStartTime"]');
-            const endInput = document.querySelector('input[name="Quiz.QuizEndTime"]');
-            const questionsContainer = document.getElementById('manual-questions-container');
-            const addQuestionButton = document.getElementById('add-question-btn');
-            let isEndTimeManuallyEdited = false;
+    // ─── All logic preserved from original + UI enhancements ──────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        const typeSelect        = document.querySelector('.js-quiz-type');
+        const liveLinkGroup     = document.querySelector('.js-live-quiz-link-group');
+        const liveLinkInput     = document.querySelector('.js-live-quiz-link-input');
+        const timeLimitInput    = document.querySelector('input[name="Quiz.TimeLimit"]');
+        const startInput        = document.querySelector('input[name="Quiz.QuizStartTime"]');
+        const endInput          = document.querySelector('input[name="Quiz.QuizEndTime"]');
+        const questionsContainer = document.getElementById('manual-questions-container');
+        const addQuestionButton  = document.getElementById('add-question-btn');
+        const qCountEl  = document.getElementById('qz-q-count');
+        const qCountEl2 = document.getElementById('qz-submit-count');
+        const progressEl = document.getElementById('qz-progress');
+        let isEndTimeManuallyEdited = false;
 
-            function toDateTimeLocalValue(date) {
-                const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-                return local.toISOString().slice(0, 16);
+        // ── Helpers ──────────────────────────────────────────────────────────
+        function toDateTimeLocalValue(date) {
+            const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+            return local.toISOString().slice(0, 16);
+        }
+
+        function updateQuestionCounter() {
+            const count = questionsContainer?.querySelectorAll('.manual-question-item').length ?? 0;
+            if (qCountEl)  qCountEl.textContent  = count;
+            if (qCountEl2) qCountEl2.textContent = count;
+            if (progressEl) progressEl.style.width = Math.min(count * 10, 100) + '%';
+        }
+
+        function syncScheduleFromTimeLimit() {
+            if (!timeLimitInput || !startInput || !endInput) return;
+            const minutes = parseInt(timeLimitInput.value || '0', 10);
+            if (!Number.isFinite(minutes) || minutes <= 0) return;
+            if (!startInput.value) startInput.value = toDateTimeLocalValue(new Date());
+            const startDate = new Date(startInput.value);
+            if (Number.isNaN(startDate.getTime())) return;
+            const calculatedEnd = new Date(startDate.getTime() + (minutes * 60000));
+            if (!endInput.value || !isEndTimeManuallyEdited) {
+                endInput.value = toDateTimeLocalValue(calculatedEnd);
+            }
+        }
+
+        function toggleLiveQuizLink() {
+            const isLive = typeSelect && typeSelect.value === '3';
+            liveLinkGroup?.classList.toggle('d-none', !isLive);
+            if (liveLinkInput) {
+                liveLinkInput.required = isLive;
+                if (!isLive) liveLinkInput.value = '';
+            }
+        }
+
+        function syncCorrectAnswer(card) {
+            const type = card.querySelector('.js-question-type')?.value;
+            const hidden = card.querySelector('.js-correct-answer-value');
+            if (!hidden) return;
+            const active = Array.from(card.querySelectorAll('.js-answer-selector')).filter(s => {
+                const g = s.closest('[class*="js-option"]');
+                return g && !g.classList.contains('qz-answer-hidden') && !s.disabled;
+            });
+            const checked = active.filter(s => s.checked).map(s => s.value);
+            hidden.value = type === '1' ? checked.join(',') : (checked[0] ?? '');
+        }
+
+        function restoreSelections(card, allowMultiple) {
+            const hidden = card.querySelector('.js-correct-answer-value');
+            const vals = (hidden?.value ?? '').split(',').map(v => v.trim()).filter(Boolean);
+            card.querySelectorAll('.js-answer-selector').forEach(s => {
+                const g = s.closest('[class*="js-option"]');
+                const visible = g && !g.classList.contains('qz-answer-hidden') && !s.disabled;
+                s.checked = visible && vals.includes(s.value);
+            });
+            if (!allowMultiple) {
+                const checked = Array.from(card.querySelectorAll('.js-answer-selector:checked'));
+                checked.slice(1).forEach(s => { s.checked = false; });
+            }
+        }
+
+        function updateQuestionType(card, preserve) {
+            const type   = card.querySelector('.js-question-type')?.value;
+            const optA   = card.querySelector('.js-option-a');
+            const optB   = card.querySelector('.js-option-b');
+            const optC   = card.querySelector('.js-option-c');
+            const optD   = card.querySelector('.js-option-d');
+            const grpC   = card.querySelectorAll('.js-option-c-group');
+            const grpD   = card.querySelectorAll('.js-option-d-group');
+            const selectors = Array.from(card.querySelectorAll('.js-answer-selector'));
+            const allowMultiple = type === '1';
+
+            if (!preserve) {
+                const hidden = card.querySelector('.js-correct-answer-value');
+                if (hidden) hidden.value = '';
+                selectors.forEach(s => { s.checked = false; });
             }
 
-            function syncScheduleFromTimeLimit() {
-                if (!timeLimitInput || !startInput || !endInput) return;
-
-                const minutes = parseInt(timeLimitInput.value || '0', 10);
-                if (!Number.isFinite(minutes) || minutes <= 0) return;
-
-                if (!startInput.value) {
-                    startInput.value = toDateTimeLocalValue(new Date());
-                }
-
-                const startDate = new Date(startInput.value);
-                if (Number.isNaN(startDate.getTime())) return;
-
-                const calculatedEnd = new Date(startDate.getTime() + (minutes * 60000));
-                if (!endInput.value || !isEndTimeManuallyEdited) {
-                    endInput.value = toDateTimeLocalValue(calculatedEnd);
-                }
-            }
-
-            function toggleLiveQuizLink() {
-                const isLiveQuiz = typeSelect && typeSelect.value === '3';
-                liveLinkGroup?.classList.toggle('d-none', !isLiveQuiz);
-
-                if (liveLinkInput) {
-                    liveLinkInput.required = isLiveQuiz;
-                    if (!isLiveQuiz) {
-                        liveLinkInput.value = '';
-                    }
-                }
-            }
-
-            function syncCorrectAnswer(card) {
-                const type = card.querySelector('.js-question-type')?.value;
-                const hiddenCorrectAnswer = card.querySelector('.js-correct-answer-value');
-                const selectors = Array.from(card.querySelectorAll('.js-answer-selector'));
-                const activeSelectors = selectors.filter(function (selector) {
-                    const group = selector.closest('.col-md-6');
-                    return group && !group.classList.contains('d-none') && !selector.disabled;
+            if (type === '2') {   // True / False
+                if (optA) { optA.value = 'True';  optA.readOnly = true;  optA.required = true; }
+                if (optB) { optB.value = 'False'; optB.readOnly = true;  optB.required = true; }
+                if (optC) { optC.value = '';      optC.readOnly = true;  optC.required = false; }
+                if (optD) { optD.value = '';      optD.readOnly = true;  optD.required = false; }
+                grpC.forEach(g => g.classList.add('qz-answer-hidden'));
+                grpD.forEach(g => g.classList.add('qz-answer-hidden'));
+                selectors.forEach(s => {
+                    s.disabled = (s.value === 'C' || s.value === 'D');
+                    if (s.disabled) s.checked = false;
                 });
-
-                if (!hiddenCorrectAnswer) {
-                    return;
-                }
-
-                const checkedValues = activeSelectors
-                    .filter(function (selector) { return selector.checked; })
-                    .map(function (selector) { return selector.value; });
-
-                if (type === '1') {
-                    hiddenCorrectAnswer.value = checkedValues.join(',');
-                    return;
-                }
-
-                hiddenCorrectAnswer.value = checkedValues[0] ?? '';
+            } else {
+                if (optA) { optA.readOnly = false; optA.required = true; if (optA.value === 'True')  optA.value = ''; }
+                if (optB) { optB.readOnly = false; optB.required = true; if (optB.value === 'False') optB.value = ''; }
+                if (optC) { optC.readOnly = false; optC.required = true; }
+                if (optD) { optD.readOnly = false; optD.required = true; }
+                grpC.forEach(g => g.classList.remove('qz-answer-hidden'));
+                grpD.forEach(g => g.classList.remove('qz-answer-hidden'));
+                selectors.forEach(s => { s.disabled = false; });
             }
+            restoreSelections(card, allowMultiple);
+            syncCorrectAnswer(card);
+        }
 
-            function restoreSelections(card, allowMultiple) {
-                const hiddenCorrectAnswer = card.querySelector('.js-correct-answer-value');
-                const values = (hiddenCorrectAnswer?.value ?? '')
-                    .split(',')
-                    .map(function (value) { return value.trim(); })
-                    .filter(Boolean);
-
-                card.querySelectorAll('.js-answer-selector').forEach(function (selector) {
-                    const group = selector.closest('.col-md-6');
-                    const isVisible = group && !group.classList.contains('d-none') && !selector.disabled;
-                    selector.checked = isVisible && values.includes(selector.value);
+        function updateQuestionNumbers() {
+            const items = Array.from(questionsContainer?.querySelectorAll('.manual-question-item') ?? []);
+            items.forEach(function(item, index) {
+                item.dataset.index = index.toString();
+                const num = item.querySelector('.question-number');
+                if (num) num.textContent = (index + 1).toString();
+                item.querySelectorAll('input, textarea, select').forEach(f => {
+                    if (f.name) f.name = f.name.replace(/ManualQuestions\[\d+\]/g, `ManualQuestions[${index}]`);
+                    if (f.id)   f.id   = f.id.replace(/ManualQuestions_\d+__/g,   `ManualQuestions_${index}__`);
                 });
-
-                if (!allowMultiple) {
-                    const checked = Array.from(card.querySelectorAll('.js-answer-selector:checked'));
-                    checked.slice(1).forEach(function (selector) {
-                        selector.checked = false;
-                    });
-                }
-            }
-
-            function updateQuestionType(card, preserveCurrentSelection) {
-                const type = card.querySelector('.js-question-type')?.value;
-                const optionA = card.querySelector('.js-option-a');
-                const optionB = card.querySelector('.js-option-b');
-                const optionC = card.querySelector('.js-option-c');
-                const optionD = card.querySelector('.js-option-d');
-                const optionCGroups = card.querySelectorAll('.js-option-c-group');
-                const optionDGroups = card.querySelectorAll('.js-option-d-group');
-                const selectors = Array.from(card.querySelectorAll('.js-answer-selector'));
-                const allowMultiple = type === '1';
-
-                if (!preserveCurrentSelection) {
-                    const hiddenCorrectAnswer = card.querySelector('.js-correct-answer-value');
-                    if (hiddenCorrectAnswer) {
-                        hiddenCorrectAnswer.value = '';
-                    }
-                    selectors.forEach(function (selector) {
-                        selector.checked = false;
-                    });
-                }
-
-                if (type === '2') {
-                    if (optionA) {
-                        optionA.value = 'True';
-                        optionA.readOnly = true;
-                        optionA.required = true;
-                    }
-                    if (optionB) {
-                        optionB.value = 'False';
-                        optionB.readOnly = true;
-                        optionB.required = true;
-                    }
-                    if (optionC) {
-                        optionC.value = '';
-                        optionC.readOnly = true;
-                        optionC.required = false;
-                    }
-                    if (optionD) {
-                        optionD.value = '';
-                        optionD.readOnly = true;
-                        optionD.required = false;
-                    }
-
-                    optionCGroups.forEach(function (group) { group.classList.add('d-none'); });
-                    optionDGroups.forEach(function (group) { group.classList.add('d-none'); });
-
-                    selectors.forEach(function (selector) {
-                        selector.disabled = selector.value === 'C' || selector.value === 'D';
-                        if (selector.disabled) {
-                            selector.checked = false;
-                        }
-                    });
-                } else {
-                    if (optionA) {
-                        optionA.readOnly = false;
-                        optionA.required = true;
-                        if (optionA.value === 'True') optionA.value = '';
-                    }
-                    if (optionB) {
-                        optionB.readOnly = false;
-                        optionB.required = true;
-                        if (optionB.value === 'False') optionB.value = '';
-                    }
-                    if (optionC) {
-                        optionC.readOnly = false;
-                        optionC.required = true;
-                    }
-                    if (optionD) {
-                        optionD.readOnly = false;
-                        optionD.required = true;
-                    }
-
-                    optionCGroups.forEach(function (group) { group.classList.remove('d-none'); });
-                    optionDGroups.forEach(function (group) { group.classList.remove('d-none'); });
-                    selectors.forEach(function (selector) { selector.disabled = false; });
-                }
-
-                restoreSelections(card, allowMultiple);
-                syncCorrectAnswer(card);
-            }
-
-            function updateQuestionNumbers() {
-                const items = Array.from(questionsContainer?.querySelectorAll('.manual-question-item') ?? []);
-
-                items.forEach(function (item, index) {
-                    item.dataset.index = index.toString();
-                    const number = item.querySelector('.question-number');
-                    if (number) {
-                        number.textContent = (index + 1).toString();
-                    }
-
-                    item.querySelectorAll('input, textarea, select').forEach(function (field) {
-                        if (field.name) {
-                            field.name = field.name.replace(/ManualQuestions\[\d+\]/g, `ManualQuestions[${index}]`);
-                        }
-
-                        if (field.id) {
-                            field.id = field.id.replace(/ManualQuestions_\d+__/g, `ManualQuestions_${index}__`);
-                        }
-                    });
-
-                    item.querySelectorAll('label').forEach(function (label) {
-                        if (label.htmlFor) {
-                            label.htmlFor = label.htmlFor.replace(/ManualQuestions_\d+__/g, `ManualQuestions_${index}__`);
-                        }
-                    });
+                item.querySelectorAll('label').forEach(l => {
+                    if (l.htmlFor) l.htmlFor = l.htmlFor.replace(/ManualQuestions_\d+__/g, `ManualQuestions_${index}__`);
                 });
+            });
+            items.forEach(item => {
+                const btn = item.querySelector('.remove-question-btn');
+                if (btn) btn.classList.toggle('d-none', items.length === 1);
+            });
+            updateQuestionCounter();
+        }
 
-                items.forEach(function (item) {
-                    const button = item.querySelector('.remove-question-btn');
-                    if (button) {
-                        button.classList.toggle('d-none', items.length === 1);
+        function bindQuestionCard(card) {
+            const qs = card.querySelector('.js-question-type');
+            if (qs?.dataset.currentType) qs.value = qs.dataset.currentType;
+
+            card.querySelectorAll('.js-answer-selector').forEach(s => {
+                s.addEventListener('change', function() {
+                    if (qs?.value !== '1' && s.checked) {
+                        card.querySelectorAll('.js-answer-selector').forEach(o => {
+                            if (o !== s) o.checked = false;
+                        });
                     }
-                });
-            }
-
-            function bindQuestionCard(card) {
-                const questionTypeSelect = card.querySelector('.js-question-type');
-                if (questionTypeSelect?.dataset.currentType) {
-                    questionTypeSelect.value = questionTypeSelect.dataset.currentType;
-                }
-
-                card.querySelectorAll('.js-answer-selector').forEach(function (selector) {
-                    selector.addEventListener('change', function () {
-                        if (questionTypeSelect?.value !== '1' && selector.checked) {
-                            card.querySelectorAll('.js-answer-selector').forEach(function (otherSelector) {
-                                if (otherSelector !== selector) {
-                                    otherSelector.checked = false;
-                                }
-                            });
-                        }
-
-                        syncCorrectAnswer(card);
+                    // Highlight answer item
+                    card.querySelectorAll('.qz-answer-item').forEach(item => {
+                        const cb = item.querySelector('.js-answer-selector');
+                        item.classList.toggle('answer-correct', cb?.checked ?? false);
                     });
+                    syncCorrectAnswer(card);
                 });
+            });
 
-                questionTypeSelect?.addEventListener('change', function () {
-                    updateQuestionType(card, false);
-                });
+            qs?.addEventListener('change', () => updateQuestionType(card, false));
+            updateQuestionType(card, true);
+        }
 
-                updateQuestionType(card, true);
-            }
-
-            function buildQuestionTemplate(index) {
-                return `
-                    <div class="card border-0 shadow-sm manual-question-item" data-index="${index}">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <span class="fw-semibold">Question <span class="question-number">${index + 1}</span></span>
-                            <button type="button" class="btn btn-sm btn-outline-danger remove-question-btn">
-                                <i class="bi bi-trash"></i>
-                            </button>
+        function buildQuestionTemplate(index) {
+            return `
+            <div class="qz-question-card manual-question-item" data-index="${index}">
+                <div class="qz-question-header">
+                    <div class="qz-question-badge">
+                        <span class="qz-q-num question-number">${index + 1}</span>
+                        <span>Question</span>
+                        <span class="qz-type-chip qz-type-0">4 Answers</span>
+                    </div>
+                    <button type="button" class="qz-btn qz-btn-danger remove-question-btn" style="padding:.35rem .75rem;font-size:.78rem;">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+                <div class="qz-question-body">
+                    <div class="qz-grid-2 mb-3">
+                        <div>
+                            <label class="qz-label" for="ManualQuestions_${index}__TypeOption">Question Type</label>
+                            <select class="qz-select js-question-type" id="ManualQuestions_${index}__TypeOption" name="ManualQuestions[${index}].TypeOption">
+                                <option value="0">4 Answers (Single Choice)</option>
+                                <option value="1">Multiple Choice</option>
+                                <option value="2">True / False</option>
+                            </select>
                         </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label" for="ManualQuestions_${index}__TypeOption">Question type</label>
-                                    <select class="form-select js-question-type" id="ManualQuestions_${index}__TypeOption" name="ManualQuestions[${index}].TypeOption">
-                                        <option value="0">4 Answers</option>
-                                        <option value="1">Multiple Choice</option>
-                                        <option value="2">True / False</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="ManualQuestions_${index}__Difficulty">Difficulty</label>
-                                    <select class="form-select" id="ManualQuestions_${index}__Difficulty" name="ManualQuestions[${index}].Difficulty">
-                                        <option value="0">Easy</option>
-                                        <option value="1" selected>Medium</option>
-                                        <option value="2">Hard</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <label class="form-label" for="ManualQuestions_${index}__QuestionText">Question</label>
-                                <textarea class="form-control" id="ManualQuestions_${index}__QuestionText" name="ManualQuestions[${index}].QuestionText" rows="3" placeholder="Enter question content" required></textarea>
-                            </div>
-                            <div class="mt-3">
-                                <label class="form-label" for="ManualQuestions_${index}__Explanation">Explanation</label>
-                                <textarea class="form-control" id="ManualQuestions_${index}__Explanation" name="ManualQuestions[${index}].Explanation" rows="2" placeholder="Giải thích đáp án (không bắt buộc)"></textarea>
-                            </div>
-                            <div class="row g-3 mt-1 js-answer-group-wrapper">
-                                <div class="col-md-6 js-option-a-group">
-                                    <label class="form-label" for="ManualQuestions_${index}__Options_OptionA">Answer A</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                            <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="A" />
-                                        </span>
-                                        <input class="form-control js-option-a border-start-0" id="ManualQuestions_${index}__Options_OptionA" name="ManualQuestions[${index}].Options.OptionA" placeholder="Enter answer A" />
-                                    </div>
-                                </div>
-                                <div class="col-md-6 js-option-b-group">
-                                    <label class="form-label" for="ManualQuestions_${index}__Options_OptionB">Answer B</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                            <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="B" />
-                                        </span>
-                                        <input class="form-control js-option-b border-start-0" id="ManualQuestions_${index}__Options_OptionB" name="ManualQuestions[${index}].Options.OptionB" placeholder="Enter answer B" />
-                                    </div>
-                                </div>
-                                <div class="col-md-6 js-option-c-group">
-                                    <label class="form-label" for="ManualQuestions_${index}__Options_OptionC">Answer C</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                            <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="C" />
-                                        </span>
-                                        <input class="form-control js-option-c border-start-0" id="ManualQuestions_${index}__Options_OptionC" name="ManualQuestions[${index}].Options.OptionC" placeholder="Enter answer C" />
-                                    </div>
-                                </div>
-                                <div class="col-md-6 js-option-d-group">
-                                    <label class="form-label" for="ManualQuestions_${index}__Options_OptionD">Answer D</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white border-end-0 js-answer-selector-wrap">
-                                            <input class="form-check-input mt-0 js-answer-selector" type="checkbox" value="D" />
-                                        </span>
-                                        <input class="form-control js-option-d border-start-0" id="ManualQuestions_${index}__Options_OptionD" name="ManualQuestions[${index}].Options.OptionD" placeholder="Enter answer D" />
-                                    </div>
-                                </div>
-                            </div>
-                            <input class="js-correct-answer-value" type="hidden" id="ManualQuestions_${index}__CorrectAnswer" name="ManualQuestions[${index}].CorrectAnswer" value="" />
-                            <input type="hidden" id="ManualQuestions_${index}__ScorePoint" name="ManualQuestions[${index}].ScorePoint" value="1" />
+                        <div>
+                            <label class="qz-label" for="ManualQuestions_${index}__Difficulty">Difficulty</label>
+                            <select class="qz-select" id="ManualQuestions_${index}__Difficulty" name="ManualQuestions[${index}].Difficulty">
+                                <option value="0">🟢 Easy</option>
+                                <option value="1" selected>🟡 Medium</option>
+                                <option value="2">🔴 Hard</option>
+                            </select>
                         </div>
-                    </div>`;
+                    </div>
+                    <div class="mb-3">
+                        <label class="qz-label" for="ManualQuestions_${index}__QuestionText">Question Content <span style="color:#ef4444">*</span></label>
+                        <textarea class="qz-textarea" id="ManualQuestions_${index}__QuestionText" name="ManualQuestions[${index}].QuestionText" placeholder="Enter your question here…" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="qz-label" for="ManualQuestions_${index}__Explanation">Explanation <span style="font-weight:400;color:#6b7280;">(optional)</span></label>
+                        <textarea class="qz-textarea" id="ManualQuestions_${index}__Explanation" name="ManualQuestions[${index}].Explanation" style="min-height:60px;" placeholder="Explain the correct answer…"></textarea>
+                    </div>
+                    <div>
+                        <label class="qz-label"><i class="bi bi-check-circle me-1"></i>Answer Options — tick the correct one(s)</label>
+                        <div class="qz-answer-grid js-answer-group-wrapper">
+                            <div class="js-option-a-group">
+                                <div class="qz-answer-item">
+                                    <span class="qz-answer-letter">A</span>
+                                    <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="A" />
+                                    <input class="qz-answer-input js-option-a" id="ManualQuestions_${index}__Options_OptionA" name="ManualQuestions[${index}].Options.OptionA" placeholder="Answer A…" />
+                                </div>
+                            </div>
+                            <div class="js-option-b-group">
+                                <div class="qz-answer-item">
+                                    <span class="qz-answer-letter">B</span>
+                                    <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="B" />
+                                    <input class="qz-answer-input js-option-b" id="ManualQuestions_${index}__Options_OptionB" name="ManualQuestions[${index}].Options.OptionB" placeholder="Answer B…" />
+                                </div>
+                            </div>
+                            <div class="js-option-c-group">
+                                <div class="qz-answer-item">
+                                    <span class="qz-answer-letter">C</span>
+                                    <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="C" />
+                                    <input class="qz-answer-input js-option-c" id="ManualQuestions_${index}__Options_OptionC" name="ManualQuestions[${index}].Options.OptionC" placeholder="Answer C…" />
+                                </div>
+                            </div>
+                            <div class="js-option-d-group">
+                                <div class="qz-answer-item">
+                                    <span class="qz-answer-letter">D</span>
+                                    <input class="qz-answer-checkbox js-answer-selector" type="checkbox" value="D" />
+                                    <input class="qz-answer-input js-option-d" id="ManualQuestions_${index}__Options_OptionD" name="ManualQuestions[${index}].Options.OptionD" placeholder="Answer D…" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input class="js-correct-answer-value" type="hidden" id="ManualQuestions_${index}__CorrectAnswer" name="ManualQuestions[${index}].CorrectAnswer" value="" />
+                    <input type="hidden" id="ManualQuestions_${index}__ScorePoint" name="ManualQuestions[${index}].ScorePoint" value="1" />
+                </div>
+            </div>`;
+        }
+
+        // ── Event bindings ────────────────────────────────────────────────────
+        addQuestionButton?.addEventListener('click', function () {
+            const nextIndex = questionsContainer?.querySelectorAll('.manual-question-item').length ?? 0;
+            questionsContainer?.insertAdjacentHTML('beforeend', buildQuestionTemplate(nextIndex));
+            const newCard = questionsContainer?.lastElementChild;
+            if (newCard) {
+                bindQuestionCard(newCard);
+                newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-
-            addQuestionButton?.addEventListener('click', function () {
-                const nextIndex = questionsContainer?.querySelectorAll('.manual-question-item').length ?? 0;
-                questionsContainer?.insertAdjacentHTML('beforeend', buildQuestionTemplate(nextIndex));
-                const newCard = questionsContainer?.lastElementChild;
-                if (newCard) {
-                    bindQuestionCard(newCard);
-                    newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                updateQuestionNumbers();
-            });
-
-            questionsContainer?.addEventListener('click', function (event) {
-                const target = event.target;
-                const removeButton = target instanceof Element ? target.closest('.remove-question-btn') : null;
-                if (!removeButton) {
-                    return;
-                }
-
-                removeButton.closest('.manual-question-item')?.remove();
-                updateQuestionNumbers();
-            });
-
-            typeSelect?.addEventListener('change', toggleLiveQuizLink);
-            timeLimitInput?.addEventListener('input', function () {
-                isEndTimeManuallyEdited = false;
-                syncScheduleFromTimeLimit();
-            });
-            startInput?.addEventListener('change', function () {
-                isEndTimeManuallyEdited = false;
-                syncScheduleFromTimeLimit();
-            });
-            endInput?.addEventListener('input', function () {
-                isEndTimeManuallyEdited = true;
-            });
-            toggleLiveQuizLink();
-            syncScheduleFromTimeLimit();
-            questionsContainer?.querySelectorAll('.manual-question-item').forEach(function (card) {
-                bindQuestionCard(card);
-            });
             updateQuestionNumbers();
         });
+
+        questionsContainer?.addEventListener('click', function (event) {
+            const removeBtn = event.target instanceof Element ? event.target.closest('.remove-question-btn') : null;
+            if (!removeBtn) return;
+            const card = removeBtn.closest('.manual-question-item');
+            if (card) {
+                card.style.transition = 'opacity .25s, transform .25s';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(-20px)';
+                setTimeout(() => { card.remove(); updateQuestionNumbers(); }, 260);
+            }
+        });
+
+        typeSelect?.addEventListener('change', toggleLiveQuizLink);
+        timeLimitInput?.addEventListener('input', () => { isEndTimeManuallyEdited = false; syncScheduleFromTimeLimit(); });
+        startInput?.addEventListener('change',  () => { isEndTimeManuallyEdited = false; syncScheduleFromTimeLimit(); });
+        endInput?.addEventListener('input',     () => { isEndTimeManuallyEdited = true; });
+
+        toggleLiveQuizLink();
+        syncScheduleFromTimeLimit();
+
+        questionsContainer?.querySelectorAll('.manual-question-item').forEach(card => bindQuestionCard(card));
+        updateQuestionNumbers();
+    });
     </script>
 }
