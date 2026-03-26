@@ -1,0 +1,737 @@
+﻿@* ============================================================
+   Views/Ticket/TicketsByEvent.cshtml
+   â”€â”€ Individual ticket records for a single event â”€â”€
+   Populated by OrganizerController.TicketsByEvent()
+   Team TODO: ensure the controller's _unitOfWork.Tickets query
+   is wired to the correct repository / service.
+============================================================ *@
+@model AEMS_Solution.Models.Organizer.Manage.TicketsByEventViewModel
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Tickets â€“ " + Model.EventTitle;
+    Layout = "_Organizerlayout";
+
+    var tickets = Model.Tickets ?? new List<AEMS_Solution.Models.Organizer.Manage.TicketListItemVm>();
+
+    // â”€â”€ Status helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    string StatusClass(TicketStatusEnum s) => s switch
+    {
+        TicketStatusEnum.CheckedIn  => "tbe-status-checkedin",
+        TicketStatusEnum.Registered => "tbe-status-registered",
+        TicketStatusEnum.Cancelled  => "tbe-status-cancelled",
+        TicketStatusEnum.Used       => "tbe-status-used",
+        _                           => "tbe-status-registered"
+    };
+    string StatusIcon(TicketStatusEnum s) => s switch
+    {
+        TicketStatusEnum.CheckedIn  => "bi-check-circle-fill",
+        TicketStatusEnum.Registered => "bi-ticket-perforated-fill",
+        TicketStatusEnum.Cancelled  => "bi-x-circle-fill",
+        TicketStatusEnum.Used       => "bi-patch-check-fill",
+        _                           => "bi-ticket-perforated-fill"
+    };
+
+    // â”€â”€ Avatar colour from student name hash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    string GetAvatarColor(string? name)
+    {
+        var palette = new[] {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6","#f97316","#a855f7"
+        };
+        if (string.IsNullOrEmpty(name)) return palette[0];
+        return palette[Math.Abs(name.GetHashCode()) % palette.Length];
+    }
+    string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // â”€â”€ Fill-rate colour â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    string FillColor(double pct) =>
+        pct >= 90 ? "#ef4444" : pct >= 60 ? "#f59e0b" : "#22c55e";
+
+    // Status options for the dropdown filter
+    var statusOptions = new[] {
+        ("", "All Statuses"),
+        ("Registered",  "Registered"),
+        ("CheckedIn",   "Checked In"),
+        ("Used",        "Used"),
+        ("Cancelled",   "Cancelled")
+    };
+}
+
+<style>
+    /* ============================================================
+       TICKETS BY EVENT â€” PREMIUM DETAIL PAGE
+    ============================================================ */
+    :root {
+        --tbe-primary:   #6366f1;
+        --tbe-secondary: #8b5cf6;
+        --tbe-bg:        #f0f2ff;
+        --tbe-card:      #ffffff;
+        --tbe-border:    #e0e7ff;
+        --tbe-text:      #1e1b4b;
+        --tbe-muted:     #64748b;
+        --tbe-radius:    16px;
+        --tbe-shadow:    0 4px 24px rgba(99,102,241,.08);
+        --tbe-focus:     0 0 0 3px rgba(99,102,241,.2);
+    }
+
+    @@keyframes tbe-fadein  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes tbe-row-in  { from { opacity:0; transform:translateY(5px); }  to { opacity:1; transform:none; } }
+    @@keyframes tbe-bar-grow { from { width:0; } }
+    @@keyframes tbe-live-glow {
+        0%,100% { box-shadow:0 0 0 0  rgba(34,197,94,.4); }
+        50%     { box-shadow:0 0 0 7px rgba(34,197,94,0); }
+    }
+    @@keyframes tbe-count-up { from { opacity:0; transform:scale(.75); } to { opacity:1; transform:scale(1); } }
+
+    /* â”€â”€ Page â”€â”€ */
+    .tbe-page { background:var(--tbe-bg); min-height:100vh; padding:2rem 0 4rem; }
+
+    /* â”€â”€ Breadcrumb â”€â”€ */
+    .tbe-breadcrumb {
+        display:flex; align-items:center; gap:.4rem;
+        font-size:.78rem; color:var(--tbe-muted); margin-bottom:1.25rem;
+        animation:tbe-fadein .25s ease both;
+    }
+    .tbe-breadcrumb a { color:var(--tbe-primary); text-decoration:none; font-weight:700; }
+    .tbe-breadcrumb a:hover { text-decoration:underline; }
+    .tbe-breadcrumb i { font-size:.7rem; }
+
+    /* â”€â”€ Header â”€â”€ */
+    .tbe-header {
+        display:flex; align-items:flex-start; justify-content:space-between;
+        gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;
+        animation:tbe-fadein .35s ease both;
+    }
+    .tbe-header-title {
+        font-size:1.75rem; font-weight:900; color:var(--tbe-text);
+        letter-spacing:-.02em; margin-bottom:.25rem;
+        display:flex; align-items:center; gap:.5rem;
+    }
+    .tbe-header-icon {
+        width:46px; height:46px; border-radius:13px;
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.3rem; color:#fff; flex-shrink:0;
+        box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+    .tbe-header-sub  { color:var(--tbe-muted); font-size:.87rem; margin:0; margin-left:56px; }
+    .tbe-header-meta {
+        display:flex; gap:1.2rem; flex-wrap:wrap; align-items:center;
+        margin-left:56px; margin-top:.3rem;
+    }
+    .tbe-meta-item {
+        display:flex; align-items:center; gap:.3rem;
+        font-size:.76rem; color:var(--tbe-muted);
+    }
+    .tbe-meta-item i { color:#a5b4fc; font-size:.74rem; }
+    .tbe-meta-item strong { color:var(--tbe-text); }
+
+    /* â”€â”€ Buttons â”€â”€ */
+    .tbe-btn {
+        display:inline-flex; align-items:center; gap:.4rem;
+        font-size:.83rem; font-weight:700; padding:.6rem 1.2rem;
+        border-radius:30px; border:none; text-decoration:none;
+        cursor:pointer; transition:all .18s; white-space:nowrap;
+    }
+    .tbe-btn-ghost  { background:#fff; color:#475569; border:1.5px solid #e2e8f0; }
+    .tbe-btn-ghost:hover  { background:#f1f5f9; color:var(--tbe-primary); border-color:#c7d2fe; }
+    .tbe-btn-filter { background:var(--tbe-primary); color:#fff; box-shadow:0 3px 10px rgba(99,102,241,.25); }
+    .tbe-btn-filter:hover { background:#4f46e5; color:#fff; transform:translateY(-1px); }
+
+    /* â”€â”€ Event summary card â”€â”€ */
+    .tbe-event-card {
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        border-radius:var(--tbe-radius); color:#fff;
+        padding:1.2rem 1.5rem; margin-bottom:1.5rem;
+        display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap;
+        box-shadow:0 6px 24px rgba(99,102,241,.3);
+        animation:tbe-fadein .4s .05s ease both;
+    }
+    .tbe-event-card-icon {
+        width:54px; height:54px; border-radius:14px;
+        background:rgba(255,255,255,.18); display:flex;
+        align-items:center; justify-content:center;
+        font-size:1.5rem; flex-shrink:0;
+    }
+    .tbe-event-card-title  { font-size:1.05rem; font-weight:900; margin-bottom:.2rem; }
+    .tbe-event-card-detail { font-size:.8rem; opacity:.82; display:flex; gap:1rem; flex-wrap:wrap; }
+    .tbe-event-card-detail i { margin-right:.2rem; }
+    .tbe-fill-bar-mini { height:5px; background:rgba(255,255,255,.25); border-radius:3px; overflow:hidden; margin-top:.4rem; min-width:160px;}
+    .tbe-fill-bar-mini-inner { height:100%; background:#fff; border-radius:3px; animation:tbe-bar-grow .8s ease both; }
+
+    /* â”€â”€ Stats grid â”€â”€ */
+    .tbe-stats-grid {
+        display:grid; grid-template-columns:repeat(5,1fr);
+        gap:1rem; margin-bottom:1.5rem;
+        animation:tbe-fadein .4s .08s ease both;
+    }
+    @@media(max-width:1050px){ .tbe-stats-grid { grid-template-columns:repeat(3,1fr); } }
+    @@media(max-width:640px) { .tbe-stats-grid { grid-template-columns:1fr 1fr; } }
+    .tbe-stat {
+        background:var(--tbe-card); border-radius:14px;
+        border:1px solid var(--tbe-border); box-shadow:var(--tbe-shadow);
+        padding:.9rem 1rem; display:flex; align-items:center; gap:.8rem;
+        transition:transform .18s,box-shadow .18s; cursor:default;
+    }
+    .tbe-stat:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(99,102,241,.14); }
+    .tbe-stat-icon  {
+        width:42px; height:42px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.1rem; flex-shrink:0;
+    }
+    .tbe-stat-label { font-size:.66rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+    .tbe-stat-value {
+        font-size:1.45rem; font-weight:900; color:var(--tbe-text);
+        line-height:1; margin-top:.07rem; animation:tbe-count-up .5s ease both;
+    }
+
+    /* â”€â”€ Search + filter bar â”€â”€ */
+    .tbe-filter-bar {
+        background:var(--tbe-card); border-radius:var(--tbe-radius);
+        border:1px solid var(--tbe-border); box-shadow:var(--tbe-shadow);
+        padding:.88rem 1.45rem; margin-bottom:1.5rem;
+        display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;
+        animation:tbe-fadein .4s .12s ease both;
+    }
+    .tbe-search-wrap { position:relative; flex:1 1 230px; }
+    .tbe-search-wrap i {
+        position:absolute; top:50%; left:.85rem;
+        transform:translateY(-50%); color:#94a3b8;
+        font-size:.8rem; pointer-events:none;
+    }
+    .tbe-search-input {
+        width:100%; padding:.65rem 1rem .65rem 2.3rem;
+        border:1.5px solid var(--tbe-border); border-radius:30px;
+        font-size:.88rem; color:var(--tbe-text); background:#fafbff;
+        outline:none; transition:all .2s;
+    }
+    .tbe-search-input:focus { background:#fff; border-color:var(--tbe-primary); box-shadow:var(--tbe-focus); }
+    .tbe-status-select {
+        padding:.63rem 1rem; border:1.5px solid var(--tbe-border); border-radius:30px;
+        font-size:.85rem; color:var(--tbe-text); background:#fafbff;
+        outline:none; cursor:pointer; transition:border-color .2s;
+    }
+    .tbe-status-select:focus { border-color:var(--tbe-primary); box-shadow:var(--tbe-focus); }
+    .tbe-result-count { font-size:.8rem; color:var(--tbe-muted); white-space:nowrap; margin-left:auto; }
+    .tbe-result-count strong { color:var(--tbe-primary); }
+
+    /* â”€â”€ Table card â”€â”€ */
+    .tbe-table-card {
+        background:var(--tbe-card); border-radius:var(--tbe-radius);
+        border:1px solid var(--tbe-border); box-shadow:var(--tbe-shadow);
+        overflow:hidden; animation:tbe-fadein .4s .18s ease both;
+    }
+    .tbe-table-header {
+        padding:.88rem 1.45rem; border-bottom:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem;
+    }
+    .tbe-table-label {
+        font-size:.68rem; font-weight:800; letter-spacing:.08em;
+        text-transform:uppercase; color:#94a3b8;
+        display:flex; align-items:center; gap:.4rem;
+    }
+    .tbe-count-chip {
+        background:#ede9fe; color:#6d28d9; font-size:.7rem;
+        font-weight:700; padding:.12rem .5rem; border-radius:20px;
+    }
+
+    /* â”€â”€ Table â”€â”€ */
+    .tbe-table { width:100%; border-collapse:collapse; }
+    .tbe-table thead tr th {
+        background:#f8fafc; font-size:.67rem; font-weight:800;
+        letter-spacing:.07em; text-transform:uppercase; color:#94a3b8;
+        padding:.78rem 1.1rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;
+    }
+    .tbe-table tbody tr {
+        border-bottom:1px solid #f8fafc; transition:background .12s;
+        animation:tbe-row-in .3s ease both;
+    }
+    .tbe-table tbody tr:last-child { border-bottom:none; }
+    .tbe-table tbody tr:hover { background:#f5f3ff; }
+    .tbe-table tbody tr.tbe-filtered-out { display:none !important; }
+    .tbe-table tbody td { padding:.9rem 1.1rem; vertical-align:middle; font-size:.88rem; }
+
+    /* Stagger animation */
+    .tbe-table tbody tr:nth-child(1)  { animation-delay:.04s; }
+    .tbe-table tbody tr:nth-child(2)  { animation-delay:.07s; }
+    .tbe-table tbody tr:nth-child(3)  { animation-delay:.10s; }
+    .tbe-table tbody tr:nth-child(4)  { animation-delay:.13s; }
+    .tbe-table tbody tr:nth-child(5)  { animation-delay:.16s; }
+    .tbe-table tbody tr:nth-child(6)  { animation-delay:.19s; }
+    .tbe-table tbody tr:nth-child(7)  { animation-delay:.22s; }
+    .tbe-table tbody tr:nth-child(8)  { animation-delay:.25s; }
+    .tbe-table tbody tr:nth-child(9)  { animation-delay:.28s; }
+    .tbe-table tbody tr:nth-child(10) { animation-delay:.31s; }
+
+    /* â”€â”€ Student cell â”€â”€ */
+    .tbe-student-cell { display:flex; align-items:center; gap:.7rem; }
+    .tbe-student-avatar {
+        width:36px; height:36px; border-radius:10px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:.8rem; font-weight:900; color:#fff; flex-shrink:0;
+        box-shadow:0 2px 8px rgba(0,0,0,.12); transition:transform .18s;
+    }
+    .tbe-table tbody tr:hover .tbe-student-avatar { transform:scale(1.09) rotate(3deg); }
+    .tbe-student-name { font-weight:700; color:var(--tbe-text); font-size:.9rem; }
+    .tbe-student-id   { font-size:.72rem; color:#94a3b8; font-family:monospace; margin-top:.06rem; }
+
+    /* â”€â”€ Ticket code cell â”€â”€ */
+    .tbe-ticket-code {
+        font-family:monospace; font-size:.82rem; font-weight:700;
+        background:#f8faff; border:1px solid var(--tbe-border);
+        padding:.2rem .55rem; border-radius:6px; color:#6366f1;
+        letter-spacing:.04em;
+    }
+    .tbe-ticket-code.empty { color:#cbd5e1; font-style:italic; fontSize:.78rem; }
+
+    /* â”€â”€ Status pills â”€â”€ */
+    .tbe-status-pill {
+        display:inline-flex; align-items:center; gap:.28rem;
+        font-size:.72rem; font-weight:800; padding:.22rem .65rem;
+        border-radius:20px; text-transform:uppercase; letter-spacing:.04em;
+    }
+    .tbe-status-checkedin  { background:#dcfce7; color:#15803d; border:1px solid #86efac; animation:tbe-live-glow 2.5s infinite; }
+    .tbe-status-registered { background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; }
+    .tbe-status-used       { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+    .tbe-status-cancelled  { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+
+    /* â”€â”€ Check-in cell â”€â”€ */
+    .tbe-checkin { font-size:.82rem; color:var(--tbe-muted); }
+    .tbe-checkin strong { color:var(--tbe-text); display:block; font-size:.84rem; }
+
+    /* â”€â”€ Empty state â”€â”€ */
+    .tbe-empty { text-align:center; padding:3.5rem 1rem; animation:tbe-fadein .4s ease both; }
+    .tbe-empty-icon {
+        width:80px; height:80px; border-radius:50%;
+        background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+        display:flex; align-items:center; justify-content:center;
+        font-size:2.2rem; color:#6d28d9; margin:0 auto 1rem;
+    }
+    .tbe-empty h3 { font-size:1.1rem; font-weight:800; color:#374151; margin-bottom:.4rem; }
+    .tbe-empty p  { font-size:.88rem; color:var(--tbe-muted); }
+
+    /* â”€â”€ Summary footer â”€â”€ */
+    .tbe-footer {
+        padding:.78rem 1.1rem; border-top:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem; font-size:.79rem; color:var(--tbe-muted);
+    }
+    .tbe-footer strong { color:var(--tbe-text); }
+
+    /* â”€â”€ Toast â”€â”€ */
+    .tbe-toast {
+        border-radius:13px; padding:.9rem 1.2rem; font-size:.9rem;
+        font-weight:600; margin-bottom:1.25rem;
+        display:flex; align-items:center; gap:.6rem;
+        animation:tbe-fadein .4s ease;
+    }
+    .tbe-toast-success { background:#f0fdf4; border:1px solid #86efac; color:#15803d; }
+    .tbe-toast-error   { background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; }
+
+    /* â”€â”€ TODO notice â”€â”€ */
+    .tbe-todo-notice {
+        background:linear-gradient(135deg,#fef3c7,#fffbeb);
+        border:1px solid #fde68a; border-radius:12px;
+        padding:.85rem 1.2rem; margin-bottom:1.25rem;
+        display:flex; align-items:flex-start; gap:.65rem;
+        font-size:.85rem; color:#92400e; animation:tbe-fadein .3s ease both;
+    }
+    .tbe-todo-notice i { flex-shrink:0; font-size:1rem; margin-top:.1rem; }
+    .tbe-todo-notice code {
+        background:rgba(245,158,11,.15); border-radius:4px;
+        padding:.1rem .35rem; font-size:.8rem; font-family:monospace;
+    }
+</style>
+
+<div class="tbe-page">
+<div class="container-fluid px-4">
+
+    @* â”€â”€ Toasts â”€â”€ *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="tbe-toast tbe-toast-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="tbe-toast tbe-toast-error">
+            <i class="bi bi-exclamation-circle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* â”€â”€ Team TODO notice â”€â”€ *@
+    <div class="tbe-todo-notice">
+        <i class="bi bi-tools"></i>
+        <div>
+            <strong>Team TODO:</strong>
+            Trang nÃ y Ä‘Ã£ cÃ³ giao diá»‡n vÃ  routing hoÃ n chá»‰nh.
+            Cáº§n wire up <code>OrganizerController.TicketsByEvent()</code>
+            Ä‘á»ƒ gá»i Ä‘Ãºng <code>ITicketService.GetByEventAsync(eventId)</code>
+            hoáº·c <code>_unitOfWork.Tickets</code> khi repository sáºµn sÃ ng.
+            ViewModel: <code>TicketsByEventViewModel</code> Â· View: <code>~/Views/Ticket/TicketsByEvent.cshtml</code>
+        </div>
+    </div>
+
+    @* â”€â”€ Breadcrumb â”€â”€ *@
+    <div class="tbe-breadcrumb">
+        <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="manageticket">
+            <i class="bi bi-ticket-perforated-fill"></i> Manage Tickets
+        </a>
+        <i class="bi bi-chevron-right"></i>
+        <span>@Model.EventTitle</span>
+    </div>
+
+    @* â”€â”€ Header â”€â”€ *@
+    <div class="tbe-header">
+        <div>
+            <h1 class="tbe-header-title">
+                <div class="tbe-header-icon"><i class="bi bi-ticket-perforated-fill"></i></div>
+                Ticket Details
+            </h1>
+            <p class="tbe-header-sub">Individual ticket records for this event.</p>
+            <div class="tbe-header-meta">
+                <span class="tbe-meta-item">
+                    <i class="bi bi-calendar-event-fill"></i>
+                    <strong>@Model.StartTime.ToString("dd/MM/yyyy HH:mm")</strong>
+                </span>
+                <span class="tbe-meta-item">
+                    <i class="bi bi-calendar-x-fill"></i>
+                    <strong>@Model.EndTime.ToString("dd/MM/yyyy HH:mm")</strong>
+                </span>
+                <span class="tbe-meta-item">
+                    <i class="bi bi-people-fill"></i>
+                    Capacity: <strong>@Model.MaxCapacity</strong>
+                </span>
+            </div>
+        </div>
+        <div style="display:flex; gap:.65rem; flex-wrap:wrap; align-items:center;">
+            <a asp-controller="Organizer" asp-action="Manage"
+               asp-route-operation="detailevent"
+               asp-route-id="@Model.EventId"
+               class="tbe-btn tbe-btn-ghost">
+                <i class="bi bi-box-arrow-up-right"></i> Event Details
+            </a>
+            <a asp-controller="Organizer" asp-action="Manage"
+               asp-route-operation="manageticket"
+               class="tbe-btn tbe-btn-ghost">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    @* â”€â”€ Event summary card â”€â”€ *@
+    <div class="tbe-event-card">
+        <div class="tbe-event-card-icon"><i class="bi bi-calendar2-event-fill"></i></div>
+        <div style="flex:1; min-width:0;">
+            <div class="tbe-event-card-title">@Model.EventTitle</div>
+            <div class="tbe-event-card-detail">
+                <span><i class="bi bi-ticket-perforated"></i> @Model.TotalTickets / @Model.MaxCapacity sold</span>
+                <span><i class="bi bi-check-circle"></i> @Model.CheckedIn checked in</span>
+                <span><i class="bi bi-hourglass-split"></i> @Model.RemainingSeats seats left</span>
+                <span><i class="bi bi-graph-up"></i> @Model.FillPercent.ToString("0.0")% fill rate</span>
+            </div>
+            <div class="tbe-fill-bar-mini">
+                <div class="tbe-fill-bar-mini-inner" style="width:@Model.FillPercent%;"></div>
+            </div>
+        </div>
+    </div>
+
+    @* â”€â”€ Stats Strip â”€â”€ *@
+    <div class="tbe-stats-grid">
+        <div class="tbe-stat">
+            <div class="tbe-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-ticket-perforated-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="tbe-stat-label">Total Tickets</div>
+                <div class="tbe-stat-value" style="color:#6d28d9;">@Model.TotalTickets</div>
+            </div>
+        </div>
+        <div class="tbe-stat">
+            <div class="tbe-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="tbe-stat-label">Checked In</div>
+                <div class="tbe-stat-value" style="color:#16a34a;">@Model.CheckedIn</div>
+            </div>
+        </div>
+        <div class="tbe-stat">
+            <div class="tbe-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-clock-fill" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="tbe-stat-label">Registered</div>
+                <div class="tbe-stat-value" style="color:#1d4ed8;">@Model.Registered</div>
+            </div>
+        </div>
+        <div class="tbe-stat">
+            <div class="tbe-stat-icon" style="background:#fee2e2;">
+                <i class="bi bi-x-circle-fill" style="color:#dc2626;"></i>
+            </div>
+            <div>
+                <div class="tbe-stat-label">Cancelled</div>
+                <div class="tbe-stat-value" style="color:#dc2626;">@Model.Cancelled</div>
+            </div>
+        </div>
+        <div class="tbe-stat">
+            <div class="tbe-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-person-badge-fill" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="tbe-stat-label">Remaining</div>
+                <div class="tbe-stat-value" style="color:#d97706;">@Model.RemainingSeats</div>
+            </div>
+        </div>
+    </div>
+
+    @* â”€â”€ Search + Status filter â”€â”€ *@
+    <div class="tbe-filter-bar">
+        <form method="get" asp-controller="Organizer" asp-action="TicketsByEvent" style="display:contents;">
+            <input type="hidden" name="eventId" value="@Model.EventId" />
+
+            @* Search *@
+            <div class="tbe-search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@Model.Search"
+                       id="tbeSearchInput"
+                       class="tbe-search-input"
+                       placeholder="Search by student name or ticket codeâ€¦"
+                       oninput="tbeLiveFilter()" />
+            </div>
+
+                        @* Status dropdown - plain HTML to avoid RZ1031 *@
+            <select name="status" class="tbe-status-select" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                <option value="Registered">Registered</option>
+                <option value="CheckedIn">Checked In</option>
+                <option value="Used">Used</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+
+            <button type="submit" class="tbe-btn tbe-btn-filter">
+                <i class="bi bi-funnel-fill"></i> Filter
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
+            {
+                <a asp-controller="Organizer" asp-action="TicketsByEvent"
+                   asp-route-eventId="@Model.EventId"
+                   class="tbe-btn tbe-btn-ghost">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            }
+        </form>
+        <span class="tbe-result-count">
+            <strong id="tbeVisCount">@tickets.Count</strong> / @tickets.Count ticket(s)
+        </span>
+    </div>
+
+    @* â”€â”€ Table card â”€â”€ *@
+    <div class="tbe-table-card">
+        <div class="tbe-table-header">
+            <div class="tbe-table-label">
+                <i class="bi bi-list-ul"></i> Ticket List
+                <span class="tbe-count-chip" id="tbeChipCount">@tickets.Count ticket(s)</span>
+            </div>
+            <div style="font-size:.78rem; color:#94a3b8;">
+                @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
+                {
+                    <span>
+                        Filtered
+                        @if (!string.IsNullOrWhiteSpace(Model.Search)) { <text>by "<strong style="color:#6366f1;">@Model.Search</strong>"</text> }
+                        @if (!string.IsNullOrWhiteSpace(Model.StatusFilter)) { <text>Â· Status: <strong style="color:#6366f1;">@Model.StatusFilter</strong></text> }
+                    </span>
+                }
+                else
+                {
+                    <span>All tickets</span>
+                }
+            </div>
+        </div>
+
+        @if (!tickets.Any())
+        {
+            <div class="tbe-empty">
+                <div class="tbe-empty-icon"><i class="bi bi-ticket-perforated"></i></div>
+                <h3>No Tickets Found</h3>
+                <p>
+                    @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
+                    {
+                        <text>No tickets match the current filters. Try clearing the search.</text>
+                    }
+                    else
+                    {
+                        <text>No tickets have been registered for this event yet.</text>
+                    }
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="tbe-table" id="tbeTable">
+                    <colgroup>
+                        <col style="width:50px;" />
+                        <col />
+                        <col style="width:160px;" />
+                        <col style="width:120px;" />
+                        <col style="width:160px;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student</th>
+                            <th>Ticket Code</th>
+                            <th>Status</th>
+                            <th>Check-In Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbeTableBody">
+                        @{int rowNum = 1;}
+                        @foreach (var ticket in tickets)
+                        {
+                            var avatarColor = GetAvatarColor(ticket.StudentName);
+                            var initials    = GetInitials(ticket.StudentName);
+
+                            <tr class="tbe-ticket-row"
+                                data-name="@ticket.StudentName.ToLower()"
+                                data-code="@(ticket.TicketCode ?? "").ToLower()">
+
+                                @* # â”€â”€ *@
+                                <td>
+                                    <span style="font-size:.75rem; color:#94a3b8; font-weight:700;">@rowNum</span>
+                                </td>
+
+                                @* Student â”€â”€ *@
+                                <td>
+                                    <div class="tbe-student-cell">
+                                        <div class="tbe-student-avatar" style="background:@avatarColor;">
+                                            @initials
+                                        </div>
+                                        <div>
+                                            <div class="tbe-student-name">@ticket.StudentName</div>
+                                            <div class="tbe-student-id">ID: @ticket.StudentId[..Math.Min(10,ticket.StudentId.Length)]â€¦</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* Ticket Code â”€â”€ *@
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(ticket.TicketCode))
+                                    {
+                                        <span class="tbe-ticket-code">@ticket.TicketCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="tbe-ticket-code empty">â€”</span>
+                                    }
+                                </td>
+
+                                @* Status â”€â”€ *@
+                                <td>
+                                    <span class="tbe-status-pill @StatusClass(ticket.Status)">
+                                        <i class="bi @StatusIcon(ticket.Status)" style="font-size:.65rem;"></i>
+                                        @ticket.Status
+                                    </span>
+                                </td>
+
+                                @* Check-In Time â”€â”€ *@
+                                <td>
+                                    @if (ticket.CheckInTime.HasValue)
+                                    {
+                                        <div class="tbe-checkin">
+                                            <strong>@ticket.CheckInTime.Value.ToString("dd/MM/yyyy")</strong>
+                                            <span style="color:#94a3b8; font-size:.76rem;">@ticket.CheckInTime.Value.ToString("HH:mm")</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#cbd5e1; font-size:.82rem; font-style:italic;">Not checked in</span>
+                                    }
+                                </td>
+                            </tr>
+                            rowNum++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* â”€â”€ Summary footer â”€â”€ *@
+            <div class="tbe-footer">
+                <div>
+                    Showing <strong id="tbeFooterCount">@tickets.Count</strong> / <strong>@tickets.Count</strong> ticket(s)
+                    &nbsp;Â·&nbsp; <strong>@Model.CheckedIn</strong> checked in
+                    &nbsp;Â·&nbsp; <strong>@Model.Registered</strong> registered
+                    &nbsp;Â·&nbsp; <strong>@Model.Cancelled</strong> cancelled
+                </div>
+                <div>
+                    Fill rate: <strong style="color:@FillColor(Model.FillPercent);">@Model.FillPercent.ToString("0.0")%</strong>
+                    &nbsp;Â·&nbsp; Remaining: <strong>@Model.RemainingSeats</strong>
+                </div>
+            </div>
+        }
+    </div>
+
+</div>
+</div>
+
+@section Scripts {
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // â”€â”€ Live client-side filter (name + ticket code) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        window.tbeLiveFilter = function () {
+            const query    = (document.getElementById('tbeSearchInput')?.value ?? '').toLowerCase().trim();
+            const rows     = document.querySelectorAll('#tbeTableBody .tbe-ticket-row');
+            const chip     = document.getElementById('tbeChipCount');
+            const visCount = document.getElementById('tbeVisCount');
+            const footer   = document.getElementById('tbeFooterCount');
+            let visible    = 0;
+
+            rows.forEach(function (row) {
+                const name = row.getAttribute('data-name') || '';
+                const code = row.getAttribute('data-code') || '';
+                const show = !query || name.includes(query) || code.includes(query);
+                row.classList.toggle('tbe-filtered-out', !show);
+                if (show) visible++;
+            });
+
+            if (chip)     chip.textContent    = visible + ' ticket(s)';
+            if (visCount) visCount.textContent = visible;
+            if (footer)   footer.textContent   = visible;
+        };
+
+        // â”€â”€ Auto-run in case browser pre-fills â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        tbeLiveFilter();
+
+        // â”€â”€ Row hover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        document.querySelectorAll('.tbe-ticket-row').forEach(function (row) {
+            row.addEventListener('mouseenter', function () {
+                this.style.transition = 'background .12s';
+            });
+        });
+
+        // â”€â”€ Toast auto-dismiss â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        document.querySelectorAll('.tbe-toast').forEach(function (t) {
+            setTimeout(function () {
+                t.style.transition = 'opacity .4s, transform .4s';
+                t.style.opacity    = '0';
+                t.style.transform  = 'translateY(-6px)';
+                setTimeout(function () { t.remove(); }, 420);
+            }, 5000);
+        });
+
+    });
+    </script>
+}
+

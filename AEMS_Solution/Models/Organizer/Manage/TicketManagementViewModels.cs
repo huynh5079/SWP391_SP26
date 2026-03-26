@@ -63,4 +63,38 @@ namespace AEMS_Solution.Models.Organizer.Manage
         public List<TicketSalesByEventVm> Events { get; set; } = new();
         public int TotalSoldTickets => Events.Sum(x => x.SoldTickets);
     }
+
+    // ── Detail page: individual tickets for one specific event ───────────────
+    /// <summary>
+    /// ViewModel for Views/Ticket/TicketsByEvent.cshtml
+    /// Populated by OrganizerController.TicketsByEvent(string eventId, string? search, string? status).
+    /// Team TODO: wire up the controller action and the ITicketService / IUnitOfWork query.
+    /// </summary>
+    public class TicketsByEventViewModel
+    {
+        // ── Event header info ─────────────────────────────────────────────────
+        public string   EventId     { get; set; } = string.Empty;
+        public string   EventTitle  { get; set; } = string.Empty;
+        public DateTime StartTime   { get; set; }
+        public DateTime EndTime     { get; set; }
+        public int      MaxCapacity { get; set; }
+
+        // ── Active filter state ────────────────────────────────────────────────
+        public string? Search       { get; set; }
+        public string? StatusFilter { get; set; }
+
+        // ── Individual ticket rows ─────────────────────────────────────────────
+        public List<TicketListItemVm> Tickets { get; set; } = new();
+
+        // ── Computed stats (derived from Tickets — no hardcoded data) ──────────
+        public int    TotalTickets   => Tickets.Count;
+        public int    CheckedIn      => Tickets.Count(t => t.Status == TicketStatusEnum.CheckedIn);
+        public int    Registered     => Tickets.Count(t => t.Status == TicketStatusEnum.Registered);
+        public int    Cancelled      => Tickets.Count(t => t.Status == TicketStatusEnum.Cancelled);
+        public int    Used           => Tickets.Count(t => t.Status == TicketStatusEnum.Used);
+        public int    RemainingSeats => Math.Max(0, MaxCapacity - TotalTickets);
+        public double FillPercent    => MaxCapacity > 0
+                                           ? Math.Round((double)TotalTickets / MaxCapacity * 100, 1)
+                                           : 0;
+    }
 }

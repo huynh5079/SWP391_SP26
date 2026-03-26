@@ -590,13 +590,22 @@
 
                                 @* ── Details ── *@
                                 <td style="text-align:right;">
-                                    <a class="mt-view-btn"
-                                       asp-controller="Organizer" asp-action="Manage"
-                                       asp-route-operation="detailevent"
-                                       asp-route-id="@evt.EventId"
-                                       title="View Event Details">
-                                        <i class="bi bi-arrow-up-right-circle"></i> View
-                                    </a>
+                                    <div style="display:flex; gap:.4rem; justify-content:flex-end; flex-wrap:wrap;">
+                                        <a class="mt-view-btn"
+                                           asp-controller="Organizer" asp-action="Manage"
+                                           asp-route-operation="detailevent"
+                                           asp-route-id="@evt.EventId"
+                                           title="View Event Details">
+                                            <i class="bi bi-box-arrow-up-right"></i> Event
+                                        </a>
+                                        <a class="mt-view-btn"
+                                           style="background:#ede9fe; border-color:#c4b5fd; color:#6d28d9;"
+                                           asp-controller="Organizer" asp-action="TicketsByEvent"
+                                           asp-route-eventId="@evt.EventId"
+                                           title="View Individual Tickets for this Event">
+                                            <i class="bi bi-ticket-perforated"></i> Tickets
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         }
