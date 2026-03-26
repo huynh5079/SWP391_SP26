@@ -20,6 +20,7 @@ public partial class Feedback : BaseEntity
 
     public FeedBackRatingsEnum? RatingEvent { get; set; } //Label
 
+    public double? AverageRating;
     //public DateTime? CreatedAt { get; set; }
 
     public virtual Event? Event { get; set; }

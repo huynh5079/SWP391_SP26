@@ -31,8 +31,9 @@ namespace AEMS_Solution.Controllers.Dashboards
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IApproverEventAgendaAction _eventAgendaAction;
+        private readonly BusinessLogic.Service.Event.IEventService _eventService;
 
-        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, ISemesterService semesterService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction)
+        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, ISemesterService semesterService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction, BusinessLogic.Service.Event.IEventService eventService)
         {
             _queryService = queryService;
             _commandService = commandService;
@@ -41,6 +42,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _eventAgendaAction = eventAgendaAction;
+            _eventService = eventService;
         }
 
         [HttpGet]
@@ -454,6 +456,58 @@ namespace AEMS_Solution.Controllers.Dashboards
                 }).ToList(),
                 NewRoom = createRoom ?? new CreateRoomViewModel()
             };
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> AllEvents(string? search, string? status = "", int page = 1, int pageSize = 20)
+        {
+            var statusFilter = string.IsNullOrWhiteSpace(status) || status.Trim().Equals("all", System.StringComparison.OrdinalIgnoreCase)
+                ? null
+                : status;
+
+            var list = await _queryService.GetPendingEventsAsync(CurrentUserId, search, statusFilter, page, pageSize);
+
+            var vm = new PendingApprovalsViewModel();
+            foreach (var e in list)
+            {
+                vm.Events.Add(new ApproverEventCardVm
+                {
+                    EventId = e.Id,
+                    Title = e.Title,
+                    StartTime = e.StartTime,
+                    EndTime = e.EndTime ?? System.DateTime.MinValue,
+                    Status = e.Status,
+                    ThumbnailUrl = e.ThumbnailUrl,
+                    Location = e.Location,
+                    OrganizerName = e.OrganizerName,
+                    OrganizerEmail = e.OrganizerEmail,
+                    LastApprovalComment = e.LastApprovalComment
+                });
+            }
+
+            vm.Search = search;
+            vm.Status = status ?? string.Empty;
+            vm.Page = page;
+            vm.PageSize = pageSize;
+
+            return View("~/Views/Approval/AllEvents.cshtml", vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewFeedBack(string id)
+        {
+            try
+            {
+                // We use the new ShowFeedbackForApprover bypass method
+                var feedbacks = await _eventService.ShowFeedbackForApprover(id);
+                return View("~/Views/Approval/ViewFeedBack.cshtml", feedbacks);
+            }
+            catch (System.Exception ex)
+            {
+                TempData["NotificationMessage"] = ex.Message;
+                TempData["NotificationType"] = "error";
+                return RedirectToAction(nameof(AllEvents));
+            }
         }
 
         [HttpGet]

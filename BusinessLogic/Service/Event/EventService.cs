@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BusinessLogic.DTOs;
+using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.System;
+using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using DateTimeHelper = DataAccess.Helper.DateTimeHelper;
 using EventAgendaEntity = DataAccess.Entities.EventAgenda;
 using EventDocumentEntity = DataAccess.Entities.EventDocument;
-using Microsoft.EntityFrameworkCore;
-using BusinessLogic.Service.ValidationData.Event;
-using Microsoft.AspNetCore.Http;
 
 namespace BusinessLogic.Service.Event;
 
@@ -91,7 +92,7 @@ public class EventService : IEventService
 			ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
 			ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
 			SemesterId = e.SemesterId,
-            SemesterName = e.Semester?.Name.ToString(),
+			SemesterName = e.Semester?.Name.ToString(),
 			SemesterCode = e.Semester?.Code,
 			DepartmentId = e.DepartmentId,
 			DepartmentName = e.Department?.Name,
@@ -131,7 +132,7 @@ public class EventService : IEventService
 
 	private async Task<List<EventListDto>> GetAccessibleEventsForOrganizerAsync(string userId)
 	{
-        var now = DateTimeHelper.GetVietnamTime();
+		var now = DateTimeHelper.GetVietnamTime();
 		if (string.IsNullOrEmpty(userId))
 			throw new InvalidOperationException("UserId không được để trống.");
 
@@ -300,7 +301,7 @@ public class EventService : IEventService
 
 	public async Task<List<EventListDto>> GetMyEventsAsync(string userId)
 	{
-        var now = DateTimeHelper.GetVietnamTime();
+		var now = DateTimeHelper.GetVietnamTime();
 		if (string.IsNullOrEmpty(userId))
 			throw new InvalidOperationException("UserId không được để trống.");
 
@@ -382,7 +383,7 @@ public class EventService : IEventService
 			double avg = 0;
 			if (e.Feedbacks != null && e.Feedbacks.Count > 0)
 			{
-               avg = e.Feedbacks.Average(f => (int)f.RatingEvent);
+				avg = e.Feedbacks.Average(f => (int)f.RatingEvent);
 			}
 
 			var lastApproval = e.ApprovalLogs?.Where(l => l.DeletedAt == null).OrderByDescending(l => l.CreatedAt).FirstOrDefault();
@@ -394,7 +395,7 @@ public class EventService : IEventService
 				ThumbnailUrl = e.ThumbnailUrl?.Split('|')[0],
 				ImageUrls = string.IsNullOrEmpty(e.ThumbnailUrl) ? new List<string>() : e.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
 				SemesterId = e.SemesterId,
-                SemesterName = e.Semester?.Name.ToString(),
+				SemesterName = e.Semester?.Name.ToString(),
 				DepartmentId = e.DepartmentId,
 				DepartmentName = e.Department?.Name,
 				Location = !string.IsNullOrEmpty(e.Location?.Address) ? e.Location.Address : (e.Location?.Name ?? e.LocationId),
@@ -501,10 +502,10 @@ public class EventService : IEventService
 			var location = await _uow.Locations.GetByIdAsync(normalizedLocationId);
 			if (location == null) throw new InvalidOperationException("Location không tồn tại.");
 		}
-		
+
 		var now = DateTimeHelper.GetVietnamTime();
 		//if (dto.StartTime < now.AddDays(7))
-			//throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
+		//throw new InvalidOperationException("Thời gian bắt đầu sự kiện phải cách ngày tạo ít nhất 7 ngày.");
 
 		if (dto.Agendas != null)
 		{
@@ -528,7 +529,7 @@ public class EventService : IEventService
 		{
 			var entity = new DataAccess.Entities.Event
 			{
-				
+
 				Title = dto.Title?.Trim() ?? "",
 				Description = dto.Description,
 				ThumbnailUrl = dto.BannerUrl,
@@ -588,7 +589,7 @@ public class EventService : IEventService
 
 					await _uow.EventAgenda.CreateAsync(new EventAgendaEntity
 					{
-						
+
 						EventId = entity.Id,
 						SessionName = a.SessionName,
 						Description = a.Description,
@@ -645,96 +646,96 @@ public class EventService : IEventService
 		}
 	}
 
-    public async Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId)
-    {
-        if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
+	public async Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId)
+	{
+		if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
 
-        var ev = await _uow.Events.GetByIdAsync(eventId);
-        if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
-        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
-        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
 
-        if (ev.OrganizerId != staff.Id)
-            throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
 
-        if (file != null && file.Length > 0)
-        {
-            var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
-            if (uploadResult != null)
-            {
-                var urls = ev.ThumbnailUrl?.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList() ?? new List<string>();
-                if (urls.Count > 0) urls[0] = uploadResult.Url;
-                else urls.Add(uploadResult.Url);
+		if (file != null && file.Length > 0)
+		{
+			var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
+			if (uploadResult != null)
+			{
+				var urls = ev.ThumbnailUrl?.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList() ?? new List<string>();
+				if (urls.Count > 0) urls[0] = uploadResult.Url;
+				else urls.Add(uploadResult.Url);
 
-                ev.ThumbnailUrl = string.Join("|", urls);
-                ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
-                
-                await _uow.Events.UpdateAsync(ev);
-                await _uow.SaveChangesAsync();
-                return uploadResult.Url;
-            }
-        }
-        return null;
-    }
+				ev.ThumbnailUrl = string.Join("|", urls);
+				ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
-    public async Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId)
-    {
-        if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
+				await _uow.Events.UpdateAsync(ev);
+				await _uow.SaveChangesAsync();
+				return uploadResult.Url;
+			}
+		}
+		return null;
+	}
 
-        var ev = await _uow.Events.GetByIdAsync(eventId);
-        if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+	public async Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId)
+	{
+		if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
 
-        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
-        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
-        if (ev.OrganizerId != staff.Id)
-            throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
 
-        if (file == null || file.Length == 0) throw new InvalidOperationException("File không hợp lệ.");
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
 
-        var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
-        if (uploadResult == null) throw new InvalidOperationException("Upload ảnh thất bại.");
+		if (file == null || file.Length == 0) throw new InvalidOperationException("File không hợp lệ.");
 
-        var urls = string.IsNullOrEmpty(ev.ThumbnailUrl) 
-            ? new List<string>() 
-            : ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+		var uploadResult = await _fileStorageService.UploadSingleAsync(file, UploadContext.EventThumbnail, userId);
+		if (uploadResult == null) throw new InvalidOperationException("Upload ảnh thất bại.");
 
-        urls.Add(uploadResult.Url);
-        ev.ThumbnailUrl = string.Join("|", urls);
-        ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+		var urls = string.IsNullOrEmpty(ev.ThumbnailUrl)
+			? new List<string>()
+			: ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
 
-        await _uow.Events.UpdateAsync(ev);
-        await _uow.SaveChangesAsync();
+		urls.Add(uploadResult.Url);
+		ev.ThumbnailUrl = string.Join("|", urls);
+		ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
-        return uploadResult.Url;
-    }
+		await _uow.Events.UpdateAsync(ev);
+		await _uow.SaveChangesAsync();
 
-    public async Task RemoveEventImageAsync(string eventId, string imageUrl, string userId)
-    {
-        if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
+		return uploadResult.Url;
+	}
 
-        var ev = await _uow.Events.GetByIdAsync(eventId);
-        if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
+	public async Task RemoveEventImageAsync(string eventId, string imageUrl, string userId)
+	{
+		if (string.IsNullOrEmpty(eventId)) throw new InvalidOperationException("Event id không hợp lệ.");
 
-        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
-        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
+		var ev = await _uow.Events.GetByIdAsync(eventId);
+		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
 
-        if (ev.OrganizerId != staff.Id)
-            throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên.");
 
-        if (string.IsNullOrEmpty(ev.ThumbnailUrl)) return;
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền sửa sự kiện này.");
 
-        var urls = ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
-        if (urls.Remove(imageUrl))
-        {
-            ev.ThumbnailUrl = string.Join("|", urls);
-            ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+		if (string.IsNullOrEmpty(ev.ThumbnailUrl)) return;
 
-            await _uow.Events.UpdateAsync(ev);
-            await _uow.SaveChangesAsync();
-        }
-    }
+		var urls = ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+		if (urls.Remove(imageUrl))
+		{
+			ev.ThumbnailUrl = string.Join("|", urls);
+			ev.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+			await _uow.Events.UpdateAsync(ev);
+			await _uow.SaveChangesAsync();
+		}
+	}
 
 	public async Task RestoreEventAsync(string userId, string eventId)
 	{
@@ -843,7 +844,7 @@ public class EventService : IEventService
 			ev.DepositAmount = dto.DepositAmount;
 			// Handle Multiple Image Uploads
 			var imageUrls = ev.ThumbnailUrl?.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList() ?? new List<string>();
-			
+
 			if (dto.ThumbnailFile != null)
 			{
 				var uploadResult = await _fileStorageService.UploadSingleAsync(dto.ThumbnailFile, UploadContext.EventThumbnail, userId);
@@ -1027,7 +1028,7 @@ public class EventService : IEventService
 			throw new InvalidOperationException("Thời gian bắt đầu phải lớn hơn thời gian hiện tại mới có thể gửi duyệt.");
 
 		//if (ev.StartTime - now < TimeSpan.FromDays(5))
-			//throw new InvalidOperationException("Cần gửi duyệt trước ít nhất 5 ngày so với thời gian bắt đầu.");
+		//throw new InvalidOperationException("Cần gửi duyệt trước ít nhất 5 ngày so với thời gian bắt đầu.");
 
 		ev.Status = EventStatusEnum.Pending;
 		ev.UpdatedAt = now;
@@ -1061,13 +1062,13 @@ public class EventService : IEventService
 			  .Include(x => x.EventDocuments)
 			  .Include(x => x.ApprovalLogs)
 			  .Include(x => x.EventTeams)
-			    .ThenInclude(t => t.TeamMembers)
-			      .ThenInclude(m => m.Student)
-			        .ThenInclude(s => s.User)
+				.ThenInclude(t => t.TeamMembers)
+				  .ThenInclude(m => m.Student)
+					.ThenInclude(s => s.User)
 			  .Include(x => x.EventTeams)
-			    .ThenInclude(t => t.TeamMembers)
-			      .ThenInclude(m => m.Staff)
-			        .ThenInclude(s => s.User)
+				.ThenInclude(t => t.TeamMembers)
+				  .ThenInclude(m => m.Staff)
+					.ThenInclude(s => s.User)
 			)).FirstOrDefault();
 
 		if (ev == null) throw new InvalidOperationException("Event không tồn tại.");
@@ -1085,7 +1086,7 @@ public class EventService : IEventService
 			ThumbnailUrl = ev.ThumbnailUrl?.Split('|')[0],
 			ImageUrls = string.IsNullOrEmpty(ev.ThumbnailUrl) ? new List<string>() : ev.ThumbnailUrl.Split('|', StringSplitOptions.RemoveEmptyEntries).ToList(),
 			SemesterId = ev.SemesterId,
-           SemesterName = ev.Semester?.Name.ToString(),
+			SemesterName = ev.Semester?.Name.ToString(),
 			DepartmentId = ev.DepartmentId,
 			DepartmentName = ev.Department?.Name,
 			LocationId = ev.LocationId,
@@ -1103,7 +1104,7 @@ public class EventService : IEventService
 			RegisteredCount = ev.Tickets?.Count ?? 0,
 			CheckedInCount = ev.Tickets?.Count(t => t.CheckInTime != null) ?? 0,
 			WaitlistCount = ev.EventWaitlists?.Count ?? 0,
-            AvgRating = (ev.Feedbacks != null && ev.Feedbacks.Count > 0)
+			AvgRating = (ev.Feedbacks != null && ev.Feedbacks.Count > 0)
 				? ev.Feedbacks.Average(f => (double)(int)f.RatingEvent)
 				: 0,
 			LastApprovalAction = lastApproval?.Action,
@@ -1167,7 +1168,7 @@ public class EventService : IEventService
 						string name = m.Student != null ? (m.Student.User?.FullName ?? "Unknown") : (m.Staff != null ? (m.Staff.User?.FullName ?? "Unknown") : "Unknown");
 						string email = m.Student != null ? (m.Student.User?.Email ?? "Unknown") : (m.Staff != null ? (m.Staff.User?.Email ?? "Unknown") : "Unknown");
 						string role = m.Student != null ? "Student" : (m.Staff != null ? "Staff" : "Unknown");
-						
+
 						teamDto.TeamMembers.Add(new TeamMemberDto
 						{
 							Id = m.Id,
@@ -1218,7 +1219,7 @@ public class EventService : IEventService
 			ev.StatusEventAvailable = EventStatusAvailableEnum.NA;
 			ev.UpdatedAt = now;
 
-			await _uow.Events.UpdateAsync(ev);   
+			await _uow.Events.UpdateAsync(ev);
 			await _uow.SaveChangesAsync();
 			await transaction.CommitAsync();
 		}
@@ -1281,7 +1282,7 @@ public class EventService : IEventService
 		// Check if already in team
 		// Assuming we have generic access or ITeamMemberRepository. If not we will use DbContext directly or create a quick generic.
 		// Wait, I UnitOfWork might not have EventTeams or TeamMembers explicitly exposed, let me check IUnitOfWork.cs below.
-		
+
 		var teamMember = new DataAccess.Entities.TeamMember
 		{
 			Id = Guid.NewGuid().ToString(),
@@ -1314,121 +1315,121 @@ public class EventService : IEventService
 		return new List<EventTeamDto>();
 	}
 
-    public async Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto)
-    {
-        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
-        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+	public async Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto)
+	{
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
 
-        var ev = await _uow.Events.GetByIdAsync(dto.EventId);
-        if (ev == null) throw new KeyNotFoundException("Event không tồn tại.");
+		var ev = await _uow.Events.GetByIdAsync(dto.EventId);
+		if (ev == null) throw new KeyNotFoundException("Event không tồn tại.");
 
-        if (ev.OrganizerId != staff.Id)
-            throw new UnauthorizedAccessException($"Tài khoản {userId} cố gắng truy cập Event {dto.EventId} không thuộc quyền quản lý.");
+		if (ev.OrganizerId != staff.Id)
+			throw new UnauthorizedAccessException($"Tài khoản {userId} cố gắng truy cập Event {dto.EventId} không thuộc quyền quản lý.");
 
-        if (dto.StartTime >= dto.EndTime)
-            throw new InvalidOperationException("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
+		if (dto.StartTime >= dto.EndTime)
+			throw new InvalidOperationException("Thời gian kết thúc agenda phải lớn hơn thời gian bắt đầu.");
 
-        if (dto.StartTime < ev.StartTime || dto.EndTime > ev.EndTime)
-            throw new InvalidOperationException("Thời gian agenda phải nằm trong thời gian của event.");
+		if (dto.StartTime < ev.StartTime || dto.EndTime > ev.EndTime)
+			throw new InvalidOperationException("Thời gian agenda phải nằm trong thời gian của event.");
 
-        var now = DateTimeHelper.GetVietnamTime();
-        var agenda = new EventAgendaEntity
-        {
-            Id = Guid.NewGuid().ToString(),
-            EventId = dto.EventId,
-            SessionName = dto.SessionName?.Trim(),
-            SpeakerInfo = dto.SpeakerInfo?.Trim(),
-            Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
-            StartTime = dto.StartTime,
-            EndTime = dto.EndTime,
-            Location = string.IsNullOrWhiteSpace(dto.Location) ? null : dto.Location.Trim(),
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+		var now = DateTimeHelper.GetVietnamTime();
+		var agenda = new EventAgendaEntity
+		{
+			Id = Guid.NewGuid().ToString(),
+			EventId = dto.EventId,
+			SessionName = dto.SessionName?.Trim(),
+			SpeakerInfo = dto.SpeakerInfo?.Trim(),
+			Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
+			StartTime = dto.StartTime,
+			EndTime = dto.EndTime,
+			Location = string.IsNullOrWhiteSpace(dto.Location) ? null : dto.Location.Trim(),
+			CreatedAt = now,
+			UpdatedAt = now
+		};
 
-        if (!string.IsNullOrEmpty(dto.SpeakerUserId))
-        {
-            if (dto.SpeakerUserRole == "Student")
-            {
-                var student = await _uow.StudentProfiles.GetAsync(x => x.UserId == dto.SpeakerUserId);
-                if (student != null) agenda.StudentSpeakerId = student.Id;
-            }
-            else if (dto.SpeakerUserRole == "Staff")
-            {
-                var speakerStaff = await _uow.StaffProfiles.GetAsync(x => x.UserId == dto.SpeakerUserId);
-                if (speakerStaff != null) agenda.StaffSpeakerId = speakerStaff.Id;
-            }
-        }
+		if (!string.IsNullOrEmpty(dto.SpeakerUserId))
+		{
+			if (dto.SpeakerUserRole == "Student")
+			{
+				var student = await _uow.StudentProfiles.GetAsync(x => x.UserId == dto.SpeakerUserId);
+				if (student != null) agenda.StudentSpeakerId = student.Id;
+			}
+			else if (dto.SpeakerUserRole == "Staff")
+			{
+				var speakerStaff = await _uow.StaffProfiles.GetAsync(x => x.UserId == dto.SpeakerUserId);
+				if (speakerStaff != null) agenda.StaffSpeakerId = speakerStaff.Id;
+			}
+		}
 
-        using var transaction = await _uow.BeginTransactionAsync();
-        try
-        {
-            await _uow.EventAgenda.CreateAsync(agenda);
-            await _uow.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return agenda.Id;
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-    }
+		using var transaction = await _uow.BeginTransactionAsync();
+		try
+		{
+			await _uow.EventAgenda.CreateAsync(agenda);
+			await _uow.SaveChangesAsync();
+			await transaction.CommitAsync();
+			return agenda.Id;
+		}
+		catch
+		{
+			await transaction.RollbackAsync();
+			throw;
+		}
+	}
 
-    public async Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto)
-    {
-        var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
-        if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+	public async Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto)
+	{
+		var staff = await _uow.StaffProfiles.GetAsync(x => x.UserId == userId);
+		if (staff == null) throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
 
-        var ev = await _uow.Events.GetByIdAsync(dto.EventId);
-        if (ev == null) throw new KeyNotFoundException("Event không tồn tại.");
+		var ev = await _uow.Events.GetByIdAsync(dto.EventId);
+		if (ev == null) throw new KeyNotFoundException("Event không tồn tại.");
 
-        if (ev.OrganizerId != staff.Id)
-            throw new UnauthorizedAccessException($"Tài khoản {userId} cố gắng truy cập Event {dto.EventId} không thuộc quyền quản lý.");
+		if (ev.OrganizerId != staff.Id)
+			throw new UnauthorizedAccessException($"Tài khoản {userId} cố gắng truy cập Event {dto.EventId} không thuộc quyền quản lý.");
 
-        var now = DateTimeHelper.GetVietnamTime();
+		var now = DateTimeHelper.GetVietnamTime();
 
-        string? finalUrl = dto.Url;
-        string? finalName = dto.Name;
+		string? finalUrl = dto.Url;
+		string? finalName = dto.Name;
 
-        if (dto.File != null)
-        {
-            var uploadResult = await _fileStorageService.UploadSingleAsync(dto.File, UploadContext.EventDocument, userId);
-            if (uploadResult != null)
-            {
-                finalUrl = uploadResult.Url;
-                finalName = dto.File.FileName;
-            }
-        }
+		if (dto.File != null)
+		{
+			var uploadResult = await _fileStorageService.UploadSingleAsync(dto.File, UploadContext.EventDocument, userId);
+			if (uploadResult != null)
+			{
+				finalUrl = uploadResult.Url;
+				finalName = dto.File.FileName;
+			}
+		}
 
-        var document = new EventDocumentEntity
-        {
-            Id = Guid.NewGuid().ToString(),
-            EventId = dto.EventId,
-            Name = finalName?.Trim() ?? "Tài liệu không tên",
-            Url = finalUrl?.Trim() ?? string.Empty,
-            Type = string.IsNullOrWhiteSpace(dto.Type) ? null : dto.Type.Trim(),
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+		var document = new EventDocumentEntity
+		{
+			Id = Guid.NewGuid().ToString(),
+			EventId = dto.EventId,
+			Name = finalName?.Trim() ?? "Tài liệu không tên",
+			Url = finalUrl?.Trim() ?? string.Empty,
+			Type = string.IsNullOrWhiteSpace(dto.Type) ? null : dto.Type.Trim(),
+			CreatedAt = now,
+			UpdatedAt = now
+		};
 
-        using var transaction = await _uow.BeginTransactionAsync();
-        try
-        {
-            await _uow.EventDocuments.CreateAsync(document);
-            await _uow.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return document.Id;
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-    }
+		using var transaction = await _uow.BeginTransactionAsync();
+		try
+		{
+			await _uow.EventDocuments.CreateAsync(document);
+			await _uow.SaveChangesAsync();
+			await transaction.CommitAsync();
+			return document.Id;
+		}
+		catch
+		{
+			await transaction.RollbackAsync();
+			throw;
+		}
+	}
 
-    public async Task<List<EventListDto>> GetExpiredEventsAsync(string userId)
-    {
+	public async Task<List<EventListDto>> GetExpiredEventsAsync(string userId)
+	{
 		var now = DateTimeHelper.GetVietnamTime();
 		if (string.IsNullOrEmpty(userId))
 			throw new InvalidOperationException("UserId không được để trống.");
@@ -1475,6 +1476,90 @@ public class EventService : IEventService
 		}
 
 		return resultList.OrderByDescending(x => x.StartTime).ToList();
-    }
-}
+	}
+
+	public async Task<List<DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto>> ShowFeedbackForOrganizer(string userId, FeedbackForOrganizerDTO dto)
+	{
+		if (string.IsNullOrWhiteSpace(dto?.EventId))
+			throw new InvalidOperationException("EventId không được để trống.");
+
+		// Verify event
+		var ev = await _uow.Events.GetAsync(e => e.Id == dto.EventId && e.DeletedAt == null);
+		if (ev == null)
+			throw new InvalidOperationException("Event không tồn tại.");
+
+		// Verify organizer
+		var staff = await _uow.StaffProfiles.GetAsync(s => s.UserId == userId);
+		if (staff == null)
+			throw new InvalidOperationException("Chưa thiết lập hồ sơ nhân viên (StaffProfile). Vui lòng liên hệ quản trị viên.");
+
+		if (ev.OrganizerId != staff.Id)
+			throw new InvalidOperationException("Bạn không có quyền xem feedback của sự kiện này.");
+
+		// Get feedbacks + include student
+		var feedbacks = await _uow.Feedbacks.GetAllAsync(
+			f => f.EventId == dto.EventId && f.DeletedAt == null,
+			q => q.Include(x => x.Student).ThenInclude(s => s.User)
+		);
+
+		// Tính AvgRating cho toàn event: parse FeedBackRatingsEnum? → int → double (không lưu DB)
+		var ratingValues = feedbacks
+			.Where(f => f.RatingEvent.HasValue)
+			.Select(f => (double)(int)f.RatingEvent!.Value)
+			.ToList();
+		double avgRating = ratingValues.Count > 0
+			? Math.Round(ratingValues.Average(), 2)
+			: 0;
+
+		var result = feedbacks.Select(g => new DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto
+		{
+			EventId = g.EventId ?? "",
+			EventTitle = ev.Title ?? "",
+			StudentId = g.StudentId,
+			StudentCode = g.Student?.StudentCode ?? "Unknown",
+			Rating = g.RatingEvent,          // giữ nguyên enum — 1 người đánh giá
+			AvgRating = avgRating,              // double — trung bình nhiều người, không lưu DB
+			Comment = g.Comment,
+			CreatedAt = g.CreatedAt
+		}).ToList();
+
+		return result;
+	}
+
+		public async Task<List<DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto>> ShowFeedbackForApprover(string eventId)
+		{
+			if (string.IsNullOrWhiteSpace(eventId))
+				throw new InvalidOperationException("EventId không được để trống.");
+
+			var ev = await _uow.Events.GetAsync(e => e.Id == eventId && e.DeletedAt == null);
+			if (ev == null)
+				throw new InvalidOperationException("Event không tồn tại.");
+
+			var feedbacks = await _uow.Feedbacks.GetAllAsync(
+				f => f.EventId == eventId && f.DeletedAt == null,
+				q => q.Include(x => x.Student!).ThenInclude(s => s!.User!)
+			);
+
+			var ratingValues = feedbacks
+				.Where(f => f.RatingEvent.HasValue)
+				.Select(f => (double)(int)f.RatingEvent!.Value)
+				.ToList();
+			double avgRating = ratingValues.Count > 0 ? Math.Round(ratingValues.Average(), 2) : 0;
+
+			var result = feedbacks.Select(g => new DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto
+			{
+				EventId     = g.EventId ?? "",
+				EventTitle  = ev.Title ?? "",
+				StudentId   = g.StudentId,
+				StudentCode = g.Student?.StudentCode ?? "Unknown",
+				Rating      = g.RatingEvent,
+				AvgRating   = avgRating,
+				Comment     = g.Comment,
+				CreatedAt   = g.CreatedAt
+			}).OrderByDescending(x => x.CreatedAt).ToList();
+
+			return result;
+		}
+	}
+
 

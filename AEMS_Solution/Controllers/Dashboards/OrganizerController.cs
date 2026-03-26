@@ -103,6 +103,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                     case "reanalyze-sentiment":
                         return await ReAnalyzeSentiment(id);
 
+                    case "viewfeedback":
+                        return await ViewFeedback(id);
+
                     default:
                         return BadRequest("Operation không hợp lệ.");
                 }
@@ -957,6 +960,38 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
             catch (Exception ex) { SetError(ex.Message); }
             return RedirectToAction(nameof(Manage), new { operation = "participants", id = eventId });
+        }
+        [HttpGet]
+        public async Task<IActionResult> ViewFeedback(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                SetError("Event ID không hợp lệ.");
+                return RedirectToAction("Index");
+            }
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var dto = new BusinessLogic.DTOs.Event.EventFeedbackSummary.FeedbackForOrganizerDTO { EventId = id };
+                var feedbacks = await _eventService.ShowFeedbackForOrganizer(userId, dto);
+                ViewBag.EventTitle = feedbacks.FirstOrDefault()?.EventTitle ?? "Event";
+                ViewBag.EventId = id;
+                ViewBag.AvgRating = feedbacks.Count > 0 ? feedbacks.First().AvgRating : 0;
+                ViewBag.TotalFeedbacks = feedbacks.Count;
+                return View("~/Views/Organizer/ViewFeedBack.cshtml", feedbacks);
+            }
+            catch (InvalidOperationException ex)
+            {
+                SetError(ex.Message);
+                return RedirectToAction("Index");
+            }
+            catch (Exception)
+            {
+                SetError("Đã xảy ra lỗi khi tải feedback.");
+                return RedirectToAction("Index");
+            }
         }
     }
 }
