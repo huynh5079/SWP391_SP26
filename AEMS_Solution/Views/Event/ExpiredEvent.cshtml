@@ -3,116 +3,710 @@
 @{
     ViewData["Title"] = "Expired Events";
     Layout = "_Organizerlayout";
+
+    // ── Helper: initials + avatar color from title ──────────────────────────
+    string GetInitials(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return "?";
+        var parts = title.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    string GetAvatarColor(string? title)
+    {
+        var palette = new[] {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6",
+            "#f97316","#a855f7"
+        };
+        if (string.IsNullOrEmpty(title)) return palette[0];
+        return palette[Math.Abs(title.GetHashCode()) % palette.Length];
+    }
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">🕒 Expired Events</h2>
-        <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> Create Event
-        </a>
+<style>
+    /* ===========================================================
+       EXPIRED EVENTS PAGE — PREMIUM UI (matching My Events style)
+    =========================================================== */
+    :root {
+        --ee-primary:      #6366f1;
+        --ee-primary-dark: #4f46e5;
+        --ee-bg:           #f0f2ff;
+        --ee-card:         #ffffff;
+        --ee-border:       #e0e7ff;
+        --ee-text:         #1e1b4b;
+        --ee-muted:        #64748b;
+        --ee-radius:       16px;
+        --ee-shadow:       0 4px 24px rgba(99,102,241,.08);
+        --ee-focus:        0 0 0 3px rgba(99,102,241,.2);
+        --ee-expired-bg:   #f1f5f9;
+        --ee-expired-text: #475569;
+        --ee-red:          #ef4444;
+        --ee-green:        #22c55e;
+        --ee-amber:        #f59e0b;
+    }
+
+    /* ── Animations ── */
+    @@keyframes ee-fadein   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes ee-slide-in { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:none; } }
+    @@keyframes ee-pulse    {
+        0%  { box-shadow: 0 0 0 0 rgba(239,68,68,.35); }
+        70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+        100%{ box-shadow: 0 0 0 0   rgba(239,68,68,0);  }
+    }
+
+    /* ── Page ── */
+    .ee-page { background: var(--ee-bg); min-height: 100vh; padding: 2rem 0 4rem; }
+
+    /* ── Header ── */
+    .ee-header {
+        display: flex; align-items: flex-start;
+        justify-content: space-between; gap: 1rem;
+        margin-bottom: 2rem; flex-wrap: wrap;
+        animation: ee-fadein .4s ease both;
+    }
+    .ee-header-title {
+        font-size: 1.9rem; font-weight: 900; color: var(--ee-text);
+        margin-bottom: .25rem; letter-spacing: -.025em;
+    }
+    .ee-header-title .icon { color: #ef4444; margin-right: .4rem; }
+    .ee-header-sub { color: var(--ee-muted); font-size: .88rem; margin: 0; }
+    .ee-header-actions { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .ee-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        font-size: .83rem; font-weight: 700; padding: .6rem 1.25rem;
+        border-radius: 30px; border: none; text-decoration: none;
+        cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .ee-btn-create {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.3);
+    }
+    .ee-btn-create:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(99,102,241,.4); color: #fff; }
+    .ee-btn-ghost  { background: #fff; color: #475569; border: 1.5px solid #e2e8f0; }
+    .ee-btn-ghost:hover  { background: #f1f5f9; }
+
+    /* ── Stats strip ── */
+    .ee-stats-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        animation: ee-fadein .4s .1s ease both;
+    }
+    @@media(max-width:900px) { .ee-stats-strip { grid-template-columns: 1fr 1fr; } }
+    @@media(max-width:540px) { .ee-stats-strip { grid-template-columns: 1fr; } }
+
+    .ee-stat {
+        background: var(--ee-card);
+        border-radius: 14px;
+        border: 1px solid var(--ee-border);
+        box-shadow: var(--ee-shadow);
+        padding: 1.1rem 1.25rem;
+        display: flex; align-items: center; gap: .9rem;
+        transition: transform .18s;
+    }
+    .ee-stat:hover { transform: translateY(-2px); }
+    .ee-stat-icon {
+        width: 42px; height: 42px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .ee-stat-label { font-size: .72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+    .ee-stat-value { font-size: 1.45rem; font-weight: 900; color: var(--ee-text); line-height: 1; margin-top: .1rem; }
+
+    /* ── Filter bar ── */
+    .ee-filter-bar {
+        background: var(--ee-card);
+        border-radius: var(--ee-radius);
+        border: 1px solid var(--ee-border);
+        box-shadow: var(--ee-shadow);
+        padding: 1.1rem 1.4rem;
+        margin-bottom: 1.5rem;
+        display: flex; gap: .8rem; align-items: center; flex-wrap: wrap;
+        animation: ee-fadein .4s .15s ease both;
+    }
+    .ee-search-wrap { position: relative; flex: 1 1 240px; min-width: 180px; }
+    .ee-search-wrap i {
+        position: absolute; top: 50%; left: .9rem;
+        transform: translateY(-50%); color: #94a3b8; font-size: .85rem; pointer-events: none;
+    }
+    .ee-search-input {
+        width: 100%; padding: .65rem 1rem .65rem 2.35rem;
+        border: 1.5px solid var(--ee-border); border-radius: 30px;
+        font-size: .88rem; color: var(--ee-text); background: #fafbff;
+        outline: none; transition: all .2s;
+    }
+    .ee-search-input:focus { background:#fff; border-color: var(--ee-primary); box-shadow: var(--ee-focus); }
+    .ee-filter-count {
+        font-size: .78rem; color: #94a3b8; font-weight: 600; white-space: nowrap;
+    }
+
+    /* ── Table Card ── */
+    .ee-table-card {
+        background: var(--ee-card); border-radius: var(--ee-radius);
+        border: 1px solid var(--ee-border); box-shadow: var(--ee-shadow);
+        overflow: hidden; margin-bottom: 1.5rem;
+        animation: ee-fadein .4s .2s ease both;
+    }
+
+    .ee-table-card-header {
+        padding: .9rem 1.4rem; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: .5rem;
+    }
+    .ee-table-section-label {
+        font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+        text-transform: uppercase; color: #94a3b8;
+        display: flex; align-items: center; gap: .4rem;
+    }
+    .ee-count-badge {
+        background: #fee2e2; color: #dc2626; font-size: .7rem;
+        font-weight: 700; padding: .12rem .5rem; border-radius: 20px;
+    }
+    .ee-legend {
+        display: flex; align-items: center; gap: .4rem;
+        font-size: .75rem; color: var(--ee-muted);
+    }
+    .ee-legend-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+
+    /* ── Table ── */
+    .ee-table { width: 100%; border-collapse: collapse; }
+
+    .ee-table thead tr th {
+        background: #f8fafc;
+        font-size: .66rem; font-weight: 800; letter-spacing: .07em;
+        text-transform: uppercase; color: #94a3b8;
+        padding: .75rem 1rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+    }
+    .ee-table tbody tr {
+        border-bottom: 1px solid #f8fafc; transition: background .12s;
+    }
+    .ee-table tbody tr:last-child { border-bottom: none; }
+    .ee-table tbody tr:hover { background: #fefce8; }
+    .ee-table tbody tr.ee-hidden { display: none; }
+    .ee-table tbody td {
+        padding: .95rem 1rem; vertical-align: middle; font-size: .88rem; color: var(--ee-text);
+    }
+
+    /* ── Thumbnail ── */
+    .ee-thumb-wrap { position: relative; display: inline-block; }
+    .ee-thumb {
+        width: 58px; height: 58px; border-radius: 12px;
+        object-fit: cover; display: block; transition: transform .18s;
+    }
+    .ee-thumb:hover { transform: scale(1.05); }
+    .ee-thumb-placeholder {
+        width: 58px; height: 58px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .85rem; font-weight: 900; color: #fff; flex-shrink: 0;
+        animation: ee-slide-in .3s ease;
+    }
+    .ee-expired-overlay {
+        position: absolute; inset: 0; background: rgba(0,0,0,.28);
+        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    }
+    .ee-expired-overlay i { font-size: .8rem; color: rgba(255,255,255,.9); }
+
+    /* ── Event detail cell ── */
+    .ee-event-title {
+        font-weight: 700; color: var(--ee-text); font-size: .9rem;
+        margin-bottom: .2rem; white-space: nowrap; overflow: hidden;
+        text-overflow: ellipsis; max-width: 200px;
+    }
+    .ee-event-id {
+        font-size: .7rem; color: #94a3b8; font-family: monospace;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+    }
+    .ee-event-meta {
+        display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .2rem;
+    }
+    .ee-meta-chip {
+        font-size: .65rem; font-weight: 700; padding: .1rem .45rem;
+        border-radius: 10px; white-space: nowrap;
+    }
+    .ee-chip-dept  { background: #ede9fe; color: #6d28d9; }
+    .ee-chip-topic { background: #dbeafe; color: #1d4ed8; }
+    .ee-chip-count { background: #f0fdf4; color: #15803d; }
+
+    /* ── Location ── */
+    .ee-location {
+        display: flex; align-items: center; gap: .35rem;
+        font-size: .83rem; color: var(--ee-muted);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;
+    }
+    .ee-location i { color: #a5b4fc; font-size: .8rem; flex-shrink: 0; }
+
+    /* ── Time ── */
+    .ee-time { font-size: .82rem; color: var(--ee-muted); }
+    .ee-time-start { display: flex; align-items: center; gap: .3rem; }
+    .ee-time-end   { font-size: .76rem; opacity: .7; margin-top: .15rem; padding-left: 1rem; }
+    .ee-time i { font-size: .75rem; flex-shrink: 0; color: #a5b4fc; }
+
+    /* ── Expired badge ── */
+    .ee-expired-badge {
+        display: inline-flex; align-items: center; gap: .3rem;
+        padding: .28rem .75rem; border-radius: 20px;
+        font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+        text-transform: uppercase;
+        background: #fee2e2; color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+    .ee-expired-badge::before {
+        content: ''; width: 6px; height: 6px;
+        border-radius: 50%; background: #ef4444;
+        animation: ee-pulse 2s infinite;
+    }
+
+    /* ── Performance chart cell ── */
+    .ee-perf-cell { min-width: 120px; }
+    .ee-perf-placeholder {
+        display: flex; flex-direction: column; align-items: center;
+        gap: .35rem; padding: .5rem 0;
+    }
+    .ee-perf-bars-placeholder {
+        display: flex; align-items: flex-end; gap: 4px; height: 36px;
+    }
+    .ee-perf-bar-ph {
+        flex: 1; border-radius: 3px 3px 0 0; background: #e2e8f0;
+        min-height: 4px; min-width: 12px;
+    }
+    .ee-perf-nodata { font-size: .72rem; color: #cbd5e1; }
+
+    /* ── Stats strip values ── */
+    .ee-perf-summary {
+        display: flex; flex-direction: column; gap: .2rem; font-size: .72rem;
+    }
+    .ee-perf-row { display: flex; align-items: center; gap: .4rem; color: var(--ee-muted); }
+    .ee-perf-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Action buttons ── */
+    .ee-actions { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
+    .ee-act {
+        width: 31px; height: 31px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #f8fafc; display: inline-flex; align-items: center; justify-content: center;
+        font-size: .8rem; cursor: pointer; transition: all .15s;
+        text-decoration: none; color: #64748b;
+    }
+    .ee-act:hover             { transform: translateY(-1px); }
+    .ee-act.view:hover        { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
+    .ee-act.edit:hover        { background: #fef9c3; border-color: #fde68a; color: #d97706; }
+    .ee-act.delete:hover      { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .ee-act.waitlist:hover    { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
+    .ee-act.budget:hover      { background: #ecfdf5; border-color: #6ee7b7; color: #059669; }
+    .ee-act.feedback:hover    { background: #fdf4ff; border-color: #e879f9; color: #a21caf; }
+    .ee-act-form { display: inline; }
+
+    /* ── Empty state ── */
+    .ee-empty {
+        text-align: center; padding: 4rem 1rem; color: #94a3b8;
+        animation: ee-fadein .4s ease both;
+    }
+    .ee-empty-icon {
+        width: 80px; height: 80px;
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; color: #ef4444; margin: 0 auto 1rem;
+    }
+    .ee-empty h3 { font-size: 1.1rem; font-weight: 800; color: #374151; margin-bottom: .4rem; }
+    .ee-empty p  { font-size: .88rem; margin: 0; }
+
+    /* ── Summary bar ── */
+    .ee-summary-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: .75rem 1.4rem; border-top: 1px solid #f1f5f9;
+        font-size: .8rem; color: var(--ee-muted); flex-wrap: wrap; gap: .5rem;
+    }
+    .ee-summary-bar strong { color: var(--ee-text); }
+</style>
+
+<div class="ee-page">
+<div class="container-fluid px-4">
+
+    @* ── Page Header ── *@
+    <div class="ee-header">
+        <div>
+            <h1 class="ee-header-title">
+                <i class="bi bi-clock-history icon"></i>Expired Events
+            </h1>
+            <p class="ee-header-sub">
+                Events that have passed their end date.
+                Total: <strong style="color:#dc2626;">@(Model?.Events?.Count ?? 0)</strong> expired event(s).
+            </p>
+        </div>
+        <div class="ee-header-actions">
+            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create"
+               class="ee-btn ee-btn-create">
+                <i class="bi bi-plus-circle-fill"></i> Create Event
+            </a>
+        </div>
     </div>
 
-    @if (Model == null || Model.Events == null || !Model.Events.Any())
-    {
-        <div class="alert alert-info">Không có sự kiện hết hạn nào.</div>
+    @* ── Stats Strip ── *@
+    @{
+        int totalEvents    = Model?.Events?.Count ?? 0;
+        int withFeedback   = Model?.Events?.Count(e => e.FeedbackCount > 0) ?? 0;
+        int withBudget     = Model?.Events?.Count(e => e.HasBudget) ?? 0;
+        double avgRating   = totalEvents > 0
+            ? (Model?.Events?.Where(e => e.AvgRating > 0).Select(e => e.AvgRating).DefaultIfEmpty(0).Average() ?? 0)
+            : 0;
     }
-    else
-    {
-        <table class="table table-bordered table-hover shadow">
-            <thead class="table-dark">
-                <tr>
-                    <th>Thumbnail</th>
-                    <th>Title</th>
-                    <th>Location</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                    <th class="text-center">Action</th>
-                    <th style="width: 200px;">Event Performance</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var e in Model.Events)
-                {
-                    <tr>
-                        <td style="width:120px">
-                            <img src="@(e.ThumbnailUrl ?? "/images/default-event.png")" class="img-fluid rounded" style="width: 80px; height: 50px; object-fit: cover;" />
-                        </td>
-                        <td>
-                            <div class="fw-bold text-dark">@(e.Title ?? "Untitled Event")</div>
-                            <small class="text-muted">ID: @e.EventId</small>
-                        </td>
-                        <td>@(e.Location ?? "N/A")</td>
-                        <td>
-                            <span>@e.StartTime.ToString("dd/MM/yyyy HH:mm")</span>
-                            <br />→<br />
-                            <span>@e.EndTime.ToString("dd/MM/yyyy HH:mm")</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">Expired</span>
-                        </td>
-                        <td class="text-center align-middle">
-                            <div class="d-flex flex-wrap gap-1 justify-content-center align-items-center" style="max-width: 320px; margin: 0 auto;">
-                                <style>
-                                    .action-pill {
-                                        min-width: 90px;
-                                        text-align: center;
-                                    }
-                                </style>
-                                <a class="btn btn-sm btn-info fw-semibold" asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId">View</a>
-                                @if (e.IsOwnedByCurrentUser)
-                                {
-                                    @if (e.CanEdit)
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
-                                    }
+    <div class="ee-stats-strip">
+        <div class="ee-stat">
+            <div class="ee-stat-icon" style="background:#fee2e2;">
+                <i class="bi bi-archive-fill" style="color:#dc2626;"></i>
+            </div>
+            <div>
+                <div class="ee-stat-label">Total Expired</div>
+                <div class="ee-stat-value" style="color:#dc2626;">@totalEvents</div>
+            </div>
+        </div>
+        <div class="ee-stat">
+            <div class="ee-stat-icon" style="background:#fff7ed;">
+                <i class="bi bi-chat-left-text-fill" style="color:#ea580c;"></i>
+            </div>
+            <div>
+                <div class="ee-stat-label">With Feedback</div>
+                <div class="ee-stat-value" style="color:#ea580c;">@withFeedback</div>
+            </div>
+        </div>
+        <div class="ee-stat">
+            <div class="ee-stat-icon" style="background:#ecfdf5;">
+                <i class="bi bi-cash-stack" style="color:#059669;"></i>
+            </div>
+            <div>
+                <div class="ee-stat-label">With Budget</div>
+                <div class="ee-stat-value" style="color:#059669;">@withBudget</div>
+            </div>
+        </div>
+        <div class="ee-stat">
+            <div class="ee-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-star-fill" style="color:#7c3aed;"></i>
+            </div>
+            <div>
+                <div class="ee-stat-label">Avg. Rating</div>
+                <div class="ee-stat-value" style="color:#7c3aed;">@avgRating.ToString("F1")</div>
+            </div>
+        </div>
+    </div>
 
-                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="operation" value="softdelete" />
-                                        <input type="hidden" name="id" value="@e.EventId" />
-                                        <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
-                                    </form>
-                                }
+    @* ── Filter bar ── *@
+    <div class="ee-filter-bar">
+        <div class="ee-search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text"
+                   id="eeSearchInput"
+                   class="ee-search-input"
+                   placeholder="Search event title or location…"
+                   oninput="filterExpiredEvents()" />
+        </div>
+        <div class="ee-filter-count">
+            Showing <span id="eeVisibleCount">@totalEvents</span> / @totalEvents events
+        </div>
+    </div>
 
-                            </div>
-                        </td>
-                        <td class="text-center align-middle">
-                            <div style="height: 120px; width: 180px; margin: 0 auto;">
-                                @if (e.AvgRating > 0)
-                                {
-                                    <canvas id="chart-@e.EventId"></canvas>
-                                }
-                                else
-                                {
-                                    <div class="h-100 d-flex align-items-center justify-content-center">
-                                        <small class="text-muted">No data</small>
+    @* ── Main Table Card ── *@
+    <div class="ee-table-card">
+        <div class="ee-table-card-header">
+            <div class="ee-table-section-label">
+                <i class="bi bi-clock-history"></i>
+                Expired Events
+                <span class="ee-count-badge">@totalEvents</span>
+            </div>
+            <div class="ee-legend">
+                <span class="ee-legend-dot"></span> All events have ended
+            </div>
+        </div>
+
+        @if (Model == null || Model.Events == null || !Model.Events.Any())
+        {
+            <div class="ee-empty">
+                <div class="ee-empty-icon">
+                    <i class="bi bi-calendar-x"></i>
+                </div>
+                <h3>No Expired Events</h3>
+                <p>All your events are still active. Expired events will appear here after they end.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="ee-table" id="expiredTable">
+                    <colgroup>
+                        <col style="width:72px;" />
+                        <col style="width:210px;" />
+                        <col style="width:170px;" />
+                        <col style="width:155px;" />
+                        <col style="width:100px;" />
+                        <col style="width:135px;" />
+                        <col style="width:160px;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Event Details</th>
+                            <th>Location</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Performance</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expiredTableBody">
+                        @foreach (var e in Model.Events)
+                        {
+                            bool hasPerf = e.AvgRating > 0 || e.GeneralSentimentAvg > 0 ||
+                                           e.TechnicalAvg > 0 || e.ContentAvg > 0 ||
+                                           e.InstructorAvg > 0 || e.AssessmentAvg > 0;
+
+                            <tr class="ee-event-row" data-title="@e.Title?.ToLower()" data-location="@e.Location?.ToLower()">
+
+                                @* Thumbnail *@
+                                <td>
+                                    <div class="ee-thumb-wrap">
+                                        @if (!string.IsNullOrEmpty(e.ThumbnailUrl))
+                                        {
+                                            <img src="@e.ThumbnailUrl"
+                                                 alt="@e.Title"
+                                                 class="ee-thumb"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                            <div class="ee-thumb-placeholder"
+                                                 style="display:none; background:@GetAvatarColor(e.Title);">
+                                                @GetInitials(e.Title)
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="ee-thumb-placeholder"
+                                                 style="background:@GetAvatarColor(e.Title);">
+                                                @GetInitials(e.Title)
+                                            </div>
+                                        }
+                                        <div class="ee-expired-overlay" title="Expired">
+                                            <i class="bi bi-clock-history"></i>
+                                        </div>
                                     </div>
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+                                </td>
+
+                                @* Event Details *@
+                                <td>
+                                    <div class="ee-event-title" title="@e.Title">@(e.Title ?? "Untitled Event")</div>
+                                    <div class="ee-event-id" title="@e.EventId">ID: @(e.EventId.Length > 26 ? e.EventId[..26] + "…" : e.EventId)</div>
+                                    <div class="ee-event-meta">
+                                        @if (!string.IsNullOrEmpty(e.DepartmentName))
+                                        {
+                                            <span class="ee-meta-chip ee-chip-dept" title="Department">@e.DepartmentName</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(e.TopicName))
+                                        {
+                                            <span class="ee-meta-chip ee-chip-topic" title="Topic">@e.TopicName</span>
+                                        }
+                                        @if (e.RegisteredCount > 0)
+                                        {
+                                            <span class="ee-meta-chip ee-chip-count" title="Registered participants">
+                                                <i class="bi bi-people" style="font-size:.6rem;"></i> @e.RegisteredCount
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+
+                                @* Location *@
+                                <td>
+                                    <div class="ee-location" title="@e.Location">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                        @(string.IsNullOrEmpty(e.Location) ? "—" : e.Location)
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(e.Mode) && e.Mode == "Online" && !string.IsNullOrEmpty(e.MeetingUrl))
+                                    {
+                                        <div style="margin-top:.25rem;">
+                                            <a href="@e.MeetingUrl" target="_blank"
+                                               style="font-size:.72rem; color:#6366f1; text-decoration:none;">
+                                                <i class="bi bi-camera-video me-1"></i>Online Link
+                                            </a>
+                                        </div>
+                                    }
+                                </td>
+
+                                @* Time *@
+                                <td>
+                                    <div class="ee-time">
+                                        <div class="ee-time-start">
+                                            <i class="bi bi-calendar3"></i>
+                                            @e.StartTime.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                        <div class="ee-time-end">
+                                            → @e.EndTime.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* Status *@
+                                <td>
+                                    <span class="ee-expired-badge">Expired</span>
+                                    @if (e.CheckedInCount > 0)
+                                    {
+                                        <div style="font-size:.72rem; color:#64748b; margin-top:.3rem;">
+                                            <i class="bi bi-check-circle me-1 text-success"></i>@e.CheckedInCount checked-in
+                                        </div>
+                                    }
+                                </td>
+
+                                @* Performance ── mini chart or bars ── *@
+                                <td class="ee-perf-cell">
+                                    @if (hasPerf)
+                                    {
+                                        <div style="height: 50px; width: 110px; position: relative;">
+                                            <canvas id="chart-@e.EventId" style="position:absolute; inset:0;"></canvas>
+                                        </div>
+                                        @if (e.FeedbackCount > 0)
+                                        {
+                                            <div style="font-size:.68rem; color:#94a3b8; margin-top:.25rem; text-align:center;">
+                                                ⭐ @e.AvgRating.ToString("F1") · @e.FeedbackCount feedbacks
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="ee-perf-placeholder">
+                                            <div class="ee-perf-bars-placeholder">
+                                                @for (int b = 0; b < 5; b++)
+                                                {
+                                                    <div class="ee-perf-bar-ph" style="height:@(new[]{8,14,6,18,10}[b])px;"></div>
+                                                }
+                                            </div>
+                                            <div class="ee-perf-nodata">No data</div>
+                                        </div>
+                                    }
+                                </td>
+
+                                @* Actions *@
+                                <td>
+                                    <div class="ee-actions">
+                                        @* View *@
+                                        <a class="ee-act view"
+                                           asp-controller="Organizer" asp-action="Manage"
+                                           asp-route-operation="detailevent" asp-route-id="@e.EventId"
+                                           title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        @if (e.IsOwnedByCurrentUser)
+                                        {
+                                            @* Edit *@
+                                            @if (e.CanEdit)
+                                            {
+                                                <a class="ee-act edit"
+                                                   asp-action="Edit" asp-route-id="@e.EventId"
+                                                   title="Edit Event">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+
+                                            @* Waitlist *@
+                                            <a class="ee-act waitlist"
+                                               asp-controller="EventWaitlist" asp-action="Index"
+                                               asp-route-eventId="@e.EventId"
+                                               title="View Waitlist">
+                                                <i class="bi bi-people"></i>
+                                            </a>
+
+                                            @* Budget *@
+                                            @if (e.HasBudget)
+                                            {
+                                                <a class="ee-act budget"
+                                                   asp-controller="BudgetProposal" asp-action="Detail"
+                                                   asp-route-eventId="@e.EventId"
+                                                   title="View Budget">
+                                                    <i class="bi bi-cash-stack"></i>
+                                                </a>
+                                            }
+
+                                            @* Feedback *@
+                                            @if (e.FeedbackCount > 0)
+                                            {
+                                                <a class="ee-act feedback"
+                                                   asp-controller="Organizer" asp-action="Manage"
+                                                   asp-route-operation="detailevent" asp-route-id="@e.EventId"
+                                                   title="View Feedback (@e.FeedbackCount)">
+                                                    <i class="bi bi-chat-left-text"></i>
+                                                </a>
+                                            }
+
+                                            @* Delete *@
+                                            <form asp-controller="Organizer" asp-action="Manage"
+                                                  method="post" class="ee-act-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="operation" value="softdelete" />
+                                                <input type="hidden" name="id" value="@e.EventId" />
+                                                <button type="submit"
+                                                        class="ee-act delete"
+                                                        title="Delete Event"
+                                                        onclick="return confirm('Bạn có chắc muốn xóa sự kiện \"@Html.Raw(e.Title?.Replace("'", "\\'"))\"?');">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* Summary footer *@
+            <div class="ee-summary-bar">
+                <div>
+                    Showing <strong id="eeFooterCount">@totalEvents</strong> of <strong>@totalEvents</strong> expired event(s)
+                </div>
+                <div style="display:flex; gap:1.25rem; font-size:.78rem;">
+                    @if (withFeedback > 0)
+                    {
+                        <span><i class="bi bi-chat-left-text text-warning me-1"></i>@withFeedback with feedback</span>
+                    }
+                    @if (withBudget > 0)
+                    {
+                        <span><i class="bi bi-cash-stack text-success me-1"></i>@withBudget with budget</span>
+                    }
+                    @if (avgRating > 0)
+                    {
+                        <span><i class="bi bi-star-fill text-warning me-1"></i>avg rating @avgRating.ToString("F1")</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+</div>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            @foreach (var e in Model.Events.Where(x => x.AvgRating > 0))
+    // ── Performance Charts ────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        @if (Model?.Events != null)
+        {
+            @foreach (var e in Model.Events.Where(x =>
+                x.AvgRating > 0 || x.GeneralSentimentAvg > 0 ||
+                x.TechnicalAvg > 0 || x.ContentAvg > 0 ||
+                x.InstructorAvg > 0 || x.AssessmentAvg > 0))
             {
                 <text>
                 (function() {
-                    const ctx = document.getElementById('chart-@e.EventId').getContext('2d');
+                    const canvas = document.getElementById('chart-@e.EventId');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
                     new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: ['Tech', 'Content', 'Inst', 'Assess', 'Gen'],
+                            labels: ['Tech','Content','Inst','Assess','Gen'],
                             datasets: [{
-                                label: 'Sentiment Score',
+                                label: 'Score',
                                 data: [
                                     @e.TechnicalAvg.ToString("F2"),
                                     @e.ContentAvg.ToString("F2"),
@@ -121,13 +715,14 @@
                                     @e.GeneralSentimentAvg.ToString("F2")
                                 ],
                                 backgroundColor: [
-                                    'rgba(255, 99, 132, 0.7)',
-                                    'rgba(54, 162, 235, 0.7)',
-                                    'rgba(255, 206, 86, 0.7)',
-                                    'rgba(75, 192, 192, 0.7)',
-                                    'rgba(153, 102, 255, 0.7)'
+                                    'rgba(99,102,241,.75)',
+                                    'rgba(59,130,246,.75)',
+                                    'rgba(234,179,8,.75)',
+                                    'rgba(34,197,94,.75)',
+                                    'rgba(168,85,247,.75)'
                                 ],
-                                borderRadius: 4
+                                borderRadius: 4,
+                                borderSkipped: false
                             }]
                         },
                         options: {
@@ -139,22 +734,44 @@
                                 tooltip: { enabled: true }
                             },
                             scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: 1,
-                                    ticks: { display: false },
-                                    grid: { display: false }
-                                },
-                                x: {
-                                    ticks: { font: { size: 9 } },
-                                    grid: { display: false }
-                                }
+                                y: { beginAtZero: true, max: 1, ticks: { display: false }, grid: { display: false } },
+                                x: { ticks: { font: { size: 8 }, color: '#94a3b8' }, grid: { display: false } }
                             }
                         }
                     });
                 })();
                 </text>
             }
+        }
+    });
+
+    // ── Live search / filter ──────────────────────────────────────────────────
+    function filterExpiredEvents() {
+        const query   = document.getElementById('eeSearchInput')?.value?.toLowerCase()?.trim() ?? '';
+        const rows    = document.querySelectorAll('#expiredTableBody .ee-event-row');
+        let   visible = 0;
+
+        rows.forEach(function(row) {
+            const title    = (row.getAttribute('data-title')    ?? '').toLowerCase();
+            const location = (row.getAttribute('data-location') ?? '').toLowerCase();
+            const matches  = !query || title.includes(query) || location.includes(query);
+            row.classList.toggle('ee-hidden', !matches);
+            if (matches) visible++;
         });
+
+        const countEl  = document.getElementById('eeVisibleCount');
+        const footerEl = document.getElementById('eeFooterCount');
+        if (countEl)  countEl.textContent  = visible;
+        if (footerEl) footerEl.textContent = visible;
+    }
+
+    // ── Row hover highlight enhancement ──────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.ee-event-row').forEach(function(row) {
+            row.addEventListener('mouseenter', function() {
+                this.style.transition = 'background .15s';
+            });
+        });
+    });
     </script>
 }
