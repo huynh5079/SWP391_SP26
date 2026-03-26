@@ -17,224 +17,240 @@ namespace BusinessLogic.Service.Organizer.CheckIn
         private readonly IOrganizerValidator _validator;
         private readonly ISignalRNotifier _signalRNotifier;
         private readonly IEmailService _emailService;
+        private readonly ISystemErrorLogService _errorLogService;
 
-        public CheckInService(IUnitOfWork uow, IOrganizerValidator validator, ISignalRNotifier signalRNotifier, IEmailService emailService)
+        public CheckInService(
+            IUnitOfWork uow, 
+            IOrganizerValidator validator, 
+            ISignalRNotifier signalRNotifier, 
+            IEmailService emailService,
+            ISystemErrorLogService errorLogService)
         {
             _uow = uow;
             _validator = validator;
             _signalRNotifier = signalRNotifier;
             _emailService = emailService;
+            _errorLogService = errorLogService;
         }
 
         public async Task<CheckInResponseDto> ProcessCheckInAsync(CheckInRequestDto request, string organizerUserId)
         {
-            if (string.IsNullOrWhiteSpace(request.QrPayload) || string.IsNullOrWhiteSpace(request.EventId))
-            {
-                _validator.ValidateCheckInRequest(request);
-            }
-
-            var orgProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == organizerUserId);
-            if (orgProfile == null)
-            {
-                _validator.ValidateOrganizerCanCheckIn(orgProfile);
-            }
-
-            var ticket = await _uow.Tickets.GetAsync(
-                t => t.Id == request.QrPayload && t.EventId == request.EventId,
-                q => q.Include(t => t.Event)
-                      .Include(t => t.Student)
-                        .ThenInclude(s => s.User));
-
-            if (ticket == null)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = $"Không tìm thấy vé trong DB! QrPayload={request.QrPayload}, EventId={request.EventId}" };
-            }
-            if (ticket.DeletedAt != null)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Vé đã bị xóa khỏi hệ thống." };
-            }
-            if (ticket.Status == TicketStatusEnum.Cancelled)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ." };
-            }
-
-            _validator.ValidateEventOwnership(ticket, orgProfile);
-            var now = DateTimeHelper.GetVietnamTime();
-
-            _validator.ValidateNotAlreadyCheckedIn(ticket);
-            _validator.ValidateCheckInWindow(ticket, now);
-
-            using var transaction = await _uow.BeginTransactionAsync();
-
             try
             {
-                ticket.Status = TicketStatusEnum.CheckedIn;
-                ticket.UpdatedAt = now;
-
-                await _uow.Tickets.UpdateAsync(ticket);
-
-                var historyRecord = new CheckInHistory
+                if (string.IsNullOrWhiteSpace(request.QrPayload) || string.IsNullOrWhiteSpace(request.EventId))
                 {
-                    TicketId = ticket.Id,
-                    ScannerId = orgProfile.Id,
-                    ScanType = ScanTypeEnum.CheckIn,
-                    DeviceName = "Mobile Web Scanner",
-                    Location = ticket.Event.Location?.Name
-                };
+                    _validator.ValidateCheckInRequest(request);
+                }
 
-                await _uow.CheckInHistories.CreateAsync(historyRecord);
+                var orgProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == organizerUserId);
+                if (orgProfile == null)
+                {
+                    _validator.ValidateOrganizerCanCheckIn(orgProfile);
+                }
 
-                await _uow.SaveChangesAsync();
-                await transaction.CommitAsync();
+                // Diagnostic logging
+                var payload = request.QrPayload?.Trim();
+                var eventId = request.EventId?.Trim();
 
-                // SignalR Broadcast for Live Display
+                // Use IgnoreQueryFilters to catch soft-deleted tickets or wrong-event scans
+                var ticket = await _uow.Tickets.GetAsync(
+                    t => t.Id.ToLower() == payload.ToLower(),
+                    q => q.IgnoreQueryFilters()
+                          .Include(t => t.Event)
+                          .Include(t => t.Student)
+                            .ThenInclude(s => s.User));
+
+                if (ticket == null)
+                {
+                    // Deeper search for diagnostics
+                    var allTicketsForEvent = await _uow.Tickets.CountAsync(t => t.EventId == eventId);
+                    return new CheckInResponseDto 
+                    { 
+                        IsSuccess = false, 
+                        Message = $"[DIAG] Không tìm thấy vé! Payload='{payload}' (Len={payload?.Length}). Vé trong Event này: {allTicketsForEvent}. Hãy chắc chắn bạn đã chạy 'Rebuild Solution' để cập nhật code mới nhất." 
+                    };
+                }
+
+                // Cross-event verification
+                if (ticket.EventId != request.EventId)
+                {
+                    var targetEventTitle = ticket.Event?.Title ?? "sự kiện khác";
+                    return new CheckInResponseDto { IsSuccess = false, Message = $"Vé này thuộc về sự kiện: {targetEventTitle}. Vui lòng kiểm tra lại thiết bị quét." };
+                }
+
+                if (ticket.DeletedAt != null || ticket.Status == TicketStatusEnum.Cancelled)
+                {
+                    return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ hoặc không còn hiệu lực." };
+                }
+
+                _validator.ValidateEventOwnership(ticket, orgProfile);
+                var now = DateTimeHelper.GetVietnamTime();
+
+                _validator.ValidateNotAlreadyCheckedIn(ticket);
+                _validator.ValidateCheckInWindow(ticket, now);
+
+                using var transaction = await _uow.BeginTransactionAsync();
                 try
                 {
-                    var fullNameStr = ticket.Student.User?.FullName ?? ticket.Student.User?.Email ?? "Sinh viên";
-                    var avatarUrl = ticket.Student.User?.AvatarUrl;
-                    if (string.IsNullOrWhiteSpace(avatarUrl)) 
-                    {
-                        var initials = !string.IsNullOrWhiteSpace(fullNameStr) ? Uri.EscapeDataString(fullNameStr) : "S";
-                        avatarUrl = $"https://ui-avatars.com/api/?name={initials}&background=random&color=fff";
-                    }
+                    ticket.Status = TicketStatusEnum.CheckedIn;
+                    ticket.UpdatedAt = now;
+                    ticket.CheckInTime = now;
 
-                    await _signalRNotifier.SendCheckInNotificationAsync(
-                        ticket.EventId,
-                        fullNameStr,
-                        "Chào mừng đến với sự kiện 🫶",
-                        avatarUrl
-                    );
+                    await _uow.Tickets.UpdateAsync(ticket);
+
+                    var historyRecord = new CheckInHistory
+                    {
+                        TicketId = ticket.Id,
+                        ScannerId = orgProfile.Id,
+                        ScanType = ScanTypeEnum.CheckIn,
+                        DeviceName = "Web Scanner"
+                    };
+
+                    await _uow.CheckInHistories.CreateAsync(historyRecord);
+                    await _uow.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // SignalR Broadcast (async, non-blocking for scanner UI)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var fullNameStr = ticket.Student.User?.FullName ?? ticket.Student.User?.Email ?? "Sinh viên";
+                            var avatarUrl = ticket.Student.User?.AvatarUrl;
+                            if (string.IsNullOrWhiteSpace(avatarUrl))
+                            {
+                                var initials = Uri.EscapeDataString(fullNameStr);
+                                avatarUrl = $"https://ui-avatars.com/api/?name={initials}&background=random&color=fff";
+                            }
+
+                            await _signalRNotifier.SendCheckInNotificationAsync(ticket.EventId, fullNameStr, "Đã check-in thành công!", avatarUrl);
+                        }
+                        catch { /* SignalR logs internally */ }
+                    });
+
+                    return new CheckInResponseDto
+                    {
+                        IsSuccess = true,
+                        Message = "Check-in thành công!",
+                        StudentName = ticket.Student.User?.FullName ?? ticket.Student.User?.Email,
+                        StudentEmail = ticket.Student.User?.Email
+                    };
                 }
-                catch { /* Fail silently if SignalR fails */ }
+                catch (Exception updateEx)
+                {
+                    await transaction.RollbackAsync();
+                    throw; // Relaunch to be caught by outer try-catch for logging
+                }
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-
-                try
-                {
-                    var errorLog = new SystemErrorLog
-                    {
-                        UserId = organizerUserId,
-                        ExceptionType = ex.GetType().Name,
-                        ExceptionMessage = ex.Message,
-                        StackTrace = ex.StackTrace,
-                        Source = "CheckInService.ProcessCheckInAsync"
-                    };
-                    await _uow.SystemErrorLogs.CreateAsync(errorLog);
-                    await _uow.SaveChangesAsync();
-                }
-                catch { }
-
-                return new CheckInResponseDto
-                {
-                    IsSuccess = false,
-                    Message = "Lỗi khi lưu dữ liệu Check-in."
-                };
+                await _errorLogService.LogErrorAsync(ex, organizerUserId, "CheckInService.ProcessCheckInAsync");
+                return new CheckInResponseDto { IsSuccess = false, Message = $"Có lỗi hệ thống xảy ra: {ex.Message}" };
             }
-            return new CheckInResponseDto
-            {
-                IsSuccess = true,
-                Message = "Check-in thành công!",
-                StudentName = ticket.Student.User?.FullName ?? ticket.Student.User?.Email,
-                StudentEmail = ticket.Student.User?.Email
-            };
         }
 
         public async Task<CheckInResponseDto> ProcessCheckoutAsync(CheckInRequestDto request, string organizerUserId)
         {
-            if (string.IsNullOrWhiteSpace(request.QrPayload) || string.IsNullOrWhiteSpace(request.EventId))
-            {
-                _validator.ValidateCheckInRequest(request);
-            }
-
-            var orgProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == organizerUserId);
-            if (orgProfile == null)
-            {
-                _validator.ValidateOrganizerCanCheckIn(orgProfile);
-            }
-
-            var ticket = await _uow.Tickets.GetAsync(
-                t => t.Id == request.QrPayload && t.EventId == request.EventId,
-                q => q.Include(t => t.Event).Include(t => t.Student).ThenInclude(s => s.User));
-
-            if (ticket == null)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = $"Không tìm thấy vé trong DB! QrPayload={request.QrPayload}, EventId={request.EventId}" };
-            }
-            if (ticket.DeletedAt != null)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Vé đã bị xóa khỏi hệ thống." };
-            }
-            if (ticket.Status == TicketStatusEnum.Cancelled)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ." };
-            }
-
-            _validator.ValidateEventOwnership(ticket, orgProfile);
-
-            if (ticket.Status != TicketStatusEnum.CheckedIn)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Sinh viên này chưa Check-in hoặc đã Checkout." };
-            }
-
-            var checkInRecord = await _uow.CheckInHistories
-                .GetAsync(h => h.TicketId == ticket.Id && h.CheckoutTime == null,
-                          q => q.OrderByDescending(h => h.CreatedAt));
-
-            if (checkInRecord == null)
-            {
-                return new CheckInResponseDto { IsSuccess = false, Message = "Không tìm thấy thông tin Check-in hợp lệ để Checkout." };
-            }
-
-            using var transaction = await _uow.BeginTransactionAsync();
-            var now = DateTimeHelper.GetVietnamTime();
             try
             {
-                ticket.Status = TicketStatusEnum.Used;
-                ticket.UpdatedAt = now;
-                await _uow.Tickets.UpdateAsync(ticket);
+                if (string.IsNullOrWhiteSpace(request.QrPayload) || string.IsNullOrWhiteSpace(request.EventId))
+                {
+                    _validator.ValidateCheckInRequest(request);
+                }
 
-                checkInRecord.CheckoutTime = now;
-                checkInRecord.UpdatedAt = now;
-                await _uow.CheckInHistories.UpdateAsync(checkInRecord);
+                var orgProfile = await _uow.StaffProfiles.GetAsync(s => s.UserId == organizerUserId);
+                if (orgProfile == null)
+                {
+                    _validator.ValidateOrganizerCanCheckIn(orgProfile);
+                }
 
-                await _uow.SaveChangesAsync();
-                await transaction.CommitAsync();
+                // Use IgnoreQueryFilters to catch soft-deleted or mismatching tickets during checkout
+                var payload = request.QrPayload?.Trim();
+                var ticket = await _uow.Tickets.GetAsync(
+                    t => t.Id == payload,
+                    q => q.IgnoreQueryFilters()
+                          .Include(t => t.Event)
+                          .Include(t => t.Student)
+                            .ThenInclude(s => s.User));
+
+                if (ticket == null)
+                {
+                    return new CheckInResponseDto { IsSuccess = false, Message = $"Không tìm thấy vé trong DB! QrPayload={request.QrPayload}" };
+                }
+
+                if (ticket.EventId != request.EventId)
+                {
+                    var targetEventTitle = ticket.Event?.Title ?? "sự kiện khác";
+                    return new CheckInResponseDto { IsSuccess = false, Message = $"Vé này thuộc về sự kiện: {targetEventTitle}." };
+                }
+
+                if (ticket.DeletedAt != null || ticket.Status == TicketStatusEnum.Cancelled)
+                {
+                    return new CheckInResponseDto { IsSuccess = false, Message = "Vé này đã bị hủy bỏ hoặc không còn hiệu lực." };
+                }
+
+                _validator.ValidateEventOwnership(ticket, orgProfile);
+
+                if (ticket.Status != TicketStatusEnum.CheckedIn)
+                {
+                    return new CheckInResponseDto { IsSuccess = false, Message = "Sinh viên này chưa Check-in hoặc đã Checkout." };
+                }
+
+                // Find the latest active check-in record for this ticket
+                var checkInRecord = await _uow.CheckInHistories
+                    .GetAsync(h => h.TicketId == ticket.Id && h.CheckoutTime == null,
+                              q => q.OrderByDescending(h => h.CreatedAt));
+
+                if (checkInRecord == null)
+                {
+                    return new CheckInResponseDto { IsSuccess = false, Message = "Không tìm thấy thông tin Check-in hợp lệ để Checkout." };
+                }
+
+                using var transaction = await _uow.BeginTransactionAsync();
+                var now = DateTimeHelper.GetVietnamTime();
+                try
+                {
+                    ticket.Status = TicketStatusEnum.Used;
+                    ticket.UpdatedAt = now;
+                    await _uow.Tickets.UpdateAsync(ticket);
+
+                    checkInRecord.CheckoutTime = now;
+                    checkInRecord.UpdatedAt = now;
+                    await _uow.CheckInHistories.UpdateAsync(checkInRecord);
+
+                    await _uow.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // SignalR Notify (async)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var fullNameStr = ticket.Student.User?.FullName ?? ticket.Student.User?.Email ?? "Sinh viên";
+                            await _signalRNotifier.SendCheckInNotificationAsync(ticket.EventId, fullNameStr, "Đã checkout thành công!", null);
+                        }
+                        catch { }
+                    });
+
+                    return new CheckInResponseDto
+                    {
+                        IsSuccess = true,
+                        Message = "Checkout thành công!",
+                        StudentName = ticket.Student.User?.FullName ?? ticket.Student.User?.Email,
+                        StudentEmail = ticket.Student.User?.Email
+                    };
+                }
+                catch (Exception updateEx)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-
-                try
-                {
-                    var errorLog = new SystemErrorLog
-                    {
-                        UserId = organizerUserId,
-                        ExceptionType = ex.GetType().Name,
-                        ExceptionMessage = ex.Message,
-                        StackTrace = ex.StackTrace,
-                        Source = "CheckInService.ProcessCheckoutAsync"
-                    };
-                    await _uow.SystemErrorLogs.CreateAsync(errorLog);
-                    await _uow.SaveChangesAsync();
-                }
-                catch { }
-
-                return new CheckInResponseDto
-                {
-                    IsSuccess = false,
-                    Message = "Lỗi khi lưu dữ liệu Checkout."
-                };
+                await _errorLogService.LogErrorAsync(ex, organizerUserId, "CheckInService.ProcessCheckoutAsync");
+                return new CheckInResponseDto { IsSuccess = false, Message = $"Có lỗi hệ thống xảy ra: {ex.Message}" };
             }
-
-            return new CheckInResponseDto
-            {
-                IsSuccess = true,
-                Message = "Checkout thành công!",
-                StudentName = ticket.Student.User?.FullName ?? ticket.Student.User?.Email,
-                StudentEmail = ticket.Student.User?.Email
-            };
         }
 
         public async Task<List<EventParticipantDto>> GetParticipantsAsync(string eventId)
@@ -294,26 +310,49 @@ namespace BusinessLogic.Service.Organizer.CheckIn
             var student = await _uow.StudentProfiles.GetAsync(s => s.UserId == userId, q => q.Include(s => s.User));
             if (student == null) throw new Exception("Không tìm thấy thông tin sinh viên.");
 
-            var existingTicket = await _uow.Tickets.GetAsync(t => t.EventId == eventId && t.StudentId == student.Id && t.DeletedAt == null);
-            if (existingTicket != null) throw new Exception("Sinh viên này đã có vé cho sự kiện này.");
+            // Use IgnoreQueryFilters to find previously cancelled/deleted tickets for reactivation
+            var existingTicket = await _uow.Tickets.GetAsync(
+                t => t.EventId == eventId && t.StudentId == student.Id,
+                q => q.IgnoreQueryFilters());
 
-            // Check capacity
-            var registeredCount = await _uow.Tickets.CountAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
-            if (registeredCount >= ev.MaxCapacity)
+            // Check capacity before proceeding
+            var activeCount = await _uow.Tickets.CountAsync(t => t.EventId == eventId && t.DeletedAt == null && t.Status != TicketStatusEnum.Cancelled);
+            if (activeCount >= ev.MaxCapacity)
             {
                 throw new Exception("Sự kiện đã hết chỗ.");
             }
 
-            var ticket = new Ticket
+            Ticket ticket;
+            if (existingTicket != null)
             {
-                EventId = eventId,
-                StudentId = student.Id,
-                Status = TicketStatusEnum.Registered,
-                TicketCode = $"TKT-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}",
-                CreatedAt = DateTimeHelper.GetVietnamTime()
-            };
+                if (existingTicket.DeletedAt == null && existingTicket.Status != TicketStatusEnum.Cancelled)
+                {
+                    throw new Exception("Sinh viên này đã có vé cho sự kiện này.");
+                }
 
-            await _uow.Tickets.CreateAsync(ticket);
+                // Reactivate existing ticket
+                existingTicket.Status = TicketStatusEnum.Registered;
+                existingTicket.DeletedAt = null;
+                existingTicket.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                existingTicket.CheckInTime = null;
+                
+                await _uow.Tickets.UpdateAsync(existingTicket);
+                ticket = existingTicket;
+            }
+            else
+            {
+                // Create new ticket if none exists
+                ticket = new Ticket
+                {
+                    EventId = eventId,
+                    StudentId = student.Id,
+                    Status = TicketStatusEnum.Registered,
+                    TicketCode = $"TKT-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}",
+                    CreatedAt = DateTimeHelper.GetVietnamTime()
+                };
+                await _uow.Tickets.CreateAsync(ticket);
+            }
+
             await _uow.SaveChangesAsync();
 
             // Send Email

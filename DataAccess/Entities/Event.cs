@@ -1,6 +1,7 @@
-﻿using DataAccess.Enum;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using DataAccess.Enum;
 
 namespace DataAccess.Entities;
 
@@ -10,7 +11,8 @@ public partial class Event : BaseEntity
 
     public string Title { get; set; } = null!;
 
-    public EventStatusAvailableEnum StatusEventAvailable;
+    [NotMapped]
+    public EventStatusAvailableEnum StatusEventAvailable { get; set; }
 	public string? Description { get; set; }
 
     public string? ThumbnailUrl { get; set; }
