@@ -97,6 +97,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                     case "manageticket":
                         return await ManageTicket(search);
 
+                    case "ticketsbyevent":
+                        return await TicketsByEvent(id, search, status);
+
                     case "reanalyze-sentiment":
                         return await ReAnalyzeSentiment(id);
 
@@ -148,6 +151,87 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 SetError("Đã xảy ra lỗi khi tải thống kê vé.");
                 return View("~/Views/Ticket/ManageTicket.cshtml", new ManageTicketViewModel());
+            }
+        }
+
+        // ── TicketsByEvent: drill-down — individual tickets for one event ─────────
+        /// <summary>
+        /// Route: GET /Organizer/TicketsByEvent?eventId=xxx&amp;search=yyy&amp;status=zzz
+        /// Shows all ticket records for a single event.
+        /// Team TODO: replace _unitOfWork.Tickets stub with a proper ITicketService call.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> TicketsByEvent(string? eventId, string? search, string? status)
+        {
+            if (string.IsNullOrWhiteSpace(eventId)) return NotFound();
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                // ── Load event summary ──────────────────────────────────────
+                var myEvents = await _organizerService.GetMyEventsAsync(userId);
+                var evt = myEvents.FirstOrDefault(e => e.EventId == eventId);
+                if (evt == null)
+                {
+                    SetError("Sự kiện không tồn tại hoặc bạn không có quyền truy cập.");
+                    return RedirectToAction(nameof(ManageTicket));
+                }
+
+                // ── Load tickets via UnitOfWork ─────────────────────────────
+                // Team TODO: swap this line for a proper service injection:
+                // var tickets = await _ticketService.GetByEventAsync(eventId);
+                var allTickets = await _unitOfWork.Tickets.GetAllAsync(
+                    t => t.EventId == eventId && t.DeletedAt == null,
+                    q => q.Include(t => t.Student).ThenInclude(s => s.User));
+
+                // ── Search filter (student name or ticket code) ─────────────
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    allTickets = allTickets.Where(t =>
+                        (t.Student.User.FullName ?? "").Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        (t.TicketCode ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+
+                // ── Status filter ───────────────────────────────────────────
+                if (!string.IsNullOrWhiteSpace(status) &&
+                    Enum.TryParse<TicketStatusEnum>(status, true, out var parsedStatus))
+                {
+                    allTickets = allTickets.Where(t => t.Status == parsedStatus).ToList();
+                }
+
+                var ticketVms = allTickets
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Select(t => new TicketListItemVm
+                    {
+                        TicketId    = t.Id,
+                        EventId     = t.EventId,
+                        StudentId   = t.StudentId,
+                        EventName   = evt.Title,
+                        TicketCode  = t.TicketCode,
+                        Status      = t.Status,
+                        CheckInTime = t.CheckInTime,
+                        StudentName = t.Student?.User?.FullName ?? t.StudentId
+                    }).ToList();
+
+                var vm = new TicketsByEventViewModel
+                {
+                    EventId      = eventId,
+                    EventTitle   = evt.Title,
+                    StartTime    = evt.StartTime,
+                    EndTime      = evt.EndTime,
+                    MaxCapacity  = evt.MaxCapacity,
+                    Search       = search,
+                    StatusFilter = status,
+                    Tickets      = ticketVms
+                };
+
+                return View("~/Views/Ticket/TicketsByEvent.cshtml", vm);
+            }
+            catch (Exception ex)
+            {
+                SetError($"Lỗi khi tải danh sách vé: {ex.Message}");
+                return RedirectToAction(nameof(ManageTicket));
             }
         }
 
