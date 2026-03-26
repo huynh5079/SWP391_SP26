@@ -4,426 +4,632 @@
     ViewData["Title"] = "Create Event";
     Layout = "_OrganizerLayout";
 }
+
 <style>
-        .create-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 320px;
-            gap: 18px;
-            align-items: start;
+    /* Modern Create Event UI */
+    :root {
+        --ce-primary: #4f46e5;
+        --ce-primary-hover: #4338ca;
+        --ce-bg: #f8fafc;
+        --ce-card-bg: #ffffff;
+        --ce-border: #e2e8f0;
+        --ce-text-main: #0f172a;
+        --ce-text-muted: #64748b;
+        --ce-radius-lg: 16px;
+        --ce-radius-md: 10px;
+        --ce-shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.03);
+        --ce-shadow-md: 0 10px 30px rgba(0, 0, 0, 0.05);
+        --ce-focus-ring: 0 0 0 4px rgba(79, 70, 229, 0.15);
+    }
+
+    body {
+        background-color: var(--ce-bg) !important;
+    }
+
+    .create-wrapper {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 24px;
+        align-items: start;
+        margin: 0 auto;
+        padding-bottom: 3rem;
+        padding-top: 1rem;
+    }
+
+    @@media (max-width: 1100px) {
+        .create-wrapper {
+            grid-template-columns: 1fr;
         }
-
-        .create-sidebar {
-            position: sticky;
-            top: 14px;
-            align-self: start;
-            max-height: calc(100vh - 28px);
-            overflow-y: auto;
-            padding-right: 2px;
+        .ce-sidebar {
+            position: static !important;
+            max-height: none !important;
+            overflow-y: visible !important;
         }
+    }
 
-        .card {
-            max-width: 100%;
-            margin: 0;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 18px;
-        }
+    /* Form Card styling */
+    .ce-card {
+        background: var(--ce-card-bg);
+        border-radius: var(--ce-radius-lg);
+        box-shadow: var(--ce-shadow-md);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        padding: 2.5rem;
+        margin-bottom: 1.5rem;
+    }
 
-        .side-panel {
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            background: #fff;
-            padding: 14px;
-            margin-bottom: 12px;
-        }
+    .ce-page-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: var(--ce-text-main);
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+    }
 
-        .side-panel h4 {
-            margin: 0 0 10px;
-            font-size: 16px;
-            font-weight: 700;
-        }
+    .ce-page-subtitle {
+        color: var(--ce-text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+    }
 
-        .side-search {
-            width: 100%;
-            margin-bottom: 10px;
-            padding: 8px 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 13px;
-        }
+    .ce-section-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--ce-text-main);
+        margin: 2rem 0 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        border-bottom: 1px dashed var(--ce-border);
+        padding-bottom: 0.75rem;
+    }
 
-        .side-empty {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 6px;
-            display: none;
-        }
+    .ce-section-title i {
+        color: var(--ce-primary);
+        background: #e0e7ff;
+        padding: 0.4rem;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
 
-        .side-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            max-height: 280px;
-            overflow: auto;
-        }
+    /* Form Controls */
+    .ce-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--ce-text-main);
+        margin-bottom: 0.4rem;
+        display: block;
+    }
 
-        .side-list li {
-            border: 1px solid #eef2f7;
-            border-radius: 8px;
-            padding: 8px 10px;
-            margin-bottom: 8px;
-            font-size: 13px;
-            color: #334155;
-            background: #fafafa;
-        }
+    .ce-input, .ce-select, .ce-textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--ce-border);
+        border-radius: var(--ce-radius-md);
+        font-size: 0.95rem;
+        color: var(--ce-text-main);
+        background-color: #f8fafc;
+        transition: all 0.2s ease;
+    }
 
-        @@media (max-width: 1100px) {
-            .create-layout {
-                grid-template-columns: 1fr;
-            }
+    .ce-textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
 
-            .create-sidebar {
-                position: static;
-                max-height: none;
-                overflow: visible;
-            }
-        }
+    .ce-input:focus, .ce-select:focus, .ce-textarea:focus {
+        background-color: #fff;
+        border-color: var(--ce-primary);
+        box-shadow: var(--ce-focus-ring);
+        outline: none;
+    }
 
-        .row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
+    .ce-hint {
+        color: var(--ce-text-muted);
+        font-size: 0.8rem;
+        margin-top: 0.4rem;
+        display: block;
+        line-height: 1.4;
+    }
 
-        .col {
-            flex: 1;
-            min-width: 240px;
-        }
+    .ce-error {
+        color: #ef4444;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-top: 0.4rem;
+        display: block;
+    }
 
-        label {
-            display: block;
-            font-weight: 600;
-            margin: 10px 0 6px;
-        }
+    /* Buttons */
+    .ce-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--ce-radius-md);
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        cursor: pointer;
+    }
 
-        input, select, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-        }
+    .ce-btn-primary {
+        background: linear-gradient(135deg, var(--ce-primary) 0%, #6366f1 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .ce-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+        color: #fff;
+    }
 
-        textarea {
-            min-height: 90px;
-            resize: vertical;
-        }
+    .ce-btn-secondary {
+        background: #f1f5f9;
+        color: var(--ce-text-main);
+        border: 1px solid var(--ce-border);
+    }
+    .ce-btn-secondary:hover {
+        background: #e2e8f0;
+        color: var(--ce-text-main);
+    }
 
-        .hint {
-            color: #666;
-            font-size: 12px;
-            margin-top: 4px;
-        }
+    .ce-btn-danger {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+    .ce-btn-danger:hover {
+        background: #fecaca;
+        color: #dc2626;
+    }
 
-        .error {
-            color: #b00020;
-            font-size: 13px;
-            margin-top: 6px;
-        }
+    /* Nested Items (Agendas / Docs) */
+    .ce-nested-item {
+        background: #f8fafc;
+        border: 1px solid var(--ce-border);
+        border-radius: var(--ce-radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1.25rem;
+        position: relative;
+        transition: all 0.2s;
+    }
+    .ce-nested-item:hover {
+        border-color: #cbd5e1;
+        box-shadow: var(--ce-shadow-sm);
+        background: #fff;
+    }
 
-        .divider {
-            height: 1px;
-            background: #eee;
-            margin: 18px 0;
-        }
+    .ce-nested-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px dashed #cbd5e1;
+    }
 
-        .section-box {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 16px;
-            margin: 18px 0;
-            background: #fafafa;
-        }
+    .ce-nested-title {
+        font-weight: 800;
+        color: var(--ce-text-main);
+        font-size: 1.05rem;
+        margin: 0;
+    }
 
-        .section-title {
-            margin: 0 0 12px;
-            font-size: 18px;
-            font-weight: 700;
-        }
+    /* Sidebar Panels */
+    .ce-sidebar {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+    .ce-sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .ce-sidebar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
 
-        .btn {
-            border: 0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            cursor: pointer;
-        }
+    .ce-side-panel {
+        background: #fff;
+        border-radius: var(--ce-radius-lg);
+        box-shadow: var(--ce-shadow-md);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
 
-        .btn-primary {
-            background: #2563eb;
-            color: #fff;
-        }
+    .ce-side-panel h4 {
+        margin: 0 0 1rem;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--ce-text-main);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .ce-side-panel h4 i {
+        color: var(--ce-primary);
+        font-size: 1.1rem;
+    }
 
-        .btn-secondary {
-            background: #f3f4f6;
-        }
+    .ce-side-search {
+        width: 100%;
+        margin-bottom: 1.25rem;
+        padding: 0.65rem 1rem 0.65rem 1rem;
+        border: 1px solid var(--ce-border);
+        border-radius: var(--ce-radius-md);
+        font-size: 0.85rem;
+        background: #f8fafc;
+        transition: all 0.2s;
+    }
+    .ce-side-search:focus {
+        background-color: #fff;
+        border-color: var(--ce-primary);
+        box-shadow: var(--ce-focus-ring);
+        outline: none;
+    }
 
-        .btn-danger {
-            background: #ef4444;
-            color: #fff;
-        }
+    .ce-side-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .ce-side-list::-webkit-scrollbar { width: 4px; }
+    .ce-side-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
 
-        .agenda-item {
-            border: 1px dashed #cbd5e1;
-            border-radius: 12px;
-            padding: 12px;
-            margin-top: 12px;
-        }
+    .ce-side-list li {
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--ce-text-main);
+        background: #f8fafc;
+        border: 1px solid transparent;
+        font-weight: 500;
+        border-radius: 10px;
+        transition: all 0.2s;
+        cursor: default;
+    }
+    .ce-side-list li:hover {
+        background: #fff;
+        border-color: var(--ce-primary);
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+        color: var(--ce-primary);
+        transform: translateX(3px);
+    }
 
-        .agenda-location-box {
-            margin-top: 12px;
-        }
+    .ce-side-empty {
+        font-size: 0.85rem;
+        color: var(--ce-text-muted);
+        text-align: center;
+        padding: 1.5rem 0;
+        display: none;
+    }
 
-        .agenda-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
+    /* Grid utilities */
+    .ce-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .ce-col {
+        min-width: 0;
+    }
 
-        .agenda-title {
-            font-weight: 700;
-        }
+    /* Checkbox */
+    .ce-checkbox-wrapper {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1.25rem;
+        background: #f8fafc;
+        border: 1px solid var(--ce-border);
+        border-radius: var(--ce-radius-md);
+        margin-bottom: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .ce-checkbox-wrapper:hover {
+        border-color: var(--ce-primary);
+        background: #e0e7ff;
+    }
+    .ce-checkbox-wrapper input[type="checkbox"] {
+        width: 1.25rem;
+        height: 1.25rem;
+        accent-color: var(--ce-primary);
+        cursor: pointer;
+        margin: 0;
+    }
+    .ce-checkbox-wrapper label {
+        margin: 0;
+        font-weight: 700;
+        color: var(--ce-text-main);
+        cursor: pointer;
+    }
 
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 16px;
-        }
+    /* Select2 UI Fixes */
+    .select2-container--default .select2-selection--single {
+        border-radius: var(--ce-radius-md) !important;
+        height: 46px !important;
+        border: 1px solid var(--ce-border) !important;
+        padding: 8px 16px !important;
+        background-color: #f8fafc !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.2s;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+        background-color: #fff !important;
+        border-color: var(--ce-primary) !important;
+        box-shadow: var(--ce-focus-ring) !important;
+    }
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: normal !important;
+        padding-left: 0 !important;
+        color: var(--ce-text-main) !important;
+        font-size: 0.95rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 44px !important;
+        right: 12px !important;
+    }
+    .select2-dropdown {
+        border: 1px solid var(--ce-border) !important;
+        border-radius: var(--ce-radius-md) !important;
+        box-shadow: var(--ce-shadow-md) !important;
+        overflow: hidden !important;
+    }
+</style>
 
-        .checkbox {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
+<div class="create-wrapper">
+    <div class="ce-card">
+        <h1 class="ce-page-title">Create New Event</h1>
+        <p class="ce-page-subtitle">Fill in the details below to set up a new event, assign speakers, and configure capabilities.</p>
 
-            .checkbox input {
-                width: auto;
-            }
-    </style>
-
-    <div class="create-layout">
-        <div class="card shadow-sm border-0">
-            <h2 class="mb-4">Create Event</h2>
-
-
-            <form asp-controller="Organizer" asp-action="Create" method="post" id="createEventForm" enctype="multipart/form-data">
+        <form asp-controller="Organizer" asp-action="Create" method="post" id="createEventForm" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
-            @Html.ValidationSummary(excludePropertyErrors: false, message: "", htmlAttributes: new { @class = "text-danger" })
-            <label asp-for="Title">Title *</label>
-            <input asp-for="Title" />
-            <span asp-validation-for="Title" class="error"></span>
+            @Html.ValidationSummary(excludePropertyErrors: false, message: "", htmlAttributes: new { @class = "alert alert-danger ce-error p-3 rounded-3" })
 
-            <label asp-for="Description">Description</label>
-            <textarea asp-for="Description"></textarea>
-
-            <div class="row">
-                <div class="col">
-                    <label asp-for="SemesterId">Semester *</label>
-                    <select asp-for="SemesterId" asp-items="Model.Semesters">
-                        <option value="">-- Select Semester --</option>
-                    </select>
-                    <span asp-validation-for="SemesterId" class="error"></span>
+            <h3 class="ce-section-title"><i class="bi bi-info-circle"></i> Basic Information</h3>
+            
+            <div class="ce-row flex-column gap-3 mb-0">
+                <div class="ce-col mb-3">
+                    <label asp-for="Title" class="ce-label">Event Title <span class="text-danger">*</span></label>
+                    <input asp-for="Title" class="ce-input" placeholder="Enter a catchy title for your event..." />
+                    <span asp-validation-for="Title" class="ce-error"></span>
                 </div>
 
-                <div class="col">
-                    <label asp-for="DepartmentId">Department</label>
-                    <select asp-for="DepartmentId" asp-items="Model.Departments">
+                <div class="ce-col mb-3">
+                    <label asp-for="Description" class="ce-label">Description</label>
+                    <textarea asp-for="Description" class="ce-textarea" placeholder="Provide a detailed description of the event..."></textarea>
+                </div>
+            </div>
+
+            <h3 class="ce-section-title"><i class="bi bi-diagram-3"></i> Category & Department</h3>
+
+            <div class="ce-row">
+                <div class="ce-col">
+                    <label asp-for="SemesterId" class="ce-label">Semester <span class="text-danger">*</span></label>
+                    <select asp-for="SemesterId" asp-items="Model.Semesters" class="ce-select">
+                        <option value="">-- Select Semester --</option>
+                    </select>
+                    <span asp-validation-for="SemesterId" class="ce-error"></span>
+                </div>
+
+                <div class="ce-col">
+                    <label asp-for="DepartmentId" class="ce-label">Department</label>
+                    <select asp-for="DepartmentId" asp-items="Model.Departments" class="ce-select">
                         <option value="">-- Select Department --</option>
                     </select>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col">
-                    <label asp-for="TopicId">Topic</label>
-                    <select asp-for="TopicId" asp-items="Model.Topics">
+            <div class="ce-row">
+                <div class="ce-col">
+                    <label asp-for="TopicId" class="ce-label">Event Topic</label>
+                    <select asp-for="TopicId" asp-items="Model.Topics" class="ce-select" id="TopicId">
                         <option value="">-- Select Topic --</option>
                     </select>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col">
-                    <label asp-for="LocationId">Location *</label>
+            <h3 class="ce-section-title"><i class="bi bi-clock"></i> Location & Time</h3>
+
+            <div class="ce-row">
+                <div class="ce-col">
+                    <label asp-for="LocationId" class="ce-label">Venue / Location <span class="text-danger">*</span></label>
                     <input type="hidden" asp-for="LocationId" id="LocationId" />
                     <div class="position-relative">
-                        <input type="text" id="locationSearchInput" class="form-control" placeholder="Tìm kiếm địa điểm (>= 1 ký tự)..." autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
-                        <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                        <input type="text" id="locationSearchInput" class="ce-input" placeholder="Search for existing locations... (e.g. Room, Hall)" autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
+                        <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg z-3" style="display:none; max-height: 250px; overflow-y: auto;"></div>
                     </div>
-                    <span asp-validation-for="LocationId" class="error text-danger small"></span>
+                    <span asp-validation-for="LocationId" class="ce-error"></span>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col">
-                    <label asp-for="StartTime">Start Time *</label>
-                    <input asp-for="StartTime" type="datetime-local" />
-                    <span asp-validation-for="StartTime" class="error"></span>
+            <div class="ce-row">
+                <div class="ce-col">
+                    <label asp-for="StartTime" class="ce-label">Start Time <span class="text-danger">*</span></label>
+                    <input asp-for="StartTime" type="datetime-local" class="ce-input" />
+                    <span asp-validation-for="StartTime" class="ce-error"></span>
                 </div>
-                <div class="col">
-                    <label asp-for="EndTime">End Time *</label>
-                    <input asp-for="EndTime" type="datetime-local" />
-                    <span asp-validation-for="EndTime" class="error"></span>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col">
-                    <label asp-for="MaxCapacity">Max Capacity *</label>
-                    <input asp-for="MaxCapacity" type="number" min="1" />
-                    <div class="hint" id="locationCapacityHint">Sức chứa phải nhỏ hơn hoặc bằng sức chứa phòng do approver cấu hình.</div>
-                    <span asp-validation-for="MaxCapacity" class="error"></span>
-                </div>
-                <div class="col">
-                    <label>Event Images (Slideshow)</label>
-                    <input asp-for="BannerFiles" type="file" accept="image/*" multiple />
-                    <div class="hint">Select multiple images to create a slideshow. The first image will be the primary thumbnail.</div>
-                    <div class="hint" style="margin-top: 10px;">Or provide Image URLs (separating by | )</div>
-                    <input asp-for="ThumbnailUrl" placeholder="https://url1.jpg|https://url2.jpg" />
+                <div class="ce-col">
+                    <label asp-for="EndTime" class="ce-label">End Time <span class="text-danger">*</span></label>
+                    <input asp-for="EndTime" type="datetime-local" class="ce-input" />
+                    <span asp-validation-for="EndTime" class="ce-error"></span>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col">
-                    <label asp-for="Type">Event Type</label>
-                    <select asp-for="Type" asp-items="Html.GetEnumSelectList<EventTypeEnum>()"></select>
+            <h3 class="ce-section-title"><i class="bi bi-gear"></i> Settings & Capacity</h3>
+
+            <div class="ce-row">
+                <div class="ce-col">
+                    <label asp-for="Type" class="ce-label">Event Type</label>
+                    <select asp-for="Type" asp-items="Html.GetEnumSelectList<EventTypeEnum>()" class="ce-select"></select>
                 </div>
-                <div class="col">
-                    <label asp-for="Status">Status</label>
-                    <select asp-for="Status"
+                <div class="ce-col">
+                    <label asp-for="Status" class="ce-label">Initial Status</label>
+                    <select asp-for="Status" class="ce-select"
                             asp-items="@(new SelectList(
                                         new[]
                                         {
-                                            new { Value = EventStatusEnum.Draft, Text = "Draft" },
-                                            new { Value = EventStatusEnum.Pending, Text = "Pending" }
+                                            new { Value = (int)EventStatusEnum.Draft, Text = "Draft" },
+                                            new { Value = (int)EventStatusEnum.Pending, Text = "Pending Approval" }
                                         },
                                         "Value",
                                         "Text"
                                     ))">
                     </select>
                 </div>
-                <div class="col">
-                    <label asp-for="Mode">Event Mode</label>
-                    <select asp-for="Mode" asp-items="Html.GetEnumSelectList<DataAccess.Enum.EventModeEnum>()"></select>
+                <div class="ce-col">
+                    <label asp-for="Mode" class="ce-label">Event Format</label>
+                    <select asp-for="Mode" asp-items="Html.GetEnumSelectList<DataAccess.Enum.EventModeEnum>()" class="ce-select"></select>
                 </div>
             </div>
 
-            <div class="row" id="meetingRow" style="display:none;">
-                <div class="col">
-                    <label asp-for="MeetingUrl">Meeting Url</label>
-                    <input asp-for="MeetingUrl"/>
-                    <span asp-validation-for="MeetingUrl" class="error"></span>
+            <div class="ce-row" id="meetingRow" style="display:none;">
+                <div class="ce-col">
+                    <label asp-for="MeetingUrl" class="ce-label">Online Meeting URL</label>
+                    <input asp-for="MeetingUrl" class="ce-input" placeholder="https://zoom.us/j/..." />
+                    <span asp-validation-for="MeetingUrl" class="ce-error"></span>
                 </div>
             </div>
 
-            <div class="checkbox">
+            <div class="ce-row">
+                <div class="ce-col">
+                    <label asp-for="MaxCapacity" class="ce-label">Maximum Capacity <span class="text-danger">*</span></label>
+                    <input asp-for="MaxCapacity" type="number" min="1" class="ce-input" />
+                    <span class="ce-hint" id="locationCapacityHint">Must be less than or equal to venue's maximum capacity.</span>
+                    <span asp-validation-for="MaxCapacity" class="ce-error"></span>
+                </div>
+                <div class="ce-col">
+                    <label class="ce-label">Event Images (Slideshow)</label>
+                    <input asp-for="BannerFiles" type="file" accept="image/*" multiple class="ce-input bg-white" />
+                    <span class="ce-hint">Upload multiple images. The first image will be your main thumbnail.</span>
+                    
+                    <div class="mt-3">
+                        <label class="ce-label">Or Provide External Image URLs</label>
+                        <input asp-for="ThumbnailUrl" class="ce-input" placeholder="https://img.com/1.jpg | https://img.com/2.jpg" />
+                        <span class="ce-hint">Separate multiple URLs with a pipe (|).</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ce-checkbox-wrapper mt-3">
                 <input asp-for="IsDepositRequired" id="IsDepositRequired" />
-                <label for="IsDepositRequired" style="margin:0;">Require Deposit</label>
+                <label for="IsDepositRequired">Require Deposit / Participation Fee</label>
             </div>
 
-            <div class="row" id="depositRow">
-                <div class="col">
-                    <label asp-for="DepositAmount">Deposit Amount</label>
-                    <input asp-for="DepositAmount" type="number" min="0" step="0.01" />
-                    <span asp-validation-for="DepositAmount" class="error"></span>
+            <div class="ce-row mb-0" id="depositRow">
+                <div class="ce-col">
+                    <label asp-for="DepositAmount" class="ce-label">Deposit Amount (Currency)</label>
+                    <input asp-for="DepositAmount" type="number" min="0" step="0.01" class="ce-input" />
+                    <span asp-validation-for="DepositAmount" class="ce-error"></span>
                 </div>
             </div>
 
-            <div class="divider"></div>
+            <h3 class="ce-section-title mt-5 d-flex justify-content-between align-items-center border-0 mb-0">
+                <div><i class="bi bi-file-earmark-text"></i> Event Documents</div>
+                <button type="button" class="ce-btn ce-btn-secondary btn-sm shadow-sm" style="border-radius: 20px; font-size: 0.8rem; padding: 0.3rem 0.8rem;" id="btnAddDocument">
+                    <i class="bi bi-plus-lg"></i> Add
+                </button>
+            </h3>
 
-            <div class="row" style="align-items:center; justify-content:space-between;">
-                <h3 style="margin:0;">Event Documents</h3>
-                <button type="button" class="btn btn-secondary" id="btnAddDocument">+ Add document</button>
-            </div>
-
-            <div id="documentsContainer">
+            <div id="documentsContainer" class="mt-4">
                 @for (int i = 0; i < (Model.Documents?.Count ?? 0); i++)
                 {
-                    <div class="agenda-item" data-index="@i">
-                        <div class="agenda-head">
-                            <div class="agenda-title">Document #@(i + 1)</div>
-                            <button type="button" class="btn btn-danger btnRemoveDocument">Remove</button>
+                    <div class="ce-nested-item agenda-item" data-index="@i">
+                        <div class="ce-nested-header">
+                            <h4 class="ce-nested-title">Document #@(i + 1)</h4>
+                            <button type="button" class="ce-btn ce-btn-danger btn-sm py-1 px-3 btnRemoveDocument" style="border-radius:20px; font-size:0.75rem;">Remove</button>
                         </div>
-
-                        <div class="row">
-                            <div class="col">
-                                <label>File name</label>
-                                <input name="Documents[i].FileName" value="@Model.Documents[i].FileName" />
+                        <div class="ce-row">
+                            <div class="ce-col">
+                                <label class="ce-label">File Name (Optional)</label>
+                                <input name="Documents[@i].FileName" value="@Model.Documents[i].FileName" class="ce-input" />
                             </div>
-                            <div class="col">
-                                <label>Upload File</label>
-                                <input name="Documents[i].File" type="file" />
+                            <div class="ce-col">
+                                <label class="ce-label">Upload File</label>
+                                <input name="Documents[@i].File" type="file" class="ce-input bg-white" />
                             </div>
                         </div>
-
-                        <label>Or provide Url</label>
-                        <input name="Documents[i].Url" value="@Model.Documents[i].Url" />
+                        <div class="ce-row mb-0">
+                            <div class="ce-col">
+                                <label class="ce-label">Or Provide Download URL</label>
+                                <input name="Documents[@i].Url" value="@Model.Documents[i].Url" class="ce-input" />
+                            </div>
+                        </div>
                     </div>
                 }
             </div>
 
-            <div class="row" style="align-items:center; justify-content:space-between;">
-                <h3 style="margin:0;">Event Agendas</h3>
-                <div style="display:flex; gap:10px;">
-                    <button type="button" class="btn btn-secondary" id="btnSuggestAgenda">+ Agenda by event type</button>
-                    <button type="button" class="btn btn-secondary" id="btnAddAgenda">+ Add agenda</button>
+            <h3 class="ce-section-title mt-5 d-flex justify-content-between align-items-center border-0 mb-0">
+                <div class="d-flex align-items-center flex-wrap gap-2"><i class="bi bi-view-list"></i> Event Agendas</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="ce-btn ce-btn-secondary btn-sm shadow-sm" style="border-radius: 20px; font-size: 0.8rem; padding: 0.3rem 0.8rem;" id="btnSuggestAgenda">
+                        <i class="bi bi-lightbulb-fill text-warning"></i> Suggest
+                    </button>
+                    <button type="button" class="ce-btn ce-btn-secondary btn-sm shadow-sm" style="border-radius: 20px; font-size: 0.8rem; padding: 0.3rem 0.8rem;" id="btnAddAgenda">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </button>
                 </div>
-            </div>
-            <div class="hint" id="agendaSuggestionHint">Chọn `Event Type`, sau đó bấm `Agenda by event type` để áp dụng agenda mẫu phù hợp.</div>
+            </h3>
+            <span class="ce-hint mb-4" id="agendaSuggestionHint">Select Event Type and click "Suggest" to load a default template.</span>
 
             <div id="agendaContainer">
                 @for (int i = 0; i < (Model.Agendas?.Count ?? 0); i++)
                 {
-                    <div class="agenda-item" data-index="@i">
-                        <div class="agenda-head">
-                            <div class="agenda-title">Agenda #@(i + 1)</div>
-                            <button type="button" class="btn btn-danger btnRemoveAgenda">Remove</button>
+                    <div class="ce-nested-item agenda-item" data-index="@i">
+                        <div class="ce-nested-header">
+                            <h4 class="ce-nested-title">Agenda Session #@(i + 1)</h4>
+                            <button type="button" class="ce-btn ce-btn-danger btn-sm py-1 px-3 btnRemoveAgenda" style="border-radius:20px; font-size:0.75rem;">Remove</button>
                         </div>
 
-                        <div class="row">
-                            <div class="col">
-                                <label>Session Name</label>
-                                <input asp-for="Agendas[i].SessionName" required />
-                                <span asp-validation-for="Agendas[i].SessionName" class="error"></span>
+                        <div class="ce-row">
+                            <div class="ce-col">
+                                <label class="ce-label">Session Name <span class="text-danger">*</span></label>
+                                <input name="Agendas[@i].SessionName" value="@Model.Agendas[i].SessionName" required class="ce-input" />
+                                <span asp-validation-for="Agendas[i].SessionName" class="ce-error"></span>
                             </div>
-                            <div class="col">
-                                <label>Speaker</label>
-                                <input asp-for="Agendas[i].SpeakerInfo" required />
-                                <span asp-validation-for="Agendas[i].SpeakerInfo" class="error"></span>
-                            </div>
-                        </div>
-
-                        <label>Description</label>
-                        <textarea asp-for="Agendas[i].Description"></textarea>
-
-                        <div class="row">
-                            <div class="col">
-                                <label>Start</label>
-                                <input asp-for="Agendas[i].StartTime" type="datetime-local" />
-                            </div>
-                            <div class="col">
-                                <label>End</label>
-                                <input asp-for="Agendas[i].EndTime" type="datetime-local" />
+                            <div class="ce-col">
+                                <label class="ce-label">Speaker / Host <span class="text-danger">*</span></label>
+                                <input name="Agendas[@i].SpeakerInfo" value="@Model.Agendas[i].SpeakerInfo" required class="ce-input" />
+                                <span asp-validation-for="Agendas[i].SpeakerInfo" class="ce-error"></span>
                             </div>
                         </div>
 
-                        <div class="row pt-2 pb-2">
-                            <div class="col">
-                                <label>Location</label>
-                                <input type="hidden" asp-for="Agendas[i].Location" class="agenda-location-hidden" />
+                        <div class="ce-row">
+                            <div class="ce-col">
+                                <label class="ce-label">Session Description</label>
+                                <textarea name="Agendas[@i].Description" class="ce-textarea" style="min-height:80px;">@Model.Agendas[i].Description</textarea>
+                            </div>
+                        </div>
+
+                        <div class="ce-row">
+                            <div class="ce-col">
+                                <label class="ce-label">Start Time</label>
+                                <input name="Agendas[@i].StartTime" value="@(Model.Agendas[i].StartTime?.ToString("yyyy-MM-ddTHH:mm"))" type="datetime-local" class="ce-input" />
+                            </div>
+                            <div class="ce-col">
+                                <label class="ce-label">End Time</label>
+                                <input name="Agendas[@i].EndTime" value="@(Model.Agendas[i].EndTime?.ToString("yyyy-MM-ddTHH:mm"))" type="datetime-local" class="ce-input" />
+                            </div>
+                        </div>
+
+                        <div class="ce-row mb-0">
+                            <div class="ce-col">
+                                <label class="ce-label">Session Location</label>
+                                <input type="hidden" name="Agendas[@i].Location" value="@Model.Agendas[i].Location" class="agenda-location-hidden" />
                                 <div class="position-relative">
-                                    <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" value="@Model.Agendas[i].Location" />
-                                    <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                                    <input type="text" class="ce-input agenda-location-search-input" placeholder="Leave blank if it's the same as main event..." autocomplete="off" value="@Model.Agendas[i].Location" />
+                                    <div class="agenda-location-search-results position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
                                 </div>
                             </div>
                         </div>
@@ -431,138 +637,134 @@
                 }
             </div>
 
-
-                <div class="actions">
-                    <button type="submit" class="btn btn-primary">Create Event</button>
-                    <button type="reset" class="btn btn-danger">Reset</button>
-                </div>
-            </form>
-        </div>
-
-        <aside class="create-sidebar">
-            <div class="side-panel">
-                <h4>Available Topics</h4>
-                <input type="text" class="side-search" data-target="topicList" placeholder="Tìm topic..." autocomplete="off" />
-                <ul class="side-list" id="topicList">
-                    @if (Model.Topics != null && Model.Topics.Any(x => !string.IsNullOrWhiteSpace(x.Value)))
-                    {
-                        foreach (var topic in Model.Topics.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
-                        {
-                            <li>@topic.Text</li>
-                        }
-                    }
-                    else
-                    {
-                        <li>Chưa có topic khả dụng.</li>
-                    }
-                </ul>
-                <div class="side-empty" data-empty-for="topicList">Không tìm thấy topic phù hợp.</div>
+            <div class="d-flex gap-3 justify-content-end mt-5 pt-4 border-top">
+                <button type="reset" class="ce-btn ce-btn-secondary px-4 py-2" style="border-radius:12px;">Cancel & Reset</button>
+                <button type="submit" class="ce-btn ce-btn-primary px-5 py-2 shadow-lg" style="border-radius:12px;">
+                    <i class="bi bi-check2-circle fs-5"></i> Publish Event
+                </button>
             </div>
-
-            <div class="side-panel">
-                <h4>Available Locations</h4>
-                <input type="text" class="side-search" data-target="locationList" placeholder="Tìm location..." autocomplete="off" />
-                <ul class="side-list" id="locationList">
-                    @if (Model.Locations != null && Model.Locations.Any(x => !string.IsNullOrWhiteSpace(x.Value)))
-                    {
-                        foreach (var location in Model.Locations.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
-                        {
-                            <li>@location.Text</li>
-                        }
-                    }
-                    else
-                    {
-                        <li>Chưa có location khả dụng.</li>
-                    }
-                </ul>
-                <div class="side-empty" data-empty-for="locationList">Không tìm thấy location phù hợp.</div>
-            </div>
-        </aside>
+        </form>
     </div>
 
-    <template id="agendaTemplate">
-        <div class="agenda-item" data-index="__i__">
-            <div class="agenda-head">
-                <div class="agenda-title">Agenda #__n__</div>
-                <button type="button" class="btn btn-danger btnRemoveAgenda">Remove</button>
+    <!-- Right Sidebar Content -->
+    <aside class="ce-sidebar">
+        <div class="ce-side-panel">
+            <h4><i class="bi bi-tags-fill"></i> Available Topics</h4>
+            <input type="text" class="ce-side-search" data-target="topicList" placeholder="Filter topics..." autocomplete="off" />
+            <ul class="ce-side-list" id="topicList">
+                @if (Model.Topics != null && Model.Topics.Any(x => !string.IsNullOrWhiteSpace(x.Value)))
+                {
+                    foreach (var topic in Model.Topics.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
+                    {
+                        <li>@topic.Text</li>
+                    }
+                }
+                else
+                {
+                    <li>No topics available.</li>
+                }
+            </ul>
+            <div class="ce-side-empty" data-empty-for="topicList">No topics matched your search.</div>
+        </div>
+
+        <div class="ce-side-panel">
+            <h4><i class="bi bi-geo-alt-fill"></i> Available Locations</h4>
+            <input type="text" class="ce-side-search" data-target="locationList" placeholder="Filter locations..." autocomplete="off" />
+            <ul class="ce-side-list" id="locationList">
+                @if (Model.Locations != null && Model.Locations.Any(x => !string.IsNullOrWhiteSpace(x.Value)))
+                {
+                    foreach (var location in Model.Locations.Where(x => !string.IsNullOrWhiteSpace(x.Value)))
+                    {
+                        <li><i class="bi bi-building text-muted me-2"></i>@location.Text</li>
+                    }
+                }
+                else
+                {
+                    <li>No locations available.</li>
+                }
+            </ul>
+            <div class="ce-side-empty" data-empty-for="locationList">No locations matched your search.</div>
+        </div>
+    </aside>
+</div>
+
+<!-- JS Templates -->
+<template id="agendaTemplate">
+    <div class="ce-nested-item agenda-item" data-index="__i__">
+        <div class="ce-nested-header">
+            <h4 class="ce-nested-title">Agenda Session #__n__</h4>
+            <button type="button" class="ce-btn ce-btn-danger btn-sm py-1 px-3 btnRemoveAgenda" style="border-radius:20px; font-size:0.75rem;">Remove</button>
+        </div>
+
+        <div class="ce-row">
+            <div class="ce-col">
+                <label class="ce-label">Session Name <span class="text-danger">*</span></label>
+                <input name="Agendas[__i__].SessionName" required class="ce-input" />
             </div>
-
-            <div class="row">
-                <div class="col">
-                    <label>Session Name</label>
-                    <input name="Agendas[__i__].SessionName" required />
-                </div>
-                <div class="col">
-                    <label>Speaker</label>
-                    <input name="Agendas[__i__].SpeakerInfo" required />
-                </div>
+            <div class="ce-col">
+                <label class="ce-label">Speaker / Host <span class="text-danger">*</span></label>
+                <input name="Agendas[__i__].SpeakerInfo" required class="ce-input" />
             </div>
+        </div>
 
-            <label>Description</label>
-            <textarea name="Agendas[__i__].Description"></textarea>
-
-            <div class="row">
-                <div class="col">
-                    <label>Start</label>
-                    <input name="Agendas[__i__].StartTime" type="datetime-local" />
-                </div>
-                <div class="col">
-                    <label>End</label>
-                    <input name="Agendas[__i__].EndTime" type="datetime-local" />
-                </div>
+        <div class="ce-row">
+            <div class="ce-col">
+                <label class="ce-label">Session Description</label>
+                <textarea name="Agendas[__i__].Description" class="ce-textarea" style="min-height:80px;"></textarea>
             </div>
+        </div>
 
-            <div class="row pt-2 pb-2">
-                <div class="col">
-                    <label>Location</label>
-                    <input type="hidden" name="Agendas[__i__].Location" class="agenda-location-hidden" />
-                    <div class="position-relative">
-                        <input type="text" class="form-control agenda-location-search-input" placeholder="Để trống nếu giống địa điểm Event..." autocomplete="off" />
-                        <div class="agenda-location-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
-                    </div>
+        <div class="ce-row">
+            <div class="ce-col">
+                <label class="ce-label">Start Time</label>
+                <input name="Agendas[__i__].StartTime" type="datetime-local" class="ce-input" />
+            </div>
+            <div class="ce-col">
+                <label class="ce-label">End Time</label>
+                <input name="Agendas[__i__].EndTime" type="datetime-local" class="ce-input" />
+            </div>
+        </div>
+
+        <div class="ce-row mb-0">
+            <div class="ce-col">
+                <label class="ce-label">Session Location</label>
+                <input type="hidden" name="Agendas[__i__].Location" class="agenda-location-hidden" />
+                <div class="position-relative">
+                    <input type="text" class="ce-input agenda-location-search-input" placeholder="Leave blank if it's the same as main event..." autocomplete="off" />
+                    <div class="agenda-location-search-results position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
-    </template>
+    </div>
+</template>
 
-    <template id="documentTemplate">
-        <div class="agenda-item" data-index="__i__">
-            <div class="agenda-head">
-                <div class="agenda-title">Document #__n__</div>
-                <button type="button" class="btn btn-danger btnRemoveDocument">Remove</button>
-            </div>
-
-            <div class="row">
-                <div class="col">
-                    <label>File name (Optional)</label>
-                    <input name="Documents[__i__].FileName" />
-                </div>
-                <div class="col">
-                    <label>Upload File</label>
-                    <input name="Documents[__i__].File" type="file" />
-                </div>
-            </div>
-
-            <label>Or provide Url</label>
-            <input name="Documents[__i__].Url" />
+<template id="documentTemplate">
+    <div class="ce-nested-item agenda-item" data-index="__i__">
+        <div class="ce-nested-header">
+            <h4 class="ce-nested-title">Document #__n__</h4>
+            <button type="button" class="ce-btn ce-btn-danger btn-sm py-1 px-3 btnRemoveDocument" style="border-radius:20px; font-size:0.75rem;">Remove</button>
         </div>
-    </template>
 
-    <style>
-        /* Select2 bootstrap compatibility fixes */
-        .select2-container--default .select2-selection--single {
-            border-radius: 10px;
-            height: 42px;
-            border: 1px solid #ccc;
-            padding: 5px;
-        }
-        .select2-container .select2-selection--single .select2-selection__rendered {
-            line-height: 30px;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 40px;
-        }
-    </style>
+        <div class="ce-row">
+            <div class="ce-col">
+                <label class="ce-label">File Name (Optional)</label>
+                <input name="Documents[__i__].FileName" class="ce-input" />
+            </div>
+            <div class="ce-col">
+                <label class="ce-label">Upload File</label>
+                <input name="Documents[__i__].File" type="file" class="ce-input bg-white" />
+            </div>
+        </div>
+
+        <div class="ce-row mb-0">
+            <div class="ce-col">
+                <label class="ce-label">Or Provide Download URL</label>
+                <input name="Documents[__i__].Url" class="ce-input" />
+            </div>
+        </div>
+    </div>
+</template>
+
 @section Scripts {
     <script>
         $(document).ready(function() {
@@ -633,7 +835,7 @@
             document.addEventListener('input', function(e) {
                 if (e.target.classList.contains('agenda-location-search-input')) {
                     const input = e.target;
-                    const container = input.closest('.col');
+                    const container = input.closest('.ce-col') || input.closest('.col');
                     const results = container.querySelector('.agenda-location-search-results');
                     const hidden = container.querySelector('.agenda-location-hidden');
                     
@@ -716,7 +918,7 @@
             // If they need to be searchable too, we can initialize them here.
 
             // Filter for right-side topic/location lists
-            document.querySelectorAll('.side-search').forEach(input => {
+            document.querySelectorAll('.ce-side-search').forEach(input => {
                 input.addEventListener('input', function () {
                     const targetId = this.getAttribute('data-target');
                     const list = document.getElementById(targetId);
@@ -733,7 +935,7 @@
                         if (match) visibleCount++;
                     });
 
-                    const empty = document.querySelector(`.side-empty[data-empty-for='${targetId}']`);
+                    const empty = document.querySelector(`.ce-side-empty[data-empty-for='${targetId}']`);
                     if (empty) {
                         empty.style.display = visibleCount === 0 ? 'block' : 'none';
                     }
@@ -752,7 +954,7 @@
             const depositRow = document.getElementById("depositRow");
 
             function updateDepositUI() {
-                depositRow.style.display = isDeposit.checked ? "flex" : "none";
+                depositRow.style.display = isDeposit.checked ? "grid" : "none";
                 if (!isDeposit.checked) {
                     const depInput = document.querySelector("input[name='DepositAmount']");
                     if (depInput) depInput.value = 0;
@@ -771,7 +973,7 @@
 
                 // EventModeEnum: Offline=0, Online=1, Hybrid=2
                 if (val === '1' || val === '2') {
-                    meetingRow.style.display = 'flex';
+                    meetingRow.style.display = 'grid';
                 } else {
                     meetingRow.style.display = 'none';
                     const m = document.querySelector("input[name='MeetingUrl']");
@@ -791,12 +993,18 @@
                 const items = agendaContainer.querySelectorAll(".agenda-item");
                 items.forEach((item, i) => {
                     item.dataset.index = i;
-                    const title = item.querySelector(".agenda-title");
-                    if (title) title.textContent = `Agenda #${i + 1}`;
+                    const title = item.querySelector(".ce-nested-title");
+                    if (title) title.textContent = `Agenda Session #${i + 1}`;
                     item.querySelectorAll("input[name], textarea[name], select[name]").forEach(el => {
                         el.name = el.name.replace(/Agendas\[\d+\]/, `Agendas[${i}]`);
                     });
                 });
+            }
+
+            function hasAgendaContent() {
+                return [...agendaContainer.querySelectorAll('.agenda-item')].some(item =>
+                    [...item.querySelectorAll('input[type="text"], input[type="datetime-local"], textarea, input[type="hidden"]')]
+                        .some(input => input.value?.trim()));
             }
 
             function addAgenda(agendaData) {
@@ -829,7 +1037,7 @@
 
                 agendaSuggestionHint.textContent = suggestions.length > 0
                     ? `Agenda gợi ý: ${suggestions.join(', ')}.`
-                    : 'Chọn Event Type, sau đó bấm Agenda by event type để áp dụng agenda mẫu phù hợp.';
+                    : 'Chọn Event Type, sau đó bấm Suggest để áp dụng agenda mẫu phù hợp.';
             }
 
             function applySuggestedAgendas() {
@@ -883,7 +1091,7 @@
                 const items = docsContainer.querySelectorAll('.agenda-item');
                 items.forEach((item, i) => {
                     item.dataset.index = i;
-                    const title = item.querySelector('.agenda-title');
+                    const title = item.querySelector('.ce-nested-title');
                     if (title) title.textContent = `Document #${i + 1}`;
                     item.querySelectorAll("input[name]").forEach(el => {
                         el.name = el.name.replace(/Documents\[\d+\]/, `Documents[${i}]`);
