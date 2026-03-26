@@ -1,88 +1,1015 @@
 @model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@using DataAccess.Enum
 @{
     ViewData["Title"] = "Quiz Bank";
     Layout = "_Organizerlayout";
+
+    var allQuizzes    = Model.Quizzes ?? new List<BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts.QuizSummaryContract>();
+    int totalCount    = allQuizzes.Count;
+    int publicCount   = allQuizzes.Count(q => q.SharingStatus == QuizSetVisibilityEnum.Public);
+    int privateCount  = allQuizzes.Count(q => q.SharingStatus == QuizSetVisibilityEnum.Private);
+    int totalQ        = allQuizzes.Sum(q => q.QuestionCount);
+
+    // ── unique semesters / events for summary & autocomplete ─────────────────
+    var uniqueSemesters = allQuizzes
+        .Where(q => !string.IsNullOrWhiteSpace(q.SemesterName))
+        .Select(q => q.SemesterName.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x)
+        .ToList();
+
+    var uniqueEvents = allQuizzes
+        .Where(q => !string.IsNullOrWhiteSpace(q.EventTitle))
+        .Select(q => q.EventTitle.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x)
+        .ToList();
+
+    var uniqueTitles = allQuizzes
+        .Where(q => !string.IsNullOrWhiteSpace(q.Title))
+        .Select(q => q.Title.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x)
+        .ToList();
+
+    int semesters = uniqueSemesters.Count;
+    int events    = uniqueEvents.Count;
+
+    // ── Type icon & color helpers ────────────────────────────────────────────
+    string TypePillClass(QuizTypeEnum t) => t switch
+    {
+        QuizTypeEnum.Practice => "qb-type-practice",
+        QuizTypeEnum.Exam     => "qb-type-exam",
+        QuizTypeEnum.Survey   => "qb-type-survey",
+        QuizTypeEnum.LiveQuiz => "qb-type-live",
+        _                     => "qb-type-practice"
+    };
+
+    string TypeIcon(QuizTypeEnum t) => t switch
+    {
+        QuizTypeEnum.Practice => "bi-pencil-fill",
+        QuizTypeEnum.Exam     => "bi-clipboard2-check-fill",
+        QuizTypeEnum.Survey   => "bi-bar-chart-fill",
+        QuizTypeEnum.LiveQuiz => "bi-lightning-charge-fill",
+        _                     => "bi-pencil-fill"
+    };
+
+    // ── Avatar color from title hash ─────────────────────────────────────────
+    string GetAvatarColor(string? title)
+    {
+        var palette = new[] {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6"
+        };
+        if (string.IsNullOrEmpty(title)) return palette[0];
+        return palette[Math.Abs(title.GetHashCode()) % palette.Length];
+    }
+
+    string GetInitials(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return "?";
+        var parts = title.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // ── Q-count bar (max 20, capped) ─────────────────────────────────────────
+    int QBarWidth(int count) => Math.Min((int)(count / 20.0 * 100), 100);
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<style>
+    /* ===========================================================
+       QUIZ BANK — PREMIUM UI
+    =========================================================== */
+    :root {
+        --qb-primary:    #6366f1;
+        --qb-secondary:  #8b5cf6;
+        --qb-bg:         #f0f2ff;
+        --qb-card:       #ffffff;
+        --qb-border:     #e0e7ff;
+        --qb-text:       #1e1b4b;
+        --qb-muted:      #64748b;
+        --qb-radius:     16px;
+        --qb-shadow:     0 4px 24px rgba(99,102,241,.08);
+        --qb-focus:      0 0 0 3px rgba(99,102,241,.2);
+        --qb-green:      #22c55e;
+        --qb-amber:      #f59e0b;
+    }
+
+    /* ── Animations ── */
+    @@keyframes qb-fadein  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes qb-slidein { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
+    @@keyframes qb-pop     { from { opacity:0; transform:scale(.85); } to { opacity:1; transform:scale(1); } }
+    @@keyframes qb-barw    { from { width:0; } }
+    @@keyframes qb-glow {
+        0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,.3); }
+        50%     { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+    }
+    @@keyframes qb-row-in  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    @@keyframes qb-shimmer {
+        from { background-position: -400px 0; }
+        to   { background-position:  400px 0; }
+    }
+    @@keyframes qb-card-hover {
+        from { transform: translateY(0); }
+        to   { transform: translateY(-4px); }
+    }
+
+    /* ── Page ── */
+    .qb-page { background: var(--qb-bg); min-height: 100vh; padding: 2rem 0 4rem; }
+
+    /* ── Header ── */
+    .qb-header {
+        display: flex; align-items: flex-start;
+        justify-content: space-between; gap: 1rem;
+        margin-bottom: 2rem; flex-wrap: wrap;
+        animation: qb-fadein .35s ease both;
+    }
+    .qb-header-title {
+        font-size: 1.9rem; font-weight: 900;
+        color: var(--qb-text); margin-bottom: .2rem;
+        letter-spacing: -.025em;
+        display: flex; align-items: center; gap: .55rem;
+    }
+    .qb-header-icon {
+        width: 48px; height: 48px; border-radius: 14px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; color: #fff; flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(99,102,241,.3);
+    }
+    .qb-header-sub { color: var(--qb-muted); font-size: .87rem; margin: 0; margin-left: 58px; }
+    .qb-header-actions { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .qb-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        font-size: .83rem; font-weight: 700; padding: .62rem 1.3rem;
+        border-radius: 30px; border: none; text-decoration: none;
+        cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .qb-btn-ghost   { background: #fff; color: #475569; border: 1.5px solid #e2e8f0; }
+    .qb-btn-ghost:hover  { background: #f1f5f9; color: var(--qb-primary); border-color: #c7d2fe; }
+    .qb-btn-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.3);
+    }
+    .qb-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(99,102,241,.4); color: #fff; }
+    .qb-btn-submit {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,.25);
+    }
+    .qb-btn-submit:hover { transform: translateY(-1px); color: #fff; }
+    .qb-btn-clear { background: #f8fafc; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .qb-btn-clear:hover  { background: #f1f5f9; }
+
+    /* ── Stats grid ── */
+    .qb-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem; margin-bottom: 1.5rem;
+        animation: qb-fadein .4s .08s ease both;
+    }
+    @@media(max-width:1100px) { .qb-stats-grid { grid-template-columns: repeat(3,1fr); } }
+    @@media(max-width:640px)  { .qb-stats-grid { grid-template-columns: 1fr 1fr; } }
+
+    .qb-stat {
+        background: var(--qb-card); border-radius: 14px;
+        border: 1px solid var(--qb-border); box-shadow: var(--qb-shadow);
+        padding: 1rem 1.15rem;
+        display: flex; align-items: center; gap: .85rem;
+        transition: transform .18s, box-shadow .18s; cursor: default;
+    }
+    .qb-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(99,102,241,.14); }
+    .qb-stat-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.15rem; flex-shrink: 0;
+    }
+    .qb-stat-label { font-size: .68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+    .qb-stat-value { font-size: 1.5rem; font-weight: 900; color: var(--qb-text); line-height: 1; margin-top: .08rem; }
+
+    /* ── Autocomplete dropdown ── */
+    .qb-autocomplete-wrap { position: relative; }
+    .qb-autocomplete-list {
+        position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+        background: #fff; border: 1.5px solid var(--qb-border);
+        border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
+        z-index: 9999; max-height: 200px; overflow-y: auto;
+        display: none; padding: .35rem;
+    }
+    .qb-autocomplete-list.visible { display: block; animation: qb-pop .18s ease; }
+    .qb-autocomplete-item {
+        display: flex; align-items: center; gap: .45rem;
+        padding: .5rem .7rem; border-radius: 8px;
+        font-size: .84rem; color: var(--qb-text); font-weight: 600;
+        cursor: pointer; transition: background .12s; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis;
+    }
+    .qb-autocomplete-item i { color: #a5b4fc; font-size: .78rem; flex-shrink: 0; }
+    .qb-autocomplete-item:hover,
+    .qb-autocomplete-item.highlighted { background: #f5f3ff; color: var(--qb-primary); }
+    .qb-autocomplete-item mark {
+        background: transparent; color: var(--qb-primary);
+        font-weight: 900; padding: 0;
+    }
+    .qb-no-suggestion {
+        padding: .5rem .7rem; font-size: .82rem;
+        color: #94a3b8; font-style: italic;
+    }
+
+    /* ── Live filter counter ── */
+    #qbLiveCount { transition: color .2s; }
+    #qbLiveCount.changed { color: var(--qb-primary) !important; }
+
+    /* ── Row hidden by filter ── */
+    .qb-bank-row.qb-filtered-out { display: none !important; }
+
+    /* ── Filter card ── */
+    .qb-filter-card {
+        background: var(--qb-card); border-radius: var(--qb-radius);
+        border: 1px solid var(--qb-border); box-shadow: var(--qb-shadow);
+        overflow: hidden; margin-bottom: 1.5rem;
+        animation: qb-fadein .4s .12s ease both;
+    }
+    .qb-filter-header {
+        padding: .85rem 1.45rem; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; gap: .5rem;
+        font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+        text-transform: uppercase; color: #94a3b8;
+    }
+    .qb-filter-body { padding: 1.25rem 1.45rem; }
+    .qb-filter-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    @@media(max-width:768px) { .qb-filter-grid { grid-template-columns: 1fr 1fr; } }
+    @@media(max-width:480px) { .qb-filter-grid { grid-template-columns: 1fr; } }
+
+    .qb-filter-label {
+        font-size: .72rem; font-weight: 800; color: var(--qb-text);
+        display: block; margin-bottom: .38rem;
+        text-transform: uppercase; letter-spacing: .05em;
+    }
+    .qb-filter-input {
+        width: 100%; padding: .65rem 1rem .65rem 2.2rem;
+        border: 1.5px solid var(--qb-border); border-radius: 10px;
+        font-size: .88rem; color: var(--qb-text); background: #fafbff;
+        outline: none; transition: all .2s;
+    }
+    .qb-filter-input:focus { background: #fff; border-color: var(--qb-primary); box-shadow: var(--qb-focus); }
+    .qb-filter-input-wrap { position: relative; }
+    .qb-filter-input-wrap > i {
+        position: absolute; top: 50%; left: .8rem;
+        transform: translateY(-50%); color: #94a3b8;
+        font-size: .8rem; pointer-events: none;
+    }
+
+    .qb-filter-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1rem; }
+
+    /* ── Table card ── */
+    .qb-table-card {
+        background: var(--qb-card); border-radius: var(--qb-radius);
+        border: 1px solid var(--qb-border); box-shadow: var(--qb-shadow);
+        overflow: hidden;
+        animation: qb-fadein .4s .2s ease both;
+    }
+    .qb-table-header {
+        padding: .85rem 1.45rem; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: .5rem;
+    }
+    .qb-table-label {
+        font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+        text-transform: uppercase; color: #94a3b8;
+        display: flex; align-items: center; gap: .4rem;
+    }
+    .qb-count-chip {
+        background: #ede9fe; color: #6d28d9; font-size: .7rem;
+        font-weight: 700; padding: .12rem .5rem; border-radius: 20px;
+    }
+
+    /* ── Active filter pills (display current filters visually) ── */
+    .qb-active-filters { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+    .qb-filter-pill {
+        display: inline-flex; align-items: center; gap: .3rem;
+        font-size: .72rem; font-weight: 700; padding: .18rem .55rem;
+        border-radius: 10px; background: #ede9fe; color: #6d28d9;
+        border: 1px solid #ddd6fe;
+    }
+    .qb-filter-pill i { font-size: .7rem; }
+
+    /* ── Table ── */
+    .qb-table { width: 100%; border-collapse: collapse; }
+    .qb-table thead tr th {
+        background: #f8fafc; font-size: .67rem; font-weight: 800;
+        letter-spacing: .07em; text-transform: uppercase; color: #94a3b8;
+        padding: .75rem 1.1rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+    }
+    .qb-table tbody tr {
+        border-bottom: 1px solid #f8fafc;
+        animation: qb-row-in .3s ease both;
+        transition: background .12s;
+    }
+    .qb-table tbody tr:last-child { border-bottom: none; }
+    .qb-table tbody tr:hover { background: #f5f3ff; }
+    .qb-table tbody td { padding: .9rem 1.1rem; vertical-align: middle; font-size: .88rem; color: var(--qb-text); }
+
+    /* ── Stagger delays ── */
+    .qb-table tbody tr:nth-child(1)  { animation-delay: .04s; }
+    .qb-table tbody tr:nth-child(2)  { animation-delay: .07s; }
+    .qb-table tbody tr:nth-child(3)  { animation-delay: .10s; }
+    .qb-table tbody tr:nth-child(4)  { animation-delay: .13s; }
+    .qb-table tbody tr:nth-child(5)  { animation-delay: .16s; }
+    .qb-table tbody tr:nth-child(6)  { animation-delay: .19s; }
+    .qb-table tbody tr:nth-child(7)  { animation-delay: .22s; }
+    .qb-table tbody tr:nth-child(8)  { animation-delay: .25s; }
+    .qb-table tbody tr:nth-child(9)  { animation-delay: .28s; }
+    .qb-table tbody tr:nth-child(10) { animation-delay: .31s; }
+
+    /* ── Semester chip ── */
+    .qb-sem-chip {
+        display: inline-flex; align-items: center; gap: .25rem;
+        font-size: .72rem; font-weight: 700; padding: .2rem .55rem;
+        border-radius: 8px; background: #f3f4f6; color: #374151;
+        white-space: nowrap;
+    }
+    .qb-sem-chip i { font-size: .65rem; color: #9ca3af; }
+
+    /* ── Event cell ── */
+    .qb-event-cell { max-width: 160px; }
+    .qb-event-name {
+        font-size: .85rem; font-weight: 700; color: #4f46e5;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .qb-event-meta { font-size: .72rem; color: #94a3b8; margin-top: .1rem; }
+
+    /* ── Quiz title cell ── */
+    .qb-quiz-cell  { display: flex; align-items: center; gap: .65rem; max-width: 220px; }
+    .qb-quiz-avatar {
+        width: 36px; height: 36px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .78rem; font-weight: 900; color: #fff; flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,.12);
+        transition: transform .18s;
+    }
+    .qb-table tbody tr:hover .qb-quiz-avatar { transform: scale(1.08); }
+    .qb-quiz-name {
+        font-weight: 700; font-size: .88rem; color: var(--qb-text);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;
+    }
+    .qb-quiz-sub {
+        font-size: .72rem; color: #94a3b8; margin-top: .1rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── Type pills ── */
+    .qb-type-pill {
+        display: inline-flex; align-items: center; gap: .28rem;
+        font-size: .7rem; font-weight: 800; padding: .22rem .62rem;
+        border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+    }
+    .qb-type-practice { background: #ede9fe; color: #6d28d9; }
+    .qb-type-exam     { background: #fef3c7; color: #92400e; }
+    .qb-type-survey   { background: #dbeafe; color: #1e40af; }
+    .qb-type-live     { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Questions cell ── */
+    .qb-q-cell { min-width: 100px; }
+    .qb-q-num  {
+        font-weight: 800; font-size: .9rem;
+        color: #6366f1; margin-bottom: .25rem;
+    }
+    .qb-q-bar-bg { height: 4px; background: #e0e7ff; border-radius: 2px; overflow: hidden; }
+    .qb-q-bar    {
+        height: 100%; border-radius: 2px;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        animation: qb-barw .7s ease both;
+    }
+
+    /* ── Visibility ── */
+    .qb-vis-chip {
+        display: inline-flex; align-items: center; gap: .28rem;
+        font-size: .72rem; font-weight: 700; padding: .2rem .6rem;
+        border-radius: 12px; white-space: nowrap;
+    }
+    .qb-vis-public  { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+    .qb-vis-private { background: #f3f4f6; color: #64748b; border: 1px solid #e5e7eb; }
+
+    /* ── Updated ── */
+    .qb-updated { font-size: .82rem; color: var(--qb-muted); }
+    .qb-updated strong { color: var(--qb-text); font-weight: 700; }
+
+    /* ── Actions ── */
+    .qb-actions { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; }
+    .qb-act {
+        height: 32px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #f8fafc; display: inline-flex; align-items: center;
+        justify-content: center; font-size: .78rem; cursor: pointer;
+        transition: all .15s; text-decoration: none; color: #64748b;
+        padding: 0 .75rem; gap: .3rem; font-weight: 600; white-space: nowrap;
+    }
+    .qb-act:hover             { transform: translateY(-1px); }
+    .qb-act.view:hover        { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
+    .qb-act.manage:hover      { background: #f5f3ff; border-color: #ddd6fe; color: #7c3aed; }
+    .qb-act.use:hover         { background: #dcfce7; border-color: #86efac; color: #16a34a; }
+
+    /* ── Empty state ── */
+    .qb-empty { text-align: center; padding: 3.5rem 1rem; animation: qb-fadein .4s ease both; }
+    .qb-empty-icon {
+        width: 80px; height: 80px; border-radius: 50%;
+        background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.2rem; color: #6d28d9; margin: 0 auto 1rem;
+    }
+    .qb-empty h3 { font-size: 1.1rem; font-weight: 800; color: #374151; margin-bottom: .4rem; }
+    .qb-empty p  { font-size: .88rem; color: var(--qb-muted); margin-bottom: 1rem; }
+
+    /* ── Summary footer ── */
+    .qb-summary-bar {
+        padding: .75rem 1.1rem; border-top: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: .5rem; font-size: .79rem; color: var(--qb-muted);
+    }
+    .qb-summary-bar strong { color: var(--qb-text); }
+</style>
+
+<div class="qb-page">
+<div class="container-fluid px-4">
+
+    @* ── Page Header ── *@
+    <div class="qb-header">
         <div>
-            <h1 class="h3 mb-1">Quiz Bank</h1>
-            <p class="text-muted small mb-0">Manage quiz question sets by semester, event, and title.</p>
+            <h1 class="qb-header-title">
+                <div class="qb-header-icon"><i class="bi bi-collection-fill"></i></div>
+                Quiz Bank
+            </h1>
+            <p class="qb-header-sub">Manage quiz question sets by semester, event, and title.</p>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <a asp-action="Index" asp-route-scope="myquiz" class="btn btn-sm btn-outline-secondary">My Quiz</a>
-            <a asp-action="Create" asp-route-mode="bank" class="btn btn-sm btn-primary">Use Question Bank</a>
+        <div class="qb-header-actions">
+            <a asp-action="Index" asp-route-scope="myquiz" class="qb-btn qb-btn-ghost">
+                <i class="bi bi-journal-bookmark"></i> My Quiz
+            </a>
+            <a asp-action="Create" asp-route-mode="bank" class="qb-btn qb-btn-primary">
+                <i class="bi bi-collection-fill"></i> Use Question Bank
+            </a>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <form asp-action="QuestionBank" method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label asp-for="SemesterFilter" class="form-label">Semester</label>
-                    <input asp-for="SemesterFilter" class="form-control" placeholder="Filter by semester" />
+    @* ── Stats Strip ── *@
+    <div class="qb-stats-grid">
+        <div class="qb-stat">
+            <div class="qb-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-collection-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="qb-stat-label">Total Quiz Sets</div>
+                <div class="qb-stat-value" style="color:#6d28d9;">@totalCount</div>
+            </div>
+        </div>
+        <div class="qb-stat">
+            <div class="qb-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-patch-question-fill" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="qb-stat-label">Total Questions</div>
+                <div class="qb-stat-value" style="color:#d97706;">@totalQ</div>
+            </div>
+        </div>
+        <div class="qb-stat">
+            <div class="qb-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-globe2" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="qb-stat-label">Public</div>
+                <div class="qb-stat-value" style="color:#1d4ed8;">@publicCount</div>
+            </div>
+        </div>
+        <div class="qb-stat">
+            <div class="qb-stat-icon" style="background:#f3f4f6;">
+                <i class="bi bi-lock-fill" style="color:#64748b;"></i>
+            </div>
+            <div>
+                <div class="qb-stat-label">Private</div>
+                <div class="qb-stat-value" style="color:#64748b;">@privateCount</div>
+            </div>
+        </div>
+        <div class="qb-stat">
+            <div class="qb-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-calendar3" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="qb-stat-label">Semesters</div>
+                <div class="qb-stat-value" style="color:#16a34a;">@semesters</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Filter Card ── *@
+    <div class="qb-filter-card">
+        <div class="qb-filter-header">
+            <i class="bi bi-funnel-fill" style="color:#a5b4fc;"></i>
+            Filter Question Banks
+        </div>
+        <div class="qb-filter-body">
+            <form asp-controller="EventQuiz" asp-action="QuestionBank" method="get">
+
+                <div class="qb-filter-grid">
+                    @* Semester — autocomplete *@
+                    <div>
+                        <label asp-for="SemesterFilter" class="qb-filter-label">
+                            <i class="bi bi-calendar3 me-1" style="color:#a5b4fc;"></i> Semester
+                        </label>
+                        <div class="qb-filter-input-wrap qb-autocomplete-wrap">
+                            <i class="bi bi-search"></i>
+                            <input asp-for="SemesterFilter"
+                                   id="qbSemesterInput"
+                                   class="qb-filter-input"
+                                   autocomplete="off"
+                                   placeholder="e.g. Spring 2026…" />
+                            <div id="qbSemesterList" class="qb-autocomplete-list">
+                                @foreach (var sem in uniqueSemesters)
+                                {
+                                    <div class="qb-autocomplete-item" data-value="@sem">
+                                        <i class="bi bi-calendar3"></i>
+                                        <span>@sem</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Event — autocomplete *@
+                    <div>
+                        <label asp-for="EventTitleFilter" class="qb-filter-label">
+                            <i class="bi bi-calendar-event me-1" style="color:#a5b4fc;"></i> Event
+                        </label>
+                        <div class="qb-filter-input-wrap qb-autocomplete-wrap">
+                            <i class="bi bi-search"></i>
+                            <input asp-for="EventTitleFilter"
+                                   id="qbEventInput"
+                                   class="qb-filter-input"
+                                   autocomplete="off"
+                                   placeholder="Search by event name…" />
+                            <div id="qbEventList" class="qb-autocomplete-list">
+                                @foreach (var ev in uniqueEvents)
+                                {
+                                    <div class="qb-autocomplete-item" data-value="@ev">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <span>@ev</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Quiz Title — autocomplete *@
+                    <div>
+                        <label asp-for="QuizTitleFilter" class="qb-filter-label">
+                            <i class="bi bi-journal-text me-1" style="color:#a5b4fc;"></i> Quiz Title
+                        </label>
+                        <div class="qb-filter-input-wrap qb-autocomplete-wrap">
+                            <i class="bi bi-search"></i>
+                            <input asp-for="QuizTitleFilter"
+                                   id="qbTitleInput"
+                                   class="qb-filter-input"
+                                   autocomplete="off"
+                                   placeholder="Search by quiz title…" />
+                            <div id="qbTitleList" class="qb-autocomplete-list">
+                                @foreach (var t in uniqueTitles)
+                                {
+                                    <div class="qb-autocomplete-item" data-value="@t">
+                                        <i class="bi bi-journal-text"></i>
+                                        <span>@t</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="EventTitleFilter" class="form-label">Event</label>
-                    <input asp-for="EventTitleFilter" class="form-control" placeholder="Filter by event" />
-                </div>
-                <div class="col-md-4">
-                    <label asp-for="QuizTitleFilter" class="form-label">Quiz title</label>
-                    <input asp-for="QuizTitleFilter" class="form-control" placeholder="Filter by title" />
-                </div>
-                <div class="col-12 d-flex justify-content-end gap-2">
-                    <a asp-action="QuestionBank" class="btn btn-outline-secondary">Clear</a>
-                    <button type="submit" class="btn btn-primary">Apply filters</button>
+
+                <div class="qb-filter-actions">
+                    <a asp-controller="EventQuiz" asp-action="QuestionBank" class="qb-btn qb-btn-clear">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                    <button type="submit" class="qb-btn qb-btn-submit">
+                        <i class="bi bi-funnel-fill"></i> Apply Filters
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            @if (Model.Quizzes == null || !Model.Quizzes.Any())
-            {
-                <div class="alert alert-info mb-0">No quiz bank records found with the current filters.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Semester</th>
-                                <th>Event</th>
-                                <th>Quiz title</th>
-                                <th>Questions</th>
-                                <th>Visibility</th>
-                                <th>Updated</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var q in Model.Quizzes)
-                            {
-                                var visibilityLabel = q.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private";
-                                <tr>
-                                    <td>@(string.IsNullOrWhiteSpace(q.SemesterName) ? "-" : q.SemesterName)</td>
-                                    <td>@(string.IsNullOrWhiteSpace(q.EventTitle) ? q.EventId : q.EventTitle)</td>
-                                    <td>@q.Title</td>
-                                    <td>@q.QuestionCount</td>
-                                    <td>@visibilityLabel</td>
-                                    <td>@q.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <a asp-action="Preview" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-info">View</a>
-                                            <a asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Manage</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
+    @* ── Table Card ── *@
+    <div class="qb-table-card">
+        <div class="qb-table-header">
+            <div class="qb-table-label">
+                <i class="bi bi-list-ul"></i> Question Banks
+                <span class="qb-count-chip" id="qbLiveCount">@totalCount set(s)</span>
+            </div>
+
+            @* Active filter pills *@
+            <div class="qb-active-filters">
+                @if (!string.IsNullOrWhiteSpace(Model.SemesterFilter))
+                {
+                    <span class="qb-filter-pill">
+                        <i class="bi bi-calendar3"></i> @Model.SemesterFilter
+                    </span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.EventTitleFilter))
+                {
+                    <span class="qb-filter-pill">
+                        <i class="bi bi-calendar-event"></i> @Model.EventTitleFilter
+                    </span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.QuizTitleFilter))
+                {
+                    <span class="qb-filter-pill">
+                        <i class="bi bi-journal-text"></i> @Model.QuizTitleFilter
+                    </span>
+                }
+            </div>
         </div>
+
+        @if (!allQuizzes.Any())
+        {
+            <div class="qb-empty">
+                <div class="qb-empty-icon">
+                    <i class="bi bi-collection"></i>
+                </div>
+                <h3>No Question Banks Found</h3>
+                <p>
+                    @if (!string.IsNullOrWhiteSpace(Model.SemesterFilter) ||
+                         !string.IsNullOrWhiteSpace(Model.EventTitleFilter) ||
+                         !string.IsNullOrWhiteSpace(Model.QuizTitleFilter))
+                    {
+                        <text>No results match your current filters. Try clearing the filters or using different search terms.</text>
+                    }
+                    else
+                    {
+                        <text>You haven't created any quizzes with questions yet. Create a quiz and add questions to build your bank.</text>
+                    }
+                </p>
+                <a asp-controller="EventQuiz" asp-action="QuestionBank" class="qb-btn qb-btn-ghost">
+                    <i class="bi bi-x-circle"></i> Clear Filters
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="qb-table" id="qbTable">
+                    <colgroup>
+                        <col style="width:110px;" />
+                        <col style="width:165px;" />
+                        <col style="width:220px;" />
+                        <col style="width:105px;" />
+                        <col style="width:115px;" />
+                        <col style="width:120px;" />
+                        <col style="width:135px;" />
+                        <col />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Semester</th>
+                            <th>Event</th>
+                            <th>Quiz Title</th>
+                            <th>Type</th>
+                            <th>Questions</th>
+                            <th>Visibility</th>
+                            <th>Updated</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var q in allQuizzes)
+                        {
+                            var isPublic = q.SharingStatus == QuizSetVisibilityEnum.Public;
+                            var avatarColor = GetAvatarColor(q.Title);
+                            var initials    = GetInitials(q.Title);
+
+                            <tr class="qb-bank-row"
+                                data-semester="@q.SemesterName.ToLower()"
+                                data-event="@q.EventTitle.ToLower()"
+                                data-title="@q.Title.ToLower()">
+                                @* ── Semester ── *@
+                                <td>
+                                    <span class="qb-sem-chip">
+                                        <i class="bi bi-calendar3"></i>
+                                        @(string.IsNullOrWhiteSpace(q.SemesterName) ? "—" : q.SemesterName)
+                                    </span>
+                                </td>
+
+                                @* ── Event ── *@
+                                <td>
+                                    <div class="qb-event-cell">
+                                        <div class="qb-event-name"
+                                             title="@q.EventTitle">
+                                            @(string.IsNullOrWhiteSpace(q.EventTitle)
+                                                ? q.EventId
+                                                : (q.EventTitle.Length > 24 ? q.EventTitle[..24] + "…" : q.EventTitle))
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(q.TopicName))
+                                        {
+                                            <div class="qb-event-meta">
+                                                <i class="bi bi-tag me-1"></i>@q.TopicName
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+
+                                @* ── Quiz Title ── *@
+                                <td>
+                                    <div class="qb-quiz-cell">
+                                        <div class="qb-quiz-avatar" style="background:@avatarColor;">
+                                            @initials
+                                        </div>
+                                        <div>
+                                            <div class="qb-quiz-name" title="@q.Title">
+                                                @(q.Title.Length > 22 ? q.Title[..22] + "…" : q.Title)
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(q.Description))
+                                            {
+                                                <div class="qb-quiz-sub" title="@q.Description">
+                                                    @(q.Description.Length > 28 ? q.Description[..28] + "…" : q.Description)
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* ── Type ── *@
+                                <td>
+                                    <span class="qb-type-pill @TypePillClass(q.Type)">
+                                        <i class="bi @TypeIcon(q.Type)"></i>
+                                        @q.Type
+                                    </span>
+                                </td>
+
+                                @* ── Questions ── *@
+                                <td>
+                                    <div class="qb-q-cell">
+                                        <div class="qb-q-num">@q.QuestionCount <span style="font-size:.72rem; font-weight:400; color:#94a3b8;">Q</span></div>
+                                        <div class="qb-q-bar-bg">
+                                            <div class="qb-q-bar" style="width:@(QBarWidth(q.QuestionCount))%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* ── Visibility ── *@
+                                <td>
+                                    <span class="qb-vis-chip @(isPublic ? "qb-vis-public" : "qb-vis-private")">
+                                        <i class="bi @(isPublic ? "bi-globe2" : "bi-lock-fill")"></i>
+                                        @(isPublic ? "Public" : "Private")
+                                    </span>
+                                </td>
+
+                                @* ── Updated ── *@
+                                <td>
+                                    <div class="qb-updated">
+                                        <strong>@q.UpdatedAt.ToString("dd/MM/yyyy")</strong>
+                                        <br />
+                                        <span>@q.UpdatedAt.ToString("HH:mm")</span>
+                                    </div>
+                                </td>
+
+                                @* ── Actions ── *@
+                                <td>
+                                    <div class="qb-actions">
+                                        <a class="qb-act view"
+                                           asp-controller="EventQuiz" asp-action="Preview"
+                                           asp-route-quizId="@q.EventQuizId"
+                                           title="Preview Quiz">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        <a class="qb-act manage"
+                                           asp-controller="EventQuiz" asp-action="Details"
+                                           asp-route-quizId="@q.EventQuizId"
+                                           title="Manage Quiz">
+                                            <i class="bi bi-gear"></i> Manage
+                                        </a>
+                                        <a class="qb-act use"
+                                           asp-controller="EventQuiz" asp-action="Create"
+                                           asp-route-mode="bank"
+                                           asp-route-selectedQuizSetId="@q.QuizSetId"
+                                           title="Use this as a question bank">
+                                            <i class="bi bi-collection-fill"></i> Use
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* ── Summary footer ── *@
+            <div class="qb-summary-bar">
+                <div>
+                    Showing <strong id="qbFooterCount">@totalCount</strong> question bank set(s)
+                    &nbsp;·&nbsp; <strong>@totalQ</strong> total questions
+                    &nbsp;·&nbsp; across <strong>@events</strong> event(s)
+                </div>
+                <div>
+                    <strong>@publicCount</strong> public &nbsp;·&nbsp;
+                    <strong>@privateCount</strong> private
+                </div>
+            </div>
+        }
     </div>
+
 </div>
+</div>
+
+@section Scripts {
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // ── DOM references ─────────────────────────────────────────────────
+        const semInput   = document.getElementById('qbSemesterInput');
+        const evInput    = document.getElementById('qbEventInput');
+        const titleInput = document.getElementById('qbTitleInput');
+        const semList    = document.getElementById('qbSemesterList');
+        const evList     = document.getElementById('qbEventList');
+        const titleList  = document.getElementById('qbTitleList');
+        const liveCount  = document.getElementById('qbLiveCount');
+        const footerCount= document.getElementById('qbFooterCount');
+        const allRows    = document.querySelectorAll('#qbTable .qb-bank-row');
+        const totalAll   = allRows.length;
+
+        // ── Live filter function ───────────────────────────────────────────
+        function applyLiveFilter() {
+            const semQ   = (semInput   ? semInput.value.trim().toLowerCase()   : '');
+            const evQ    = (evInput    ? evInput.value.trim().toLowerCase()    : '');
+            const titleQ = (titleInput ? titleInput.value.trim().toLowerCase() : '');
+
+            let visible = 0;
+            allRows.forEach(function(row) {
+                const rowSem   = (row.getAttribute('data-semester') || '').toLowerCase();
+                const rowEv    = (row.getAttribute('data-event')    || '').toLowerCase();
+                const rowTitle = (row.getAttribute('data-title')    || '').toLowerCase();
+
+                const matchSem   = !semQ   || rowSem.includes(semQ);
+                const matchEv    = !evQ    || rowEv.includes(evQ);
+                const matchTitle = !titleQ || rowTitle.includes(titleQ);
+
+                const show = matchSem && matchEv && matchTitle;
+                row.classList.toggle('qb-filtered-out', !show);
+                if (show) visible++;
+            });
+
+            // Update counters
+            const label = visible + ' set(s)';
+            if (liveCount)   liveCount.textContent   = label;
+            if (footerCount) footerCount.textContent  = visible;
+
+            // Highlight when filtering
+            if (liveCount) {
+                liveCount.classList.toggle('changed', visible < totalAll);
+            }
+        }
+
+        // ── Autocomplete engine ───────────────────────────────────────────
+        function initAutocomplete(input, listEl, iconClass) {
+            if (!input || !listEl) return;
+
+            const allItems = listEl.querySelectorAll('.qb-autocomplete-item');
+            let highlightedIdx = -1;
+
+            function showList() { listEl.classList.add('visible'); }
+            function hideList() { listEl.classList.remove('visible'); highlightedIdx = -1; }
+
+            function renderSuggestions(query) {
+                const q = query.trim().toLowerCase();
+                let visibleCount = 0;
+
+                allItems.forEach(function(item) {
+                    const val = (item.getAttribute('data-value') || '').toLowerCase();
+                    const show = !q || val.includes(q);
+                    item.style.display = show ? '' : 'none';
+                    if (show) {
+                        // Highlight matching portion
+                        const originalVal = item.getAttribute('data-value') || '';
+                        const span = item.querySelector('span');
+                        if (span && q) {
+                            const idx = originalVal.toLowerCase().indexOf(q);
+                            if (idx >= 0) {
+                                const before = originalVal.slice(0, idx);
+                                const match  = originalVal.slice(idx, idx + q.length);
+                                const after  = originalVal.slice(idx + q.length);
+                                span.innerHTML = before + '<mark>' + match + '</mark>' + after;
+                            } else {
+                                span.textContent = originalVal;
+                            }
+                        } else if (span) {
+                            span.textContent = originalVal;
+                        }
+                        visibleCount++;
+                    }
+                    item.classList.remove('highlighted');
+                });
+
+                // Remove any "no results" item
+                const noRes = listEl.querySelector('.qb-no-suggestion');
+                if (noRes) noRes.remove();
+
+                if (visibleCount === 0) {
+                    const noEl = document.createElement('div');
+                    noEl.className = 'qb-no-suggestion';
+                    noEl.textContent = 'No matches found';
+                    listEl.appendChild(noEl);
+                }
+
+                highlightedIdx = -1;
+            }
+
+            function getVisibleItems() {
+                return Array.from(allItems).filter(i => i.style.display !== 'none');
+            }
+
+            // ── Keyboard navigation ────────────────────────────────────────
+            input.addEventListener('keydown', function(e) {
+                if (!listEl.classList.contains('visible')) return;
+                const vis = getVisibleItems();
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (highlightedIdx < vis.length - 1) highlightedIdx++;
+                    vis.forEach((it, i) => it.classList.toggle('highlighted', i === highlightedIdx));
+                    if (vis[highlightedIdx]) vis[highlightedIdx].scrollIntoView({ block: 'nearest' });
+
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (highlightedIdx > 0) highlightedIdx--;
+                    vis.forEach((it, i) => it.classList.toggle('highlighted', i === highlightedIdx));
+                    if (vis[highlightedIdx]) vis[highlightedIdx].scrollIntoView({ block: 'nearest' });
+
+                } else if (e.key === 'Enter') {
+                    if (highlightedIdx >= 0 && vis[highlightedIdx]) {
+                        e.preventDefault();
+                        selectItem(vis[highlightedIdx]);
+                    }
+                } else if (e.key === 'Escape') {
+                    hideList();
+                }
+            });
+
+            function selectItem(item) {
+                const val = item.getAttribute('data-value') || '';
+                input.value = val;
+                hideList();
+                applyLiveFilter();
+            }
+
+            // ── Input events ───────────────────────────────────────────────
+            input.addEventListener('input', function() {
+                renderSuggestions(this.value);
+                showList();
+                applyLiveFilter();
+            });
+
+            input.addEventListener('focus', function() {
+                renderSuggestions(this.value);
+                showList();
+            });
+
+            // ── Click on suggestion ────────────────────────────────────────
+            allItems.forEach(function(item) {
+                item.addEventListener('mousedown', function(e) {
+                    e.preventDefault(); // prevent blur before click
+                    selectItem(this);
+                });
+            });
+
+            // ── Hide on outside click ──────────────────────────────────────
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !listEl.contains(e.target)) {
+                    hideList();
+                }
+            });
+        }
+
+        // ── Initialize all three autocompletes ────────────────────────────
+        initAutocomplete(semInput,   semList,   'bi-calendar3');
+        initAutocomplete(evInput,    evList,    'bi-calendar-event');
+        initAutocomplete(titleInput, titleList, 'bi-journal-text');
+
+        // ── Bind plain keyup to live filter (no autocomplete needed) ──────
+        [semInput, evInput, titleInput].forEach(function(inp) {
+            if (!inp) return;
+            inp.addEventListener('keyup', function(e) {
+                if (['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)) return;
+                applyLiveFilter();
+            });
+        });
+
+        // ── Initial pass (in case server pre-filled filter values) ─────────
+        applyLiveFilter();
+
+        // ── Row hover interactions ─────────────────────────────────────────
+        allRows.forEach(function(row) {
+            row.addEventListener('mouseenter', function() {
+                this.style.transition = 'background .12s';
+            });
+        });
+
+    }); // DOMContentLoaded
+    </script>
+}

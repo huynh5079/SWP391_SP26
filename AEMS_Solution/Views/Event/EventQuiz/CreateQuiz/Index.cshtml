@@ -1,123 +1,869 @@
 @model AEMS_Solution.Models.Event.EventQuiz.EventQuizViewModel
+@using DataAccess.Enum
 @{
-    ViewData["Title"] = "Manage Quizzes";
+    ViewData["Title"] = "Quiz Management";
     Layout = "_Organizerlayout";
-    var isCommunityScope = string.Equals(Model.QuizScope, "community", System.StringComparison.OrdinalIgnoreCase);
-    var scopeLabel = isCommunityScope ? "Quiz Community" : "My Quiz";
+
+    var isCommunityScope = string.Equals(Model.QuizScope, "community", StringComparison.OrdinalIgnoreCase);
+    var scopeLabel       = isCommunityScope ? "Quiz Community" : "My Quiz";
+
+    // ── Stats ────────────────────────────────────────────────────────────────
+    var allQuizzes    = Model.Quizzes ?? new List<BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts.QuizSummaryContract>();
+    int totalCount    = allQuizzes.Count;
+    int publishedCount= allQuizzes.Count(q => q.Status == QuizStatusEnum.Published);
+    int draftCount    = allQuizzes.Count(q => q.Status != QuizStatusEnum.Published);
+    int totalQ        = allQuizzes.Sum(q => q.QuestionCount);
+    int totalAttempts = allQuizzes.Sum(q => q.AttemptCount);
+    int totalPassed   = allQuizzes.Sum(q => q.PassedCount);
+    int communityCount= allQuizzes.Count(q => q.SharingStatus == QuizSetVisibilityEnum.Public);
+
+    // ── Type icon & pill helpers ─────────────────────────────────────────────
+    string TypePillClass(QuizTypeEnum t) => t switch
+    {
+        QuizTypeEnum.Practice => "qm-type-practice",
+        QuizTypeEnum.Exam     => "qm-type-exam",
+        QuizTypeEnum.Survey   => "qm-type-survey",
+        QuizTypeEnum.LiveQuiz => "qm-type-live",
+        _                     => "qm-type-practice"
+    };
+
+    string TypeIcon(QuizTypeEnum t) => t switch
+    {
+        QuizTypeEnum.Practice => "bi-pencil-fill",
+        QuizTypeEnum.Exam     => "bi-clipboard2-check-fill",
+        QuizTypeEnum.Survey   => "bi-bar-chart-fill",
+        QuizTypeEnum.LiveQuiz => "bi-lightning-charge-fill",
+        _                     => "bi-pencil-fill"
+    };
+
+    // ── Status pill helpers ──────────────────────────────────────────────────
+    string StatusPillClass(QuizStatusEnum s) => s switch
+    {
+        QuizStatusEnum.Published => "qm-status-published",
+        QuizStatusEnum.Draft     => "qm-status-draft",
+        _                        => "qm-status-draft"
+    };
+
+    // ── Pass-rate color ──────────────────────────────────────────────────────
+    string PassRateColor(int attempts, int passed)
+    {
+        if (attempts == 0) return "#94a3b8";
+        double rate = (double)passed / attempts * 100;
+        return rate >= 70 ? "#22c55e" : rate >= 40 ? "#f59e0b" : "#ef4444";
+    }
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+<style>
+    /* ===========================================================
+       QUIZ MANAGEMENT INDEX — PREMIUM UI
+    =========================================================== */
+    :root {
+        --qm-primary:      #6366f1;
+        --qm-primary-dk:   #4f46e5;
+        --qm-secondary:    #8b5cf6;
+        --qm-bg:           #f0f2ff;
+        --qm-card:         #ffffff;
+        --qm-border:       #e0e7ff;
+        --qm-text:         #1e1b4b;
+        --qm-muted:        #64748b;
+        --qm-radius:       16px;
+        --qm-shadow:       0 4px 24px rgba(99,102,241,.08);
+        --qm-focus:        0 0 0 3px rgba(99,102,241,.2);
+        --qm-green:        #22c55e;
+        --qm-amber:        #f59e0b;
+        --qm-red:          #ef4444;
+    }
+
+    /* ── Animations ── */
+    @@keyframes qm-fadein { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes qm-slidein { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
+    @@keyframes qm-pop     { from { opacity:0; transform:scale(.85); } to { opacity:1; transform:scale(1); } }
+    @@keyframes qm-pulse-g {
+        0%  { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
+        70% { box-shadow: 0 0 0 9px rgba(34,197,94,0); }
+        100%{ box-shadow: 0 0 0 0   rgba(34,197,94,0); }
+    }
+    @@keyframes qm-shine {
+        from { background-position: -400px 0; }
+        to   { background-position:  400px 0; }
+    }
+    @@keyframes qm-rowfade {
+        from { opacity:0; transform:translateY(6px); }
+        to   { opacity:1; transform:none; }
+    }
+
+    /* ── Page ── */
+    .qm-page { background: var(--qm-bg); min-height: 100vh; padding: 2rem 0 4rem; }
+
+    /* ── Header ── */
+    .qm-header {
+        display: flex; align-items: flex-start;
+        justify-content: space-between; gap: 1rem;
+        margin-bottom: 2rem; flex-wrap: wrap;
+        animation: qm-fadein .35s ease both;
+    }
+    .qm-header-title {
+        font-size: 1.9rem; font-weight: 900; 
+        color: var(--qm-text); letter-spacing: -.025em;
+        margin-bottom: .2rem;
+        display: flex; align-items: center; gap: .5rem;
+    }
+    .qm-header-title-icon {
+        width: 48px; height: 48px; border-radius: 14px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; color: #fff; flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(99,102,241,.3);
+    }
+    .qm-header-sub  { color: var(--qm-muted); font-size: .87rem; margin: 0; margin-left: 58px; }
+    .qm-scope-badge {
+        display: inline-flex; align-items: center; gap: .3rem;
+        padding: .22rem .65rem; border-radius: 20px;
+        font-size: .72rem; font-weight: 800; letter-spacing: .05em;
+        background: #ede9fe; color: #6d28d9;
+        margin-left: 58px; margin-top: .3rem;
+    }
+    .qm-scope-badge.community { background: #dbeafe; color: #1d4ed8; }
+    .qm-header-actions { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .qm-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        font-size: .83rem; font-weight: 700; padding: .62rem 1.3rem;
+        border-radius: 30px; border: none; text-decoration: none;
+        cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .qm-btn-scope {
+        background: #fff; color: #475569;
+        border: 1.5px solid #e2e8f0;
+    }
+    .qm-btn-scope:hover { background: #f1f5f9; color: var(--qm-primary); border-color: #c7d2fe; }
+    .qm-btn-scope.active { background: #ede9fe; color: var(--qm-primary); border-color: #c4b5fd; }
+    .qm-btn-create {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.3);
+    }
+    .qm-btn-create:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(99,102,241,.4); color: #fff; }
+
+    /* ── Dropdown ── */
+    .qm-dropdown-menu {
+        border-radius: 14px; border: 1px solid var(--qm-border);
+        box-shadow: 0 10px 40px rgba(0,0,0,.12);
+        padding: .5rem; min-width: 200px;
+    }
+    .qm-dropdown-item {
+        display: flex; align-items: center; gap: .5rem;
+        padding: .6rem .85rem; border-radius: 10px;
+        font-size: .85rem; font-weight: 600; color: var(--qm-text);
+        text-decoration: none; transition: background .12s;
+    }
+    .qm-dropdown-item:hover { background: #f5f3ff; color: var(--qm-primary); }
+    .qm-dropdown-item i { font-size: .9rem; color: #a5b4fc; width: 16px; text-align: center; }
+
+    /* ── Stats grid ── */
+    .qm-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 1rem; margin-bottom: 1.5rem;
+        animation: qm-fadein .4s .08s ease both;
+    }
+    @@media(max-width:1200px) { .qm-stats-grid { grid-template-columns: repeat(3,1fr); } }
+    @@media(max-width:640px)  { .qm-stats-grid { grid-template-columns: 1fr 1fr; } }
+
+    .qm-stat {
+        background: var(--qm-card); border-radius: 14px;
+        border: 1px solid var(--qm-border); box-shadow: var(--qm-shadow);
+        padding: 1rem 1.15rem;
+        display: flex; align-items: center; gap: .85rem;
+        transition: transform .18s, box-shadow .18s;
+    }
+    .qm-stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(99,102,241,.14); }
+    .qm-stat-icon {
+        width: 42px; height: 42px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; flex-shrink: 0;
+    }
+    .qm-stat-label { font-size: .68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+    .qm-stat-value { font-size: 1.5rem; font-weight: 900; color: var(--qm-text); line-height: 1; margin-top: .08rem; }
+
+    /* ── Table card ── */
+    .qm-table-card {
+        background: var(--qm-card); border-radius: var(--qm-radius);
+        border: 1px solid var(--qm-border); box-shadow: var(--qm-shadow);
+        overflow: hidden; margin-bottom: 1.25rem;
+        animation: qm-fadein .4s .18s ease both;
+    }
+    .qm-table-header {
+        padding: .9rem 1.45rem; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: .5rem;
+    }
+    .qm-table-label {
+        font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+        text-transform: uppercase; color: #94a3b8;
+        display: flex; align-items: center; gap: .4rem;
+    }
+    .qm-count-chip {
+        background: #ede9fe; color: #6d28d9; font-size: .7rem;
+        font-weight: 700; padding: .12rem .5rem; border-radius: 20px;
+    }
+    .qm-search-bar { display: flex; gap: .5rem; }
+    .qm-search-input {
+        padding: .45rem .9rem .45rem 2.1rem; border: 1.5px solid var(--qm-border);
+        border-radius: 20px; font-size: .83rem; color: var(--qm-text);
+        background: #fafbff; outline: none; transition: all .2s; width: 220px;
+    }
+    .qm-search-input:focus { background:#fff; border-color: var(--qm-primary); box-shadow: var(--qm-focus); }
+    .qm-search-wrap { position: relative; }
+    .qm-search-wrap > i {
+        position: absolute; left: .75rem; top: 50%;
+        transform: translateY(-50%); color: #94a3b8; font-size: .8rem; pointer-events: none;
+    }
+
+    /* ── Table ── */
+    .qm-table { width: 100%; border-collapse: collapse; }
+    .qm-table thead tr th {
+        background: #f8fafc; font-size: .66rem; font-weight: 800;
+        letter-spacing: .07em; text-transform: uppercase; color: #94a3b8;
+        padding: .75rem 1rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+    }
+    .qm-table tbody tr {
+        border-bottom: 1px solid #f8fafc;
+        animation: qm-rowfade .3s ease both;
+    }
+    .qm-table tbody tr:last-child { border-bottom: none; }
+    .qm-table tbody tr:hover { background: #f5f3ff; }
+    .qm-table tbody tr.qm-row-hidden { display: none !important; }
+    .qm-table tbody td { padding: .9rem 1rem; vertical-align: middle; font-size: .88rem; color: var(--qm-text); }
+
+    /* ── Stagger delays ── */
+    .qm-table tbody tr:nth-child(1)  { animation-delay: .04s; }
+    .qm-table tbody tr:nth-child(2)  { animation-delay: .07s; }
+    .qm-table tbody tr:nth-child(3)  { animation-delay: .10s; }
+    .qm-table tbody tr:nth-child(4)  { animation-delay: .13s; }
+    .qm-table tbody tr:nth-child(5)  { animation-delay: .16s; }
+    .qm-table tbody tr:nth-child(6)  { animation-delay: .19s; }
+    .qm-table tbody tr:nth-child(7)  { animation-delay: .22s; }
+    .qm-table tbody tr:nth-child(8)  { animation-delay: .25s; }
+    .qm-table tbody tr:nth-child(9)  { animation-delay: .28s; }
+    .qm-table tbody tr:nth-child(10) { animation-delay: .31s; }
+
+    /* ── Title cell ── */
+    .qm-title-main { font-weight: 800; color: var(--qm-text); font-size: .9rem; margin-bottom: .15rem; }
+    .qm-title-meta { font-size: .72rem; color: #94a3b8; display: flex; align-items: center; gap: .3rem; }
+
+    /* ── Event chip ── */
+    .qm-event-wrap { max-width: 160px; }
+    .qm-event-name {
+        font-size: .82rem; color: #4f46e5; font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .qm-semester-chip {
+        display: inline-flex; align-items: center; gap: .2rem;
+        font-size: .68rem; font-weight: 700; color: #6b7280;
+        background: #f3f4f6; border-radius: 8px; padding: .1rem .45rem; margin-top: .2rem;
+    }
+
+    /* ── Type pills ── */
+    .qm-type-pill {
+        display: inline-flex; align-items: center; gap: .3rem;
+        font-size: .7rem; font-weight: 800; padding: .25rem .65rem;
+        border-radius: 20px; text-transform: uppercase; letter-spacing: .04em;
+        white-space: nowrap;
+    }
+    .qm-type-practice { background: #ede9fe; color: #6d28d9; }
+    .qm-type-exam     { background: #fef3c7; color: #92400e; }
+    .qm-type-survey   { background: #dbeafe; color: #1e40af; }
+    .qm-type-live     { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Status pills ── */
+    .qm-status-pill {
+        display: inline-flex; align-items: center; gap: .3rem;
+        font-size: .7rem; font-weight: 800; padding: .28rem .7rem;
+        border-radius: 20px; text-transform: uppercase; letter-spacing: .04em;
+        white-space: nowrap;
+    }
+    .qm-status-published {
+        background: #dcfce7; color: #16a34a; border: 1px solid #86efac;
+    }
+    .qm-status-published::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: #22c55e; animation: qm-pulse-g 2s infinite;
+        display: inline-block;
+    }
+    .qm-status-draft {
+        background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0;
+    }
+
+    /* ── Visibility chip ── */
+    .qm-vis-chip {
+        display: inline-flex; align-items: center; gap: .25rem;
+        font-size: .7rem; font-weight: 700; padding: .18rem .55rem;
+        border-radius: 10px;
+    }
+    .qm-vis-public  { background: #dbeafe; color: #1d4ed8; }
+    .qm-vis-private { background: #f3f4f6; color: #64748b; }
+
+    /* ── Stats mini (Q / Attempts / Passed) ── */
+    .qm-num-cell    { font-weight: 800; font-size: .9rem; text-align: center; }
+    .qm-num-zero    { color: #cbd5e1; }
+    .qm-num-pos     { color: #6366f1; }
+    .qm-pass-cell   { text-align: center; }
+    .qm-pass-rate {
+        font-size: .7rem; font-weight: 700; margin-top: .15rem;
+    }
+
+    /* ── Actions ── */
+    .qm-actions { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
+    .qm-act {
+        width: 31px; height: 31px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #f8fafc; display: inline-flex; align-items: center; justify-content: center;
+        font-size: .8rem; cursor: pointer; transition: all .15s;
+        text-decoration: none; color: #64748b;
+    }
+    .qm-act:hover              { transform: translateY(-1px); }
+    .qm-act.view:hover         { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
+    .qm-act.manage:hover       { background: #f5f3ff; border-color: #ddd6fe; color: #7c3aed; }
+    .qm-act.publish:hover      { background: #dcfce7; border-color: #86efac; color: #16a34a; }
+    .qm-act.share:hover        { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    .qm-act.private:hover      { background: #fef9c3; border-color: #fde68a; color: #d97706; }
+    .qm-act.delete:hover       { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .qm-act-form { display: inline; }
+
+    /* ── Action tooltip alt ── */
+    .qm-act[title] { cursor: pointer; }
+
+    /* ── Empty state ── */
+    .qm-empty { text-align: center; padding: 3.5rem 1rem; animation: qm-fadein .4s ease both; }
+    .qm-empty-icon {
+        width: 80px; height: 80px; border-radius: 50%;
+        background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.2rem; color: #6d28d9; margin: 0 auto 1rem;
+    }
+    .qm-empty h3 { font-size: 1.1rem; font-weight: 800; color: #374151; margin-bottom: .4rem; }
+    .qm-empty p  { font-size: .88rem; color: var(--qm-muted); margin: 0; }
+
+    /* ── Alert toasts ── */
+    .qm-toast {
+        border-radius: 13px; padding: .9rem 1.2rem; font-size: .9rem;
+        font-weight: 600; margin-bottom: 1.25rem;
+        display: flex; align-items: center; gap: .6rem;
+        animation: qm-fadein .4s ease; border: none;
+    }
+    .qm-toast-success { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+    .qm-toast-error   { background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; }
+
+    /* ── Scope toggle tabs ── */
+    .qm-scope-tabs { display: flex; gap: .4rem; align-items: center; }
+    .qm-scope-tab {
+        display: inline-flex; align-items: center; gap: .4rem;
+        font-size: .82rem; font-weight: 700; padding: .5rem 1rem;
+        border-radius: 20px; border: 1.5px solid var(--qm-border);
+        background: #fff; color: var(--qm-muted);
+        text-decoration: none; cursor: pointer; transition: all .18s;
+    }
+    .qm-scope-tab:hover  { border-color: #c7d2fe; color: var(--qm-primary); background: #f5f3ff; }
+    .qm-scope-tab.active { background: var(--qm-primary); color: #fff; border-color: var(--qm-primary);
+                           box-shadow: 0 4px 12px rgba(99,102,241,.3); }
+
+    /* ── Create dropdown ── */
+    .qm-create-dd .dropdown-toggle {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+        border: none !important;
+        border-radius: 30px !important;
+        padding: .62rem 1.3rem !important;
+        font-weight: 700 !important; font-size: .83rem !important;
+        box-shadow: 0 4px 14px rgba(99,102,241,.3) !important;
+        transition: all .18s !important;
+    }
+    .qm-create-dd .dropdown-toggle:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(99,102,241,.4) !important; }
+    .qm-create-dd .dropdown-menu {
+        border-radius: 14px; border: 1px solid var(--qm-border);
+        box-shadow: 0 10px 40px rgba(0,0,0,.12); padding: .5rem;
+        min-width: 190px;
+    }
+    .qm-create-dd .dropdown-item {
+        display: flex; align-items: center; gap: .5rem;
+        padding: .62rem .9rem; border-radius: 10px; font-size: .85rem;
+        font-weight: 600; color: var(--qm-text); transition: background .12s;
+    }
+    .qm-create-dd .dropdown-item:hover { background: #f5f3ff; color: var(--qm-primary); }
+    .qm-create-dd .dropdown-item i { font-size: .9rem; color: #a5b4fc; width: 18px; text-align: center; }
+    .qm-create-dd .dropdown-divider { border-color: #f1f5f9; }
+
+    /* ── Summary footer ── */
+    .qm-summary-bar {
+        padding: .75rem 1.1rem; border-top: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: .5rem; font-size: .79rem; color: var(--qm-muted);
+    }
+    .qm-summary-bar strong { color: var(--qm-text); }
+</style>
+
+<div class="qm-page">
+<div class="container-fluid px-4">
+
+    @* ── Toasts ── *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="qm-toast qm-toast-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="qm-toast qm-toast-error">
+            <i class="bi bi-exclamation-circle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* ── Page Header ── *@
+    <div class="qm-header">
         <div>
-            <h1 class="h3 mb-0">Quiz Management</h1>
-            <p class="text-muted small mb-0">Create and manage quiz sets for your events</p>
-            <div class="small text-muted">Current scope: <strong>@scopeLabel</strong></div>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-funnel me-1"></i>@scopeLabel
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Index" asp-route-eventId="@Model.EventId" asp-route-scope="myquiz"><i class="bi bi-person-workspace me-2"></i>My Quiz</a></li>
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Index" asp-route-eventId="@Model.EventId" asp-route-scope="community"><i class="bi bi-people me-2"></i>Quiz Community</a></li>
-                </ul>
-            </div>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-journal-plus"></i> Create Quiz
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="manual" asp-route-eventId="@Model.EventId"><i class="bi bi-pencil-square me-2"></i>Manual</a></li>
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="upload" asp-route-eventId="@Model.EventId"><i class="bi bi-upload me-2"></i>Upload File</a></li>
-                    <li><a class="dropdown-item" asp-controller="EventQuiz" asp-action="Create" asp-route-mode="bank" asp-route-eventId="@Model.EventId"><i class="bi bi-collection me-2"></i>Question Bank</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            @if (Model.Quizzes == null || !Model.Quizzes.Any())
-            {
-                <div class="alert alert-info mb-0">@(isCommunityScope ? "No community quizzes found in your quiz list yet." : "No quizzes found. Create a quiz for one of your events to start managing questions and scores.")</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Title</th>
-                                 <th>Event</th>
-                                 <th>Semester</th>
-                                <th>Type</th>
-                                <th>Passing Score</th>
-                                <th>Max Attempts</th>
-                                <th>Questions</th>
-                                <th>Attempts</th>
-                                <th>Passed</th>
-                                <th>Status</th>
-                                <th>Question Bank Visibility</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var q in Model.Quizzes)
-                            {
-                                 var visibilityLabel = q.SharingStatus == DataAccess.Enum.QuizSetVisibilityEnum.Public ? "Public (Community)" : "Private";
-                                <tr>
-                                    <td>@q.Title</td>
-                                     <td>@(string.IsNullOrWhiteSpace(q.EventTitle) ? q.EventId : q.EventTitle)</td>
-                                     <td>@(string.IsNullOrWhiteSpace(q.SemesterName) ? "-" : q.SemesterName)</td>
-                                    <td>@q.Type</td>
-                                    <td>@(q.PassingScore?.ToString() ?? "-")</td>
-                                    <td>@(q.MaxAttempts?.ToString() ?? "Unlimited")</td>
-                                    <td>@(q.QuestionCount)</td>
-                                    <td>@q.AttemptCount</td>
-                                    <td>@q.PassedCount</td>
-                                    <td>@q.Status</td>
-                                    <td>@visibilityLabel</td>
-                                    <td>
-                                         <div class="d-flex flex-wrap gap-2">
-                                             <a asp-controller="EventQuiz" asp-action="Preview" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-info">View</a>
-                                             <a asp-controller="EventQuiz" asp-action="Details" asp-route-quizId="@q.EventQuizId" class="btn btn-sm btn-outline-secondary">Manage</a>
-
-                                             @if (q.Status != DataAccess.Enum.QuizStatusEnum.Published)
-                                             {
-                                                 <form asp-controller="EventQuiz" asp-action="Publish" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
-                                                     @Html.AntiForgeryToken()
-                                                     <button type="submit" class="btn btn-sm btn-outline-success">Publish</button>
-                                                 </form>
-                                             }
-
-                                             @if (q.SharingStatus != DataAccess.Enum.QuizSetVisibilityEnum.Public)
-                                              {
-                                                  <form asp-controller="EventQuiz" asp-action="Share" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
-                                                      @Html.AntiForgeryToken()
-                                                      <button type="submit" class="btn btn-sm btn-outline-primary">Public to Community</button>
-                                                  </form>
-                                              }
-                                              else
-                                              {
-                                                  <form asp-controller="EventQuiz" asp-action="Restore" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline">
-                                                      @Html.AntiForgeryToken()
-                                                      <button type="submit" class="btn btn-sm btn-outline-warning">Set Private</button>
-                                                  </form>
-                                              }
-
-                                             <form asp-controller="EventQuiz" asp-action="Delete" asp-route-quizId="@q.EventQuizId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa quiz này?');">
-                                                 @Html.AntiForgeryToken()
-                                                 <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                             </form>
-                                         </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+            <h1 class="qm-header-title">
+                <div class="qm-header-title-icon">
+                    <i class="bi bi-journal-bookmark-fill"></i>
                 </div>
-            }
+                Quiz Management
+            </h1>
+            <p class="qm-header-sub">Create and manage quiz sets for your events</p>
+            <div class="qm-scope-badge @(isCommunityScope ? "community" : "")">
+                <i class="bi @(isCommunityScope ? "bi-people-fill" : "bi-person-workspace")"></i>
+                Current scope: @scopeLabel
+            </div>
+        </div>
+
+        <div class="qm-header-actions">
+            @* ── Scope Tabs ── *@
+            <div class="qm-scope-tabs">
+                <a asp-controller="EventQuiz" asp-action="Index"
+                   asp-route-eventId="@Model.EventId" asp-route-scope="myquiz"
+                   class="qm-scope-tab @(!isCommunityScope ? "active" : "")">
+                    <i class="bi bi-person-workspace"></i> My Quiz
+                </a>
+                <a asp-controller="EventQuiz" asp-action="Index"
+                   asp-route-eventId="@Model.EventId" asp-route-scope="community"
+                   class="qm-scope-tab @(isCommunityScope ? "active" : "")">
+                    <i class="bi bi-people-fill"></i> Community
+                </a>
+            </div>
+
+            @* ── Create Dropdown ── *@
+            <div class="dropdown qm-create-dd">
+                <button class="btn btn-primary dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-journal-plus me-1"></i> Create Quiz
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item"
+                           asp-controller="EventQuiz" asp-action="Create"
+                           asp-route-mode="manual" asp-route-eventId="@Model.EventId">
+                            <i class="bi bi-pencil-square"></i> Manual
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           asp-controller="EventQuiz" asp-action="Create"
+                           asp-route-mode="upload" asp-route-eventId="@Model.EventId">
+                            <i class="bi bi-upload"></i> Upload File
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <a class="dropdown-item"
+                           asp-controller="EventQuiz" asp-action="Create"
+                           asp-route-mode="bank" asp-route-eventId="@Model.EventId">
+                            <i class="bi bi-collection"></i> Question Bank
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
+
+    @* ── Stats Strip ── *@
+    <div class="qm-stats-grid">
+        <div class="qm-stat">
+            <div class="qm-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-journal-bookmark-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="qm-stat-label">Total Quizzes</div>
+                <div class="qm-stat-value" style="color:#6d28d9;">@totalCount</div>
+            </div>
+        </div>
+        <div class="qm-stat">
+            <div class="qm-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-broadcast" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="qm-stat-label">Published</div>
+                <div class="qm-stat-value" style="color:#16a34a;">@publishedCount</div>
+            </div>
+        </div>
+        <div class="qm-stat">
+            <div class="qm-stat-icon" style="background:#f1f5f9;">
+                <i class="bi bi-file-earmark-text" style="color:#64748b;"></i>
+            </div>
+            <div>
+                <div class="qm-stat-label">Drafts</div>
+                <div class="qm-stat-value" style="color:#64748b;">@draftCount</div>
+            </div>
+        </div>
+        <div class="qm-stat">
+            <div class="qm-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-patch-question-fill" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="qm-stat-label">Questions</div>
+                <div class="qm-stat-value" style="color:#d97706;">@totalQ</div>
+            </div>
+        </div>
+        <div class="qm-stat">
+            <div class="qm-stat-icon" style="background:#eff6ff;">
+                <i class="bi bi-pencil-square" style="color:#3b82f6;"></i>
+            </div>
+            <div>
+                <div class="qm-stat-label">Attempts</div>
+                <div class="qm-stat-value" style="color:#3b82f6;">@totalAttempts</div>
+            </div>
+        </div>
+        <div class="qm-stat">
+            <div class="qm-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-people-fill" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="qm-stat-label">Community</div>
+                <div class="qm-stat-value" style="color:#1d4ed8;">@communityCount</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Quiz Table Card ── *@
+    <div class="qm-table-card">
+        <div class="qm-table-header">
+            <div class="qm-table-label">
+                <i class="bi bi-list-ul"></i>
+                @scopeLabel List
+                <span class="qm-count-chip">@totalCount quiz(zes)</span>
+            </div>
+            <div class="qm-search-bar">
+                <div class="qm-search-wrap">
+                    <i class="bi bi-search"></i>
+                    <input type="text"
+                           id="qmSearchInput"
+                           class="qm-search-input"
+                           placeholder="Search quiz or event…"
+                           oninput="filterQuizzes()" />
+                </div>
+            </div>
+        </div>
+
+        @if (!allQuizzes.Any())
+        {
+            <div class="qm-empty">
+                <div class="qm-empty-icon">
+                    <i class="bi bi-journal-x"></i>
+                </div>
+                <h3>@(isCommunityScope ? "No Community Quizzes Found" : "No Quizzes Yet")</h3>
+                <p>@(isCommunityScope
+                    ? "No community quizzes visible in your scope yet. Share a quiz to community first."
+                    : "Create a quiz for one of your events to start managing questions and scores.")</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="qm-table" id="quizTable">
+                    <colgroup>
+                        <col style="width:180px;" />
+                        <col style="width:160px;" />
+                        <col style="width:105px;" />
+                        <col style="width:90px;"  />
+                        <col style="width:70px;"  />
+                        <col style="width:75px;"  />
+                        <col style="width:72px;"  />
+                        <col style="width:100px;" />
+                        <col style="width:115px;" />
+                        <col />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Event</th>
+                            <th>Type</th>
+                            <th>Score</th>
+                            <th>Q</th>
+                            <th>Attempts</th>
+                            <th>Passed</th>
+                            <th>Status</th>
+                            <th>Visibility</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quizTableBody">
+                        @foreach (var q in allQuizzes)
+                        {
+                            var visLabel    = q.SharingStatus == QuizSetVisibilityEnum.Public ? "Public" : "Private";
+                            var isPublic    = q.SharingStatus == QuizSetVisibilityEnum.Public;
+                            var isPublished = q.Status == QuizStatusEnum.Published;
+                            int attempts    = q.AttemptCount;
+                            int passed      = q.PassedCount;
+                            var passColor   = PassRateColor(attempts, passed);
+
+                            <tr class="qm-quiz-row"
+                                data-title="@q.Title.ToLower()"
+                                data-event="@q.EventTitle.ToLower()"
+                                data-semester="@q.SemesterName.ToLower()">
+
+                                @* ── Title ── *@
+                                <td>
+                                    <div class="qm-title-main" title="@q.Title">
+                                        @(q.Title.Length > 22 ? q.Title[..22] + "…" : q.Title)
+                                    </div>
+                                    <div class="qm-title-meta">
+                                        @if (q.TimeLimit.HasValue && q.TimeLimit > 0)
+                                        {
+                                            <span title="Time limit"><i class="bi bi-clock me-1" style="color:#a5b4fc;"></i>@q.TimeLimit min</span>
+                                        }
+                                        @if (q.AllowReview)
+                                        {
+                                            <span title="Review enabled"><i class="bi bi-eye" style="color:#22c55e;"></i></span>
+                                        }
+                                    </div>
+                                </td>
+
+                                @* ── Event ── *@
+                                <td>
+                                    <div class="qm-event-wrap">
+                                        <div class="qm-event-name" title="@q.EventTitle">
+                                            @(string.IsNullOrWhiteSpace(q.EventTitle)
+                                                ? q.EventId
+                                                : (q.EventTitle.Length > 22 ? q.EventTitle[..22] + "…" : q.EventTitle))
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(q.SemesterName))
+                                        {
+                                            <div class="qm-semester-chip">
+                                                <i class="bi bi-calendar3" style="font-size:.6rem;"></i>
+                                                @q.SemesterName
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+
+                                @* ── Type ── *@
+                                <td>
+                                    <span class="qm-type-pill @TypePillClass(q.Type)">
+                                        <i class="bi @TypeIcon(q.Type)"></i>
+                                        @q.Type
+                                    </span>
+                                </td>
+
+                                @* ── Passing Score ── *@
+                                <td>
+                                    <div class="qm-num-cell @(q.PassingScore.HasValue && q.PassingScore.Value > 0 ? "qm-num-pos" : "qm-num-zero")">
+                                        @(q.PassingScore.HasValue && q.PassingScore.Value > 0 ? q.PassingScore.Value.ToString() : "—")
+                                    </div>
+                                    @if (q.MaxAttempts.HasValue && q.MaxAttempts.Value > 0)
+                                    {
+                                        <div style="font-size:.68rem; color:#94a3b8; margin-top:.1rem; text-align:center;">
+                                            max @q.MaxAttempts
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="font-size:.68rem; color:#94a3b8; margin-top:.1rem; text-align:center;">unlimited</div>
+                                    }
+                                </td>
+
+                                @* ── Questions ── *@
+                                <td>
+                                    <div class="qm-num-cell @(q.QuestionCount > 0 ? "qm-num-pos" : "qm-num-zero")">
+                                        @q.QuestionCount
+                                    </div>
+                                </td>
+
+                                @* ── Attempts ── *@
+                                <td>
+                                    <div class="qm-num-cell @(attempts > 0 ? "qm-num-pos" : "qm-num-zero")">
+                                        @attempts
+                                    </div>
+                                </td>
+
+                                @* ── Passed ── *@
+                                <td class="qm-pass-cell">
+                                    <div class="qm-num-cell" style="color:@passColor;">
+                                        @passed
+                                    </div>
+                                    @if (attempts > 0)
+                                    {
+                                        var pct = (int)Math.Round((double)passed / attempts * 100);
+                                        <div class="qm-pass-rate" style="color:@passColor;">@pct%</div>
+                                    }
+                                </td>
+
+                                @* ── Status ── *@
+                                <td>
+                                    <span class="qm-status-pill @StatusPillClass(q.Status)">
+                                        @q.Status
+                                    </span>
+                                </td>
+
+                                @* ── Visibility ── *@
+                                <td>
+                                    <span class="qm-vis-chip @(isPublic ? "qm-vis-public" : "qm-vis-private")">
+                                        <i class="bi @(isPublic ? "bi-globe2" : "bi-lock-fill")"></i>
+                                        @(isPublic ? "Public" : "Private")
+                                    </span>
+                                </td>
+
+                                @* ── Actions ── *@
+                                <td>
+                                    <div class="qm-actions">
+
+                                        @* View *@
+                                        <a class="qm-act view"
+                                           asp-controller="EventQuiz" asp-action="Preview"
+                                           asp-route-quizId="@q.EventQuizId"
+                                           title="Preview Quiz">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        @* Manage *@
+                                        <a class="qm-act manage"
+                                           asp-controller="EventQuiz" asp-action="Details"
+                                           asp-route-quizId="@q.EventQuizId"
+                                           title="Manage Quiz">
+                                            <i class="bi bi-gear"></i>
+                                        </a>
+
+                                        @* Publish (only if not yet published) *@
+                                        @if (!isPublished)
+                                        {
+                                            <form asp-controller="EventQuiz" asp-action="Publish"
+                                                  asp-route-quizId="@q.EventQuizId"
+                                                  method="post" class="qm-act-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="qm-act publish" title="Publish Quiz">
+                                                    <i class="bi bi-broadcast"></i>
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @* Share / Private toggle *@
+                                        @if (!isPublic)
+                                        {
+                                            <form asp-controller="EventQuiz" asp-action="Share"
+                                                  asp-route-quizId="@q.EventQuizId"
+                                                  method="post" class="qm-act-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="qm-act share"
+                                                        title="Share to Community"
+                                                        onclick="return confirm('Chia sẻ quiz này lên Community?');">
+                                                    <i class="bi bi-share-fill"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-controller="EventQuiz" asp-action="Restore"
+                                                  asp-route-quizId="@q.EventQuizId"
+                                                  method="post" class="qm-act-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="qm-act private"
+                                                        title="Set Private"
+                                                        onclick="return confirm('Chuyển quiz về Private?');">
+                                                    <i class="bi bi-lock-fill"></i>
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @* Delete *@
+                                        <form asp-controller="EventQuiz" asp-action="Delete"
+                                              asp-route-quizId="@q.EventQuizId"
+                                              method="post" class="qm-act-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="qm-act delete"
+                                                    title="Delete Quiz"
+                                                    onclick="return confirm('Bạn có chắc muốn xóa quiz &quot;@Html.Raw(q.Title.Replace("\"","\\\""))&quot;?');">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* Summary footer *@
+            <div class="qm-summary-bar">
+                <div>
+                    Showing <strong id="qmVisCount">@totalCount</strong> /
+                    <strong>@totalCount</strong> quiz(zes)
+                    &nbsp;·&nbsp; <strong>@totalQ</strong> total questions
+                    &nbsp;·&nbsp; <strong>@totalAttempts</strong> attempts
+                    &nbsp;·&nbsp; <strong>@totalPassed</strong> passed
+                </div>
+                <div style="font-size:.77rem; color:#94a3b8;">
+                    @communityCount shared to community
+                </div>
+            </div>
+        }
+    </div>
+
 </div>
+</div>
+
+@section Scripts {
+    <script>
+    // ── Live search ────────────────────────────────────────────────────────────
+    function filterQuizzes() {
+        const query = (document.getElementById('qmSearchInput')?.value ?? '').toLowerCase().trim();
+        const rows  = document.querySelectorAll('#quizTableBody .qm-quiz-row');
+        let visible = 0;
+
+        rows.forEach(function(row) {
+            const title    = row.getAttribute('data-title')    ?? '';
+            const event_   = row.getAttribute('data-event')    ?? '';
+            const semester = row.getAttribute('data-semester') ?? '';
+            const matches  = !query
+                || title.includes(query)
+                || event_.includes(query)
+                || semester.includes(query);
+
+            row.classList.toggle('qm-row-hidden', !matches);
+            if (matches) visible++;
+        });
+
+        const countEl = document.getElementById('qmVisCount');
+        if (countEl) countEl.textContent = visible;
+    }
+
+    // ── Row hover interactions ──────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.qm-quiz-row').forEach(function(row) {
+            row.addEventListener('mouseenter', function() {
+                this.style.transition = 'background .12s';
+            });
+        });
+
+        // Auto-dismiss toasts after 4s
+        const toasts = document.querySelectorAll('.qm-toast');
+        if (toasts.length > 0) {
+            setTimeout(function() {
+                toasts.forEach(function(t) {
+                    t.style.transition = 'opacity .4s, transform .4s';
+                    t.style.opacity = '0';
+                    t.style.transform = 'translateY(-8px)';
+                    setTimeout(function() { t.remove(); }, 400);
+                });
+            }, 4000);
+        }
+    });
+    </script>
+}
