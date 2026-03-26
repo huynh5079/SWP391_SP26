@@ -1,74 +1,633 @@
 @model AEMS_Solution.Models.Approver.Manage.TopicIndexViewModel
 @{
-    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    var role      = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
     var canManage = role == "Admin" || role == "Approver";
-    if (role == "Admin") { Layout = "_Layout"; }
+    if      (role == "Admin")                        { Layout = "_Layout"; }
     else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
-    else { Layout = "_Approvallayout"; }
+    else                                             { Layout = "_Approvallayout"; }
     ViewData["Title"] = "Manage Topics";
+
+    // ── Derived stats ────────────────────────────────────────────────────────
+    var topics     = Model.Topics ?? new List<AEMS_Solution.Models.Approver.Manage.TopicListItemVm>();
+    int total      = topics.Count;
+    int thisMonth  = topics.Count(t => t.CreatedAt.Month == DateTime.Now.Month && t.CreatedAt.Year == DateTime.Now.Year);
+    int hasDesc    = topics.Count(t => !string.IsNullOrWhiteSpace(t.Description));
+    var newestDate = topics.Any() ? topics.Max(t => t.UpdatedAt) : (DateTime?)null;
+
+    // ── Avatar colour from title hash ────────────────────────────────────────
+    string GetAvatarColor(string? name)
+    {
+        var palette = new[]
+        {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6",
+            "#f97316","#a855f7"
+        };
+        if (string.IsNullOrEmpty(name)) return palette[0];
+        return palette[Math.Abs(name.GetHashCode()) % palette.Length];
+    }
+
+    string GetInitial(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        return name.Trim()[0].ToString().ToUpper();
+    }
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Manage Topics</h2>
+<style>
+    /* ==============================================================
+       MANAGE TOPICS — PREMIUM ADMIN UI
+    ============================================================== */
+    :root {
+        --tp-primary:   #6366f1;
+        --tp-secondary: #8b5cf6;
+        --tp-bg:        #f0f2ff;
+        --tp-card:      #ffffff;
+        --tp-border:    #e0e7ff;
+        --tp-text:      #1e1b4b;
+        --tp-muted:     #64748b;
+        --tp-radius:    16px;
+        --tp-shadow:    0 4px 24px rgba(99,102,241,.08);
+        --tp-focus:     0 0 0 3px rgba(99,102,241,.2);
+        --tp-green:     #22c55e;
+        --tp-amber:     #f59e0b;
+        --tp-red:       #ef4444;
+    }
+
+    /* ── Animations ── */
+    @@keyframes tp-fadein   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes tp-pop      { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }
+    @@keyframes tp-slidein  { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
+    @@keyframes tp-row-in   { from { opacity:0; transform:translateY(6px);  } to { opacity:1; transform:none; } }
+    @@keyframes tp-pulse-v  {
+        0%   { box-shadow: 0 0 0 0 rgba(99,102,241,.35); }
+        70%  { box-shadow: 0 0 0 9px rgba(99,102,241,0); }
+        100% { box-shadow: 0 0 0 0   rgba(99,102,241,0); }
+    }
+    @@keyframes tp-count-up { from { opacity:0; transform:scale(.75); } to { opacity:1; transform:scale(1); } }
+    @@keyframes tp-shimmer  {
+        from { background-position:-400px 0; }
+        to   { background-position: 400px 0; }
+    }
+    @@keyframes tp-bar-grow { from { width:0; } }
+
+    /* ── Page wrapper ── */
+    .tp-page { background:var(--tp-bg); min-height:100vh; padding:2rem 0 4rem; }
+
+    /* ── Page header ── */
+    .tp-header {
+        display:flex; align-items:flex-start; justify-content:space-between;
+        gap:1rem; margin-bottom:2rem; flex-wrap:wrap;
+        animation:tp-fadein .35s ease both;
+    }
+    .tp-header-title {
+        font-size:1.9rem; font-weight:900; color:var(--tp-text);
+        letter-spacing:-.025em; margin-bottom:.2rem;
+        display:flex; align-items:center; gap:.5rem;
+    }
+    .tp-header-icon {
+        width:48px; height:48px; border-radius:14px;
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.4rem; color:#fff; flex-shrink:0;
+        box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+    .tp-header-sub { color:var(--tp-muted); font-size:.87rem; margin:0; margin-left:58px; }
+    .tp-header-actions { display:flex; gap:.65rem; flex-wrap:wrap; align-items:center; }
+
+    /* ── Buttons ── */
+    .tp-btn {
+        display:inline-flex; align-items:center; gap:.4rem;
+        font-size:.83rem; font-weight:700; padding:.62rem 1.3rem;
+        border-radius:30px; border:none; text-decoration:none;
+        cursor:pointer; transition:all .18s; white-space:nowrap;
+    }
+    .tp-btn-primary {
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        color:#fff; box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+    .tp-btn-primary:hover { transform:translateY(-2px); box-shadow:0 7px 18px rgba(99,102,241,.4); color:#fff; }
+    .tp-btn-ghost  { background:#fff; color:#475569; border:1.5px solid #e2e8f0; }
+    .tp-btn-ghost:hover  { background:#f1f5f9; color:var(--tp-primary); border-color:#c7d2fe; }
+    .tp-btn-search { background:var(--tp-primary); color:#fff; }
+    .tp-btn-search:hover { background:#4f46e5; color:#fff; }
+
+    /* ── Stats grid ── */
+    .tp-stats-grid {
+        display:grid; grid-template-columns:repeat(4,1fr);
+        gap:1rem; margin-bottom:1.5rem;
+        animation:tp-fadein .4s .08s ease both;
+    }
+    @@media(max-width:900px)  { .tp-stats-grid { grid-template-columns:repeat(2,1fr); } }
+    @@media(max-width:480px)  { .tp-stats-grid { grid-template-columns:1fr; } }
+
+    .tp-stat {
+        background:var(--tp-card); border-radius:14px;
+        border:1px solid var(--tp-border); box-shadow:var(--tp-shadow);
+        padding:1rem 1.15rem; display:flex; align-items:center; gap:.85rem;
+        transition:transform .18s,box-shadow .18s; cursor:default;
+    }
+    .tp-stat:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(99,102,241,.14); }
+    .tp-stat-icon  {
+        width:44px; height:44px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.15rem; flex-shrink:0;
+    }
+    .tp-stat-label { font-size:.68rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+    .tp-stat-value {
+        font-size:1.5rem; font-weight:900; color:var(--tp-text);
+        line-height:1; margin-top:.08rem;
+        animation:tp-count-up .5s ease both;
+    }
+
+    /* ── Search / filter bar ── */
+    .tp-search-bar {
+        background:var(--tp-card); border-radius:var(--tp-radius);
+        border:1px solid var(--tp-border); box-shadow:var(--tp-shadow);
+        padding:1rem 1.45rem; margin-bottom:1.5rem;
+        display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;
+        animation:tp-fadein .4s .12s ease both;
+    }
+    .tp-search-wrap  { position:relative; flex:1 1 260px; min-width:180px; }
+    .tp-search-wrap i {
+        position:absolute; top:50%; left:.9rem;
+        transform:translateY(-50%); color:#94a3b8;
+        font-size:.82rem; pointer-events:none;
+    }
+    .tp-search-input {
+        width:100%; padding:.65rem 1rem .65rem 2.35rem;
+        border:1.5px solid var(--tp-border); border-radius:30px;
+        font-size:.88rem; color:var(--tp-text); background:#fafbff;
+        outline:none; transition:all .2s;
+    }
+    .tp-search-input:focus { background:#fff; border-color:var(--tp-primary); box-shadow:var(--tp-focus); }
+    .tp-result-count { font-size:.8rem; color:var(--tp-muted); white-space:nowrap; }
+    .tp-result-count strong { color:var(--tp-primary); }
+
+    /* ── Table card ── */
+    .tp-table-card {
+        background:var(--tp-card); border-radius:var(--tp-radius);
+        border:1px solid var(--tp-border); box-shadow:var(--tp-shadow);
+        overflow:hidden; animation:tp-fadein .4s .18s ease both;
+    }
+    .tp-table-header {
+        padding:.88rem 1.45rem; border-bottom:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem;
+    }
+    .tp-table-label {
+        font-size:.68rem; font-weight:800; letter-spacing:.08em;
+        text-transform:uppercase; color:#94a3b8;
+        display:flex; align-items:center; gap:.4rem;
+    }
+    .tp-count-chip {
+        background:#ede9fe; color:#6d28d9; font-size:.7rem;
+        font-weight:700; padding:.12rem .5rem; border-radius:20px;
+    }
+
+    /* ── Table ── */
+    .tp-table { width:100%; border-collapse:collapse; }
+    .tp-table thead tr th {
+        background:#f8fafc; font-size:.67rem; font-weight:800;
+        letter-spacing:.07em; text-transform:uppercase; color:#94a3b8;
+        padding:.78rem 1.1rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;
+    }
+    .tp-table tbody tr {
+        border-bottom:1px solid #f8fafc;
+        animation:tp-row-in .3s ease both;
+        transition:background .12s;
+    }
+    .tp-table tbody tr:last-child { border-bottom:none; }
+    .tp-table tbody tr:hover { background:#f5f3ff; }
+    .tp-table tbody tr.tp-filtered-out { display:none !important; }
+    .tp-table tbody td { padding:.9rem 1.1rem; vertical-align:middle; font-size:.88rem; color:var(--tp-text); }
+
+    /* ── Stagger delays ── */
+    .tp-table tbody tr:nth-child(1)  { animation-delay:.04s; }
+    .tp-table tbody tr:nth-child(2)  { animation-delay:.07s; }
+    .tp-table tbody tr:nth-child(3)  { animation-delay:.10s; }
+    .tp-table tbody tr:nth-child(4)  { animation-delay:.13s; }
+    .tp-table tbody tr:nth-child(5)  { animation-delay:.16s; }
+    .tp-table tbody tr:nth-child(6)  { animation-delay:.19s; }
+    .tp-table tbody tr:nth-child(7)  { animation-delay:.22s; }
+    .tp-table tbody tr:nth-child(8)  { animation-delay:.25s; }
+    .tp-table tbody tr:nth-child(9)  { animation-delay:.28s; }
+    .tp-table tbody tr:nth-child(10) { animation-delay:.31s; }
+
+    /* ── Name cell ── */
+    .tp-name-cell { display:flex; align-items:center; gap:.75rem; }
+    .tp-name-avatar {
+        width:40px; height:40px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.05rem; font-weight:900; color:#fff; flex-shrink:0;
+        box-shadow:0 2px 8px rgba(0,0,0,.15); transition:transform .18s;
+    }
+    .tp-table tbody tr:hover .tp-name-avatar { transform:scale(1.08) rotate(4deg); }
+    .tp-name-main { font-weight:800; color:var(--tp-text); font-size:.92rem; }
+    .tp-name-id   { font-size:.7rem; color:#94a3b8; margin-top:.08rem; font-family:monospace; }
+
+    /* ── Description cell ── */
+    .tp-desc {
+        font-size:.85rem; color:var(--tp-muted); max-width:380px;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        overflow:hidden; line-height:1.5;
+    }
+    .tp-desc.empty { font-style:italic; color:#cbd5e1; }
+
+    /* ── Date cell ── */
+    .tp-date { font-size:.82rem; color:var(--tp-muted); }
+    .tp-date strong { color:var(--tp-text); font-weight:700; display:block; }
+    .tp-date span   { font-size:.76rem; color:#94a3b8; }
+
+    /* ── NEW badge (created this month) ── */
+    .tp-new-badge {
+        display:inline-flex; align-items:center; gap:.2rem;
+        font-size:.64rem; font-weight:800; padding:.12rem .45rem;
+        border-radius:8px; background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        color:#fff; vertical-align:middle; margin-left:.4rem;
+        animation:tp-pulse-v 2s infinite;
+    }
+
+    /* ── Action buttons ── */
+    .tp-actions { display:flex; gap:.4rem; align-items:center; justify-content:flex-end; }
+    .tp-act {
+        width:32px; height:32px; border-radius:9px; border:1px solid #e2e8f0;
+        background:#f8fafc; display:inline-flex; align-items:center;
+        justify-content:center; font-size:.82rem; cursor:pointer;
+        transition:all .15s; text-decoration:none; color:#64748b;
+    }
+    .tp-act:hover           { transform:translateY(-1px); }
+    .tp-act.edit:hover      { background:#fef9c3; border-color:#fde68a; color:#d97706; }
+    .tp-act.delete:hover    { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
+    .tp-act-form { display:inline; }
+
+    /* ── Empty state ── */
+    .tp-empty { text-align:center; padding:3.5rem 1rem; animation:tp-fadein .4s ease both; }
+    .tp-empty-icon {
+        width:80px; height:80px; border-radius:50%;
+        background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+        display:flex; align-items:center; justify-content:center;
+        font-size:2.2rem; color:#6d28d9; margin:0 auto 1rem;
+    }
+    .tp-empty h3 { font-size:1.1rem; font-weight:800; color:#374151; margin-bottom:.4rem; }
+    .tp-empty p  { font-size:.88rem; color:var(--tp-muted); margin-bottom:1rem; }
+
+    /* ── Toasts ── */
+    .tp-toast {
+        border-radius:13px; padding:.9rem 1.2rem; font-size:.9rem;
+        font-weight:600; margin-bottom:1.25rem;
+        display:flex; align-items:center; gap:.6rem; border:none;
+        animation:tp-fadein .4s ease;
+    }
+    .tp-toast-success { background:#f0fdf4; border:1px solid #86efac; color:#15803d; }
+    .tp-toast-error   { background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; }
+
+    /* ── Summary footer ── */
+    .tp-footer {
+        padding:.78rem 1.1rem; border-top:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem; font-size:.79rem; color:var(--tp-muted);
+    }
+    .tp-footer strong { color:var(--tp-text); }
+
+    /* ── No-search-result notice ── */
+    .tp-no-result {
+        display:none; text-align:center;
+        padding:2rem; color:#94a3b8; font-size:.9rem;
+    }
+    .tp-no-result.visible { display:block; }
+</style>
+
+<div class="tp-page">
+<div class="container-fluid px-4">
+
+    @* ── Alerts ── *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="tp-toast tp-toast-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="tp-toast tp-toast-error">
+            <i class="bi bi-exclamation-circle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* ── Header ── *@
+    <div class="tp-header">
+        <div>
+            <h1 class="tp-header-title">
+                <div class="tp-header-icon"><i class="bi bi-tags-fill"></i></div>
+                Manage Topics
+            </h1>
+            <p class="tp-header-sub">
+                Organise event categories and subject tags used across the platform.
+                Total: <strong style="color:#6366f1;">@total</strong> topic(s).
+            </p>
+        </div>
+        <div class="tp-header-actions">
+            @if (canManage)
+            {
+                <a asp-controller="Topic" asp-action="Create" class="tp-btn tp-btn-primary">
+                    <i class="bi bi-plus-circle-fill"></i> Create Topic
+                </a>
+            }
+        </div>
+    </div>
+
+    @* ── Stats Strip ── *@
+    <div class="tp-stats-grid">
+        <div class="tp-stat">
+            <div class="tp-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-tags-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="tp-stat-label">Total Topics</div>
+                <div class="tp-stat-value" style="color:#6d28d9;">@total</div>
+            </div>
+        </div>
+        <div class="tp-stat">
+            <div class="tp-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-calendar-plus-fill" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="tp-stat-label">Added This Month</div>
+                <div class="tp-stat-value" style="color:#1d4ed8;">@thisMonth</div>
+            </div>
+        </div>
+        <div class="tp-stat">
+            <div class="tp-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-card-text" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="tp-stat-label">With Description</div>
+                <div class="tp-stat-value" style="color:#16a34a;">@hasDesc</div>
+            </div>
+        </div>
+        <div class="tp-stat">
+            <div class="tp-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-clock-history" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="tp-stat-label">Last Updated</div>
+                <div class="tp-stat-value" style="color:#d97706; font-size:1rem;">
+                    @(newestDate.HasValue ? newestDate.Value.ToString("dd/MM") : "—")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Search bar ── *@
+    <div class="tp-search-bar">
+        <div class="tp-search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text"
+                   id="tpSearchInput"
+                   class="tp-search-input"
+                   value="@Model.Search"
+                   placeholder="Search by topic name or description…"
+                   oninput="tpLiveFilter()" />
+        </div>
+        <span class="tp-result-count">
+            <strong id="tpVisCount">@total</strong> / @total topic(s)
+        </span>
         @if (canManage)
         {
-            <a asp-controller="Topic" asp-action="Create" class="btn btn-primary">Create Topic</a>
+            <a asp-controller="Topic" asp-action="Create" class="tp-btn tp-btn-primary" style="padding:.56rem 1.1rem;">
+                <i class="bi bi-plus-lg"></i> Add New
+            </a>
         }
     </div>
 
-    <form method="get" asp-controller="Topic" asp-action="Index" class="row g-2 mb-3">
-        <div class="col-md-4">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search topic..." />
+    @* ── Table card ── *@
+    <div class="tp-table-card">
+        <div class="tp-table-header">
+            <div class="tp-table-label">
+                <i class="bi bi-list-ul"></i> Topic List
+                <span class="tp-count-chip" id="tpChipCount">@total topic(s)</span>
+            </div>
+            <div style="font-size:.78rem; color:#94a3b8;">
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <span>Filtered by: <strong style="color:#6366f1;">"@Model.Search"</strong></span>
+                }
+                else
+                {
+                    <span>All topics</span>
+                }
+            </div>
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-outline-primary">Search</button>
-        </div>
-    </form>
 
-    <table class="table table-bordered table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Created</th>
-                <th>Updated</th>
+        @if (!topics.Any())
+        {
+            <div class="tp-empty">
+                <div class="tp-empty-icon"><i class="bi bi-tags"></i></div>
+                <h3>No Topics Found</h3>
+                <p>
+                    @if (!string.IsNullOrWhiteSpace(Model.Search))
+                    {
+                        <text>No topics match "<strong>@Model.Search</strong>". Try clearing the search.</text>
+                    }
+                    else
+                    {
+                        <text>No topics have been created yet. Create the first one!</text>
+                    }
+                </p>
                 @if (canManage)
                 {
-                    <th style="width:120px;">Action</th>
+                    <a asp-controller="Topic" asp-action="Create" class="tp-btn tp-btn-primary">
+                        <i class="bi bi-plus-circle-fill"></i> Create First Topic
+                    </a>
                 }
-            </tr>
-        </thead>
-        <tbody>
-            @if (Model.Topics.Count == 0)
-            {
-                <tr>
-                    <td colspan="@(canManage ? 5 : 4)" class="text-center text-muted">No topics found.</td>
-                </tr>
-            }
-            else
-            {
-                foreach (var topic in Model.Topics)
-                {
-                    <tr>
-                        <td>@topic.TopicName</td>
-                        <td>@topic.Description</td>
-                        <td>@topic.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@topic.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                        @if (canManage)
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="tp-table" id="tpTable">
+                    <colgroup>
+                        <col style="width:220px;" />
+                        <col />
+                        <col style="width:140px;" />
+                        <col style="width:140px;" />
+                        @if (canManage) { <col style="width:80px;" /> }
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Created</th>
+                            <th>Updated</th>
+                            @if (canManage) { <th style="text-align:right;">Actions</th> }
+                        </tr>
+                    </thead>
+                    <tbody id="tpTableBody">
+                        @foreach (var topic in topics)
                         {
-                            <td>
-                                <div class="d-flex gap-2">
-                                    <a asp-controller="Topic" asp-action="Edit" asp-route-id="@topic.TopicId" class="btn btn-sm btn-warning">Edit</a>
-                                    <form asp-controller="Topic" asp-action="Delete" asp-route-id="@topic.TopicId" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xoá Topic này?');">
-                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
+                            var avatarColor = GetAvatarColor(topic.TopicName);
+                            var initial     = GetInitial(topic.TopicName);
+                            var isNew       = topic.CreatedAt.Month == DateTime.Now.Month
+                                              && topic.CreatedAt.Year == DateTime.Now.Year;
+
+                            <tr class="tp-topic-row"
+                                data-name="@topic.TopicName.ToLower()"
+                                data-desc="@topic.Description.ToLower()">
+
+                                @* Name ── *@
+                                <td>
+                                    <div class="tp-name-cell">
+                                        <div class="tp-name-avatar" style="background:@avatarColor;">
+                                            @initial
+                                        </div>
+                                        <div>
+                                            <div class="tp-name-main">
+                                                @topic.TopicName
+                                                @if (isNew)
+                                                {
+                                                    <span class="tp-new-badge">
+                                                        <i class="bi bi-stars" style="font-size:.6rem;"></i> NEW
+                                                    </span>
+                                                }
+                                            </div>
+                                            <div class="tp-name-id">#@topic.TopicId[..Math.Min(8,topic.TopicId.Length)]…</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* Description ── *@
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(topic.Description))
+                                    {
+                                        <span class="tp-desc empty">No description provided</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="tp-desc" title="@topic.Description">@topic.Description</div>
+                                    }
+                                </td>
+
+                                @* Created ── *@
+                                <td>
+                                    <div class="tp-date">
+                                        <strong>@topic.CreatedAt.ToString("dd/MM/yyyy")</strong>
+                                        <span>@topic.CreatedAt.ToString("HH:mm")</span>
+                                    </div>
+                                </td>
+
+                                @* Updated ── *@
+                                <td>
+                                    <div class="tp-date">
+                                        <strong>@topic.UpdatedAt.ToString("dd/MM/yyyy")</strong>
+                                        <span>@topic.UpdatedAt.ToString("HH:mm")</span>
+                                    </div>
+                                </td>
+
+                                @* Actions ── *@
+                                @if (canManage)
+                                {
+                                    <td>
+                                        <div class="tp-actions">
+                                            <a class="tp-act edit"
+                                               asp-controller="Topic" asp-action="Edit"
+                                               asp-route-id="@topic.TopicId"
+                                               title="Edit Topic">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form asp-controller="Topic" asp-action="Delete"
+                                                  asp-route-id="@topic.TopicId"
+                                                  method="post" class="tp-act-form"
+                                                  onsubmit="return confirm('Bạn có chắc chắn muốn xoá topic &quot;@Html.Raw(topic.TopicName.Replace("\"","\\\""))&quot;?');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="tp-act delete" title="Delete Topic">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
                         }
-                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            @* No-result notice (shown by JS when live filter returns 0) *@
+            <div class="tp-no-result" id="tpNoResult">
+                <i class="bi bi-search me-1"></i> No topics found matching your search.
+            </div>
+
+            @* Summary footer ── *@
+            <div class="tp-footer">
+                <div>
+                    Showing <strong id="tpFooterCount">@total</strong> / <strong>@total</strong> topic(s)
+                    &nbsp;·&nbsp; <strong>@hasDesc</strong> with description
+                    &nbsp;·&nbsp; <strong>@thisMonth</strong> added this month
+                </div>
+                @if (newestDate.HasValue)
+                {
+                    <div>Last updated: <strong>@newestDate.Value.ToString("dd/MM/yyyy HH:mm")</strong></div>
                 }
-            }
-        </tbody>
-    </table>
+            </div>
+        }
+    </div>
+
 </div>
+</div>
+
+@section Scripts {
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // ── Live search / filter ──────────────────────────────────────────────
+        window.tpLiveFilter = function () {
+            const query    = (document.getElementById('tpSearchInput')?.value ?? '').toLowerCase().trim();
+            const rows     = document.querySelectorAll('#tpTableBody .tp-topic-row');
+            const chip     = document.getElementById('tpChipCount');
+            const visCount = document.getElementById('tpVisCount');
+            const footer   = document.getElementById('tpFooterCount');
+            const noResult = document.getElementById('tpNoResult');
+            const total    = rows.length;
+            let visible    = 0;
+
+            rows.forEach(function (row) {
+                const name = row.getAttribute('data-name') || '';
+                const desc = row.getAttribute('data-desc') || '';
+                const show = !query || name.includes(query) || desc.includes(query);
+                row.classList.toggle('tp-filtered-out', !show);
+                if (show) visible++;
+            });
+
+            // Update counters
+            if (chip)     chip.textContent     = visible + ' topic(s)';
+            if (visCount) visCount.textContent  = visible;
+            if (footer)   footer.textContent    = visible;
+
+            // Show/hide no-results block
+            if (noResult) noResult.classList.toggle('visible', visible === 0 && !!query);
+        };
+
+        // ── Auto-run on load (in case browser pre-fills) ─────────────────────
+        tpLiveFilter();
+
+        // ── Row hover effects ─────────────────────────────────────────────────
+        document.querySelectorAll('.tp-topic-row').forEach(function (row) {
+            row.addEventListener('mouseenter', function () {
+                this.style.transition = 'background .12s';
+            });
+        });
+
+        // ── Toast auto-dismiss after 4 s ─────────────────────────────────────
+        document.querySelectorAll('.tp-toast').forEach(function (t) {
+            setTimeout(function () {
+                t.style.transition = 'opacity .4s, transform .4s';
+                t.style.opacity    = '0';
+                t.style.transform  = 'translateY(-6px)';
+                setTimeout(function () { t.remove(); }, 420);
+            }, 4000);
+        });
+
+    });
+    </script>
+}
