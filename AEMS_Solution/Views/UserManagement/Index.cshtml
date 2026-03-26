@@ -3,83 +3,743 @@
 @{
     ViewData["Title"] = "Quản lý Người dùng";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    
-    // Helper to get bootstrap badge class
-    string GetRoleBadgeClass(string role) => role switch
+
+    // ─── Helper: Razor local functions ────────────────────────────────────────
+    string GetRoleBadgeColor(string role) => role switch
     {
-        "Admin" => "danger",
-        "Staff" => "info",
-        "Student" => "success",
-        _ => "secondary"
+        "Admin"     => "#ef4444",  // red
+        "Organizer" => "#3b82f6",  // blue
+        "Approver"  => "#a855f7",  // purple
+        "Student"   => "#22c55e",  // green
+        _           => "#64748b"   // slate
     };
 
-    string GetStatusDetails(UserStatusEnum? status, bool? isBanned)
+    string GetRoleBgColor(string role) => role switch
     {
-        if (isBanned == true) return "badge bg-danger|Đang bị cấm";
-        if (status == UserStatusEnum.Active) return "badge bg-success|Hoạt động";
-        return "badge bg-secondary|Không hoạt động";
+        "Admin"     => "#fee2e2",
+        "Organizer" => "#dbeafe",
+        "Approver"  => "#f3e8ff",
+        "Student"   => "#dcfce7",
+        _           => "#f1f5f9"
+    };
+
+    string GetRoleLabel(string role) => role switch
+    {
+        "Admin"     => "Admin",
+        "Organizer" => "Organizer",
+        "Approver"  => "Approver",
+        "Student"   => "Student",
+        _           => role
+    };
+
+    string GetInitials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpper();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    string GetAvatarBg(string? fullName)
+    {
+        var colors = new[] { "#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6" };
+        if (string.IsNullOrEmpty(fullName)) return colors[0];
+        return colors[Math.Abs(fullName.GetHashCode()) % colors.Length];
     }
 
     string ToDateTimeLocalValue(DateTime? value) => value?.ToString("yyyy-MM-ddTHH:mm:ss") ?? string.Empty;
+
+    // Stat helpers
+    int totalUsers   = Model.TotalCount;
+    int activeCount  = Model.Data?.Count(u => u.Status == UserStatusEnum.Active && u.IsBanned != true) ?? 0;
+    int bannedCount  = Model.Data?.Count(u => u.IsBanned == true) ?? 0;
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 mb-0 text-gray-800">Quản lý Người dùng</h2>
-        <a asp-action="CreateStaff" class="btn btn-sm btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> Tạo Tài Khoản Mới
-        </a>
-    </div>
+<style>
+    /* ============================================================
+       USER MANAGEMENT PAGE — PREMIUM DESIGN
+    ============================================================ */
+    :root {
+        --um-primary:      #1e40af;
+        --um-primary-light:#3b82f6;
+        --um-bg:           #f8fafc;
+        --um-card-bg:      #ffffff;
+        --um-border:       #e2e8f0;
+        --um-text:         #0f172a;
+        --um-muted:        #64748b;
+        --um-radius:       14px;
+        --um-shadow:       0 4px 24px rgba(0,0,0,.04);
+        --um-focus-ring:   0 0 0 3px rgba(59,130,246,.2);
+    }
 
-    <!-- Filter Section -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Bộ lọc & Tìm kiếm</h6>
+    .um-page-wrapper {
+        background: #f8fafc;
+        min-height: 100vh;
+        padding: 2rem 0 3rem;
+    }
+
+    /* ── Page header ── */
+    .um-page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .um-page-header h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--um-text);
+        margin-bottom: .3rem;
+        letter-spacing: -.02em;
+    }
+
+    .um-page-header p {
+        color: var(--um-muted);
+        font-size: .9rem;
+        margin: 0;
+    }
+
+    .um-create-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: .9rem;
+        padding: .7rem 1.6rem;
+        border-radius: 50px;
+        text-decoration: none;
+        border: none;
+        box-shadow: 0 4px 14px rgba(30,64,175,.28);
+        transition: all .22s;
+        white-space: nowrap;
+    }
+
+    .um-create-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(30,64,175,.35);
+        color: #fff;
+    }
+
+    /* ── Filter Card ── */
+    .um-filter-card {
+        background: var(--um-card-bg);
+        border-radius: var(--um-radius);
+        border: 1px solid var(--um-border);
+        box-shadow: var(--um-shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .um-filter-label {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        color: var(--um-muted);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+    }
+
+    .um-filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 220px 220px auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    @@media (max-width: 992px) {
+        .um-filter-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @@media (max-width: 576px) {
+        .um-filter-grid { grid-template-columns: 1fr; }
+    }
+
+    .um-filter-field-label {
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--um-text);
+        margin-bottom: .35rem;
+        display: block;
+    }
+
+    .um-filter-input,
+    .um-filter-select {
+        width: 100%;
+        padding: .65rem 1rem;
+        border: 1px solid var(--um-border);
+        border-radius: 10px;
+        font-size: .88rem;
+        color: var(--um-text);
+        background: #f8fafc;
+        transition: all .18s;
+        outline: none;
+    }
+
+    .um-filter-input:focus,
+    .um-filter-select:focus {
+        background: #fff;
+        border-color: var(--um-primary-light);
+        box-shadow: var(--um-focus-ring);
+    }
+
+    .um-search-wrapper {
+        position: relative;
+    }
+
+    .um-search-wrapper i {
+        position: absolute;
+        top: 50%;
+        left: .85rem;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: .85rem;
+        pointer-events: none;
+    }
+
+    .um-search-wrapper .um-filter-input {
+        padding-left: 2.35rem;
+    }
+
+    .um-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .65rem 1.4rem;
+        border-radius: 10px;
+        font-size: .88rem;
+        font-weight: 700;
+        border: none;
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
+        color: #fff;
+        cursor: pointer;
+        transition: all .18s;
+        box-shadow: 0 3px 10px rgba(59,130,246,.25);
+        white-space: nowrap;
+    }
+
+    .um-filter-btn:hover {
+        opacity: .92;
+        transform: translateY(-1px);
+    }
+
+    .um-filter-reset {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .65rem 1rem;
+        border-radius: 10px;
+        font-size: .85rem;
+        font-weight: 600;
+        border: 1px solid var(--um-border);
+        background: #f8fafc;
+        color: var(--um-muted);
+        cursor: pointer;
+        transition: all .18s;
+        text-decoration: none;
+        margin-left: .5rem;
+    }
+
+    .um-filter-reset:hover {
+        background: #e2e8f0;
+        color: var(--um-text);
+    }
+
+    /* ── Main Table Card ── */
+    .um-table-card {
+        background: var(--um-card-bg);
+        border-radius: var(--um-radius);
+        border: 1px solid var(--um-border);
+        box-shadow: var(--um-shadow);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .um-table-card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .um-table-section-label {
+        font-size: .7rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .um-count-pill {
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 700;
+        padding: .15rem .55rem;
+        border-radius: 20px;
+    }
+
+    /* ── Main Table ── */
+    .um-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .um-table thead tr th {
+        background: #f8fafc;
+        font-size: .68rem;
+        font-weight: 800;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        padding: .8rem 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+        white-space: nowrap;
+    }
+
+    .um-table tbody tr {
+        border-bottom: 1px solid #f8fafc;
+        transition: background .12s;
+    }
+
+    .um-table tbody tr:last-child { border-bottom: none; }
+
+    .um-table tbody tr:hover { background: #fafbff; }
+
+    .um-table tbody td {
+        padding: .95rem 1.25rem;
+        vertical-align: middle;
+        font-size: .9rem;
+        color: var(--um-text);
+    }
+
+    /* ── Avatar ── */
+    .um-avatar-wrap {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+    }
+
+    .um-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        font-size: .78rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        letter-spacing: .03em;
+        position: relative;
+    }
+
+    .um-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .um-avatar-initials {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .78rem;
+        font-weight: 800;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .um-status-dot {
+        position: absolute;
+        bottom: 1px;
+        right: 1px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+    }
+
+    .um-avatar-meta {
+        min-width: 0;
+    }
+
+    .um-user-name {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: .9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+    }
+
+    .um-user-email {
+        font-size: .78rem;
+        color: #64748b;
+        margin-top: .1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+    }
+
+    /* ── Role Badge ── */
+    .um-role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .75rem;
+        border-radius: 20px;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    /* ── Status Badge ── */
+    .um-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .3rem .7rem;
+        border-radius: 20px;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .um-status-badge .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .um-status-active  { background: #f0fdf4; color: #16a34a; }
+    .um-status-active  .dot { background: #22c55e; }
+
+    .um-status-banned  { background: #fef2f2; color: #dc2626; }
+    .um-status-banned  .dot { background: #ef4444; }
+
+    .um-status-inactive { background: #f8fafc; color: #64748b; }
+    .um-status-inactive .dot { background: #94a3b8; }
+
+    /* ── Action Buttons ── */
+    .um-actions {
+        display: flex;
+        gap: .4rem;
+        align-items: center;
+    }
+
+    .um-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .82rem;
+        cursor: pointer;
+        transition: all .15s;
+        text-decoration: none;
+        color: #64748b;
+    }
+
+    .um-action-btn:hover { transform: translateY(-1px); }
+
+    .um-action-btn.view:hover      { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
+    .um-action-btn.lock:hover      { background: #fee2e2; border-color: #fca5a5; color: #ef4444; }
+    .um-action-btn.lock-timed:hover { background: #fef3c7; border-color: #fde68a; color: #d97706; }
+    .um-action-btn.unlock:hover    { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
+
+    /* ── Pagination ── */
+    .um-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .um-page-info {
+        font-size: .82rem;
+        color: #64748b;
+    }
+
+    .um-page-info strong { color: #0f172a; }
+
+    .um-page-nav {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .um-page-nav a,
+    .um-page-nav span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        font-size: .82rem;
+        font-weight: 600;
+        border: 1px solid transparent;
+        color: #0f172a;
+        text-decoration: none;
+        transition: all .15s;
+        background: transparent;
+    }
+
+    .um-page-nav a:hover        { background: #f1f5f9; border-color: #e2e8f0; }
+    .um-page-nav .active a,
+    .um-page-nav .active span   { background: #1e40af; color: #fff; border-color: #1e40af; }
+    .um-page-nav .disabled a,
+    .um-page-nav .disabled span { color: #cbd5e1; pointer-events: none; }
+
+    .um-page-nav .ellipsis span { cursor: default; color: #94a3b8; }
+
+    /* ── Stat Cards ── */
+    .um-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .um-stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .um-stat-card {
+        background: var(--um-card-bg);
+        border-radius: var(--um-radius);
+        border: 1px solid var(--um-border);
+        box-shadow: var(--um-shadow);
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .um-stat-card::after {
+        content: '';
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        opacity: .06;
+        background: var(--stat-color, #1e40af);
+    }
+
+    .um-stat-label {
+        font-size: .7rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: .5rem;
+    }
+
+    .um-stat-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--um-text);
+        line-height: 1;
+        margin-bottom: .4rem;
+    }
+
+    .um-stat-sub {
+        font-size: .78rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    .um-stat-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        font-size: .75rem;
+        font-weight: 700;
+        padding: .15rem .5rem;
+        border-radius: 20px;
+    }
+
+    .um-stat-trend.up   { background: #f0fdf4; color: #16a34a; }
+    .um-stat-trend.warn { background: #fff7ed; color: #d97706; }
+
+    /* ── Empty state ── */
+    .um-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+
+    .um-empty i     { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
+    .um-empty p     { font-size: .88rem; margin: 0; }
+
+    /* ── Alert toasts ── */
+    .um-toast {
+        border-radius: 12px;
+        border: none;
+        padding: .9rem 1.25rem;
+        font-size: .9rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+    }
+
+    /* ── Lock modal ── */
+    .um-modal .modal-content {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0,0,0,.15);
+    }
+
+    .um-modal .modal-header { border-bottom: none; padding: 1.5rem 1.5rem .75rem; }
+    .um-modal .modal-body   { padding: .75rem 1.5rem 1.25rem; }
+    .um-modal .modal-footer { border-top: 1px solid #f1f5f9; padding: 1rem 1.5rem 1.25rem; }
+</style>
+
+<div class="um-page-wrapper">
+    <div class="container-fluid px-4">
+
+        @* Alerts *@
+        @if (TempData["Success"] != null)
+        {
+            <div class="um-toast alert-success">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                @TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="um-toast alert-danger">
+                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                @TempData["Error"]
+            </div>
+        }
+
+        @* Header *@
+        <div class="um-page-header">
+            <div>
+                <h1>Quản lý Người dùng</h1>
+                <p>Quản trị và phân quyền danh sách người dùng trong hệ thống.</p>
+            </div>
+            <a asp-action="CreateStaff" class="um-create-btn">
+                <i class="bi bi-person-plus-fill"></i> Tạo Tài khoản Mới
+            </a>
         </div>
-        <div class="card-body">
-            <form asp-action="Index" method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label">Tìm kiếm</label>
-                    <input type="text" name="searchTerm" class="form-control" placeholder="Tên hoặc Email..." value="@ViewBag.SearchTerm">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Vai trò</label>
-                    <select name="role" class="form-select">
-                        <option value="">Tất cả</option>
-                        <option value="Student" selected="@(ViewBag.Role == "Student")">Học viên</option>
-                        <option value="Staff" selected="@(ViewBag.Role == "Staff")">Nhân viên</option>
-                        <option value="Admin" selected="@(ViewBag.Role == "Admin")">Quản trị viên</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Trạng thái</label>
-                    <select name="status" class="form-select" asp-items="Html.GetEnumSelectList<UserStatusEnum>()">
-                        <option value="">Tất cả</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search me-2"></i>Tìm kiếm
-                    </button>
+
+        @* ── Filter Card ── *@
+        <div class="um-filter-card">
+            <div class="um-filter-label">
+                <i class="bi bi-funnel-fill"></i> Bộ lọc &amp; Tìm kiếm
+            </div>
+            <form asp-action="Index" method="get" id="filterForm">
+                <div class="um-filter-grid">
+                    <div>
+                        <label class="um-filter-field-label">TÌM KIẾM</label>
+                        <div class="um-search-wrapper">
+                            <i class="bi bi-search"></i>
+                            <input type="text"
+                                   name="searchTerm"
+                                   class="um-filter-input"
+                                   placeholder="Tên hoặc email..."
+                                   value="@ViewBag.SearchTerm" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="um-filter-field-label">VAI TRÒ</label>
+                        <select name="role" class="um-filter-select">
+                            <option value="">Tất cả vai trò</option>
+                            <option value="Student"   selected="@(ViewBag.Role?.ToString() == "Student"   ? "selected" : null)">Học viên</option>
+                            <option value="Organizer" selected="@(ViewBag.Role?.ToString() == "Organizer" ? "selected" : null)">Organizer</option>
+                            <option value="Approver"  selected="@(ViewBag.Role?.ToString() == "Approver"  ? "selected" : null)">Approver</option>
+                            <option value="Staff"     selected="@(ViewBag.Role?.ToString() == "Staff"     ? "selected" : null)">Staff</option>
+                            <option value="Admin"     selected="@(ViewBag.Role?.ToString() == "Admin"     ? "selected" : null)">Admin</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="um-filter-field-label">TRẠNG THÁI</label>
+                        <select name="status" class="um-filter-select">
+                            <option value="">Tất cả trạng thái</option>
+                            @foreach (var s in Html.GetEnumSelectList<UserStatusEnum>())
+                            {
+                                <option value="@s.Value" selected="@(ViewBag.Status?.ToString() == s.Value ? "selected" : null)">@s.Text</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:.5rem; align-items:center;">
+                        <button type="submit" class="um-filter-btn">
+                            <i class="bi bi-search"></i> Lọc kết quả
+                        </button>
+                        <a asp-action="Index" class="um-filter-reset">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
-    </div>
 
-    <!-- Data Table -->
-    <div class="card shadow mb-4">
-        <div class="card-body">
+        @* ── Users Table Card ── *@
+        <div class="um-table-card">
+            <div class="um-table-card-header">
+                <div class="um-table-section-label">
+                    <i class="bi bi-people-fill"></i>
+                    Người dùng
+                    <span class="um-count-pill">@Model.TotalCount</span>
+                </div>
+                <div style="font-size:.8rem; color:#94a3b8;">
+                    Trang @Model.PageNumber / @Model.TotalPages
+                    &nbsp;•&nbsp;
+                    Hiển thị @((Model.PageNumber - 1) * Model.PageSize + 1)–@Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)
+                    trong @Model.TotalCount người dùng
+                </div>
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle" width="100%" cellspacing="0">
-                    <thead class="table-light">
+                <table class="um-table">
+                    <thead>
                         <tr>
-                            <th class="text-center" style="width: 80px;">Avatar</th>
-                            <th>Họ và Tên</th>
-                            <th>Email</th>
-                            <th class="text-center">Vai trò</th>
-                            <th class="text-center">Ngày tạo</th>
-                            <th class="text-center">Trạng thái</th>
-                            <th class="text-center">Hành động</th>
+                            <th style="width:56px; text-align:center;">Avatar</th>
+                            <th>Người dùng</th>
+                            <th>Vai trò</th>
+                            <th>Ngày tạo</th>
+                            <th>Trạng thái</th>
+                            <th style="text-align:right;">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -87,50 +747,119 @@
                         {
                             foreach (var user in Model.Data)
                             {
-                                var statusInfo = GetStatusDetails(user.Status, user.IsBanned).Split('|');
+                                bool isBanned   = user.IsBanned == true;
+                                bool isActive   = user.Status == UserStatusEnum.Active && !isBanned;
+                                bool isInactive = user.Status != UserStatusEnum.Active && !isBanned;
+
+                                string statusClass = isBanned ? "um-status-banned"
+                                                   : isActive ? "um-status-active"
+                                                   : "um-status-inactive";
+
+                                string statusLabel = isBanned   ? "Đã khóa"
+                                                   : isActive   ? "Hoạt động"
+                                                   : "Không hoạt động";
+
+                                string dotStatusColor = isBanned ? "#ef4444"
+                                                      : isActive ? "#22c55e"
+                                                      : "#94a3b8";
                                 <tr>
-                                    <td class="text-center">
-                                        <img src="@(string.IsNullOrEmpty(user.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + user.FullName : user.AvatarUrl)" 
-                                             alt="@user.FullName" 
-                                             class="rounded-circle"
-                                             style="width: 40px; height: 40px; object-fit: cover;">
-                                    </td>
-                                    <td class="fw-bold">@user.FullName</td>
-                                    <td>@user.Email</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-@GetRoleBadgeClass(user.RoleName)">@user.RoleName</span>
-                                    </td>
-                                    <td class="text-center">
-                                        @(user.CreatedAt.HasValue ? user.CreatedAt.Value.ToString("dd/MM/yyyy") : "-")
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="d-inline-flex flex-column align-items-center gap-1">
-                                            <span class="@statusInfo[0]">@statusInfo[1]</span>
-                                            @if (user.ReactivateAt.HasValue && user.Status == UserStatusEnum.Inactive)
+                                    @* Avatar *@
+                                    <td style="text-align:center;">
+                                        <div style="position:relative; display:inline-flex;">
+                                            @if (!string.IsNullOrEmpty(user.AvatarUrl))
                                             {
-                                                <small class="text-muted">Mở khóa lúc: @user.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")</small>
-                                                <small class="text-primary fw-semibold lock-countdown" data-reactivate-at="@user.ReactivateAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></small>
+                                                <img src="@user.AvatarUrl"
+                                                     alt="@user.FullName"
+                                                     class="um-avatar"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                                <span class="um-avatar-initials"
+                                                      style="display:none; background:@GetAvatarBg(user.FullName);">
+                                                    @GetInitials(user.FullName)
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="um-avatar-initials"
+                                                      style="background:@GetAvatarBg(user.FullName);">
+                                                    @GetInitials(user.FullName)
+                                                </span>
+                                            }
+                                            <span class="um-status-dot"
+                                                  style="background:@dotStatusColor;"
+                                                  title="@statusLabel"></span>
+                                        </div>
+                                    </td>
+
+                                    @* User info *@
+                                    <td>
+                                        <div class="um-avatar-meta">
+                                            <div class="um-user-name">@user.FullName</div>
+                                            <div class="um-user-email">@user.Email</div>
+                                        </div>
+                                    </td>
+
+                                    @* Role Badge *@
+                                    <td>
+                                        <span class="um-role-badge"
+                                              style="background:@GetRoleBgColor(user.RoleName); color:@GetRoleBadgeColor(user.RoleName);">
+                                            @GetRoleLabel(user.RoleName)
+                                        </span>
+                                    </td>
+
+                                    @* Date *@
+                                    <td style="color:#64748b; font-size:.84rem;">
+                                        @(user.CreatedAt.HasValue ? user.CreatedAt.Value.ToString("dd/MM/yyyy") : "—")
+                                    </td>
+
+                                    @* Status *@
+                                    <td>
+                                        <div>
+                                            <span class="um-status-badge @statusClass">
+                                                <span class="dot"></span>
+                                                @statusLabel
+                                            </span>
+                                            @if (user.ReactivateAt.HasValue && isBanned)
+                                            {
+                                                <div style="font-size:.72rem; color:#94a3b8; margin-top:.25rem;">
+                                                    Mở lúc: @user.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")
+                                                </div>
+                                                <div style="font-size:.72rem; color:#4f46e5; font-weight:700;" class="lock-countdown" data-reactivate-at="@ToDateTimeLocalValue(user.ReactivateAt)"></div>
                                             }
                                         </div>
                                     </td>
-                                    <td class="text-center">
-                                        <div class="btn-group" role="group">
-                                            <a asp-action="Detail" asp-route-id="@user.Id" class="btn btn-sm btn-outline-info" title="Chi tiết">
+
+                                    @* Actions *@
+                                    <td>
+                                        <div class="um-actions" style="justify-content:flex-end;">
+                                            @* View Detail *@
+                                            <a asp-action="Detail"
+                                               asp-route-id="@user.Id"
+                                               class="um-action-btn view"
+                                               title="Xem chi tiết">
                                                 <i class="bi bi-eye"></i>
                                             </a>
 
-                                            @if (user.IsBanned == true)
+                                            @if (isBanned)
                                             {
-                                                <form asp-action="Unban" asp-route-id="@user.Id" method="post" style="display:inline;" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn mở khóa tài khoản này?');">
-                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Mở khóa">
-                                                        <i class="bi bi-unlock"></i>
+                                                @* Unlock Button *@
+                                                <form asp-action="Unban"
+                                                      asp-route-id="@user.Id"
+                                                      method="post"
+                                                      style="display:inline;"
+                                                      onsubmit="return confirmAction(event,'Mở khóa tài khoản @Html.Raw(user.FullName.Replace("'","\\'")));">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit"
+                                                            class="um-action-btn unlock"
+                                                            title="Mở khóa tài khoản">
+                                                        <i class="bi bi-unlock-fill"></i>
                                                     </button>
                                                 </form>
                                             }
                                             else
                                             {
+                                                @* Lock Manual *@
                                                 <button type="button"
-                                                        class="btn btn-sm btn-outline-danger open-lock-modal"
+                                                        class="um-action-btn lock open-lock-modal"
                                                         title="Khóa thủ công"
                                                         data-lock-mode="manual"
                                                         data-bs-toggle="modal"
@@ -138,11 +867,12 @@
                                                         data-user-id="@user.Id"
                                                         data-user-name="@user.FullName"
                                                         data-reactivate-at="@ToDateTimeLocalValue(user.ReactivateAt)">
-                                                    <i class="bi bi-lock"></i>
+                                                    <i class="bi bi-lock-fill"></i>
                                                 </button>
 
+                                                @* Lock Timed *@
                                                 <button type="button"
-                                                        class="btn btn-sm btn-outline-warning open-lock-modal"
+                                                        class="um-action-btn lock-timed open-lock-modal"
                                                         title="Khóa theo thời gian"
                                                         data-lock-mode="timed"
                                                         data-bs-toggle="modal"
@@ -161,30 +891,68 @@
                         else
                         {
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Không tìm thấy dữ liệu</td>
+                                <td colspan="6">
+                                    <div class="um-empty">
+                                        <i class="bi bi-person-slash"></i>
+                                        <p>Không tìm thấy người dùng nào phù hợp.</p>
+                                    </div>
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination -->
+            @* Pagination *@
             @if (Model.TotalPages > 1)
             {
-                <nav aria-label="Page navigation" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item @(!Model.HasPreviousPage ? "disabled" : "")">
-                            <a class="page-link" asp-action="Index" 
+                @* Determine page range to display (window of 5) *@
+                int windowSize = 5;
+                int halfWindow = windowSize / 2;
+                int startPage  = Math.Max(1, Model.PageNumber - halfWindow);
+                int endPage    = Math.Min(Model.TotalPages, startPage + windowSize - 1);
+                if (endPage - startPage + 1 < windowSize)
+                {
+                    startPage = Math.Max(1, endPage - windowSize + 1);
+                }
+
+                <div class="um-pagination">
+                    <div class="um-page-info">
+                        Hiển thị <strong>@((Model.PageNumber - 1) * Model.PageSize + 1)–@Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)</strong>
+                        trong <strong>@Model.TotalCount</strong> người dùng
+                    </div>
+
+                    <ul class="um-page-nav">
+                        <li class="@(!Model.HasPreviousPage ? "disabled" : "")">
+                            <a asp-action="Index"
                                asp-route-pageNumber="@(Model.PageNumber - 1)"
                                asp-route-searchTerm="@ViewBag.SearchTerm"
                                asp-route-role="@ViewBag.Role"
-                               asp-route-status="@ViewBag.Status">Trước</a>
+                               asp-route-status="@ViewBag.Status"
+                               title="Trang trước">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
                         </li>
-                        
-                        @for (int i = 1; i <= Model.TotalPages; i++)
+
+                        @if (startPage > 1)
                         {
-                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                                <a class="page-link" asp-action="Index" 
+                            <li>
+                                <a asp-action="Index"
+                                   asp-route-pageNumber="1"
+                                   asp-route-searchTerm="@ViewBag.SearchTerm"
+                                   asp-route-role="@ViewBag.Role"
+                                   asp-route-status="@ViewBag.Status">1</a>
+                            </li>
+                            @if (startPage > 2)
+                            {
+                                <li class="ellipsis"><span>…</span></li>
+                            }
+                        }
+
+                        @for (int i = startPage; i <= endPage; i++)
+                        {
+                            <li class="@(i == Model.PageNumber ? "active" : "")">
+                                <a asp-action="Index"
                                    asp-route-pageNumber="@i"
                                    asp-route-searchTerm="@ViewBag.SearchTerm"
                                    asp-route-role="@ViewBag.Role"
@@ -192,25 +960,75 @@
                             </li>
                         }
 
-                        <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
-                            <a class="page-link" asp-action="Index" 
+                        @if (endPage < Model.TotalPages)
+                        {
+                            @if (endPage < Model.TotalPages - 1)
+                            {
+                                <li class="ellipsis"><span>…</span></li>
+                            }
+                            <li>
+                                <a asp-action="Index"
+                                   asp-route-pageNumber="@Model.TotalPages"
+                                   asp-route-searchTerm="@ViewBag.SearchTerm"
+                                   asp-route-role="@ViewBag.Role"
+                                   asp-route-status="@ViewBag.Status">@Model.TotalPages</a>
+                            </li>
+                        }
+
+                        <li class="@(!Model.HasNextPage ? "disabled" : "")">
+                            <a asp-action="Index"
                                asp-route-pageNumber="@(Model.PageNumber + 1)"
                                asp-route-searchTerm="@ViewBag.SearchTerm"
                                asp-route-role="@ViewBag.Role"
-                               asp-route-status="@ViewBag.Status">Sau</a>
+                               asp-route-status="@ViewBag.Status"
+                               title="Trang sau">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
                         </li>
                     </ul>
-                </nav>
+                </div>
             }
         </div>
-    </div>
 
-<div class="modal fade" id="lockUserModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+        @* ── Stat Cards ── *@
+        <div class="um-stats-grid">
+            <div class="um-stat-card" style="--stat-color:#1e40af; border-top: 3px solid #1e40af;">
+                <div class="um-stat-label">Tổng cộng</div>
+                <div class="um-stat-value">@Model.TotalCount.ToString("N0")</div>
+                <span class="um-stat-trend up"><i class="bi bi-graph-up-arrow"></i> Người dùng trong hệ thống</span>
+            </div>
+
+            <div class="um-stat-card" style="--stat-color:#22c55e; border-top: 3px solid #22c55e;">
+                <div class="um-stat-label">Đang hoạt động</div>
+                <div class="um-stat-value" style="color:#16a34a;">@activeCount</div>
+                <p class="um-stat-sub">
+                    Tỷ lệ: @(Model.TotalCount > 0 ? (activeCount * 100 / Model.TotalCount) : 0)% tổng hệ thống
+                </p>
+            </div>
+
+            <div class="um-stat-card" style="--stat-color:#ef4444; border-top: 3px solid #ef4444;">
+                <div class="um-stat-label">Bị hạn chế</div>
+                <div class="um-stat-value" style="color:#dc2626;">@bannedCount</div>
+                <p class="um-stat-sub">Yêu cầu xem xét: @bannedCount tài khoản</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@* ── Lock User Modal ── *@
+<div class="modal fade um-modal" id="lockUserModal" tabindex="-1" aria-labelledby="lockModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form id="lockUserForm" asp-action="Ban" method="post" onsubmit="return confirmAction(event, 'Bạn có chắc chắn muốn khóa tài khoản này?');">
+                @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title" id="lockModalTitle">Khóa tài khoản</h5>
+                    <div>
+                        <h5 class="modal-title fw-bold text-danger" id="lockModalTitle">
+                            <i class="bi bi-lock-fill me-2"></i>Khóa tài khoản
+                        </h5>
+                        <p class="text-muted small mb-0">Hành động này sẽ ngăn người dùng đăng nhập.</p>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -218,46 +1036,50 @@
                     <input type="hidden" name="Status" value="Inactive" />
 
                     <div class="mb-3">
-                        <label class="form-label">Người dùng</label>
-                        <input type="text" id="lockUserName" class="form-control" readonly />
+                        <label class="form-label fw-semibold small">Người dùng</label>
+                        <input type="text" id="lockUserName" class="form-control form-control-sm rounded-3 bg-light" readonly />
                     </div>
 
                     <div class="mb-2 d-none" id="lockReactivateAtWrapper">
-                        <label for="lockReactivateAt" class="form-label">Mở khóa tự động lúc</label>
+                        <label class="form-label fw-semibold small">Mở khóa tự động sau</label>
                         <div class="row g-2">
-                                <div class="col-4">
-                                    <label class="form-label small text-muted">Số năm</label>
-                                    <input type="number" id="lockYear" class="form-control" min="0" placeholder="0" />
-                                </div>
-                                <div class="col-4">
-                                    <label class="form-label small text-muted">Số tháng</label>
-                                    <input type="number" id="lockMonth" class="form-control" min="0" placeholder="0" />
-                                </div>
-                                <div class="col-4">
-                                    <label class="form-label small text-muted">Số ngày</label>
-                                    <input type="number" id="lockDay" class="form-control" min="0" placeholder="0" />
-                                </div>
-                                <div class="col-4">
-                                    <label class="form-label small text-muted">Số giờ</label>
-                                    <input type="number" id="lockHour" class="form-control" min="0" placeholder="0" />
-                                </div>
-                                <div class="col-4">
-                                    <label class="form-label small text-muted">Số phút</label>
-                                    <input type="number" id="lockMinute" class="form-control" min="0" placeholder="0" />
-                                </div>
-                                <div class="col-4">
-                                    <label class="form-label small text-muted">Số giây</label>
-                                    <input type="number" id="lockSecond" class="form-control" min="0" placeholder="0" />
-                                </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Số năm</label>
+                                <input type="number" id="lockYear" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Số tháng</label>
+                                <input type="number" id="lockMonth" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Số ngày</label>
+                                <input type="number" id="lockDay" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Số giờ</label>
+                                <input type="number" id="lockHour" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Số phút</label>
+                                <input type="number" id="lockMinute" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Số giây</label>
+                                <input type="number" id="lockSecond" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
                         </div>
                         <input type="hidden" id="lockReactivateAt" name="ReactivateAt" />
                     </div>
 
-                    <small class="text-muted d-block" id="lockReactivatePreview">Khóa thủ công sẽ chỉ mở khi admin mở khóa.</small>
+                    <div class="alert alert-warning py-2 px-3 small mt-3 mb-0 rounded-3" id="lockReactivatePreview">
+                        Khóa thủ công sẽ chỉ mở khi admin mở khóa.
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-danger">Xác nhận khóa</button>
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">
+                        <i class="bi bi-lock-fill me-2"></i>Xác nhận khóa
+                    </button>
                 </div>
             </form>
         </div>
@@ -265,169 +1087,137 @@
 </div>
 
 @section Scripts {
-    <script>
-        (() => {
-            const lockModalButtons = document.querySelectorAll('.open-lock-modal');
-            const lockUserForm = document.getElementById('lockUserForm');
-            const lockUserId = document.getElementById('lockUserId');
-            const lockUserName = document.getElementById('lockUserName');
-            const lockModalTitle = document.getElementById('lockModalTitle');
-            const lockReactivateAtWrapper = document.getElementById('lockReactivateAtWrapper');
-            const lockYear = document.getElementById('lockYear');
-            const lockMonth = document.getElementById('lockMonth');
-            const lockDay = document.getElementById('lockDay');
-            const lockHour = document.getElementById('lockHour');
-            const lockMinute = document.getElementById('lockMinute');
-            const lockSecond = document.getElementById('lockSecond');
-            const lockReactivateAt = document.getElementById('lockReactivateAt');
-            const lockReactivatePreview = document.getElementById('lockReactivatePreview');
-            const pad = value => value.toString().padStart(2, '0');
-            const formatDateTimeLocal = value => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
-            const formatDateTimeDisplay = value => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
-            let currentLockMode = 'manual';
+<script>
+    // ─── Lock Modal Logic ──────────────────────────────────────────────────────
+    (() => {
+        const lockModalButtons       = document.querySelectorAll('.open-lock-modal');
+        const lockUserForm           = document.getElementById('lockUserForm');
+        const lockUserId             = document.getElementById('lockUserId');
+        const lockUserName           = document.getElementById('lockUserName');
+        const lockModalTitle         = document.getElementById('lockModalTitle');
+        const lockReactivateAtWrapper = document.getElementById('lockReactivateAtWrapper');
+        const lockYear               = document.getElementById('lockYear');
+        const lockMonth              = document.getElementById('lockMonth');
+        const lockDay                = document.getElementById('lockDay');
+        const lockHour               = document.getElementById('lockHour');
+        const lockMinute             = document.getElementById('lockMinute');
+        const lockSecond             = document.getElementById('lockSecond');
+        const lockReactivateAt       = document.getElementById('lockReactivateAt');
+        const lockReactivatePreview  = document.getElementById('lockReactivatePreview');
 
-            const setTimedInputs = value => {
-                if (!lockYear || !lockMonth || !lockDay || !lockHour || !lockMinute || !lockSecond) {
-                    return;
-                }
+        const pad = v => v.toString().padStart(2, '0');
+        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        const fmtDisplay = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-                if (!value) {
-                    lockYear.value = '';
-                    lockMonth.value = '';
-                    lockDay.value = '';
-                    lockHour.value = '';
-                    lockMinute.value = '';
-                    lockSecond.value = '';
-                    return;
-                }
+        let currentLockMode = 'manual';
 
-                const date = new Date(value);
-                if (Number.isNaN(date.getTime())) {
-                    setTimedInputs('');
-                    return;
-                }
+        const setTimedInputs = value => {
+            if (!lockYear) return;
+            if (!value) { [lockYear,lockMonth,lockDay,lockHour,lockMinute,lockSecond].forEach(el => el && (el.value = '')); return; }
+            const date = new Date(value);
+            if (isNaN(date.getTime())) { setTimedInputs(''); return; }
+            lockYear.value   = date.getFullYear();
+            lockMonth.value  = date.getMonth() + 1;
+            lockDay.value    = date.getDate();
+            lockHour.value   = date.getHours();
+            lockMinute.value = date.getMinutes();
+            lockSecond.value = date.getSeconds();
+        };
 
-                lockYear.value = date.getFullYear();
-                lockMonth.value = date.getMonth() + 1;
-                lockDay.value = date.getDate();
-                lockHour.value = date.getHours();
-                lockMinute.value = date.getMinutes();
-                lockSecond.value = date.getSeconds();
-            };
+        const updateTimedLockValue = () => {
+            const years   = parseInt(lockYear?.value   || '0', 10);
+            const months  = parseInt(lockMonth?.value  || '0', 10);
+            const days    = parseInt(lockDay?.value    || '0', 10);
+            const hours   = parseInt(lockHour?.value   || '0', 10);
+            const minutes = parseInt(lockMinute?.value || '0', 10);
+            const seconds = parseInt(lockSecond?.value || '0', 10);
 
-            const updateTimedLockValue = () => {
-                if (!lockYear || !lockMonth || !lockDay || !lockHour || !lockMinute || !lockSecond || !lockReactivateAt || !lockReactivatePreview) {
-                    return;
-                }
-
-                const years = Number.parseInt(lockYear.value || '0', 10);
-                const months = Number.parseInt(lockMonth.value || '0', 10);
-                const days = Number.parseInt(lockDay.value || '0', 10);
-                const hours = Number.parseInt(lockHour.value || '0', 10);
-                const minutes = Number.parseInt(lockMinute.value || '0', 10);
-                const seconds = Number.parseInt(lockSecond.value || '0', 10);
-
-                if ([years, months, days, hours, minutes, seconds].some(value => Number.isNaN(value) || value < 0)) {
-                    lockReactivateAt.value = '';
-                    lockReactivatePreview.textContent = 'Các giá trị phải lớn hơn hoặc bằng 0.';
-                    return;
-                }
-
-                if (![years, months, days, hours, minutes, seconds].some(value => value > 0)) {
-                    lockReactivateAt.value = '';
-                    lockReactivatePreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
-                    return;
-                }
-
-                const unlockAt = new Date();
-                unlockAt.setFullYear(unlockAt.getFullYear() + years);
-                unlockAt.setMonth(unlockAt.getMonth() + months);
-                unlockAt.setDate(unlockAt.getDate() + days);
-                unlockAt.setHours(unlockAt.getHours() + hours);
-                unlockAt.setMinutes(unlockAt.getMinutes() + minutes);
-                unlockAt.setSeconds(unlockAt.getSeconds() + seconds);
-
-                lockReactivateAt.value = formatDateTimeLocal(unlockAt);
-                lockReactivatePreview.textContent = `Tài khoản sẽ tự mở khóa lúc ${formatDateTimeDisplay(unlockAt)}.`;
-            };
-
-            const applyLockMode = (mode, reactivateAtValue = '') => {
-                if (!lockReactivateAtWrapper || !lockReactivateAt || !lockReactivatePreview || !lockModalTitle) {
-                    return;
-                }
-
-                currentLockMode = mode;
-
-                if (mode === 'timed') {
-                    lockModalTitle.textContent = 'Khóa tài khoản theo thời gian';
-                    lockReactivateAtWrapper.classList.remove('d-none');
-                    lockReactivateAt.required = true;
-                    setTimedInputs(reactivateAtValue);
-                    updateTimedLockValue();
-                    if (!lockReactivateAt.value) {
-                        lockReactivatePreview.textContent = 'Nhập theo thứ tự năm, tháng, ngày, giờ, phút, giây. Có thể để trống hoặc 0, nhưng ít nhất 1 trường phải lớn hơn 0.';
-                    }
-                    return;
-                }
-
-                lockModalTitle.textContent = 'Khóa tài khoản thủ công';
-                lockReactivateAtWrapper.classList.add('d-none');
-                lockReactivateAt.required = false;
+            const vals = [years, months, days, hours, minutes, seconds];
+            if (vals.some(v => isNaN(v) || v < 0)) {
                 lockReactivateAt.value = '';
-                setTimedInputs('');
-                lockReactivatePreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
-            };
+                lockReactivatePreview.textContent = 'Các giá trị phải lớn hơn hoặc bằng 0.';
+                return;
+            }
+            if (!vals.some(v => v > 0)) {
+                lockReactivateAt.value = '';
+                lockReactivatePreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                return;
+            }
+            const unlockAt = new Date();
+            unlockAt.setFullYear(unlockAt.getFullYear() + years);
+            unlockAt.setMonth(unlockAt.getMonth() + months);
+            unlockAt.setDate(unlockAt.getDate() + days);
+            unlockAt.setHours(unlockAt.getHours() + hours);
+            unlockAt.setMinutes(unlockAt.getMinutes() + minutes);
+            unlockAt.setSeconds(unlockAt.getSeconds() + seconds);
+            lockReactivateAt.value = fmt(unlockAt);
+            lockReactivatePreview.textContent = `Tài khoản sẽ tự mở khóa lúc ${fmtDisplay(unlockAt)}.`;
+        };
 
-            lockModalButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    lockUserId.value = button.dataset.userId;
-                    lockUserName.value = button.dataset.userName;
-                    applyLockMode(button.dataset.lockMode, button.dataset.reactivateAt || '');
-                });
+        const applyLockMode = (mode, reactivateAtValue = '') => {
+            currentLockMode = mode;
+            if (mode === 'timed') {
+                lockModalTitle.innerHTML = '<i class="bi bi-clock-history me-2"></i>Khóa tài khoản theo thời gian';
+                lockReactivateAtWrapper.classList.remove('d-none');
+                lockReactivateAt.required = true;
+                setTimedInputs(reactivateAtValue);
+                updateTimedLockValue();
+                if (!lockReactivateAt.value) lockReactivatePreview.textContent = 'Nhập theo thứ tự năm, tháng, ngày, giờ, phút, giây.';
+                return;
+            }
+            lockModalTitle.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Khóa tài khoản thủ công';
+            lockReactivateAtWrapper.classList.add('d-none');
+            lockReactivateAt.required = false;
+            lockReactivateAt.value = '';
+            setTimedInputs('');
+            lockReactivatePreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
+        };
+
+        lockModalButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                lockUserId.value  = btn.dataset.userId;
+                lockUserName.value = btn.dataset.userName;
+                applyLockMode(btn.dataset.lockMode, btn.dataset.reactivateAt || '');
             });
+        });
 
-            [lockYear, lockMonth, lockDay, lockHour, lockMinute, lockSecond].forEach(input => {
-                input?.addEventListener('input', updateTimedLockValue);
-            });
+        [lockYear, lockMonth, lockDay, lockHour, lockMinute, lockSecond].forEach(el => {
+            el?.addEventListener('input', updateTimedLockValue);
+        });
 
-            lockUserForm?.addEventListener('submit', event => {
-                if (currentLockMode === 'timed' && !lockReactivateAt.value) {
-                    event.preventDefault();
-                    lockReactivatePreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
-                }
-            });
+        lockUserForm?.addEventListener('submit', e => {
+            if (currentLockMode === 'timed' && !lockReactivateAt.value) {
+                e.preventDefault();
+                lockReactivatePreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+            }
+        });
 
-            applyLockMode('manual');
+        applyLockMode('manual');
 
-            const countdownElements = document.querySelectorAll('.lock-countdown');
-            const updateCountdown = element => {
-                const unlockAt = new Date(element.dataset.reactivateAt);
-                const remaining = unlockAt.getTime() - Date.now();
+        // ─── Countdown Timers for locked accounts ────────────────────────────
+        const countdownElements = document.querySelectorAll('.lock-countdown');
+        const updateCountdown = el => {
+            const unlockAt  = new Date(el.dataset.reactivateAt);
+            const remaining = unlockAt.getTime() - Date.now();
+            if (isNaN(unlockAt.getTime())) { el.textContent = ''; return; }
+            if (remaining <= 0) { el.textContent = 'Đang chờ tự mở khóa...'; return; }
+            const totalSec = Math.floor(remaining / 1000);
+            const d = Math.floor(totalSec / 86400);
+            const h = Math.floor((totalSec % 86400) / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            el.textContent = `Còn lại: ${d > 0 ? d + 'd ' : ''}${pad(h)}:${pad(m)}:${pad(s)}`;
+        };
+        countdownElements.forEach(el => {
+            updateCountdown(el);
+            setInterval(() => updateCountdown(el), 1000);
+        });
+    })();
 
-                if (Number.isNaN(unlockAt.getTime())) {
-                    element.textContent = '';
-                    return;
-                }
-
-                if (remaining <= 0) {
-                    element.textContent = 'Đang chờ tự mở khóa...';
-                    return;
-                }
-
-                const totalSeconds = Math.floor(remaining / 1000);
-                const days = Math.floor(totalSeconds / 86400);
-                const hours = Math.floor((totalSeconds % 86400) / 3600);
-                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                const seconds = totalSeconds % 60;
-                const dayText = days > 0 ? `${days}d ` : '';
-                element.textContent = `Còn lại: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-            };
-
-            countdownElements.forEach(element => {
-                updateCountdown(element);
-                window.setInterval(() => updateCountdown(element), 1000);
-            });
-        })();
-    </script>
+    // ─── Confirm wrapper ──────────────────────────────────────────────────────
+    function confirmAction(event, message) {
+        if (!confirm(message)) { event.preventDefault(); return false; }
+        return true;
+    }
+</script>
 }
-</div>
