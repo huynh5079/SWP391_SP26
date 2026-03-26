@@ -27,7 +27,8 @@
                     <th>Location</th>
                     <th>Time</th>
                     <th>Status</th>
-                    <th>Action<th/>
+                    <th class="text-center">Action</th>
+                    <th style="width: 200px;">Event Performance</th>
                 </tr>
             </thead>
             <tbody>
@@ -50,35 +51,110 @@
                         <td>
                             <span class="badge bg-secondary">Expired</span>
                         </td>
-                         <td class="text-center align-middle">
-                                <div class="d-flex flex-wrap gap-1 justify-content-center align-items-center" style="max-width: 320px; margin: 0 auto;">
-                                    <style>
-                                                                .action-pill {
-                                                                    min-width: 90px;
-                                                                    text-align: center;
-                                                                }
-                                    </style>
-                                    <a class="btn btn-sm btn-info fw-semibold" asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId">View</a>
-                                    @if (e.IsOwnedByCurrentUser)
+                        <td class="text-center align-middle">
+                            <div class="d-flex flex-wrap gap-1 justify-content-center align-items-center" style="max-width: 320px; margin: 0 auto;">
+                                <style>
+                                    .action-pill {
+                                        min-width: 90px;
+                                        text-align: center;
+                                    }
+                                </style>
+                                <a class="btn btn-sm btn-info fw-semibold" asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId">View</a>
+                                @if (e.IsOwnedByCurrentUser)
+                                {
+                                    @if (e.CanEdit)
                                     {
-                                        @if (e.CanEdit)
-                                        {
-                                            <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
-                                        }
-                                        
-                                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="operation" value="softdelete" />
-                                            <input type="hidden" name="id" value="@e.EventId" />
-                                            <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
-                                        </form>
+                                        <a asp-action="Edit" asp-route-id="@e.EventId" class="btn btn-sm btn-warning fw-semibold">Edit</a>
                                     }
 
-                                </div>
-                         </td>
+                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="operation" value="softdelete" />
+                                        <input type="hidden" name="id" value="@e.EventId" />
+                                        <button type="submit" class="btn btn-sm btn-danger fw-semibold action-pill" onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">Delete</button>
+                                    </form>
+                                }
+
+                            </div>
+                        </td>
+                        <td class="text-center align-middle">
+                            <div style="height: 120px; width: 180px; margin: 0 auto;">
+                                @if (e.AvgRating > 0)
+                                {
+                                    <canvas id="chart-@e.EventId"></canvas>
+                                }
+                                else
+                                {
+                                    <div class="h-100 d-flex align-items-center justify-content-center">
+                                        <small class="text-muted">No data</small>
+                                    </div>
+                                }
+                            </div>
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
     }
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            @foreach (var e in Model.Events.Where(x => x.AvgRating > 0))
+            {
+                <text>
+                (function() {
+                    const ctx = document.getElementById('chart-@e.EventId').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Tech', 'Content', 'Inst', 'Assess', 'Gen'],
+                            datasets: [{
+                                label: 'Sentiment Score',
+                                data: [
+                                    @e.TechnicalAvg.ToString("F2"),
+                                    @e.ContentAvg.ToString("F2"),
+                                    @e.InstructorAvg.ToString("F2"),
+                                    @e.AssessmentAvg.ToString("F2"),
+                                    @e.GeneralSentimentAvg.ToString("F2")
+                                ],
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.7)',
+                                    'rgba(54, 162, 235, 0.7)',
+                                    'rgba(255, 206, 86, 0.7)',
+                                    'rgba(75, 192, 192, 0.7)',
+                                    'rgba(153, 102, 255, 0.7)'
+                                ],
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'x',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { enabled: true }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 1,
+                                    ticks: { display: false },
+                                    grid: { display: false }
+                                },
+                                x: {
+                                    ticks: { font: { size: 9 } },
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+                })();
+                </text>
+            }
+        });
+    </script>
+}

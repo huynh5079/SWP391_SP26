@@ -696,7 +696,7 @@ public partial class AEMSContext : DbContext
 			entity.Property(e => e.Technical);
 			entity.Property(e => e.Content);
 			entity.Property(e => e.Instructor);
-			entity.Property(e => e.Asessment);
+			entity.Property(e => e.Assessment).HasColumnName("Asessment");
 			entity.Property(e => e.Label_Text).HasMaxLength(50);
 			entity.Property(e => e.Technical_Text).HasMaxLength(50);
 			entity.Property(e => e.Content_Text).HasMaxLength(50);

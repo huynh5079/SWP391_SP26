@@ -30,7 +30,7 @@ public partial class Feedback : BaseEntity
     public int? Technical { get; set; }
     public int? Content { get; set; }
     public int? Instructor { get; set; }
-    public int? Asessment { get; set; }
+    public int? Assessment { get; set; }
     public string? Label_Text { get; set; }
     public string? Technical_Text { get; set; }
     public string? Content_Text { get; set; }

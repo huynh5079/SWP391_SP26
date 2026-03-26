@@ -9,7 +9,8 @@ using System.Data;
 using BusinessLogic.Helper;
 using BusinessLogic.Service.System;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
-using BusinessLogic.DTOs.Event.Quiz.QuizForAll;
+using BusinessLogic.DTOs.Event.EventFeedbackSummary;
+using BusinessLogic.Service.Event.Sub_Service.Feedback.DeepLearningService;
 
 namespace BusinessLogic.Service.Student
 {
@@ -19,13 +20,20 @@ namespace BusinessLogic.Service.Student
         private readonly IEmailService _emailService;
         private readonly ISystemErrorLogService _errorLogService;
         private readonly INotificationService _notificationService;
+        private readonly DLService _dlService;
 
-        public StudentEventService(IUnitOfWork uow, IEmailService emailService, ISystemErrorLogService errorLogService, INotificationService notificationService)
+        public StudentEventService(
+            IUnitOfWork uow, 
+            IEmailService emailService, 
+            ISystemErrorLogService errorLogService, 
+            INotificationService notificationService,
+            DLService dlService)
         {
             _uow = uow;
             _emailService = emailService;
             _errorLogService = errorLogService;
             _notificationService = notificationService;
+            _dlService = dlService;
         }
 
         // ─── Helper: resolve StudentProfile.Id from User.Id ───────────────────
@@ -660,6 +668,30 @@ namespace BusinessLogic.Service.Student
                 existingFeedback.UpdatedAt = now;
 
                 await _uow.Feedbacks.UpdateAsync(existingFeedback);
+            }
+
+            // Integrate Deep Learning Sentiment Analysis
+            if (!string.IsNullOrWhiteSpace(dto.Comment))
+            {
+                var analysis = await _dlService.AnalyzeFeedbackAsync(dto.Comment, eventId);
+                var target = existingFeedback ?? (await _uow.Feedbacks.GetAsync(f => f.EventId == eventId && f.StudentId == profile.Id && f.DeletedAt == null));
+                
+                if (analysis != null && target != null)
+                {
+                    target.Label = analysis.Label;
+                    target.Technical = analysis.Technical;
+                    target.Content = analysis.Content;
+                    target.Instructor = analysis.Instructor;
+                    target.Assessment = analysis.Assessment;
+
+                    target.Label_Text = analysis.Label_Text;
+                    target.Technical_Text = analysis.Technical_Text;
+                    target.Content_Text = analysis.Content_Text;
+                    target.Instructor_Text = analysis.Instructor_Text;
+                    target.Assessment_Text = analysis.Assessment_Text;
+                    
+                    await _uow.Feedbacks.UpdateAsync(target);
+                }
             }
 
             await _uow.SaveChangesAsync();

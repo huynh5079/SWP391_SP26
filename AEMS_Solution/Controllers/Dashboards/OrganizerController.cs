@@ -10,6 +10,7 @@ using AEMS_Solution.Models.Organizer.Manage;
 using AutoMapper;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
+using BusinessLogic.Service.Event.Sub_Service.Feedback;
 using BusinessLogic.Service.Organizer;
 using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
@@ -32,6 +33,7 @@ namespace AEMS_Solution.Controllers.Dashboards
         private readonly IUnitOfWork _unitOfWork;
         private readonly IEventService _eventService;
         private readonly BusinessLogic.Storage.IFileStorageService _fileStorageService;
+        private readonly IFeedBackService _feedbackService;
 
         public OrganizerController(
             IOrganizerService organizerService,
@@ -39,7 +41,8 @@ namespace AEMS_Solution.Controllers.Dashboards
             IMapper mapper,
             ILocationService locationService,
             IUnitOfWork unitOfWork,
-            BusinessLogic.Storage.IFileStorageService fileStorageService)
+            BusinessLogic.Storage.IFileStorageService fileStorageService,
+            IFeedBackService feedbackService)
         {
             _organizerService = organizerService;
             _eventService = eventService;
@@ -47,6 +50,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             _locationService = locationService;
             _unitOfWork = unitOfWork;
             _fileStorageService = fileStorageService;
+            _feedbackService = feedbackService;
         }
 
         [HttpGet]
@@ -92,6 +96,9 @@ namespace AEMS_Solution.Controllers.Dashboards
 
                     case "manageticket":
                         return await ManageTicket(search);
+
+                    case "reanalyze-sentiment":
+                        return await ReAnalyzeSentiment(id);
 
                     default:
                         return BadRequest("Operation không hợp lệ.");
@@ -142,6 +149,36 @@ namespace AEMS_Solution.Controllers.Dashboards
                 SetError("Đã xảy ra lỗi khi tải thống kê vé.");
                 return View("~/Views/Ticket/ManageTicket.cshtml", new ManageTicketViewModel());
             }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ReAnalyzeSentiment(string id)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (string.IsNullOrEmpty(id)) return BadRequest("Event ID is required.");
+
+            try
+            {
+                // Verify ownership
+                var ev = await _unitOfWork.Events.GetAsync(e => e.Id == id && e.DeletedAt == null);
+                if (ev == null) return NotFound("Event not found.");
+                if (ev.OrganizerId != GetOrganizerProfileId()) return Forbid();
+
+                int count = await _feedbackService.AnalyzeEventFeedbacksAsync(id);
+                SetSuccess($"Đã đồng bộ và phân tích xong {count} đánh giá.");
+            }
+            catch (Exception ex)
+            {
+                SetError($"Lỗi khi đồng bộ cảm xúc: {ex.Message}");
+            }
+
+            return RedirectToAction("Manage", new { operation = "myevents" });
+        }
+
+        private string GetOrganizerProfileId()
+        {
+             var profile = _unitOfWork.StaffProfiles.GetAsync(sp => sp.UserId == CurrentUserId).Result;
+             return profile?.Id ?? string.Empty;
         }
 
         [HttpPost]
@@ -252,6 +289,10 @@ namespace AEMS_Solution.Controllers.Dashboards
                     case "detailevent":
                     case "detail":
                         return await DetailEvent(id);
+
+                    case "reanalyze-sentiment":
+                        return await ReAnalyzeSentiment(id);
+
                     default:
                         return BadRequest("Operation không hợp lệ.");
                 }

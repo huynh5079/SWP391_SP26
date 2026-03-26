@@ -97,7 +97,7 @@
                             </a>
                         </li>
                         <li class="nav-item mb-1">
-                            <a class="nav-link py-1 px-3 fs-6 @(Context.Request.Query["status"] == "Expired" ? "active" : "")" asp-controller="Organizer" asp-action="MyEvents" asp-route-status="Expired">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Event" && currentAct == "ExpiredEvent" ? "active" : "")" asp-controller="Event" asp-action="ExpiredEvent">
                                 <i class="bi bi-clock-history me-2 fs-6"></i> Expired Events
                             </a>
                         </li>

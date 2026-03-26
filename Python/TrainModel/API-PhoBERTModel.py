@@ -34,16 +34,16 @@ class FeedbackRequest(BaseModel):
 class FeedbackResponse(BaseModel):
     eventId: str
     comment: str
-    label: int
-    label_text: str
-    technical: int
-    technical_text: str
-    content: int
-    content_text: str
-    instructor: int
-    instructor_text: str
-    asessment: int
-    assessment_text: str
+    Label: int
+    Label_Text: str
+    Technical: int
+    Technical_Text: str
+    Content: int
+    Content_Text: str
+    Instructor: int
+    Instructor_Text: str
+    Assessment: int
+    Assessment_Text: str
 
 @app.post("/predict", response_model=FeedbackResponse)
 async def predict(request: FeedbackRequest):
@@ -65,16 +65,16 @@ async def predict(request: FeedbackRequest):
     return FeedbackResponse(
         eventId=request.eventId,
         comment=request.comment,
-        label=prediction,
-        label_text=label_text,
-        technical=prediction,
-        technical_text=label_text,
-        content=prediction,
-        content_text=label_text,
-        instructor=prediction,
-        instructor_text=label_text,
-        asessment=prediction,
-        assessment_text=label_text
+        Label=prediction,
+        Label_Text=label_text,
+        Technical=prediction,
+        Technical_Text=label_text,
+        Content=prediction,
+        Content_Text=label_text,
+        Instructor=prediction,
+        Instructor_Text=label_text,
+        Assessment=prediction,
+        Assessment_Text=label_text
     )
 
 @app.get("/health")

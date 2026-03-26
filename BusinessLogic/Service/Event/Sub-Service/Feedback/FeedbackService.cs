@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -80,7 +80,7 @@ feedback.Label = analysis.Label;
 feedback.Technical = analysis.Technical;
 feedback.Content = analysis.Content;
 feedback.Instructor = analysis.Instructor;
-feedback.Asessment = analysis.Asessment;
+feedback.Assessment = analysis.Assessment;
 
 feedback.Label_Text = analysis.Label_Text;
 feedback.Technical_Text = analysis.Technical_Text;
@@ -234,7 +234,48 @@ await _unitOfWork.SaveChangesAsync();
 return MapFeedback(feedback);
 }
 
-private static EventFeedbackSummaryDto MapFeedback(DataAccess.Entities.Feedback feedback)
+		public async Task<int> AnalyzeEventFeedbacksAsync(string eventId)
+		{
+			if (string.IsNullOrWhiteSpace(eventId)) return 0;
+
+			var feedbacks = await _unitOfWork.Feedbacks.GetAllAsync(
+				x => x.EventId == eventId && x.DeletedAt == null && !string.IsNullOrWhiteSpace(x.Comment));
+
+			int count = 0;
+			foreach (var feedback in feedbacks)
+			{
+				var analysis = await _dlService.AnalyzeFeedbackAsync(feedback.Comment!, eventId);
+				if (analysis != null)
+				{
+					feedback.Label = analysis.Label;
+					feedback.Technical = analysis.Technical;
+					feedback.Content = analysis.Content;
+					feedback.Instructor = analysis.Instructor;
+					feedback.Assessment = analysis.Assessment;
+
+					Console.WriteLine($"Feedback ID: {feedback.Id} - Analysis received: Label={analysis.Label}, Tech={analysis.Technical}, Content={analysis.Content}, Inst={analysis.Instructor}, Assess={analysis.Assessment}");
+					Console.WriteLine($"Feedback Entity after assignment: Tech={feedback.Technical}, Content={feedback.Content}, Inst={feedback.Instructor}, Assess={feedback.Assessment}");
+
+					feedback.Label_Text = analysis.Label_Text;
+					feedback.Technical_Text = analysis.Technical_Text;
+					feedback.Content_Text = analysis.Content_Text;
+					feedback.Instructor_Text = analysis.Instructor_Text;
+					feedback.Assessment_Text = analysis.Assessment_Text;
+
+					await _unitOfWork.Feedbacks.UpdateAsync(feedback);
+					count++;
+				}
+			}
+
+			if (count > 0)
+			{
+				await _unitOfWork.SaveChangesAsync();
+			}
+
+			return count;
+		}
+
+		private static EventFeedbackSummaryDto MapFeedback(DataAccess.Entities.Feedback feedback)
 {
 return new EventFeedbackSummaryDto
 {

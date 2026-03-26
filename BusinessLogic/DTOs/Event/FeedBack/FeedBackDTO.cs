@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DataAccess.Enum;
+using System.Text.Json.Serialization;
 
 namespace BusinessLogic.DTOs.Event.EventFeedbackSummary
 {
@@ -44,7 +45,7 @@ namespace BusinessLogic.DTOs.Event.EventFeedbackSummary
 		public int? Technical { get; set; }
 		public int? Content { get; set; }
 		public int? Instructor { get; set; }
-		public int? Asessment { get; set; } // Spelling matched with entity
+		public int? Assessment { get; set; }
 		public string? Label_Text { get; set; }
 		public string? Technical_Text { get; set; }
 		public string? Content_Text { get; set; }
