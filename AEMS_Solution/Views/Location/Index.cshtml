@@ -1,120 +1,635 @@
 @model AEMS_Solution.Models.Location.LocationIndexViewModel
 @using DataAccess.Enum
 @{
-    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
-    var canManage = role == "Admin" || role == "Approver";
-    if (role == "Admin") { Layout = "_Layout"; }
+    var role       = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    var canManage  = role == "Admin" || role == "Approver";
+    if      (role == "Admin")                        { Layout = "_Layout"; }
     else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
-    else { Layout = "_Approvallayout"; }
+    else                                             { Layout = "_Approvallayout"; }
     ViewData["Title"] = "Manage Locations";
+
+    // ── Status style helpers ────────────────────────────────────────────────
+    string StatusPillClass(LocationStatusEnum s) => s switch
+    {
+        LocationStatusEnum.Available    => "loc-pill-available",
+        LocationStatusEnum.Occupied     => "loc-pill-occupied",
+        LocationStatusEnum.Maintenance  => "loc-pill-maintenance",
+        LocationStatusEnum.Closed       => "loc-pill-closed",
+        _                               => "loc-pill-closed"
+    };
+
+    string StatusIconClass(LocationStatusEnum s) => s switch
+    {
+        LocationStatusEnum.Available    => "bi-check-circle-fill",
+        LocationStatusEnum.Occupied     => "bi-people-fill",
+        LocationStatusEnum.Maintenance  => "bi-wrench-adjustable",
+        LocationStatusEnum.Closed       => "bi-x-circle-fill",
+        _                               => "bi-question-circle"
+    };
+
+    // ── Type helpers ────────────────────────────────────────────────────────
+    string TypeIconClass(LocationTypeEnum? t) => t switch
+    {
+        LocationTypeEnum.Room       => "bi-door-closed-fill",
+        LocationTypeEnum.Hall       => "bi-building-fill",
+        LocationTypeEnum.Outdoor    => "bi-tree-fill",
+        LocationTypeEnum.Online     => "bi-wifi",
+        _                           => "bi-geo-alt-fill"
+    };
+
+    string TypePillClass(LocationTypeEnum? t) => t switch
+    {
+        LocationTypeEnum.Room       => "loc-type-room",
+        LocationTypeEnum.Hall       => "loc-type-hall",
+        LocationTypeEnum.Outdoor    => "loc-type-outdoor",
+        LocationTypeEnum.Online     => "loc-type-online",
+        _                           => "loc-type-room"
+    };
+
+    // ── Capacity bar width (capped at max 500, min 1) ───────────────────────
+    int CapacityPercent(int cap) => Math.Min((int)(cap / 500.0 * 100), 100);
+
+    // ── Stats ────────────────────────────────────────────────────────────────
+    int totalLocs     = Model.Locations.Count;
+    int available     = Model.Locations.Count(x => x.Status == LocationStatusEnum.Available);
+    int occupied      = Model.Locations.Count(x => x.Status == LocationStatusEnum.Occupied);
+    int maintenance   = Model.Locations.Count(x => x.Status == LocationStatusEnum.Maintenance);
+    int closed        = Model.Locations.Count(x => x.Status == LocationStatusEnum.Closed);
+    int totalCapacity = Model.Locations.Sum(x => x.Capacity);
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="bi bi-geo-alt me-2"></i>Manage Locations</h2>
-        @if (canManage)
-        {
-            <a asp-controller="Location" asp-action="Create" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i> Add Location
-            </a>
-        }
+<style>
+    /* ============================================================
+       MANAGE LOCATIONS — PREMIUM UI
+    ============================================================ */
+    :root {
+        --loc-primary:     #6366f1;
+        --loc-primary-dk:  #4f46e5;
+        --loc-bg:          #f0f2ff;
+        --loc-card:        #ffffff;
+        --loc-border:      #e0e7ff;
+        --loc-text:        #1e1b4b;
+        --loc-muted:       #64748b;
+        --loc-radius:      16px;
+        --loc-shadow:      0 4px 24px rgba(99,102,241,.08);
+        --loc-focus:       0 0 0 3px rgba(99,102,241,.2);
+        --loc-green:       #22c55e;
+        --loc-amber:       #f59e0b;
+        --loc-red:         #ef4444;
+        --loc-blue:        #3b82f6;
+    }
+
+    /* ── Animations ── */
+    @@keyframes loc-fadein   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes loc-slide-in { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:none; } }
+    @@keyframes loc-pulse    {
+        0%  { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
+        70% { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
+        100%{ box-shadow: 0 0 0 0   rgba(34,197,94,0); }
+    }
+    @@keyframes loc-pulse-amber {
+        0%  { box-shadow: 0 0 0 0 rgba(245,158,11,.4); }
+        70% { box-shadow: 0 0 0 10px rgba(245,158,11,0); }
+        100%{ box-shadow: 0 0 0 0   rgba(245,158,11,0); }
+    }
+    @@keyframes loc-bar-grow {
+        from { width: 0; }
+    }
+    @@keyframes loc-count-up { from { opacity:0; transform:scale(.8); } to { opacity:1; transform:scale(1); } }
+    @@keyframes loc-row-in   { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+    /* ── Page ── */
+    .loc-page { background: var(--loc-bg); min-height: 100vh; padding: 2rem 0 4rem; }
+
+    /* ── Header ── */
+    .loc-header {
+        display: flex; align-items: flex-start;
+        justify-content: space-between; gap: 1rem;
+        margin-bottom: 2rem; flex-wrap: wrap;
+        animation: loc-fadein .4s ease both;
+    }
+    .loc-header-title {
+        font-size: 1.9rem; font-weight: 900;
+        color: var(--loc-text); margin-bottom: .25rem;
+        letter-spacing: -.025em;
+        display: flex; align-items: center; gap: .5rem;
+    }
+    .loc-header-title-icon {
+        width: 46px; height: 46px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; color: #fff;
+        box-shadow: 0 4px 14px rgba(99,102,241,.3);
+        flex-shrink: 0;
+    }
+    .loc-header-sub { color: var(--loc-muted); font-size: .88rem; margin: 0; margin-left: 56px; }
+    .loc-header-actions { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .loc-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        font-size: .83rem; font-weight: 700; padding: .62rem 1.3rem;
+        border-radius: 30px; border: none; text-decoration: none;
+        cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .loc-btn-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff; box-shadow: 0 4px 14px rgba(99,102,241,.3);
+    }
+    .loc-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(99,102,241,.4); color: #fff; }
+    .loc-btn-ghost  { background: #fff; color: #475569; border: 1.5px solid #e2e8f0; }
+    .loc-btn-ghost:hover  { background: #f1f5f9; }
+    .loc-btn-search { background: var(--loc-primary); color: #fff; }
+    .loc-btn-search:hover { background: var(--loc-primary-dk); color: #fff; }
+
+    /* ── Stats grid ── */
+    .loc-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        animation: loc-fadein .4s .08s ease both;
+    }
+    @@media(max-width:1100px) { .loc-stats-grid { grid-template-columns: repeat(3,1fr); } }
+    @@media(max-width:640px)  { .loc-stats-grid { grid-template-columns: 1fr 1fr; } }
+
+    .loc-stat-card {
+        background: var(--loc-card);
+        border-radius: 14px; border: 1px solid var(--loc-border);
+        box-shadow: var(--loc-shadow); padding: 1rem 1.15rem;
+        display: flex; align-items: center; gap: .85rem;
+        transition: transform .18s, box-shadow .18s;
+        cursor: default;
+    }
+    .loc-stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(99,102,241,.13); }
+    .loc-stat-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.15rem; flex-shrink: 0;
+    }
+    .loc-stat-label { font-size: .7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+    .loc-stat-value { font-size: 1.5rem; font-weight: 900; color: var(--loc-text); line-height: 1; margin-top: .1rem;
+                      animation: loc-count-up .5s ease both; }
+
+    /* ── Filter bar ── */
+    .loc-filter-bar {
+        background: var(--loc-card);
+        border-radius: var(--loc-radius); border: 1px solid var(--loc-border);
+        box-shadow: var(--loc-shadow); padding: 1.1rem 1.45rem;
+        margin-bottom: 1.5rem;
+        display: flex; gap: .8rem; align-items: center; flex-wrap: wrap;
+        animation: loc-fadein .4s .15s ease both;
+    }
+    .loc-search-wrap { position: relative; flex: 1 1 240px; min-width: 180px; }
+    .loc-search-wrap > i {
+        position: absolute; top: 50%; left: .9rem;
+        transform: translateY(-50%); color: #94a3b8; font-size: .85rem; pointer-events: none;
+    }
+    .loc-input {
+        width: 100%; padding: .65rem 1rem .65rem 2.35rem;
+        border: 1.5px solid var(--loc-border); border-radius: 30px;
+        font-size: .88rem; color: var(--loc-text); background: #fafbff;
+        outline: none; transition: all .2s;
+    }
+    .loc-input:focus { background:#fff; border-color: var(--loc-primary); box-shadow: var(--loc-focus); }
+    .loc-select {
+        padding: .65rem 2.2rem .65rem 1rem;
+        border: 1.5px solid var(--loc-border); border-radius: 30px;
+        font-size: .88rem; color: var(--loc-text); background: #fafbff;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%2394a3b8' d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right .85rem center;
+        outline: none; transition: all .2s; cursor: pointer;
+        min-width: 160px;
+    }
+    .loc-select:focus { background-color: #fff; border-color: var(--loc-primary); box-shadow: var(--loc-focus); }
+
+    /* ── Table Card ── */
+    .loc-table-card {
+        background: var(--loc-card); border-radius: var(--loc-radius);
+        border: 1px solid var(--loc-border); box-shadow: var(--loc-shadow);
+        overflow: hidden; margin-bottom: 1.25rem;
+        animation: loc-fadein .4s .2s ease both;
+    }
+    .loc-table-card-header {
+        padding: .9rem 1.45rem; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    }
+    .loc-table-label {
+        font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+        text-transform: uppercase; color: #94a3b8;
+        display: flex; align-items: center; gap: .4rem;
+    }
+    .loc-count-badge {
+        background: #ede9fe; color: #6d28d9; font-size: .7rem;
+        font-weight: 700; padding: .12rem .5rem; border-radius: 20px;
+    }
+    .loc-page-info { font-size: .78rem; color: var(--loc-muted); }
+    .loc-page-info strong { color: var(--loc-text); }
+
+    /* ── Table ── */
+    .loc-table { width: 100%; border-collapse: collapse; }
+    .loc-table thead tr th {
+        background: #f8fafc; font-size: .67rem; font-weight: 800;
+        letter-spacing: .07em; text-transform: uppercase; color: #94a3b8;
+        padding: .75rem 1.1rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+    }
+    .loc-table tbody tr {
+        border-bottom: 1px solid #f8fafc;
+        transition: background .12s;
+        animation: loc-row-in .3s ease both;
+    }
+    .loc-table tbody tr:last-child { border-bottom: none; }
+    .loc-table tbody tr:hover { background: #f5f3ff; }
+    .loc-table tbody td { padding: .95rem 1.1rem; vertical-align: middle; font-size: .88rem; color: var(--loc-text); }
+
+    /* ── Location name cell ── */
+    .loc-name-cell { display: flex; align-items: center; gap: .75rem; }
+    .loc-name-avatar {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; color: #fff; flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(99,102,241,.22);
+        transition: transform .18s;
+    }
+    .loc-table tbody tr:hover .loc-name-avatar { transform: scale(1.08); }
+    .loc-name-main { font-weight: 800; color: var(--loc-text); font-size: .9rem; margin-bottom: .1rem; }
+    .loc-name-desc { font-size: .75rem; color: var(--loc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+
+    /* ── Address ── */
+    .loc-address {
+        display: flex; align-items: center; gap: .35rem;
+        color: var(--loc-muted); font-size: .85rem;
+        max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .loc-address i { color: #a5b4fc; font-size: .78rem; flex-shrink: 0; }
+
+    /* ── Capacity bar ── */
+    .loc-capacity-wrap { min-width: 90px; }
+    .loc-capacity-num  { font-weight: 800; color: var(--loc-text); font-size: .9rem; margin-bottom: .3rem; }
+    .loc-capacity-bar-bg {
+        height: 5px; background: #e0e7ff; border-radius: 3px; overflow: hidden;
+    }
+    .loc-capacity-bar {
+        height: 100%; border-radius: 3px;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        animation: loc-bar-grow .7s ease both;
+    }
+
+    /* ── Type pills ── */
+    .loc-type-pill {
+        display: inline-flex; align-items: center; gap: .3rem;
+        font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+        padding: .25rem .7rem; border-radius: 20px; white-space: nowrap;
+        text-transform: uppercase;
+    }
+    .loc-type-room    { background: #ede9fe; color: #6d28d9; }
+    .loc-type-hall    { background: #dbeafe; color: #1d4ed8; }
+    .loc-type-outdoor { background: #dcfce7; color: #16a34a; }
+    .loc-type-online  { background: #f0fdf4; color: #15803d; }
+
+    /* ── Status pills ── */
+    .loc-status-pill {
+        display: inline-flex; align-items: center; gap: .3rem;
+        font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+        padding: .28rem .75rem; border-radius: 20px; white-space: nowrap;
+        text-transform: uppercase;
+    }
+    .loc-status-pill i { font-size: .7rem; }
+
+    .loc-pill-available {
+        background: #dcfce7; color: #16a34a; border: 1px solid #86efac;
+    }
+    .loc-pill-available i { animation: loc-pulse 2s infinite; }
+    .loc-pill-occupied {
+        background: #fef9c3; color: #a16207; border: 1px solid #fde68a;
+    }
+    .loc-pill-occupied i { animation: loc-pulse-amber 2s infinite; }
+    .loc-pill-maintenance {
+        background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;
+    }
+    .loc-pill-closed {
+        background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+    }
+
+    /* ── Updated date ── */
+    .loc-updated { font-size: .8rem; color: var(--loc-muted); }
+    .loc-updated .date { color: var(--loc-text); font-weight: 600; font-size: .84rem; }
+
+    /* ── Action buttons ── */
+    .loc-actions { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; }
+    .loc-act {
+        width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e2e8f0;
+        background: #f8fafc; display: inline-flex; align-items: center; justify-content: center;
+        font-size: .82rem; cursor: pointer; transition: all .15s;
+        text-decoration: none; color: #64748b;
+    }
+    .loc-act:hover            { transform: translateY(-1px); }
+    .loc-act.edit:hover       { background: #fef9c3; border-color: #fde68a; color: #d97706; }
+    .loc-act.delete:hover     { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .loc-act-form { display: inline; }
+
+    /* ── Pagination ── */
+    .loc-pagination-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: .75rem 1.1rem; border-top: 1px solid #f1f5f9;
+        flex-wrap: wrap; gap: .5rem;
+    }
+    .loc-page-nav { display: flex; gap: .3rem; list-style: none; margin: 0; padding: 0; }
+    .loc-page-nav a, .loc-page-nav span {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 34px; height: 34px; padding: 0 .5rem;
+        border-radius: 9px; font-size: .82rem; font-weight: 700;
+        border: 1px solid transparent; color: var(--loc-text);
+        text-decoration: none; transition: all .15s;
+    }
+    .loc-page-nav a:hover          { background: #f1f5f9; border-color: var(--loc-border); }
+    .loc-page-nav li.active a      { background: var(--loc-primary); color: #fff; border-color: var(--loc-primary); }
+    .loc-page-nav li.disabled a,
+    .loc-page-nav li.disabled span { color: #cbd5e1; pointer-events: none; }
+
+    /* ── Empty state ── */
+    .loc-empty { text-align: center; padding: 3.5rem 1rem; color: #94a3b8; }
+    .loc-empty-icon {
+        width: 80px; height: 80px; background: #ede9fe; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; color: #6366f1; margin: 0 auto 1rem;
+    }
+    .loc-empty h3 { font-size: 1.1rem; font-weight: 800; color: #374151; margin-bottom: .35rem; }
+    .loc-empty p  { font-size: .87rem; margin: 0; }
+
+    /* ── Alert ── */
+    .loc-toast {
+        border-radius: 12px; padding: .9rem 1.2rem; font-size: .9rem;
+        font-weight: 600; margin-bottom: 1.25rem;
+        display: flex; align-items: center; gap: .6rem;
+        border: none; animation: loc-fadein .4s ease;
+    }
+    .loc-toast-success { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+    .loc-toast-error   { background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; }
+
+    /* ── Stagger animation delay for rows ── */
+    .loc-table tbody tr:nth-child(1)  { animation-delay: .05s; }
+    .loc-table tbody tr:nth-child(2)  { animation-delay: .08s; }
+    .loc-table tbody tr:nth-child(3)  { animation-delay: .11s; }
+    .loc-table tbody tr:nth-child(4)  { animation-delay: .14s; }
+    .loc-table tbody tr:nth-child(5)  { animation-delay: .17s; }
+    .loc-table tbody tr:nth-child(6)  { animation-delay: .20s; }
+    .loc-table tbody tr:nth-child(7)  { animation-delay: .23s; }
+    .loc-table tbody tr:nth-child(8)  { animation-delay: .26s; }
+    .loc-table tbody tr:nth-child(9)  { animation-delay: .29s; }
+    .loc-table tbody tr:nth-child(10) { animation-delay: .32s; }
+</style>
+
+<div class="loc-page">
+<div class="container-fluid px-4">
+
+    @* ── Alerts ── *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="loc-toast loc-toast-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="loc-toast loc-toast-error">
+            <i class="bi bi-exclamation-circle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* ── Page Header ── *@
+    <div class="loc-header">
+        <div>
+            <h1 class="loc-header-title">
+                <div class="loc-header-title-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                Manage Locations
+            </h1>
+            <p class="loc-header-sub">
+                Browse and manage all venue locations. Total:
+                <strong style="color:#6366f1;">@totalLocs</strong> on this page,
+                combined capacity: <strong style="color:#059669;">@totalCapacity</strong>.
+            </p>
+        </div>
+        <div class="loc-header-actions">
+            @if (canManage)
+            {
+                <a asp-controller="Location" asp-action="Create" class="loc-btn loc-btn-primary">
+                    <i class="bi bi-plus-circle-fill"></i> Add Location
+                </a>
+            }
+        </div>
     </div>
 
-    <form method="get" asp-controller="Location" asp-action="Index" class="row g-2 mb-3">
-        <div class="col-md-4">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search by address..." />
+    @* ── Stats Strip ── *@
+    <div class="loc-stats-grid">
+        <div class="loc-stat-card">
+            <div class="loc-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-buildings-fill" style="color:#6366f1;"></i>
+            </div>
+            <div>
+                <div class="loc-stat-label">Total</div>
+                <div class="loc-stat-value" style="color:#6366f1;">@totalLocs</div>
+            </div>
         </div>
-        <div class="col-md-3">
-            <select name="filterStatus" class="form-select">
-                <option value="">-- All Statuses --</option>
-                @foreach (var status in System.Enum.GetValues<LocationStatusEnum>())
-                {
-                    if (Model.FilterStatus == status.ToString())
-                    {
-                        <option value="@status" selected="selected">@status</option>
-                    }
-                    else
-                    {
-                        <option value="@status">@status</option>
-                    }
-                }
-            </select>
+        <div class="loc-stat-card">
+            <div class="loc-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="loc-stat-label">Available</div>
+                <div class="loc-stat-value" style="color:#16a34a;">@available</div>
+            </div>
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-outline-primary">
-                <i class="bi bi-search me-1"></i>Search
-            </button>
-            <a asp-controller="Location" asp-action="Index" class="btn btn-outline-secondary ms-1">Clear</a>
+        <div class="loc-stat-card">
+            <div class="loc-stat-icon" style="background:#fef9c3;">
+                <i class="bi bi-people-fill" style="color:#a16207;"></i>
+            </div>
+            <div>
+                <div class="loc-stat-label">Occupied</div>
+                <div class="loc-stat-value" style="color:#a16207;">@occupied</div>
+            </div>
         </div>
+        <div class="loc-stat-card">
+            <div class="loc-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-wrench-adjustable" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="loc-stat-label">Maintenance</div>
+                <div class="loc-stat-value" style="color:#1d4ed8;">@maintenance</div>
+            </div>
+        </div>
+        <div class="loc-stat-card">
+            <div class="loc-stat-icon" style="background:#f0fdf4;">
+                <i class="bi bi-person-fill" style="color:#059669;"></i>
+            </div>
+            <div>
+                <div class="loc-stat-label">Total Capacity</div>
+                <div class="loc-stat-value" style="color:#059669; font-size:1.2rem;">@totalCapacity</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Filter bar ── *@
+    <form class="loc-filter-bar" method="get" asp-controller="Location" asp-action="Index">
+        <div class="loc-search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" name="search" value="@Model.Search"
+                   class="loc-input" placeholder="Search by address or name…" />
+        </div>
+
+        <select name="filterStatus" class="loc-select">
+            <option value="">— All Statuses —</option>
+            @foreach (var status in System.Enum.GetValues<LocationStatusEnum>())
+            {
+                <option value="@status"
+                        selected="@(Model.FilterStatus == status.ToString() ? "selected" : null)">
+                    @status
+                </option>
+            }
+        </select>
+
+        <button type="submit" class="loc-btn loc-btn-search">
+            <i class="bi bi-search"></i> Search
+        </button>
+        <a asp-controller="Location" asp-action="Index" class="loc-btn loc-btn-ghost">
+            <i class="bi bi-x"></i> Clear
+        </a>
     </form>
 
-    <div class="card shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Name</th>
-                        <th>Address</th>
-                        <th>Capacity</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Updated</th>
-                        @if (canManage)
-                        {
-                            <th style="width:150px;">Actions</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (Model.Locations.Count == 0)
-                    {
+    @* ── Table Card ── *@
+    <div class="loc-table-card">
+        <div class="loc-table-card-header">
+            <div class="loc-table-label">
+                <i class="bi bi-list-ul"></i> Location List
+                <span class="loc-count-badge">@totalLocs on this page</span>
+            </div>
+            <div class="loc-page-info">
+                Page <strong>@Model.PageNumber</strong> of <strong>@Model.TotalPages</strong>
+            </div>
+        </div>
+
+        @if (!Model.Locations.Any())
+        {
+            <div class="loc-empty">
+                <div class="loc-empty-icon"><i class="bi bi-geo-alt"></i></div>
+                <h3>No Locations Found</h3>
+                <p>Try adjusting your search or filter, or add a new location.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="loc-table">
+                    <colgroup>
+                        <col style="width:220px;" />
+                        <col />
+                        <col style="width:115px;" />
+                        <col style="width:120px;" />
+                        <col style="width:130px;" />
+                        <col style="width:135px;" />
+                        @if (canManage) { <col style="width:90px;" /> }
+                    </colgroup>
+                    <thead>
                         <tr>
-                            <td colspan="@(canManage ? 7 : 6)" class="text-center text-muted py-3">
-                                <i class="bi bi-inbox me-1"></i>No locations found.
-                            </td>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Capacity</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Updated</th>
+                            @if (canManage) { <th style="text-align:right;">Actions</th> }
                         </tr>
-                    }
-                    else
-                    {
-                        foreach (var loc in Model.Locations)
+                    </thead>
+                    <tbody>
+                        @foreach (var loc in Model.Locations)
                         {
                             <tr>
-                                <td><strong>@loc.Name</strong></td>
-                                <td>@(string.IsNullOrWhiteSpace(loc.Address) ? "-" : loc.Address)</td>
-                                <td class="text-center">@loc.Capacity</td>
+                                @* Name ── *@
                                 <td>
-                                    @(loc.Type.HasValue ? loc.Type.Value.ToString() : "-")
+                                    <div class="loc-name-cell">
+                                        <div class="loc-name-avatar">
+                                            <i class="bi @TypeIconClass(loc.Type)"></i>
+                                        </div>
+                                        <div>
+                                            <div class="loc-name-main">@loc.Name</div>
+                                            @if (!string.IsNullOrWhiteSpace(loc.Description))
+                                            {
+                                                <div class="loc-name-desc" title="@loc.Description">@loc.Description</div>
+                                            }
+                                        </div>
+                                    </div>
                                 </td>
+
+                                @* Address ── *@
                                 <td>
-                                    @{
-                                        var badgeClass = loc.Status switch
-                                        {
-                                            LocationStatusEnum.Available => "bg-success",
-                                            LocationStatusEnum.Occupied => "bg-warning text-dark",
-                                            LocationStatusEnum.Maintenance => "bg-info text-dark",
-                                            LocationStatusEnum.Closed => "bg-secondary",
-                                            _ => "bg-secondary"
-                                        };
+                                    <div class="loc-address" title="@loc.Address">
+                                        <i class="bi bi-pin-map-fill"></i>
+                                        @(string.IsNullOrWhiteSpace(loc.Address) ? "—" : loc.Address)
+                                    </div>
+                                </td>
+
+                                @* Capacity ── *@
+                                <td>
+                                    <div class="loc-capacity-wrap">
+                                        <div class="loc-capacity-num">@loc.Capacity <span style="font-size:.72rem; color:#94a3b8; font-weight:400;">seats</span></div>
+                                        <div class="loc-capacity-bar-bg">
+                                            <div class="loc-capacity-bar" style="width:@(CapacityPercent(loc.Capacity))%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* Type ── *@
+                                <td>
+                                    @if (loc.Type.HasValue)
+                                    {
+                                        <span class="loc-type-pill @TypePillClass(loc.Type)">
+                                            <i class="bi @TypeIconClass(loc.Type)"></i>
+                                            @loc.Type.Value
+                                        </span>
                                     }
-                                    <span class="badge @badgeClass">@loc.Status</span>
+                                    else
+                                    {
+                                        <span style="color:#94a3b8; font-size:.83rem;">—</span>
+                                    }
                                 </td>
-                                <td>@loc.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+
+                                @* Status ── *@
+                                <td>
+                                    <span class="loc-status-pill @StatusPillClass(loc.Status)">
+                                        <i class="bi @StatusIconClass(loc.Status)"></i>
+                                        @loc.Status
+                                    </span>
+                                </td>
+
+                                @* Updated ── *@
+                                <td>
+                                    <div class="loc-updated">
+                                        <div class="date">@loc.UpdatedAt.ToString("dd/MM/yyyy")</div>
+                                        <div>@loc.UpdatedAt.ToString("HH:mm")</div>
+                                    </div>
+                                </td>
+
+                                @* Actions ── *@
                                 @if (canManage)
                                 {
                                     <td>
-                                        <div class="d-flex gap-1">
-                                            <a asp-controller="Location" asp-action="Edit" asp-route-id="@loc.LocationId"
-                                               class="btn btn-sm btn-warning">
+                                        <div class="loc-actions">
+                                            <a class="loc-act edit"
+                                               asp-controller="Location" asp-action="Edit"
+                                               asp-route-id="@loc.LocationId"
+                                               title="Edit Location">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            @{
-                                                var deleteUrl = Url.Action("Delete", "Location", new { id = loc.LocationId });
-                                                var confirmMsg = $"Bạn có chắc chắn muốn xoá địa điểm \"{loc.Name}\"?";
-                                            }
-                                            <form action="@deleteUrl" method="post"
-                                                  onsubmit="return confirm('@Html.Raw(confirmMsg.Replace("'", "\\'"))');">
+                                            <form asp-controller="Location" asp-action="Delete"
+                                                  asp-route-id="@loc.LocationId"
+                                                  method="post" class="loc-act-form"
+                                                  onsubmit="return confirm('Bạn có chắc chắn muốn xoá địa điểm &quot;@Html.Raw(loc.Name.Replace("\"","\\\""))&quot;?');">
                                                 @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                <button type="submit" class="loc-act delete" title="Delete Location">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -123,14 +638,114 @@
                                 }
                             </tr>
                         }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @* Pagination ── *@
+        @if (Model.TotalPages > 1)
+        {
+            <div class="loc-pagination-bar">
+                <div class="loc-page-info">
+                    Page <strong>@Model.PageNumber</strong> of <strong>@Model.TotalPages</strong>
+                    &nbsp;·&nbsp; <strong>@totalLocs</strong> location(s) shown
+                </div>
+                <ul class="loc-page-nav">
+                    @* Previous *@
+                    <li class="@(Model.PageNumber <= 1 ? "disabled" : "")">
+                        <a asp-controller="Location" asp-action="Index"
+                           asp-route-page="@(Model.PageNumber - 1)"
+                           asp-route-search="@Model.Search"
+                           asp-route-filterStatus="@Model.FilterStatus">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    @* Page numbers with ellipsis ── *@
+                    @{
+                        int pStart = Math.Max(1, Model.PageNumber - 2);
+                        int pEnd   = Math.Min(Model.TotalPages, Model.PageNumber + 2);
                     }
-                </tbody>
-            </table>
-        </div>
+                    @if (pStart > 1)
+                    {
+                        <li><a asp-controller="Location" asp-action="Index"
+                               asp-route-page="1"
+                               asp-route-search="@Model.Search"
+                               asp-route-filterStatus="@Model.FilterStatus">1</a></li>
+                        @if (pStart > 2) { <li><span>…</span></li> }
+                    }
+                    @for (int p = pStart; p <= pEnd; p++)
+                    {
+                        <li class="@(p == Model.PageNumber ? "active" : "")">
+                            <a asp-controller="Location" asp-action="Index"
+                               asp-route-page="@p"
+                               asp-route-search="@Model.Search"
+                               asp-route-filterStatus="@Model.FilterStatus">@p</a>
+                        </li>
+                    }
+                    @if (pEnd < Model.TotalPages)
+                    {
+                        @if (pEnd < Model.TotalPages - 1) { <li><span>…</span></li> }
+                        <li><a asp-controller="Location" asp-action="Index"
+                               asp-route-page="@Model.TotalPages"
+                               asp-route-search="@Model.Search"
+                               asp-route-filterStatus="@Model.FilterStatus">@Model.TotalPages</a></li>
+                    }
+
+                    @* Next *@
+                    <li class="@(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                        <a asp-controller="Location" asp-action="Index"
+                           asp-route-page="@(Model.PageNumber + 1)"
+                           asp-route-search="@Model.Search"
+                           asp-route-filterStatus="@Model.FilterStatus">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+        else if (Model.Locations.Any())
+        {
+            @* Single-page info bar *@
+            <div class="loc-pagination-bar">
+                <div class="loc-page-info">
+                    Showing <strong>@totalLocs</strong> location(s)
+                    @if (!string.IsNullOrEmpty(Model.Search)) { <span> · filtered by "@Model.Search"</span> }
+                    @if (!string.IsNullOrEmpty(Model.FilterStatus)) { <span> · status: @Model.FilterStatus</span> }
+                </div>
+                <div style="font-size:.78rem; color:#94a3b8;">
+                    Combined capacity: <strong style="color:#059669;">@totalCapacity</strong> seats
+                </div>
+            </div>
+        }
     </div>
 
-    <partial name="_Pagination" model="Model" />
-    <div class="mt-2 text-muted small">
-        Showing <strong>@Model.Locations.Count</strong> location(s) on this page
-    </div>
 </div>
+</div>
+
+@section Scripts {
+    <script>
+    // ── Capacity bars animate on load ─────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        // Animated entrance for stat values
+        document.querySelectorAll('.loc-stat-value').forEach(function(el) {
+            el.style.animation = 'loc-count-up .5s ease both';
+        });
+
+        // Tooltips
+        document.querySelectorAll('[title]').forEach(function(el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                new bootstrap.Tooltip(el, { trigger: 'hover' });
+            }
+        });
+
+        // Enhanced row interactions
+        document.querySelectorAll('.loc-table tbody tr').forEach(function(row) {
+            row.addEventListener('mouseenter', function() {
+                this.style.transition = 'background .12s';
+            });
+        });
+    });
+    </script>
+}
