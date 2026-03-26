@@ -1,149 +1,860 @@
-﻿@model AEMS_Solution.Models.Event.EventAgenda.MyAgendaViewModel
+@model AEMS_Solution.Models.Event.EventAgenda.MyAgendaViewModel
+@using DataAccess.Enum
 @{
     ViewData["Title"] = Model.PageTitle;
     Layout = Model.IsReadOnly ? "_Approvallayout" : "_OrganizerLayout";
+
+    var allAgendas       = Model.Agendas ?? new List<AEMS_Solution.Models.Event.EventAgenda.AgendaItemViewModel>();
+    int totalSessions    = allAgendas.Count;
+    var groupedAgendas   = allAgendas.GroupBy(a => a.EventTitle).ToList();
+    int totalEvents      = groupedAgendas.Count;
+    int totalSpeakers    = allAgendas.Select(a => a.SpeakerInfo).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().Count();
+    int upcomingCount    = allAgendas.Count(a => a.StartTime.HasValue && a.StartTime.Value > DateTime.Now);
+
+    // ── Status pill helpers ──────────────────────────────────────────────────
+    string StatusClass(EventStatusEnum s) => s switch
+    {
+        EventStatusEnum.Published  => "ag-status-pub",
+        EventStatusEnum.Draft      => "ag-status-draft",
+        EventStatusEnum.Expired    => "ag-status-exp",
+        EventStatusEnum.Cancelled  => "ag-status-cancel",
+        _                          => "ag-status-draft"
+    };
+    string StatusIcon(EventStatusEnum s) => s switch
+    {
+        EventStatusEnum.Published  => "bi-broadcast",
+        EventStatusEnum.Draft      => "bi-file-earmark-text",
+        EventStatusEnum.Expired    => "bi-clock-history",
+        EventStatusEnum.Cancelled  => "bi-x-circle",
+        _                          => "bi-file-earmark-text"
+    };
+
+    // ── Type pill helpers ────────────────────────────────────────────────────
+    string TypeClass(EventTypeEnum? t) => t switch
+    {
+        EventTypeEnum.Workshop    => "ag-type-workshop",
+        EventTypeEnum.Seminar     => "ag-type-seminar",
+        EventTypeEnum.Competition => "ag-type-competition",
+        EventTypeEnum.Training    => "ag-type-training",
+        EventTypeEnum.Social      => "ag-type-social",
+        EventTypeEnum.Bootcamp    => "ag-type-bootcamp",
+        _                         => "ag-type-workshop"
+    };
+
+    // ── Avatar color from event title hash ───────────────────────────────────
+    string GetAvatarColor(string? name)
+    {
+        var palette = new[] {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6",
+            "#f97316","#a855f7"
+        };
+        if (string.IsNullOrEmpty(name)) return palette[0];
+        return palette[Math.Abs(name.GetHashCode()) % palette.Length];
+    }
+
+    string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // ── Timeline status ──────────────────────────────────────────────────────
+    string TimelineClass(DateTime? start, DateTime? end)
+    {
+        if (!start.HasValue) return "ag-time-neutral";
+        if (end.HasValue && end.Value < DateTime.Now) return "ag-time-past";
+        if (start.Value <= DateTime.Now && (!end.HasValue || end.Value >= DateTime.Now)) return "ag-time-now";
+        return "ag-time-future";
+    }
+    string TimelineLabel(DateTime? start, DateTime? end)
+    {
+        if (!start.HasValue) return "";
+        if (end.HasValue && end.Value < DateTime.Now) return "Ended";
+        if (start.Value <= DateTime.Now && (!end.HasValue || end.Value >= DateTime.Now)) return "Live";
+        return "Upcoming";
+    }
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-1">@Model.PageTitle</h2>
-            <p class="text-muted mb-0">@Model.PageDescription</p>
+<style>
+    /* ==============================================================
+       MY AGENDA — PREMIUM ORGANIZER/APPROVER UI
+    ============================================================== */
+    :root {
+        --ag-primary:   #6366f1;
+        --ag-secondary: #8b5cf6;
+        --ag-bg:        #f0f2ff;
+        --ag-card:      #ffffff;
+        --ag-border:    #e0e7ff;
+        --ag-text:      #1e1b4b;
+        --ag-muted:     #64748b;
+        --ag-radius:    16px;
+        --ag-shadow:    0 4px 24px rgba(99,102,241,.08);
+        --ag-focus:     0 0 0 3px rgba(99,102,241,.2);
+        --ag-green:     #22c55e;
+        --ag-amber:     #f59e0b;
+        --ag-red:       #ef4444;
+    }
+
+    /* ── Animations ── */
+    @@keyframes ag-fadein  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes ag-pop     { from { opacity:0; transform:scale(.85); }      to { opacity:1; transform:scale(1); } }
+    @@keyframes ag-row-in  { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+    @@keyframes ag-live-glow {
+        0%,100% { box-shadow:0 0 0 0  rgba(34,197,94,.4); }
+        50%     { box-shadow:0 0 0 7px rgba(34,197,94,0); }
+    }
+    @@keyframes ag-pulse-pri {
+        0%   { box-shadow:0 0 0 0  rgba(99,102,241,.4); }
+        70%  { box-shadow:0 0 0 9px rgba(99,102,241,0); }
+        100% { box-shadow:0 0 0 0  rgba(99,102,241,0); }
+    }
+    @@keyframes ag-slide-accordion {
+        from { opacity:0; transform:translateY(-6px); }
+        to   { opacity:1; transform:none; }
+    }
+    @@keyframes ag-bar-grow { from { width:0; } }
+
+    /* ── Page ── */
+    .ag-page { background:var(--ag-bg); min-height:100vh; padding:2rem 0 4rem; }
+
+    /* ── Header ── */
+    .ag-header {
+        display:flex; align-items:flex-start; justify-content:space-between;
+        gap:1rem; margin-bottom:2rem; flex-wrap:wrap;
+        animation:ag-fadein .35s ease both;
+    }
+    .ag-header-title {
+        font-size:1.9rem; font-weight:900; color:var(--ag-text);
+        letter-spacing:-.025em; margin-bottom:.2rem;
+        display:flex; align-items:center; gap:.5rem;
+    }
+    .ag-header-icon {
+        width:48px; height:48px; border-radius:14px;
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.4rem; color:#fff; flex-shrink:0;
+        box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+    .ag-header-sub { color:var(--ag-muted); font-size:.87rem; margin:0; margin-left:58px; }
+    .ag-header-actions { display:flex; gap:.65rem; flex-wrap:wrap; align-items:center; }
+
+    /* ── Buttons ── */
+    .ag-btn {
+        display:inline-flex; align-items:center; gap:.4rem;
+        font-size:.83rem; font-weight:700; padding:.62rem 1.3rem;
+        border-radius:30px; border:none; text-decoration:none;
+        cursor:pointer; transition:all .18s; white-space:nowrap;
+    }
+    .ag-btn-primary {
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        color:#fff; box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+    .ag-btn-primary:hover { transform:translateY(-2px); box-shadow:0 7px 18px rgba(99,102,241,.4); color:#fff; }
+    .ag-btn-ghost  { background:#fff; color:#475569; border:1.5px solid #e2e8f0; }
+    .ag-btn-ghost:hover  { background:#f1f5f9; color:var(--ag-primary); border-color:#c7d2fe; }
+    .ag-btn-filter {
+        background:var(--ag-primary); color:#fff;
+        box-shadow:0 3px 10px rgba(99,102,241,.25);
+    }
+    .ag-btn-filter:hover { background:#4f46e5; color:#fff; transform:translateY(-1px); }
+
+    /* ── Stats grid ── */
+    .ag-stats-grid {
+        display:grid; grid-template-columns:repeat(4,1fr);
+        gap:1rem; margin-bottom:1.5rem;
+        animation:ag-fadein .4s .08s ease both;
+    }
+    @@media(max-width:900px)  { .ag-stats-grid { grid-template-columns:repeat(2,1fr); } }
+    @@media(max-width:500px)  { .ag-stats-grid { grid-template-columns:1fr; } }
+
+    .ag-stat {
+        background:var(--ag-card); border-radius:14px;
+        border:1px solid var(--ag-border); box-shadow:var(--ag-shadow);
+        padding:1rem 1.15rem; display:flex; align-items:center; gap:.85rem;
+        transition:transform .18s,box-shadow .18s; cursor:default;
+    }
+    .ag-stat:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(99,102,241,.14); }
+    .ag-stat-icon  {
+        width:44px; height:44px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.15rem; flex-shrink:0;
+    }
+    .ag-stat-label { font-size:.68rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+    .ag-stat-value { font-size:1.5rem; font-weight:900; color:var(--ag-text); line-height:1; margin-top:.07rem; }
+
+    /* ── Filter card ── */
+    .ag-filter-card {
+        background:var(--ag-card); border-radius:var(--ag-radius);
+        border:1px solid var(--ag-border); box-shadow:var(--ag-shadow);
+        overflow:hidden; margin-bottom:1.5rem;
+        animation:ag-fadein .4s .12s ease both;
+    }
+    .ag-filter-header {
+        padding:.78rem 1.45rem; border-bottom:1px solid #f1f5f9;
+        font-size:.68rem; font-weight:800; letter-spacing:.08em;
+        text-transform:uppercase; color:#94a3b8;
+        display:flex; align-items:center; gap:.4rem;
+    }
+    .ag-filter-body { padding:1.1rem 1.45rem; }
+    .ag-filter-grid { display:grid; grid-template-columns:1fr 1fr auto; gap:.75rem; align-items:end; }
+    @@media(max-width:700px) { .ag-filter-grid { grid-template-columns:1fr; } }
+
+    .ag-filter-label {
+        display:block; font-size:.72rem; font-weight:800;
+        color:var(--ag-text); margin-bottom:.35rem;
+        text-transform:uppercase; letter-spacing:.05em;
+    }
+    .ag-filter-label i { color:#a5b4fc; margin-right:.25rem; }
+    .ag-input-wrap { position:relative; }
+    .ag-input-wrap i.icon-left {
+        position:absolute; top:50%; left:.8rem;
+        transform:translateY(-50%); color:#94a3b8; font-size:.8rem; pointer-events:none;
+    }
+    .ag-filter-input {
+        width:100%; padding:.65rem 1rem .65rem 2.2rem;
+        border:1.5px solid var(--ag-border); border-radius:10px;
+        font-size:.88rem; color:var(--ag-text); background:#fafbff;
+        outline:none; transition:all .2s;
+    }
+    .ag-filter-input:focus { background:#fff; border-color:var(--ag-primary); box-shadow:var(--ag-focus); }
+    .ag-filter-select {
+        width:100%; padding:.68rem 1rem;
+        border:1.5px solid var(--ag-border); border-radius:10px;
+        font-size:.88rem; color:var(--ag-text); background:#fafbff;
+        outline:none; transition:border-color .2s; cursor:pointer;
+        -webkit-appearance:none; appearance:none;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat:no-repeat; background-position:right .85rem center;
+        padding-right:2.2rem;
+    }
+    .ag-filter-select:focus { background-color:#fff; border-color:var(--ag-primary); box-shadow:var(--ag-focus); }
+
+    /* ── Accordion / event groups ── */
+    .ag-accordion { display:flex; flex-direction:column; gap:1rem; }
+    .ag-event-group {
+        background:var(--ag-card); border-radius:var(--ag-radius);
+        border:1px solid var(--ag-border); box-shadow:var(--ag-shadow);
+        overflow:hidden; transition:box-shadow .18s;
+        animation:ag-fadein .4s ease both;
+    }
+    .ag-event-group:hover { box-shadow:0 6px 22px rgba(99,102,241,.12); }
+
+    /* Stagger groups */
+    .ag-event-group:nth-child(1)  { animation-delay:.05s; }
+    .ag-event-group:nth-child(2)  { animation-delay:.09s; }
+    .ag-event-group:nth-child(3)  { animation-delay:.13s; }
+    .ag-event-group:nth-child(4)  { animation-delay:.17s; }
+    .ag-event-group:nth-child(5)  { animation-delay:.21s; }
+    .ag-event-group:nth-child(6)  { animation-delay:.25s; }
+    .ag-event-group:nth-child(7)  { animation-delay:.29s; }
+    .ag-event-group:nth-child(8)  { animation-delay:.33s; }
+
+    /* ── Group header (collapsible toggle) ── */
+    .ag-group-btn {
+        width:100%; background:none; border:none; cursor:pointer;
+        padding:1rem 1.35rem; text-align:left;
+        display:flex; align-items:center; gap:.75rem;
+        transition:background .12s;
+    }
+    .ag-group-btn:hover { background:#f5f3ff; }
+    .ag-group-btn:focus { outline:none; }
+
+    .ag-event-avatar {
+        width:42px; height:42px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:.9rem; font-weight:900; color:#fff; flex-shrink:0;
+        box-shadow:0 2px 8px rgba(0,0,0,.14);
+        transition:transform .18s;
+    }
+    .ag-event-group:hover .ag-event-avatar { transform:scale(1.08); }
+
+    .ag-group-info { flex:1; min-width:0; }
+    .ag-group-title { font-weight:800; font-size:.95rem; color:var(--ag-text); }
+    .ag-group-meta  { font-size:.75rem; color:var(--ag-muted); margin-top:.1rem;
+                      display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
+
+    .ag-group-right {
+        display:flex; align-items:center; gap:.5rem;
+        margin-left:auto; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .ag-toggle-icon { color:#94a3b8; font-size:.9rem; flex-shrink:0; transition:transform .25s; }
+    .ag-event-group.is-open .ag-toggle-icon { transform:rotate(180deg); }
+
+    /* ── Status pills ── */
+    .ag-status-pill {
+        display:inline-flex; align-items:center; gap:.28rem;
+        font-size:.68rem; font-weight:800; padding:.2rem .6rem;
+        border-radius:20px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+    }
+    .ag-status-pub    { background:#dcfce7; color:#16a34a; border:1px solid #86efac; }
+    .ag-status-pub::before {
+        content:''; width:5px; height:5px; border-radius:50%;
+        background:#22c55e; display:inline-block;
+        animation:ag-live-glow 2s infinite;
+    }
+    .ag-status-draft  { background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; }
+    .ag-status-exp    { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+    .ag-status-cancel { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+
+    /* ── Type pills ── */
+    .ag-type-pill {
+        display:inline-flex; align-items:center; gap:.25rem;
+        font-size:.68rem; font-weight:800; padding:.18rem .55rem;
+        border-radius:20px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+    }
+    .ag-type-workshop    { background:#ede9fe; color:#6d28d9; }
+    .ag-type-seminar     { background:#dbeafe; color:#1e40af; }
+    .ag-type-competition { background:#fef3c7; color:#92400e; }
+    .ag-type-training    { background:#dcfce7; color:#15803d; }
+    .ag-type-social      { background:#fce7f3; color:#9d174d; }
+    .ag-type-bootcamp    { background:#ffedd5; color:#c2410c; }
+
+    /* ── View details btn (inside accordion header) ── */
+    .ag-view-btn {
+        display:inline-flex; align-items:center; gap:.3rem;
+        font-size:.76rem; font-weight:700; padding:.38rem .85rem;
+        border-radius:20px; border:1.5px solid var(--ag-border);
+        background:#fff; color:var(--ag-primary);
+        text-decoration:none; transition:all .16s; white-space:nowrap;
+    }
+    .ag-view-btn:hover { background:var(--ag-primary); color:#fff; border-color:var(--ag-primary); }
+
+    /* ── Collapsible body ── */
+    .ag-group-body { overflow:hidden; max-height:0; transition:max-height .35s ease; }
+    .ag-event-group.is-open .ag-group-body { max-height:2000px; }
+
+    /* ── Session table ── */
+    .ag-session-table { width:100%; border-collapse:collapse; }
+    .ag-session-table thead tr th {
+        background:#f8fafc; font-size:.66rem; font-weight:800;
+        letter-spacing:.07em; text-transform:uppercase; color:#94a3b8;
+        padding:.7rem 1rem; border-bottom:1px solid #f1f5f9; border-top:1px solid #f1f5f9;
+        white-space:nowrap;
+    }
+    .ag-session-table tbody tr {
+        border-bottom:1px solid #f8fafc; transition:background .12s;
+        animation:ag-row-in .3s ease both;
+    }
+    .ag-session-table tbody tr:last-child { border-bottom:none; }
+    .ag-session-table tbody tr:hover { background:#f5f3ff; }
+    .ag-session-table tbody td { padding:.85rem 1rem; vertical-align:middle; font-size:.87rem; }
+
+    /* Stagger rows */
+    .ag-session-table tbody tr:nth-child(1) { animation-delay:.05s; }
+    .ag-session-table tbody tr:nth-child(2) { animation-delay:.09s; }
+    .ag-session-table tbody tr:nth-child(3) { animation-delay:.13s; }
+    .ag-session-table tbody tr:nth-child(4) { animation-delay:.17s; }
+    .ag-session-table tbody tr:nth-child(5) { animation-delay:.21s; }
+
+    /* ── Session name cell ── */
+    .ag-session-name { font-weight:700; color:var(--ag-text); margin-bottom:.12rem; }
+    .ag-session-desc {
+        font-size:.74rem; color:#94a3b8;
+        max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+
+    /* ── Speaker chip ── */
+    .ag-speaker {
+        display:inline-flex; align-items:center; gap:.3rem;
+        font-size:.82rem; font-weight:600; color:var(--ag-text);
+    }
+    .ag-speaker-avatar {
+        width:26px; height:26px; border-radius:50%;
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        display:flex; align-items:center; justify-content:center;
+        font-size:.64rem; font-weight:900; color:#fff; flex-shrink:0;
+    }
+
+    /* ── Time cell ── */
+    .ag-time-cell   { font-size:.82rem; }
+    .ag-time-start  { font-weight:700; color:var(--ag-text); }
+    .ag-time-end    { font-size:.75rem; color:#94a3b8; margin-top:.1rem; }
+    .ag-time-badge  {
+        display:inline-flex; align-items:center; gap:.2rem;
+        font-size:.62rem; font-weight:800; padding:.1rem .4rem;
+        border-radius:8px; margin-top:.2rem;
+    }
+    .ag-time-now    .ag-time-badge { background:#dcfce7; color:#15803d; animation:ag-live-glow 2s infinite; }
+    .ag-time-future .ag-time-badge { background:#ede9fe; color:#6d28d9; }
+    .ag-time-past   .ag-time-badge { background:#f3f4f6; color:#64748b; }
+    .ag-time-neutral .ag-time-badge { display:none; }
+
+    /* ── Location ── */
+    .ag-location { display:flex; align-items:center; gap:.3rem; font-size:.83rem; color:var(--ag-muted); }
+    .ag-location i { color:#a5b4fc; font-size:.8rem; }
+
+    /* ── Organizer cell (read-only mode) ── */
+    .ag-organizer { font-size:.82rem; font-weight:600; color:var(--ag-text); }
+
+    /* ── Action buttons ── */
+    .ag-actions { display:flex; gap:.4rem; align-items:center; justify-content:flex-end; }
+    .ag-act {
+        width:32px; height:32px; border-radius:9px; border:1px solid #e2e8f0;
+        background:#f8fafc; display:inline-flex; align-items:center;
+        justify-content:center; font-size:.8rem; cursor:pointer;
+        transition:all .15s; text-decoration:none; color:#64748b;
+    }
+    .ag-act:hover           { transform:translateY(-1px); }
+    .ag-act.edit:hover      { background:#fef9c3; border-color:#fde68a; color:#d97706; }
+    .ag-act.delete:hover    { background:#fee2e2; border-color:#fca5a5; color:#dc2626; }
+    .ag-act-form { display:inline; }
+
+    /* ── Empty state ── */
+    .ag-empty { text-align:center; padding:3.5rem 1rem; animation:ag-fadein .4s ease both; }
+    .ag-empty-icon {
+        width:88px; height:88px; border-radius:50%;
+        background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+        display:flex; align-items:center; justify-content:center;
+        font-size:2.4rem; color:#6d28d9; margin:0 auto 1.1rem;
+    }
+    .ag-empty h3 { font-size:1.15rem; font-weight:800; color:#374151; margin-bottom:.4rem; }
+    .ag-empty p  { font-size:.88rem; color:var(--ag-muted); margin-bottom:1.2rem; }
+
+    /* ── Toast ── */
+    .ag-toast {
+        border-radius:13px; padding:.9rem 1.2rem; font-size:.9rem;
+        font-weight:600; margin-bottom:1.25rem;
+        display:flex; align-items:center; gap:.6rem; border:none;
+        animation:ag-fadein .4s ease;
+    }
+    .ag-toast-success { background:#f0fdf4; border:1px solid #86efac; color:#15803d; }
+    .ag-toast-error   { background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; }
+
+    /* ── Summary bar ── */
+    .ag-summary-bar {
+        background:var(--ag-card); border-radius:var(--ag-radius);
+        border:1px solid var(--ag-border); box-shadow:var(--ag-shadow);
+        padding:.78rem 1.35rem; margin-top:1.25rem;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem; font-size:.79rem; color:var(--ag-muted);
+        animation:ag-fadein .4s .25s ease both;
+    }
+    .ag-summary-bar strong { color:var(--ag-text); }
+</style>
+
+<div class="ag-page">
+<div class="container-fluid px-4">
+
+    @* ── Toasts ── *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="ag-toast ag-toast-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
         </div>
-        @if (!Model.IsReadOnly)
-        {
-            <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="create" asp-fragment="agendaContainer" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>Thêm agenda từ Create Event
-            </a>
-        }
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="ag-toast ag-toast-error">
+            <i class="bi bi-exclamation-circle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* ── Header ── *@
+    <div class="ag-header">
+        <div>
+            <h1 class="ag-header-title">
+                <div class="ag-header-icon"><i class="bi bi-calendar2-week-fill"></i></div>
+                @Model.PageTitle
+            </h1>
+            <p class="ag-header-sub">@Model.PageDescription</p>
+        </div>
+        <div class="ag-header-actions">
+            @if (!Model.IsReadOnly)
+            {
+                <a asp-controller="Organizer" asp-action="Manage"
+                   asp-route-operation="create" asp-fragment="agendaContainer"
+                   class="ag-btn ag-btn-primary">
+                    <i class="bi bi-plus-circle-fill"></i> Thêm agenda từ Create Event
+                </a>
+            }
+        </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <form method="get" action="@(Model.IsReadOnly ? Url.Action("Agenda", "Approver") : Url.Action("MyAgenda", "EventAgenda"))" class="row g-3 align-items-end">
-                <div class="col-md-5">
-                    <label class="form-label fw-semibold">Tìm kiếm</label>
-                    <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Session name, speaker, event..." />
-                </div>
-                <div class="col-md-5">
-                    <label class="form-label fw-semibold">Sự kiện</label>
-                    <select name="eventId" class="form-select" asp-items="Model.EventOptions">
-                        <option value="">-- Tất cả sự kiện --</option>
-                    </select>
-                </div>
-                <div class="col-md-2 d-grid">
-                    <button type="submit" class="btn btn-outline-primary">Lọc</button>
+    @* ── Stats Strip ── *@
+    <div class="ag-stats-grid">
+        <div class="ag-stat">
+            <div class="ag-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-calendar2-week-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="ag-stat-label">Total Sessions</div>
+                <div class="ag-stat-value" style="color:#6d28d9;">@totalSessions</div>
+            </div>
+        </div>
+        <div class="ag-stat">
+            <div class="ag-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-calendar-event-fill" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="ag-stat-label">Events</div>
+                <div class="ag-stat-value" style="color:#1d4ed8;">@totalEvents</div>
+            </div>
+        </div>
+        <div class="ag-stat">
+            <div class="ag-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-person-video3" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="ag-stat-label">Speakers</div>
+                <div class="ag-stat-value" style="color:#16a34a;">@totalSpeakers</div>
+            </div>
+        </div>
+        <div class="ag-stat">
+            <div class="ag-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-arrow-up-right-circle-fill" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="ag-stat-label">Upcoming</div>
+                <div class="ag-stat-value" style="color:#d97706;">@upcomingCount</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Filter Card ── *@
+    <div class="ag-filter-card">
+        <div class="ag-filter-header">
+            <i class="bi bi-funnel-fill" style="color:#a5b4fc;"></i>
+            Lọc Agenda
+        </div>
+        <div class="ag-filter-body">
+            <form method="get"
+                  action="@(Model.IsReadOnly ? Url.Action("Agenda","Approver") : Url.Action("MyAgenda","EventAgenda"))">
+                <div class="ag-filter-grid">
+                    @* Search *@
+                    <div>
+                        <label class="ag-filter-label">
+                            <i class="bi bi-search"></i>Tìm kiếm
+                        </label>
+                        <div class="ag-input-wrap">
+                            <i class="bi bi-search icon-left"></i>
+                            <input type="text" name="search" value="@Model.Search"
+                                   class="ag-filter-input"
+                                   placeholder="Session name, speaker, event…" />
+                        </div>
+                    </div>
+
+                    @* Event select *@
+                    <div>
+                        <label class="ag-filter-label">
+                            <i class="bi bi-calendar-event"></i>Sự kiện
+                        </label>
+                        <select name="eventId" class="ag-filter-select" asp-items="Model.EventOptions">
+                            <option value="">-- Tất cả sự kiện --</option>
+                        </select>
+                    </div>
+
+                    @* Submit *@
+                    <div>
+                        <button type="submit" class="ag-btn ag-btn-filter" style="width:100%; justify-content:center; padding:.66rem 1rem;">
+                            <i class="bi bi-funnel-fill"></i> Lọc
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            @if (Model.Agendas.Any())
+    @* ── Accordion Groups ── *@
+    @if (!groupedAgendas.Any())
+    {
+        <div class="ag-empty">
+            <div class="ag-empty-icon"><i class="bi bi-calendar2-x"></i></div>
+            <h3>Chưa có agenda nào</h3>
+            <p>
+                @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.SelectedEventId))
+                {
+                    <text>Không có agenda phù hợp với bộ lọc hiện tại. Thử thay đổi điều kiện tìm kiếm.</text>
+                }
+                else
+                {
+                    <text>Chưa có session nào được tạo. Hãy tạo event và thêm agenda vào.</text>
+                }
+            </p>
+            @if (!Model.IsReadOnly)
             {
-                var groupedAgendas = Model.Agendas.GroupBy(a => a.EventTitle).ToList();
-                int accordionIndex = 0;
-
-                <div class="accordion" id="agendaAccordion">
-                    @foreach (var group in groupedAgendas)
-                    {
-                        var isFirst = accordionIndex == 0;
-                        var collapseId = "collapse-" + accordionIndex;
-                        var headerId = "heading-" + accordionIndex;
-                        var eventTitle = group.Key ?? "Unknown Event";
-                        var firstItem = group.First();
-                        
-                        <div class="accordion-item mb-3 border rounded shadow-sm">
-                            <h2 class="accordion-header" id="@headerId">
-                                <button class="accordion-button @(isFirst ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@(isFirst ? "true" : "false")" aria-controls="@collapseId">
-                                    <div class="d-flex w-100 justify-content-between align-items-center me-3">
-                                        <div>
-                                            <span class="fw-bold text-dark me-2">@eventTitle</span>
-                                            <span class="badge bg-secondary me-1">@(firstItem.EventType?.ToString() ?? "Unknown Type")</span>
-                                            <span class="badge bg-info text-dark">@firstItem.EventStatus</span>
-                                        </div>
-                                        <div>
-                                            @{
-                                                var detailController = Model.IsReadOnly ? "Approver" : "Organizer";
-                                                var detailAction = Model.IsReadOnly ? "Detail" : "DetailEvent";
-                                            }
-                                            <a asp-controller="@detailController" asp-action="@detailAction" asp-route-id="@firstItem.EventId" class="btn btn-sm btn-outline-primary ms-3" onclick="event.stopPropagation();">
-                                                <i class="bi bi-box-arrow-up-right d-none d-sm-inline"></i> View Details
-                                            </a>
-                                        </div>
-                                    </div>
-                                </button>
-                            </h2>
-                            <div id="@collapseId" class="accordion-collapse collapse @(isFirst ? "show" : "")" aria-labelledby="@headerId" data-bs-parent="#agendaAccordion">
-                                <div class="accordion-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle mb-0 border-top-0">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th class="ps-4">Session</th>
-                                                    <th>Speaker</th>
-                                                    @if (Model.IsReadOnly)
-                                                    {
-                                                        <th>Organizer</th>
-                                                    }
-                                                    <th>Time</th>
-                                                    <th>Location</th>
-                                                    @if (!Model.IsReadOnly)
-                                                    {
-                                                        <th class="text-center pe-4">Action</th>
-                                                    }
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var agenda in group)
-                                                {
-                                                    <tr>
-                                                        <td class="ps-4">
-                                                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(agenda.SessionName) ? "-" : agenda.SessionName)</div>
-                                                            @if (!string.IsNullOrWhiteSpace(agenda.Description))
-                                                            {
-                                                                <div class="small text-muted text-truncate" style="max-width: 260px;">@agenda.Description</div>
-                                                            }
-                                                        </td>
-                                                        <td>@(string.IsNullOrWhiteSpace(agenda.SpeakerInfo) ? "-" : agenda.SpeakerInfo)</td>
-                                                        @if (Model.IsReadOnly)
-                                                        {
-                                                            <td>@(string.IsNullOrWhiteSpace(agenda.OrganizerName) ? "-" : agenda.OrganizerName)</td>
-                                                        }
-                                                        <td>
-                                                            <div>@(agenda.StartTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
-                                                            <div class="small text-muted">đến @(agenda.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
-                                                        </td>
-                                                        <td>@(string.IsNullOrWhiteSpace(agenda.Location) ? "-" : agenda.Location)</td>
-                                                        @if (!Model.IsReadOnly)
-                                                        {
-                                                            <td class="text-center pe-4">
-                                                                <div class="d-inline-flex gap-2">
-                                                                    <a asp-action="EditAgenda" asp-route-id="@agenda.Id" class="btn btn-sm btn-outline-primary">Edit</a>
-                                                                    <form asp-action="DeleteAgenda" asp-route-id="@agenda.Id" method="post" onsubmit="return confirm('Xác nhận xóa agenda này?');">
-                                                                        @Html.AntiForgeryToken()
-                                                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                                                    </form>
-                                                                </div>
-                                                            </td>
-                                                        }
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        accordionIndex++;
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="alert alert-info mb-0">Chưa có agenda nào phù hợp với bộ lọc hiện tại.</div>
+                <a asp-controller="Organizer" asp-action="Manage"
+                   asp-route-operation="create" asp-fragment="agendaContainer"
+                   class="ag-btn ag-btn-primary">
+                    <i class="bi bi-plus-circle-fill"></i> Thêm Agenda Ngay
+                </a>
             }
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="ag-accordion" id="agendaAccordion">
+            @{
+                int groupIdx = 0;
+            }
+            @foreach (var group in groupedAgendas)
+            {
+                var eventTitle   = group.Key ?? "Unknown Event";
+                var firstItem    = group.First();
+                var sessionCount = group.Count();
+                var avatarColor  = GetAvatarColor(eventTitle);
+                var initials     = GetInitials(eventTitle);
+                var isFirst      = groupIdx == 0;
+                var collapseId   = "ag-collapse-" + groupIdx;
+                var detailCtrl   = Model.IsReadOnly ? "Approver" : "Organizer";
+                var detailAction = Model.IsReadOnly ? "Detail" : "DetailEvent";
+                var sessionRange = group.Where(s => s.StartTime.HasValue)
+                                         .OrderBy(s => s.StartTime)
+                                         .ToList();
+                var earliest     = sessionRange.FirstOrDefault()?.StartTime;
+                var latest       = sessionRange.LastOrDefault()?.EndTime;
+
+                <div class="ag-event-group @(isFirst ? "is-open" : "")" id="group-@groupIdx">
+                    @* ── Group header ── *@
+                    <button class="ag-group-btn" type="button"
+                            onclick="agToggle('@collapseId', this)">
+                        <div class="ag-event-avatar" style="background:@avatarColor;">
+                            @initials
+                        </div>
+                        <div class="ag-group-info">
+                            <div class="ag-group-title">@eventTitle</div>
+                            <div class="ag-group-meta">
+                                @if (firstItem.EventType.HasValue)
+                                {
+                                    <span class="ag-type-pill @TypeClass(firstItem.EventType)">
+                                        @firstItem.EventType.ToString()
+                                    </span>
+                                }
+                                <span class="ag-status-pill @StatusClass(firstItem.EventStatus)">
+                                    <i class="bi @StatusIcon(firstItem.EventStatus)" style="font-size:.62rem;"></i>
+                                    @firstItem.EventStatus
+                                </span>
+                                <span style="display:inline-flex; align-items:center; gap:.2rem;">
+                                    <i class="bi bi-collection" style="color:#a5b4fc; font-size:.72rem;"></i>
+                                    @sessionCount session(s)
+                                </span>
+                                @if (earliest.HasValue)
+                                {
+                                    <span style="display:inline-flex; align-items:center; gap:.2rem;">
+                                        <i class="bi bi-clock" style="color:#a5b4fc; font-size:.72rem;"></i>
+                                        @earliest.Value.ToString("dd/MM/yyyy")
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                        <div class="ag-group-right" onclick="event.stopPropagation();">
+                            <a asp-controller="@detailCtrl" asp-action="@detailAction"
+                               asp-route-id="@firstItem.EventId"
+                               class="ag-view-btn">
+                                <i class="bi bi-box-arrow-up-right"></i> View Details
+                            </a>
+                        </div>
+                        <i class="bi bi-chevron-down ag-toggle-icon"></i>
+                    </button>
+
+                    @* ── Sessions table ── *@
+                    <div class="ag-group-body" id="@collapseId"
+                         style="@(isFirst ? "max-height:2000px;" : "")">
+                        <div class="table-responsive">
+                            <table class="ag-session-table">
+                                <colgroup>
+                                    <col style="min-width:210px;" />
+                                    <col style="width:130px;" />
+                                    @if (Model.IsReadOnly) { <col style="width:130px;" /> }
+                                    <col style="width:170px;" />
+                                    <col />
+                                    @if (!Model.IsReadOnly) { <col style="width:80px;" /> }
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th style="padding-left:1.35rem;">Session</th>
+                                        <th>Speaker</th>
+                                        @if (Model.IsReadOnly) { <th>Organizer</th> }
+                                        <th>Time</th>
+                                        <th>Location</th>
+                                        @if (!Model.IsReadOnly) { <th style="text-align:right; padding-right:1.35rem;">Action</th> }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var session in group.OrderBy(s => s.StartTime))
+                                    {
+                                        var tlClass = TimelineClass(session.StartTime, session.EndTime);
+                                        var tlLabel = TimelineLabel(session.StartTime, session.EndTime);
+                                        var spkInitial = string.IsNullOrWhiteSpace(session.SpeakerInfo)
+                                            ? "?" : session.SpeakerInfo.Trim()[0].ToString().ToUpper();
+
+                                        <tr>
+                                            @* Session name *@
+                                            <td style="padding-left:1.35rem;">
+                                                <div class="ag-session-name">
+                                                    @(string.IsNullOrWhiteSpace(session.SessionName) ? "—" : session.SessionName)
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(session.Description))
+                                                {
+                                                    <div class="ag-session-desc" title="@session.Description">
+                                                        @session.Description
+                                                    </div>
+                                                }
+                                            </td>
+
+                                            @* Speaker *@
+                                            <td>
+                                                @if (!string.IsNullOrWhiteSpace(session.SpeakerInfo))
+                                                {
+                                                    <div class="ag-speaker">
+                                                        <div class="ag-speaker-avatar">@spkInitial</div>
+                                                        @session.SpeakerInfo
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span style="color:#cbd5e1; font-size:.82rem;">—</span>
+                                                }
+                                            </td>
+
+                                            @* Organizer (read-only mode) *@
+                                            @if (Model.IsReadOnly)
+                                            {
+                                                <td>
+                                                    <span class="ag-organizer">
+                                                        @(string.IsNullOrWhiteSpace(session.OrganizerName) ? "—" : session.OrganizerName)
+                                                    </span>
+                                                </td>
+                                            }
+
+                                            @* Time *@
+                                            <td>
+                                                <div class="ag-time-cell @tlClass">
+                                                    <div class="ag-time-start">
+                                                        @(session.StartTime?.ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                                    </div>
+                                                    <div class="ag-time-end">
+                                                        đến @(session.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(tlLabel))
+                                                    {
+                                                        <div class="ag-time-badge">
+                                                            <i class="bi @(tlLabel=="Live" ? "bi-broadcast" : tlLabel=="Upcoming" ? "bi-clock" : "bi-check2-circle")" style="font-size:.6rem;"></i>
+                                                            @tlLabel
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </td>
+
+                                            @* Location *@
+                                            <td>
+                                                <div class="ag-location">
+                                                    <i class="bi bi-geo-alt-fill"></i>
+                                                    @(string.IsNullOrWhiteSpace(session.Location) ? "—" : session.Location)
+                                                </div>
+                                            </td>
+
+                                            @* Actions *@
+                                            @if (!Model.IsReadOnly)
+                                            {
+                                                <td style="padding-right:1.35rem;">
+                                                    <div class="ag-actions">
+                                                        <a class="ag-act edit"
+                                                           asp-controller="EventAgenda"
+                                                           asp-action="EditAgenda"
+                                                           asp-route-id="@session.Id"
+                                                           title="Edit Session">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                        <form asp-controller="EventAgenda"
+                                                              asp-action="DeleteAgenda"
+                                                              asp-route-id="@session.Id"
+                                                              method="post" class="ag-act-form"
+                                                              onsubmit="return confirm('Xác nhận xóa session &quot;@Html.Raw(session.SessionName?.Replace("\"","\\\"") ?? "này")&quot;?');">
+                                                            @Html.AntiForgeryToken()
+                                                            <button type="submit" class="ag-act delete"
+                                                                    title="Delete Session">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                groupIdx++;
+            }
+        </div>
+
+        @* ── Summary bar ── *@
+        <div class="ag-summary-bar">
+            <div>
+                <strong>@totalEvents</strong> event(s) &nbsp;·&nbsp;
+                <strong>@totalSessions</strong> session(s) &nbsp;·&nbsp;
+                <strong>@totalSpeakers</strong> unique speaker(s)
+            </div>
+            <div>
+                <strong>@upcomingCount</strong> upcoming &nbsp;·&nbsp;
+                <strong>@(totalSessions - upcomingCount)</strong> past/ongoing
+            </div>
+        </div>
+    }
+
 </div>
+</div>
+
+@section Scripts {
+    <script>
+    // ── Accordion toggle ─────────────────────────────────────────────────────
+    function agToggle(collapseId, btn) {
+        const body     = document.getElementById(collapseId);
+        const group    = btn.closest('.ag-event-group');
+        const isOpen   = group.classList.contains('is-open');
+
+        if (isOpen) {
+            // Close
+            body.style.maxHeight = body.scrollHeight + 'px';
+            requestAnimationFrame(function () {
+                body.style.transition = 'max-height .35s ease';
+                body.style.maxHeight  = '0';
+            });
+            group.classList.remove('is-open');
+        } else {
+            // Open
+            body.style.maxHeight  = body.scrollHeight + 'px';
+            body.style.transition = 'max-height .35s ease';
+            group.classList.add('is-open');
+            // After transition, relax height for dynamic content
+            setTimeout(function () {
+                if (group.classList.contains('is-open')) {
+                    body.style.maxHeight = '2000px';
+                }
+            }, 380);
+        }
+    }
+
+    // ── Toast auto-dismiss ────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.ag-toast').forEach(function (t) {
+            setTimeout(function () {
+                t.style.transition = 'opacity .4s, transform .4s';
+                t.style.opacity    = '0';
+                t.style.transform  = 'translateY(-6px)';
+                setTimeout(function () { t.remove(); }, 420);
+            }, 4000);
+        });
+
+        // ── Keyboard: press Esc to collapse all ───────────────────────────────
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.ag-event-group.is-open').forEach(function (g) {
+                    const btn  = g.querySelector('.ag-group-btn');
+                    const body = g.querySelector('.ag-group-body');
+                    if (btn && body) {
+                        body.style.maxHeight = '0';
+                        g.classList.remove('is-open');
+                    }
+                });
+            }
+        });
+    });
+    </script>
+}

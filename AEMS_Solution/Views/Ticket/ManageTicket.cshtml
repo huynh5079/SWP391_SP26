@@ -1,67 +1,673 @@
-﻿@model AEMS_Solution.Models.Organizer.Manage.ManageTicketViewModel
+@model AEMS_Solution.Models.Organizer.Manage.ManageTicketViewModel
+@using DataAccess.Enum
 @{
     ViewData["Title"] = "Manage Tickets";
     Layout = "_Organizerlayout";
+
+    var events         = Model.Events ?? new List<AEMS_Solution.Models.Organizer.Manage.TicketSalesByEventVm>();
+    int totalEvents    = events.Count;
+    int totalSold      = Model.TotalSoldTickets;
+    int totalCapacity  = events.Sum(e => e.MaxCapacity);
+    int totalRemaining = events.Sum(e => e.RemainingSeats);
+    double avgFill     = totalEvents > 0 ? events.Average(e => e.FillPercent) : 0;
+
+    // ── Fill-rate color helper ────────────────────────────────────────────────
+    string FillColor(double pct) =>
+        pct >= 90 ? "#ef4444" : pct >= 60 ? "#f59e0b" : "#22c55e";
+
+    string FillBadgeClass(double pct) =>
+        pct >= 90 ? "mt-fill-hot" : pct >= 60 ? "mt-fill-warm" : "mt-fill-cool";
+
+    // ── Avatar color from event title hash ───────────────────────────────────
+    string GetAvatarColor(string? name)
+    {
+        var palette = new[] {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6",
+            "#f97316","#a855f7"
+        };
+        if (string.IsNullOrEmpty(name)) return palette[0];
+        return palette[Math.Abs(name.GetHashCode()) % palette.Length];
+    }
+
+    string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // ── Event time status ─────────────────────────────────────────────────────
+    string EventTimeStatus(DateTime start, DateTime end)
+    {
+        if (end < DateTime.Now)   return "ended";
+        if (start > DateTime.Now) return "upcoming";
+        return "ongoing";
+    }
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Manage Tickets</h2>
-        <span class="badge bg-primary fs-6">Total sold: @Model.TotalSoldTickets</span>
+<style>
+    /* ==============================================================
+       MANAGE TICKETS — PREMIUM ORGANIZER UI
+    ============================================================== */
+    :root {
+        --mt-primary:   #6366f1;
+        --mt-secondary: #8b5cf6;
+        --mt-bg:        #f0f2ff;
+        --mt-card:      #ffffff;
+        --mt-border:    #e0e7ff;
+        --mt-text:      #1e1b4b;
+        --mt-muted:     #64748b;
+        --mt-radius:    16px;
+        --mt-shadow:    0 4px 24px rgba(99,102,241,.08);
+        --mt-focus:     0 0 0 3px rgba(99,102,241,.2);
+        --mt-green:     #22c55e;
+        --mt-amber:     #f59e0b;
+        --mt-red:       #ef4444;
+    }
+
+    /* ── Animations ── */
+    @@keyframes mt-fadein  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes mt-pop     { from { opacity:0; transform:scale(.85); }      to { opacity:1; transform:scale(1); } }
+    @@keyframes mt-row-in  { from { opacity:0; transform:translateY(6px);  } to { opacity:1; transform:none; } }
+    @@keyframes mt-bar-grow { from { width:0; } }
+    @@keyframes mt-live-glow {
+        0%,100% { box-shadow:0 0 0 0  rgba(34,197,94,.4); }
+        50%     { box-shadow:0 0 0 7px rgba(34,197,94,0); }
+    }
+    @@keyframes mt-hot-glow {
+        0%,100% { box-shadow:0 0 0 0  rgba(239,68,68,.35); }
+        50%     { box-shadow:0 0 0 7px rgba(239,68,68,0); }
+    }
+    @@keyframes mt-count-up { from { opacity:0; transform:scale(.75); } to { opacity:1; transform:scale(1); } }
+
+    /* ── Page ── */
+    .mt-page { background:var(--mt-bg); min-height:100vh; padding:2rem 0 4rem; }
+
+    /* ── Header ── */
+    .mt-header {
+        display:flex; align-items:flex-start; justify-content:space-between;
+        gap:1rem; margin-bottom:2rem; flex-wrap:wrap;
+        animation:mt-fadein .35s ease both;
+    }
+    .mt-header-title {
+        font-size:1.9rem; font-weight:900; color:var(--mt-text);
+        letter-spacing:-.025em; margin-bottom:.2rem;
+        display:flex; align-items:center; gap:.55rem;
+    }
+    .mt-header-icon {
+        width:48px; height:48px; border-radius:14px;
+        background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.4rem; color:#fff; flex-shrink:0;
+        box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+    .mt-header-sub { color:var(--mt-muted); font-size:.87rem; margin:0; margin-left:58px; }
+
+    /* ── Buttons ── */
+    .mt-btn {
+        display:inline-flex; align-items:center; gap:.4rem;
+        font-size:.83rem; font-weight:700; padding:.62rem 1.3rem;
+        border-radius:30px; border:none; text-decoration:none;
+        cursor:pointer; transition:all .18s; white-space:nowrap;
+    }
+    .mt-btn-ghost  { background:#fff; color:#475569; border:1.5px solid #e2e8f0; }
+    .mt-btn-ghost:hover  { background:#f1f5f9; color:var(--mt-primary); border-color:#c7d2fe; }
+    .mt-btn-filter { background:var(--mt-primary); color:#fff; box-shadow:0 3px 10px rgba(99,102,241,.25); }
+    .mt-btn-filter:hover { background:#4f46e5; color:#fff; transform:translateY(-1px); }
+
+    /* ── Stats grid ── */
+    .mt-stats-grid {
+        display:grid; grid-template-columns:repeat(5,1fr);
+        gap:1rem; margin-bottom:1.5rem;
+        animation:mt-fadein .4s .08s ease both;
+    }
+    @@media(max-width:1100px){ .mt-stats-grid { grid-template-columns:repeat(3,1fr); } }
+    @@media(max-width:640px) { .mt-stats-grid { grid-template-columns:1fr 1fr; } }
+
+    .mt-stat {
+        background:var(--mt-card); border-radius:14px;
+        border:1px solid var(--mt-border); box-shadow:var(--mt-shadow);
+        padding:1rem 1.15rem; display:flex; align-items:center; gap:.85rem;
+        transition:transform .18s,box-shadow .18s; cursor:default;
+    }
+    .mt-stat:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(99,102,241,.14); }
+    .mt-stat-icon  {
+        width:44px; height:44px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.15rem; flex-shrink:0;
+    }
+    .mt-stat-label { font-size:.68rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+    .mt-stat-value {
+        font-size:1.5rem; font-weight:900; color:var(--mt-text);
+        line-height:1; margin-top:.08rem;
+        animation:mt-count-up .5s ease both;
+    }
+    .mt-stat-sub   { font-size:.7rem; color:#94a3b8; margin-top:.15rem; }
+
+    /* ── Search card ── */
+    .mt-search-card {
+        background:var(--mt-card); border-radius:var(--mt-radius);
+        border:1px solid var(--mt-border); box-shadow:var(--mt-shadow);
+        padding:.88rem 1.45rem; margin-bottom:1.5rem;
+        display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+        animation:mt-fadein .4s .12s ease both;
+    }
+    .mt-search-wrap  { position:relative; flex:1 1 260px; }
+    .mt-search-wrap i {
+        position:absolute; top:50%; left:.85rem;
+        transform:translateY(-50%); color:#94a3b8;
+        font-size:.8rem; pointer-events:none;
+    }
+    .mt-search-input {
+        width:100%; padding:.65rem 1rem .65rem 2.3rem;
+        border:1.5px solid var(--mt-border); border-radius:30px;
+        font-size:.88rem; color:var(--mt-text); background:#fafbff;
+        outline:none; transition:all .2s;
+    }
+    .mt-search-input:focus { background:#fff; border-color:var(--mt-primary); box-shadow:var(--mt-focus); }
+    .mt-result-count { font-size:.8rem; color:var(--mt-muted); white-space:nowrap; }
+    .mt-result-count strong { color:var(--mt-primary); }
+
+    /* ── Table card ── */
+    .mt-table-card {
+        background:var(--mt-card); border-radius:var(--mt-radius);
+        border:1px solid var(--mt-border); box-shadow:var(--mt-shadow);
+        overflow:hidden; animation:mt-fadein .4s .18s ease both;
+    }
+    .mt-table-header {
+        padding:.88rem 1.45rem; border-bottom:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem;
+    }
+    .mt-table-label {
+        font-size:.68rem; font-weight:800; letter-spacing:.08em;
+        text-transform:uppercase; color:#94a3b8;
+        display:flex; align-items:center; gap:.4rem;
+    }
+    .mt-count-chip {
+        background:#ede9fe; color:#6d28d9; font-size:.7rem;
+        font-weight:700; padding:.12rem .5rem; border-radius:20px;
+    }
+
+    /* ── Table ── */
+    .mt-table { width:100%; border-collapse:collapse; }
+    .mt-table thead tr th {
+        background:#f8fafc; font-size:.67rem; font-weight:800;
+        letter-spacing:.07em; text-transform:uppercase; color:#94a3b8;
+        padding:.78rem 1.1rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;
+    }
+    .mt-table tbody tr {
+        border-bottom:1px solid #f8fafc;
+        animation:mt-row-in .3s ease both;
+        transition:background .12s;
+    }
+    .mt-table tbody tr:last-child { border-bottom:none; }
+    .mt-table tbody tr:hover { background:#f5f3ff; }
+    .mt-table tbody tr.mt-filtered-out { display:none !important; }
+    .mt-table tbody td { padding:.9rem 1.1rem; vertical-align:middle; font-size:.88rem; }
+
+    /* ── Stagger delays ── */
+    .mt-table tbody tr:nth-child(1)  { animation-delay:.04s; }
+    .mt-table tbody tr:nth-child(2)  { animation-delay:.07s; }
+    .mt-table tbody tr:nth-child(3)  { animation-delay:.10s; }
+    .mt-table tbody tr:nth-child(4)  { animation-delay:.13s; }
+    .mt-table tbody tr:nth-child(5)  { animation-delay:.16s; }
+    .mt-table tbody tr:nth-child(6)  { animation-delay:.19s; }
+    .mt-table tbody tr:nth-child(7)  { animation-delay:.22s; }
+    .mt-table tbody tr:nth-child(8)  { animation-delay:.25s; }
+    .mt-table tbody tr:nth-child(9)  { animation-delay:.28s; }
+    .mt-table tbody tr:nth-child(10) { animation-delay:.31s; }
+
+    /* ── Event name cell ── */
+    .mt-event-cell { display:flex; align-items:center; gap:.75rem; }
+    .mt-event-avatar {
+        width:40px; height:40px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:.88rem; font-weight:900; color:#fff; flex-shrink:0;
+        box-shadow:0 2px 8px rgba(0,0,0,.12); transition:transform .18s;
+    }
+    .mt-table tbody tr:hover .mt-event-avatar { transform:scale(1.08) rotate(3deg); }
+    .mt-event-name { font-weight:800; color:#4f46e5; font-size:.9rem; }
+    .mt-event-name:hover { color:#3730a3; }
+    .mt-event-meta { font-size:.72rem; color:#94a3b8; margin-top:.1rem; }
+
+    /* ── Time badge ── */
+    .mt-time-badge {
+        display:inline-flex; align-items:center; gap:.22rem;
+        font-size:.65rem; font-weight:800; padding:.12rem .45rem;
+        border-radius:8px; text-transform:uppercase; letter-spacing:.04em;
+        margin-left:.4rem;
+    }
+    .mt-time-ongoing  { background:#dcfce7; color:#15803d; animation:mt-live-glow 2s infinite; }
+    .mt-time-upcoming { background:#ede9fe; color:#6d28d9; }
+    .mt-time-ended    { background:#f3f4f6; color:#64748b; }
+
+    /* ── Date cell ── */
+    .mt-date { font-size:.82rem; color:var(--mt-muted); }
+    .mt-date strong { color:var(--mt-text); font-weight:700; display:block; }
+    .mt-date span   { font-size:.75rem; color:#94a3b8; }
+
+    /* ── Number cells ── */
+    .mt-num-cell { text-align:right; font-weight:800; font-size:.92rem; }
+    .mt-num-sold     { color:#6366f1; }
+    .mt-num-capacity { color:#64748b; }
+    .mt-num-remain   { color:#16a34a; }
+    .mt-num-remain.low { color:#ef4444; }
+
+    /* ── Fill percent + progress bar ── */
+    .mt-fill-cell { min-width:120px; padding-right:1.25rem !important; }
+    .mt-fill-top  { display:flex; align-items:center; justify-content:space-between; margin-bottom:.3rem; }
+    .mt-fill-pct  { font-size:.82rem; font-weight:800; }
+    .mt-fill-bar-bg { height:6px; background:#e0e7ff; border-radius:3px; overflow:hidden; }
+    .mt-fill-bar    {
+        height:100%; border-radius:3px;
+        animation:mt-bar-grow .7s ease both;
+        transition:width .4s ease;
+    }
+    .mt-fill-badge {
+        display:inline-flex; align-items:center; gap:.2rem;
+        font-size:.65rem; font-weight:800; padding:.1rem .4rem;
+        border-radius:8px;
+    }
+    .mt-fill-hot  { background:#fee2e2; color:#b91c1c; animation:mt-hot-glow 2s infinite; }
+    .mt-fill-warm { background:#fef3c7; color:#92400e; }
+    .mt-fill-cool { background:#dcfce7; color:#15803d; }
+
+    /* ── View detail btn ── */
+    .mt-view-btn {
+        display:inline-flex; align-items:center; gap:.3rem;
+        font-size:.75rem; font-weight:700; padding:.35rem .8rem;
+        border-radius:20px; border:1.5px solid #e0e7ff;
+        background:#f8faff; color:#6366f1; text-decoration:none;
+        transition:all .16s; white-space:nowrap;
+    }
+    .mt-view-btn:hover { background:#6366f1; color:#fff; border-color:#6366f1; }
+
+    /* ── Empty state ── */
+    .mt-empty { text-align:center; padding:3.5rem 1rem; animation:mt-fadein .4s ease both; }
+    .mt-empty-icon {
+        width:80px; height:80px; border-radius:50%;
+        background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+        display:flex; align-items:center; justify-content:center;
+        font-size:2.2rem; color:#6d28d9; margin:0 auto 1rem;
+    }
+    .mt-empty h3 { font-size:1.1rem; font-weight:800; color:#374151; margin-bottom:.4rem; }
+    .mt-empty p  { font-size:.88rem; color:var(--mt-muted); }
+
+    /* ── Summary footer ── */
+    .mt-footer {
+        padding:.78rem 1.1rem; border-top:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:.5rem; font-size:.79rem; color:var(--mt-muted);
+    }
+    .mt-footer strong { color:var(--mt-text); }
+
+    /* ── Toast ── */
+    .mt-toast {
+        border-radius:13px; padding:.9rem 1.2rem; font-size:.9rem;
+        font-weight:600; margin-bottom:1.25rem;
+        display:flex; align-items:center; gap:.6rem;
+        animation:mt-fadein .4s ease;
+    }
+    .mt-toast-success { background:#f0fdf4; border:1px solid #86efac; color:#15803d; }
+    .mt-toast-error   { background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; }
+</style>
+
+<div class="mt-page">
+<div class="container-fluid px-4">
+
+    @* ── Toasts ── *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="mt-toast mt-toast-success">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="mt-toast mt-toast-error">
+            <i class="bi bi-exclamation-circle-fill"></i> @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* ── Header ── *@
+    <div class="mt-header">
+        <div>
+            <h1 class="mt-header-title">
+                <div class="mt-header-icon"><i class="bi bi-ticket-perforated-fill"></i></div>
+                Manage Tickets
+            </h1>
+            <p class="mt-header-sub">
+                Track ticket sales and seat availability across all your events.
+            </p>
+        </div>
     </div>
 
-    <form method="get" asp-controller="Organizer" asp-action="Manage" class="row g-2 mb-3">
-        <input type="hidden" name="operation" value="manageticket" />
-        <div class="col-md-5">
-            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search event title..." />
+    @* ── Stats Strip ── *@
+    <div class="mt-stats-grid">
+        <div class="mt-stat">
+            <div class="mt-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-calendar-event-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="mt-stat-label">Total Events</div>
+                <div class="mt-stat-value" style="color:#6d28d9;">@totalEvents</div>
+            </div>
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-outline-primary">Search</button>
+        <div class="mt-stat">
+            <div class="mt-stat-icon" style="background:#dbeafe;">
+                <i class="bi bi-ticket-perforated-fill" style="color:#1d4ed8;"></i>
+            </div>
+            <div>
+                <div class="mt-stat-label">Total Sold</div>
+                <div class="mt-stat-value" style="color:#1d4ed8;">@totalSold</div>
+                <div class="mt-stat-sub">tickets</div>
+            </div>
         </div>
-    </form>
+        <div class="mt-stat">
+            <div class="mt-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-person-badge-fill" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="mt-stat-label">Total Capacity</div>
+                <div class="mt-stat-value" style="color:#d97706;">@totalCapacity</div>
+                <div class="mt-stat-sub">seats</div>
+            </div>
+        </div>
+        <div class="mt-stat">
+            <div class="mt-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="mt-stat-label">Remaining</div>
+                <div class="mt-stat-value" style="color:#16a34a;">@totalRemaining</div>
+                <div class="mt-stat-sub">seats left</div>
+            </div>
+        </div>
+        <div class="mt-stat">
+            <div class="mt-stat-icon" style="background:#ffedd5;">
+                <i class="bi bi-graph-up-arrow" style="color:#c2410c;"></i>
+            </div>
+            <div>
+                <div class="mt-stat-label">Avg. Fill Rate</div>
+                <div class="mt-stat-value" style="color:@FillColor(avgFill);">@avgFill.ToString("0.0")%</div>
+            </div>
+        </div>
+    </div>
 
-    <div class="card shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Event</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th class="text-center">Sold</th>
-                        <th class="text-center">Capacity</th>
-                        <th class="text-center">Remaining</th>
-                        <th class="text-center">Fill %</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.Events.Any())
+    @* ── Search bar ── *@
+    <div class="mt-search-card">
+        <form method="get" asp-controller="Organizer" asp-action="Manage"
+              style="display:contents;">
+            <input type="hidden" name="operation" value="manageticket" />
+            <div class="mt-search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@Model.Search"
+                       id="mtSearchInput"
+                       class="mt-search-input"
+                       placeholder="Search by event title…"
+                       oninput="mtLiveFilter()" />
+            </div>
+            <button type="submit" class="mt-btn mt-btn-filter">
+                <i class="bi bi-search"></i> Search
+            </button>
+            @if (!string.IsNullOrWhiteSpace(Model.Search))
+            {
+                <a asp-controller="Organizer" asp-action="Manage"
+                   asp-route-operation="manageticket"
+                   class="mt-btn mt-btn-ghost">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            }
+        </form>
+        <span class="mt-result-count ms-auto">
+            <strong id="mtVisCount">@totalEvents</strong> / @totalEvents event(s)
+        </span>
+    </div>
+
+    @* ── Table Card ── *@
+    <div class="mt-table-card">
+        <div class="mt-table-header">
+            <div class="mt-table-label">
+                <i class="bi bi-list-ul"></i> Ticket Sales by Event
+                <span class="mt-count-chip" id="mtChipCount">@totalEvents event(s)</span>
+            </div>
+            <div style="font-size:.78rem; color:#94a3b8;">
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <span>Filtered: <strong style="color:#6366f1;">"@Model.Search"</strong></span>
+                }
+                else
+                {
+                    <span>All events</span>
+                }
+            </div>
+        </div>
+
+        @if (!events.Any())
+        {
+            <div class="mt-empty">
+                <div class="mt-empty-icon"><i class="bi bi-ticket-perforated"></i></div>
+                <h3>No Events Found</h3>
+                <p>
+                    @if (!string.IsNullOrWhiteSpace(Model.Search))
                     {
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-3">No events found.</td>
-                        </tr>
+                        <text>No events match "<strong>@Model.Search</strong>". Try clearing the search.</text>
                     }
                     else
                     {
-                        foreach (var e in Model.Events)
+                        <text>You haven't created any events yet.</text>
+                    }
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="mt-table" id="mtTable">
+                    <colgroup>
+                        <col />
+                        <col style="width:145px;" />
+                        <col style="width:145px;" />
+                        <col style="width:80px;" />
+                        <col style="width:85px;" />
+                        <col style="width:90px;" />
+                        <col style="width:150px;" />
+                        <col style="width:85px;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th style="text-align:right;">Sold</th>
+                            <th style="text-align:right;">Capacity</th>
+                            <th style="text-align:right;">Remaining</th>
+                            <th>Fill Rate</th>
+                            <th style="text-align:right;">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mtTableBody">
+                        @foreach (var evt in events)
                         {
-                            <tr>
+                            var avatarColor = GetAvatarColor(evt.EventTitle);
+                            var initials    = GetInitials(evt.EventTitle);
+                            var timeStatus  = EventTimeStatus(evt.StartTime, evt.EndTime);
+                            var fillColor   = FillColor(evt.FillPercent);
+                            var fillClass   = FillBadgeClass(evt.FillPercent);
+                            var lowSeat     = evt.RemainingSeats <= (int)(evt.MaxCapacity * 0.1);
+
+                            <tr class="mt-event-row" data-title="@evt.EventTitle.ToLower()">
+
+                                @* ── Event ── *@
                                 <td>
-                                    <a asp-controller="Organizer" asp-action="Manage" asp-route-operation="detailevent" asp-route-id="@e.EventId" class="text-decoration-none fw-semibold">
-                                        @e.EventTitle
+                                    <div class="mt-event-cell">
+                                        <div class="mt-event-avatar" style="background:@avatarColor;">
+                                            @initials
+                                        </div>
+                                        <div>
+                                            <a class="mt-event-name"
+                                               asp-controller="Organizer" asp-action="Manage"
+                                               asp-route-operation="detailevent"
+                                               asp-route-id="@evt.EventId"
+                                               title="@evt.EventTitle">
+                                                @(evt.EventTitle.Length > 30 ? evt.EventTitle[..30] + "…" : evt.EventTitle)
+                                            </a>
+                                            <div class="mt-event-meta">
+                                                <i class="bi bi-hash" style="font-size:.65rem;"></i>
+                                                @evt.EventId[..Math.Min(8, evt.EventId.Length)]…
+                                                @{
+                                                    var badgeClass = timeStatus == "ongoing" ? "mt-time-ongoing"
+                                                                   : timeStatus == "upcoming" ? "mt-time-upcoming"
+                                                                   : "mt-time-ended";
+                                                    var badgeIcon  = timeStatus == "ongoing" ? "bi-broadcast"
+                                                                   : timeStatus == "upcoming" ? "bi-clock"
+                                                                   : "bi-check2-circle";
+                                                    var badgeLabel = timeStatus == "ongoing" ? "Live"
+                                                                   : timeStatus == "upcoming" ? "Upcoming"
+                                                                   : "Ended";
+                                                }
+                                                <span class="mt-time-badge @badgeClass">
+                                                    <i class="bi @badgeIcon" style="font-size:.6rem;"></i>
+                                                    @badgeLabel
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                @* ── Start ── *@
+                                <td>
+                                    <div class="mt-date">
+                                        <strong>@evt.StartTime.ToString("dd/MM/yyyy")</strong>
+                                        <span>@evt.StartTime.ToString("HH:mm")</span>
+                                    </div>
+                                </td>
+
+                                @* ── End ── *@
+                                <td>
+                                    <div class="mt-date">
+                                        <strong>@evt.EndTime.ToString("dd/MM/yyyy")</strong>
+                                        <span>@evt.EndTime.ToString("HH:mm")</span>
+                                    </div>
+                                </td>
+
+                                @* ── Sold ── *@
+                                <td>
+                                    <div class="mt-num-cell mt-num-sold">@evt.SoldTickets</div>
+                                </td>
+
+                                @* ── Capacity ── *@
+                                <td>
+                                    <div class="mt-num-cell mt-num-capacity">@evt.MaxCapacity</div>
+                                </td>
+
+                                @* ── Remaining ── *@
+                                <td>
+                                    <div class="mt-num-cell mt-num-remain @(lowSeat ? "low" : "")">
+                                        @evt.RemainingSeats
+                                    </div>
+                                </td>
+
+                                @* ── Fill Rate ── *@
+                                <td class="mt-fill-cell">
+                                    <div class="mt-fill-top">
+                                        <span class="mt-fill-pct" style="color:@fillColor;">
+                                            @evt.FillPercent.ToString("0.0")%
+                                        </span>
+                                        <span class="mt-fill-badge @fillClass">
+                                            @(evt.FillPercent >= 90 ? "🔥 Hot" : evt.FillPercent >= 60 ? "📈 Warm" : "✅ OK")
+                                        </span>
+                                    </div>
+                                    <div class="mt-fill-bar-bg">
+                                        <div class="mt-fill-bar"
+                                             style="width:@evt.FillPercent%; background:@fillColor;"></div>
+                                    </div>
+                                </td>
+
+                                @* ── Details ── *@
+                                <td style="text-align:right;">
+                                    <a class="mt-view-btn"
+                                       asp-controller="Organizer" asp-action="Manage"
+                                       asp-route-operation="detailevent"
+                                       asp-route-id="@evt.EventId"
+                                       title="View Event Details">
+                                        <i class="bi bi-arrow-up-right-circle"></i> View
                                     </a>
                                 </td>
-                                <td>@e.StartTime.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@e.EndTime.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td class="text-center">@e.SoldTickets</td>
-                                <td class="text-center">@e.MaxCapacity</td>
-                                <td class="text-center">@e.RemainingSeats</td>
-                                <td class="text-center">@e.FillPercent%</td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+
+            @* ── Summary footer ── *@
+            <div class="mt-footer">
+                <div>
+                    Showing <strong id="mtFooterCount">@totalEvents</strong> event(s)
+                    &nbsp;·&nbsp; <strong>@totalSold</strong> tickets sold
+                    &nbsp;·&nbsp; <strong>@totalRemaining</strong> seats remaining
+                </div>
+                <div>
+                    Avg. fill rate: <strong style="color:@FillColor(avgFill);">@avgFill.ToString("0.0")%</strong>
+                    &nbsp;·&nbsp; Total capacity: <strong>@totalCapacity</strong>
+                </div>
+            </div>
+        }
     </div>
+
 </div>
+</div>
+
+@section Scripts {
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // ── Live client-side filter ───────────────────────────────────────────
+        window.mtLiveFilter = function () {
+            const query    = (document.getElementById('mtSearchInput')?.value ?? '').toLowerCase().trim();
+            const rows     = document.querySelectorAll('#mtTableBody .mt-event-row');
+            const chip     = document.getElementById('mtChipCount');
+            const visCount = document.getElementById('mtVisCount');
+            const footer   = document.getElementById('mtFooterCount');
+            const total    = rows.length;
+            let visible    = 0;
+
+            rows.forEach(function (row) {
+                const title = row.getAttribute('data-title') || '';
+                const show  = !query || title.includes(query);
+                row.classList.toggle('mt-filtered-out', !show);
+                if (show) visible++;
+            });
+
+            if (chip)     chip.textContent    = visible + ' event(s)';
+            if (visCount) visCount.textContent = visible;
+            if (footer)   footer.textContent   = visible;
+        };
+
+        // ── Auto-run in case browser pre-fills input ──────────────────────────
+        mtLiveFilter();
+
+        // ── Row hover ─────────────────────────────────────────────────────────
+        document.querySelectorAll('.mt-event-row').forEach(function (row) {
+            row.addEventListener('mouseenter', function () {
+                this.style.transition = 'background .12s';
+            });
+        });
+
+        // ── Toast auto-dismiss ────────────────────────────────────────────────
+        document.querySelectorAll('.mt-toast').forEach(function (t) {
+            setTimeout(function () {
+                t.style.transition = 'opacity .4s, transform .4s';
+                t.style.opacity    = '0';
+                t.style.transform  = 'translateY(-6px)';
+                setTimeout(function () { t.remove(); }, 420);
+            }, 4000);
+        });
+
+    });
+    </script>
+}
