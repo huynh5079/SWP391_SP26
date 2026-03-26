@@ -1,135 +1,682 @@
 @{
-    ViewData["Title"] = "Sự kiện tham gia";
+    ViewData["Title"] = "Sự kiện tôi tham gia";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var now = DateTime.Now;
-    var model = (dynamic)Model;
+    var now      = DateTime.Now;
+    var model    = (IEnumerable<dynamic>)Model;
     bool isApprover = User.IsInRole("Approver");
+
+    var upcoming = model.Where(e => (DateTime)e.StartTime > now).OrderBy(e => (DateTime)e.StartTime).ToList();
+    var past     = model.Where(e => (DateTime)e.StartTime <= now).OrderByDescending(e => (DateTime)e.StartTime).ToList();
+    int totalAll = upcoming.Count + past.Count;
+
+    // Distinct roles
+    var allRoles = model.Select(e => (string)e.Role).Distinct().ToList();
+
+    // ── Color helpers ─────────────────────────────────────────────────────────
+    string GetAvatarColor(string? title)
+    {
+        var palette = new[] {
+            "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+            "#10b981","#3b82f6","#ef4444","#14b8a6","#f97316","#a855f7"
+        };
+        if (string.IsNullOrEmpty(title)) return palette[0];
+        return palette[Math.Abs(title.GetHashCode()) % palette.Length];
+    }
+    string GetInitials(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return "?";
+        var parts = title.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // ── Role pill ─────────────────────────────────────────────────────────────
+    string RoleClass(string? role) => (role ?? "").Contains("tổ chức", StringComparison.OrdinalIgnoreCase)
+        ? "mpe-role-organizer" : "mpe-role-speaker";
+    string RoleIcon(string? role)  => (role ?? "").Contains("tổ chức", StringComparison.OrdinalIgnoreCase)
+        ? "bi-people-fill" : "bi-mic-fill";
+
+    // ── Detail URL ────────────────────────────────────────────────────────────
+    string DetailUrl(string eventId) => isApprover
+        ? Url.Action("Detail",      "Approver",  new { id = eventId }) ?? "#"
+        : Url.Action("DetailEvent", "Organizer", new { id = eventId }) ?? "#";
+
+    // ── Timeline percent ─────────────────────────────────────────────────────
+    double TimelinePercent(DateTime start, DateTime end)
+    {
+        var total   = (end - start).TotalMinutes;
+        var elapsed = (now - start).TotalMinutes;
+        if (total <= 0) return 100;
+        return Math.Min(100, Math.Max(0, elapsed / total * 100));
+    }
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2 text-primary"></i>Sự kiện tôi tham gia</h4>
-            <small class="text-muted">Các sự kiện bạn được phân công làm ban tổ chức hoặc diễn giả</small>
+<style>
+    /* ============================================================
+       MY PARTICIPATED EVENTS — PREMIUM UI
+    ============================================================ */
+    :root {
+        --mpe-primary:   #6366f1;
+        --mpe-secondary: #8b5cf6;
+        --mpe-bg:        #f0f2ff;
+        --mpe-card:      #ffffff;
+        --mpe-border:    #e0e7ff;
+        --mpe-text:      #1e1b4b;
+        --mpe-muted:     #64748b;
+        --mpe-radius:    16px;
+        --mpe-shadow:    0 4px 24px rgba(99,102,241,.08);
+        --mpe-focus:     0 0 0 3px rgba(99,102,241,.2);
+    }
+
+    @@keyframes mpe-fadein  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    @@keyframes mpe-card-in { from { opacity:0; transform:translateY(10px) scale(.97); } to { opacity:1; transform:none; } }
+    @@keyframes mpe-bar-grow { from { width:0; } }
+    @@keyframes mpe-live-glow {
+        0%,100% { box-shadow:0 0 0 0  rgba(99,102,241,.45); }
+        50%     { box-shadow:0 0 0 8px rgba(99,102,241,0); }
+    }
+    @@keyframes mpe-pulse-green {
+        0%,100% { box-shadow:0 0 0 0  rgba(34,197,94,.4); }
+        50%     { box-shadow:0 0 0 7px rgba(34,197,94,0); }
+    }
+
+    /* ── Page ── */
+    .mpe-page { background:var(--mpe-bg); min-height:100vh; padding:2rem 0 4rem; }
+
+    /* ── Hero header ── */
+    .mpe-hero {
+        background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 55%,#a855f7 100%);
+        border-radius:20px; padding:2rem 2.2rem;
+        display:flex; align-items:center; justify-content:space-between;
+        gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;
+        box-shadow:0 8px 32px rgba(99,102,241,.28);
+        animation:mpe-fadein .4s ease both;
+    }
+    .mpe-hero-icon {
+        width:60px; height:60px; border-radius:18px;
+        background:rgba(255,255,255,.18); display:flex;
+        align-items:center; justify-content:center;
+        font-size:1.7rem; flex-shrink:0;
+    }
+    .mpe-hero-title {
+        font-size:1.7rem; font-weight:900; color:#fff;
+        letter-spacing:-.025em; margin-bottom:.2rem;
+    }
+    .mpe-hero-sub { color:rgba(255,255,255,.78); font-size:.88rem; }
+    .mpe-hero-actions { display:flex; gap:.65rem; flex-wrap:wrap; }
+
+    /* ── Buttons ── */
+    .mpe-btn {
+        display:inline-flex; align-items:center; gap:.4rem;
+        font-size:.83rem; font-weight:700; padding:.6rem 1.25rem;
+        border-radius:30px; border:none; text-decoration:none;
+        cursor:pointer; transition:all .18s; white-space:nowrap;
+    }
+    .mpe-btn-white { background:#fff; color:#6366f1; box-shadow:0 2px 10px rgba(0,0,0,.12); }
+    .mpe-btn-white:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,.18); color:#4f46e5; }
+    .mpe-btn-glass { background:rgba(255,255,255,.15); color:#fff; border:1.5px solid rgba(255,255,255,.3); }
+    .mpe-btn-glass:hover { background:rgba(255,255,255,.25); color:#fff; }
+
+    /* ── Stats strip ── */
+    .mpe-stats {
+        display:grid; grid-template-columns:repeat(4,1fr);
+        gap:1rem; margin-bottom:1.5rem;
+        animation:mpe-fadein .4s .08s ease both;
+    }
+    @@media(max-width:900px)  { .mpe-stats { grid-template-columns:repeat(2,1fr); } }
+    @@media(max-width:480px)  { .mpe-stats { grid-template-columns:1fr 1fr; } }
+
+    .mpe-stat {
+        background:var(--mpe-card); border-radius:14px;
+        border:1px solid var(--mpe-border); box-shadow:var(--mpe-shadow);
+        padding:.95rem 1.1rem; display:flex; align-items:center; gap:.85rem;
+        transition:transform .18s,box-shadow .18s; cursor:default;
+    }
+    .mpe-stat:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(99,102,241,.14); }
+    .mpe-stat-icon { width:42px; height:42px; border-radius:12px;
+                     display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .mpe-stat-label { font-size:.66rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+    .mpe-stat-value { font-size:1.55rem; font-weight:900; color:var(--mpe-text); line-height:1; margin-top:.06rem; }
+
+    /* ── Search bar ── */
+    .mpe-search-bar {
+        background:var(--mpe-card); border-radius:var(--mpe-radius);
+        border:1px solid var(--mpe-border); box-shadow:var(--mpe-shadow);
+        padding:.8rem 1.35rem; margin-bottom:1.5rem;
+        display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+        animation:mpe-fadein .4s .12s ease both;
+    }
+    .mpe-search-wrap { position:relative; flex:1 1 220px; }
+    .mpe-search-wrap i {
+        position:absolute; top:50%; left:.85rem;
+        transform:translateY(-50%); color:#94a3b8; font-size:.8rem; pointer-events:none;
+    }
+    .mpe-search-input {
+        width:100%; padding:.63rem 1rem .63rem 2.3rem;
+        border:1.5px solid var(--mpe-border); border-radius:30px;
+        font-size:.88rem; color:var(--mpe-text); background:#fafbff;
+        outline:none; transition:all .2s;
+    }
+    .mpe-search-input:focus { background:#fff; border-color:var(--mpe-primary); box-shadow:var(--mpe-focus); }
+    .mpe-result-count { font-size:.8rem; color:var(--mpe-muted); white-space:nowrap; margin-left:auto; }
+    .mpe-result-count strong { color:var(--mpe-primary); }
+
+    /* ── Section label ── */
+    .mpe-section-label {
+        display:flex; align-items:center; gap:.55rem;
+        font-size:.72rem; font-weight:800; text-transform:uppercase;
+        letter-spacing:.08em; color:#94a3b8; margin-bottom:1rem;
+        padding:.4rem 0;
+    }
+    .mpe-section-label .mpe-section-line {
+        flex:1; height:1px; background:linear-gradient(90deg,#e0e7ff,transparent);
+    }
+    .mpe-section-count {
+        background:#ede9fe; color:#6d28d9;
+        font-size:.68rem; font-weight:800; padding:.12rem .5rem;
+        border-radius:20px;
+    }
+    .mpe-section-label.upcoming i { color:#22c55e; }
+    .mpe-section-label.past     i { color:#94a3b8; }
+
+    /* ── Card grid ── */
+    .mpe-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-bottom:2.5rem; }
+    @@media(max-width:1100px) { .mpe-grid { grid-template-columns:repeat(2,1fr); } }
+    @@media(max-width:640px)  { .mpe-grid { grid-template-columns:1fr; } }
+
+    /* ── Event card ── */
+    .mpe-card {
+        background:var(--mpe-card); border-radius:var(--mpe-radius);
+        border:1px solid var(--mpe-border); box-shadow:var(--mpe-shadow);
+        display:flex; flex-direction:column; overflow:hidden;
+        transition:transform .2s,box-shadow .2s;
+        animation:mpe-card-in .35s ease both;
+    }
+    .mpe-card:hover { transform:translateY(-4px); box-shadow:0 10px 32px rgba(99,102,241,.16); }
+    .mpe-card.is-past { opacity:.88; }
+    .mpe-card.mpe-filtered-out { display:none !important; }
+
+    /* Stagger */
+    .mpe-card:nth-child(1) { animation-delay:.04s; }
+    .mpe-card:nth-child(2) { animation-delay:.08s; }
+    .mpe-card:nth-child(3) { animation-delay:.12s; }
+    .mpe-card:nth-child(4) { animation-delay:.16s; }
+    .mpe-card:nth-child(5) { animation-delay:.20s; }
+    .mpe-card:nth-child(6) { animation-delay:.24s; }
+
+    /* ── Card banner (colour strip) ── */
+    .mpe-card-banner {
+        height:6px; width:100%;
+        background:linear-gradient(90deg,#6366f1,#8b5cf6);
+    }
+    .mpe-card.is-past .mpe-card-banner { background:#e2e8f0; }
+
+    /* ── Card top (avatar + badges) ── */
+    .mpe-card-top {
+        padding:1.1rem 1.2rem .65rem;
+        display:flex; align-items:flex-start; gap:.85rem;
+    }
+    .mpe-avatar {
+        width:46px; height:46px; border-radius:13px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:.9rem; font-weight:900; color:#fff; flex-shrink:0;
+        box-shadow:0 2px 10px rgba(0,0,0,.14); transition:transform .2s;
+    }
+    .mpe-card:hover .mpe-avatar { transform:scale(1.1) rotate(4deg); }
+    .mpe-card-badges { display:flex; flex-wrap:wrap; gap:.35rem; }
+    .mpe-status-pill {
+        display:inline-flex; align-items:center; gap:.25rem;
+        font-size:.65rem; font-weight:800; padding:.18rem .5rem;
+        border-radius:20px; text-transform:uppercase; letter-spacing:.04em;
+    }
+    .mpe-status-published { background:#dcfce7; color:#15803d; border:1px solid #86efac; animation:mpe-pulse-green 2.5s infinite; }
+    .mpe-status-upcoming  { background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; animation:mpe-live-glow 2.5s infinite; }
+    .mpe-status-expired   { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+    .mpe-status-other     { background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; }
+
+    .mpe-role-pill {
+        display:inline-flex; align-items:center; gap:.25rem;
+        font-size:.65rem; font-weight:800; padding:.18rem .5rem;
+        border-radius:20px; text-transform:uppercase; letter-spacing:.04em;
+    }
+    .mpe-role-organizer { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+    .mpe-role-speaker   { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+
+    /* ── Card body ── */
+    .mpe-card-body { padding:0 1.2rem .85rem; flex:1; }
+    .mpe-card-title {
+        font-size:.93rem; font-weight:800; color:var(--mpe-text);
+        line-height:1.35; margin-bottom:.5rem;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    }
+    .mpe-card.is-past .mpe-card-title { color:#64748b; }
+    .mpe-card-meta { display:flex; flex-direction:column; gap:.25rem; }
+    .mpe-meta-row {
+        display:flex; align-items:center; gap:.35rem;
+        font-size:.78rem; color:var(--mpe-muted);
+    }
+    .mpe-meta-row i { color:#a5b4fc; font-size:.76rem; flex-shrink:0; }
+
+    /* ── Timeline progress bar ── */
+    .mpe-timeline {
+        margin:0 1.2rem .85rem;
+    }
+    .mpe-timeline-labels {
+        display:flex; justify-content:space-between;
+        font-size:.66rem; color:#94a3b8; margin-bottom:.22rem;
+    }
+    .mpe-timeline-bar-bg { height:5px; background:#e0e7ff; border-radius:3px; overflow:hidden; }
+    .mpe-timeline-bar    {
+        height:100%; border-radius:3px;
+        animation:mpe-bar-grow .7s ease both;
+        animation-delay:.3s;
+    }
+    .mpe-timeline-bar.done    { background:#94a3b8; }
+    .mpe-timeline-bar.ongoing { background:linear-gradient(90deg,#22c55e,#10b981); }
+    .mpe-timeline-bar.future  { background:#c4b5fd; }
+
+    /* ── Card footer ── */
+    .mpe-card-footer {
+        padding:.75rem 1.2rem; border-top:1px solid #f1f5f9;
+        display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+    }
+    .mpe-time-badge {
+        display:inline-flex; align-items:center; gap:.25rem;
+        font-size:.68rem; font-weight:700; color:var(--mpe-muted);
+    }
+    .mpe-time-badge i { font-size:.66rem; }
+    .mpe-view-btn {
+        display:inline-flex; align-items:center; gap:.28rem;
+        font-size:.76rem; font-weight:800; padding:.38rem .9rem;
+        border-radius:20px; border:1.5px solid var(--mpe-border);
+        background:#f8faff; color:var(--mpe-primary);
+        text-decoration:none; transition:all .16s; white-space:nowrap;
+    }
+    .mpe-view-btn:hover { background:var(--mpe-primary); color:#fff; border-color:var(--mpe-primary); }
+
+    /* ── Empty state ── */
+    .mpe-empty { text-align:center; padding:4rem 1rem; animation:mpe-fadein .4s ease both; }
+    .mpe-empty-icon {
+        width:90px; height:90px; border-radius:50%;
+        background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+        display:flex; align-items:center; justify-content:center;
+        font-size:2.5rem; color:#6d28d9; margin:0 auto 1.2rem;
+    }
+    .mpe-empty h3 { font-size:1.15rem; font-weight:800; color:#374151; margin-bottom:.5rem; }
+    .mpe-empty p  { font-size:.9rem; color:var(--mpe-muted); max-width:380px; margin:0 auto; }
+
+    /* ── Section empty (inline) ── */
+    .mpe-section-empty {
+        background:var(--mpe-card); border-radius:14px;
+        border:1px dashed var(--mpe-border); padding:1.4rem;
+        text-align:center; color:#94a3b8; font-size:.85rem;
+        margin-bottom:2rem;
+    }
+
+    /* ── Upcoming countdown chip ── */
+    .mpe-countdown {
+        display:inline-flex; align-items:center; gap:.25rem;
+        font-size:.65rem; font-weight:800; padding:.15rem .45rem;
+        border-radius:8px; background:#ede9fe; color:#6d28d9;
+    }
+</style>
+
+<div class="mpe-page">
+<div class="container-fluid px-4">
+
+    @* ── Hero Header ── *@
+    <div class="mpe-hero">
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <div class="mpe-hero-icon"><i class="bi bi-person-workspace"></i></div>
+            <div>
+                <h1 class="mpe-hero-title">Sự kiện tôi tham gia</h1>
+                <p class="mpe-hero-sub">Các sự kiện bạn được phân công làm ban tổ chức hoặc diễn giả</p>
+            </div>
         </div>
-        @if (!isApprover)
-        {
-            <a asp-controller="Organizer" asp-action="MyEvents" class="btn btn-outline-primary">
-                <i class="bi bi-calendar-check me-1"></i> Sự kiện của tôi
-            </a>
-        }
-        else
-        {
-            <a asp-controller="Approver" asp-action="PendingApprovals" class="btn btn-outline-warning">
-                <i class="bi bi-check2-circle me-1"></i> Phê duyệt
-            </a>
-        }
+        <div class="mpe-hero-actions">
+            @if (!isApprover)
+            {
+                <a asp-controller="Organizer" asp-action="MyEvents" class="mpe-btn mpe-btn-white">
+                    <i class="bi bi-calendar-check-fill"></i> Sự kiện của tôi
+                </a>
+            }
+            else
+            {
+                <a asp-controller="Approver" asp-action="PendingApprovals" class="mpe-btn mpe-btn-white">
+                    <i class="bi bi-check2-circle"></i> Phê duyệt
+                </a>
+            }
+        </div>
     </div>
 
-    @if (((IEnumerable<dynamic>)model).Any())
+    @* ── Stats Strip ── *@
+    <div class="mpe-stats">
+        <div class="mpe-stat">
+            <div class="mpe-stat-icon" style="background:#ede9fe;">
+                <i class="bi bi-calendar2-event-fill" style="color:#6d28d9;"></i>
+            </div>
+            <div>
+                <div class="mpe-stat-label">Tổng sự kiện</div>
+                <div class="mpe-stat-value" style="color:#6d28d9;">@totalAll</div>
+            </div>
+        </div>
+        <div class="mpe-stat">
+            <div class="mpe-stat-icon" style="background:#dcfce7;">
+                <i class="bi bi-arrow-up-right-circle-fill" style="color:#16a34a;"></i>
+            </div>
+            <div>
+                <div class="mpe-stat-label">Sắp diễn ra</div>
+                <div class="mpe-stat-value" style="color:#16a34a;">@upcoming.Count</div>
+            </div>
+        </div>
+        <div class="mpe-stat">
+            <div class="mpe-stat-icon" style="background:#f1f5f9;">
+                <i class="bi bi-clock-history" style="color:#64748b;"></i>
+            </div>
+            <div>
+                <div class="mpe-stat-label">Đã qua</div>
+                <div class="mpe-stat-value" style="color:#64748b;">@past.Count</div>
+            </div>
+        </div>
+        <div class="mpe-stat">
+            <div class="mpe-stat-icon" style="background:#fef3c7;">
+                <i class="bi bi-person-badge-fill" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="mpe-stat-label">Vai trò</div>
+                <div class="mpe-stat-value" style="color:#d97706;">@allRoles.Count</div>
+            </div>
+        </div>
+    </div>
+
+    @if (!model.Any())
     {
-        var upcoming = ((IEnumerable<dynamic>)model).Where(e => e.StartTime > now).OrderBy(e => e.StartTime).ToList();
-        var past     = ((IEnumerable<dynamic>)model).Where(e => e.StartTime <= now).OrderByDescending(e => e.StartTime).ToList();
-
-        @if (upcoming.Any())
-        {
-            <h6 class="text-muted fw-bold mb-3">
-                <i class="bi bi-arrow-right-circle me-1 text-success"></i>
-                Sắp diễn ra (@upcoming.Count)
-            </h6>
-            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
-                @foreach (var ev in upcoming)
-                {
-                    <div class="col">
-                        @{
-                            string detailUrl = isApprover
-                                ? Url.Action("Detail", "Approver", new { id = ev.EventId })
-                                : Url.Action("DetailEvent", "Organizer", new { id = ev.EventId });
-                        }
-                        <div class="card h-100 shadow-sm border-0">
-                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
-                                 style="height:100px;">
-                                <i class="bi bi-calendar-event text-muted" style="font-size:2.2rem;"></i>
-                            </div>
-                            <div class="card-body pb-1">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="badge bg-secondary">@ev.Status</span>
-                                    <span class="badge bg-warning text-dark">@ev.Role</span>
-                                </div>
-                                <h6 class="card-title fw-bold mb-1 text-truncate" title="@ev.Title">@ev.Title</h6>
-                                <div class="small text-muted">
-                                    <i class="bi bi-clock me-1"></i>@(((DateTime)ev.StartTime).ToString("dd/MM/yyyy HH:mm"))
-                                </div>
-                                @if (ev.Location != null)
-                                {
-                                    <div class="small text-muted text-truncate">
-                                        <i class="bi bi-geo-alt me-1"></i>@ev.Location
-                                    </div>
-                                }
-                            </div>
-                            <div class="card-footer bg-transparent border-0 pt-0">
-                                <a href="@detailUrl" class="btn btn-sm btn-outline-primary w-100">
-                                    Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-
-        @if (past.Any())
-        {
-            <h6 class="text-muted fw-bold mb-3">
-                <i class="bi bi-clock-history me-1 text-secondary"></i>
-                Đã qua (@past.Count)
-            </h6>
-            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
-                @foreach (var ev in past)
-                {
-                    <div class="col">
-                        @{
-                            string detailUrlPast = isApprover
-                                ? Url.Action("Detail", "Approver", new { id = ev.EventId })
-                                : Url.Action("DetailEvent", "Organizer", new { id = ev.EventId });
-                        }
-                        <div class="card h-100 shadow-sm border-0 text-muted">
-                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
-                                 style="height:100px; opacity:.65;">
-                                <i class="bi bi-calendar-event" style="font-size:2.2rem;"></i>
-                            </div>
-                            <div class="card-body pb-1">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="badge bg-secondary">@ev.Status</span>
-                                    <span class="badge bg-warning text-dark">@ev.Role</span>
-                                </div>
-                                <h6 class="card-title fw-bold mb-1 text-truncate" title="@ev.Title">@ev.Title</h6>
-                                <div class="small">
-                                    <i class="bi bi-clock me-1"></i>@(((DateTime)ev.StartTime).ToString("dd/MM/yyyy HH:mm"))
-                                </div>
-                                @if (ev.Location != null)
-                                {
-                                    <div class="small text-truncate">
-                                        <i class="bi bi-geo-alt me-1"></i>@ev.Location
-                                    </div>
-                                }
-                            </div>
-                            <div class="card-footer bg-transparent border-0 pt-0">
-                                <a href="@detailUrlPast" class="btn btn-sm btn-outline-secondary w-100">
-                                    Xem chi tiết <i class="bi bi-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
+        @* ── Global Empty ── *@
+        <div class="mpe-empty">
+            <div class="mpe-empty-icon"><i class="bi bi-calendar-x"></i></div>
+            <h3>Chưa có sự kiện nào</h3>
+            <p>Bạn chưa được phân công tham gia sự kiện nào với tư cách ban tổ chức hoặc diễn giả.</p>
+        </div>
     }
     else
     {
-        <div class="text-center py-5 text-muted">
-            <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
-            <p class="mt-2 fs-6">Bạn chưa được phân công tham gia sự kiện nào.</p>
+        @* ── Search bar ── *@
+        <div class="mpe-search-bar">
+            <div class="mpe-search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" id="mpeSearchInput" class="mpe-search-input"
+                       placeholder="Tìm theo tên sự kiện, địa điểm, vai trò…"
+                       oninput="mpeLiveFilter()" />
+            </div>
+            <span class="mpe-result-count">
+                <strong id="mpeVisCount">@totalAll</strong> / @totalAll sự kiện
+            </span>
         </div>
+
+        @* ── UPCOMING ── *@
+        <div class="mpe-section-label upcoming">
+            <i class="bi bi-broadcast"></i>
+            Sắp diễn ra
+            <span class="mpe-section-count">@upcoming.Count</span>
+            <span class="mpe-section-line"></span>
+        </div>
+
+        @if (!upcoming.Any())
+        {
+            <div class="mpe-section-empty">
+                <i class="bi bi-calendar-check me-1"></i> Không có sự kiện sắp diễn ra.
+            </div>
+        }
+        else
+        {
+            <div class="mpe-grid" id="mpeUpcomingGrid">
+                @foreach (var ev in upcoming)
+                {
+                    string evTitle    = (string)(ev.Title ?? "");
+                    string evStatus   = (string)(ev.Status ?? "");
+                    string evRole     = (string)(ev.Role ?? "");
+                    string evLocation = (string)(ev.Location ?? "");
+                    DateTime evStart  = (DateTime)ev.StartTime;
+                    DateTime evEnd    = (DateTime)ev.EndTime;
+                    string evId       = (string)ev.EventId;
+
+                    string avatarColor = GetAvatarColor(evTitle);
+                    string initials    = GetInitials(evTitle);
+                    string detailUrl   = DetailUrl(evId);
+                    double pct         = TimelinePercent(evStart, evEnd);
+                    bool   isOngoing   = evStart <= now && evEnd >= now;
+
+                    string statusClass = evStatus.ToLower() switch
+                    {
+                        "published" => "mpe-status-published",
+                        "upcoming"  => "mpe-status-upcoming",
+                        "happening" => "mpe-status-upcoming",
+                        "expired"   => "mpe-status-expired",
+                        _           => "mpe-status-other"
+                    };
+
+                    // days until
+                    int daysUntil = (int)Math.Ceiling((evStart - now).TotalDays);
+
+                    <div class="mpe-card"
+                         data-title="@evTitle.ToLower()"
+                         data-role="@evRole.ToLower()"
+                         data-location="@evLocation.ToLower()">
+                        <div class="mpe-card-banner"></div>
+                        <div class="mpe-card-top">
+                            <div class="mpe-avatar" style="background:@avatarColor;">@initials</div>
+                            <div class="mpe-card-badges">
+                                <span class="mpe-status-pill @statusClass">@evStatus</span>
+                                <span class="mpe-role-pill @(RoleClass(evRole))">
+                                    <i class="bi @(RoleIcon(evRole))" style="font-size:.6rem;"></i>
+                                    @evRole
+                                </span>
+                                @if (daysUntil <= 7 && daysUntil > 0)
+                                {
+                                    <span class="mpe-countdown">
+                                        <i class="bi bi-alarm" style="font-size:.6rem;"></i>
+                                        @daysUntil ngày nữa
+                                    </span>
+                                }
+                                @if (isOngoing)
+                                {
+                                    <span class="mpe-status-pill mpe-status-published">
+                                        <i class="bi bi-broadcast" style="font-size:.6rem;"></i> Live
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                        <div class="mpe-card-body">
+                            <div class="mpe-card-title" title="@evTitle">@evTitle</div>
+                            <div class="mpe-card-meta">
+                                <div class="mpe-meta-row">
+                                    <i class="bi bi-calendar-event-fill"></i>
+                                    <span>@evStart.ToString("dd/MM/yyyy HH:mm")</span>
+                                    <span style="color:#cbd5e1;">—</span>
+                                    <span>@evEnd.ToString("HH:mm")</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(evLocation))
+                                {
+                                    <div class="mpe-meta-row">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;" title="@evLocation">@evLocation</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        @if (isOngoing)
+                        {
+                            <div class="mpe-timeline">
+                                <div class="mpe-timeline-labels">
+                                    <span>Bắt đầu</span>
+                                    <span>@pct.ToString("0")% hoàn thành</span>
+                                    <span>Kết thúc</span>
+                                </div>
+                                <div class="mpe-timeline-bar-bg">
+                                    <div class="mpe-timeline-bar ongoing" style="width:@pct%;"></div>
+                                </div>
+                            </div>
+                        }
+                        <div class="mpe-card-footer">
+                            <div class="mpe-time-badge">
+                                <i class="bi bi-clock"></i>
+                                @if (isOngoing)
+                                {
+                                    <span style="color:#16a34a; font-weight:800;">Đang diễn ra</span>
+                                }
+                                else
+                                {
+                                    <span>Còn @daysUntil ngày</span>
+                                }
+                            </div>
+                            <a href="@detailUrl" class="mpe-view-btn">
+                                <i class="bi bi-box-arrow-up-right"></i> Xem chi tiết
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @* ── PAST ── *@
+        <div class="mpe-section-label past">
+            <i class="bi bi-clock-history"></i>
+            Đã qua
+            <span class="mpe-section-count">@past.Count</span>
+            <span class="mpe-section-line"></span>
+        </div>
+
+        @if (!past.Any())
+        {
+            <div class="mpe-section-empty">
+                <i class="bi bi-calendar-minus me-1"></i> Không có sự kiện đã qua.
+            </div>
+        }
+        else
+        {
+            <div class="mpe-grid" id="mpePastGrid">
+                @foreach (var ev in past)
+                {
+                    string evTitle    = (string)(ev.Title ?? "");
+                    string evStatus   = (string)(ev.Status ?? "");
+                    string evRole     = (string)(ev.Role ?? "");
+                    string evLocation = (string)(ev.Location ?? "");
+                    DateTime evStart  = (DateTime)ev.StartTime;
+                    DateTime evEnd    = (DateTime)ev.EndTime;
+                    string evId       = (string)ev.EventId;
+
+                    string avatarColor = GetAvatarColor(evTitle);
+                    string initials    = GetInitials(evTitle);
+                    string detailUrl   = DetailUrl(evId);
+
+                    // days ago
+                    int daysAgo = (int)Math.Floor((now - evStart).TotalDays);
+
+                    <div class="mpe-card is-past"
+                         data-title="@evTitle.ToLower()"
+                         data-role="@evRole.ToLower()"
+                         data-location="@evLocation.ToLower()">
+                        <div class="mpe-card-banner"></div>
+                        <div class="mpe-card-top">
+                            <div class="mpe-avatar" style="background:@avatarColor; opacity:.8;">@initials</div>
+                            <div class="mpe-card-badges">
+                                <span class="mpe-status-pill mpe-status-expired">
+                                    <i class="bi bi-clock-history" style="font-size:.6rem;"></i>
+                                    @evStatus
+                                </span>
+                                <span class="mpe-role-pill @(RoleClass(evRole))">
+                                    <i class="bi @(RoleIcon(evRole))" style="font-size:.6rem;"></i>
+                                    @evRole
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mpe-card-body">
+                            <div class="mpe-card-title" title="@evTitle">@evTitle</div>
+                            <div class="mpe-card-meta">
+                                <div class="mpe-meta-row">
+                                    <i class="bi bi-calendar-event-fill"></i>
+                                    <span>@evStart.ToString("dd/MM/yyyy HH:mm")</span>
+                                    <span style="color:#cbd5e1;">—</span>
+                                    <span>@evEnd.ToString("HH:mm")</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(evLocation))
+                                {
+                                    <div class="mpe-meta-row">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;" title="@evLocation">@evLocation</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="mpe-timeline">
+                            <div class="mpe-timeline-labels">
+                                <span>Bắt đầu</span>
+                                <span>Đã kết thúc</span>
+                            </div>
+                            <div class="mpe-timeline-bar-bg">
+                                <div class="mpe-timeline-bar done" style="width:100%;"></div>
+                            </div>
+                        </div>
+                        <div class="mpe-card-footer">
+                            <div class="mpe-time-badge">
+                                <i class="bi bi-check2-circle"></i>
+                                <span>@daysAgo ngày trước</span>
+                            </div>
+                            <a href="@detailUrl" class="mpe-view-btn" style="border-color:#e2e8f0; color:#64748b;">
+                                <i class="bi bi-box-arrow-up-right"></i> Xem chi tiết
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     }
+
 </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Live client-side filter ───────────────────────────────────────────────
+    window.mpeLiveFilter = function () {
+        var query    = (document.getElementById('mpeSearchInput')?.value ?? '').toLowerCase().trim();
+        var cards    = document.querySelectorAll('.mpe-card');
+        var visCount = document.getElementById('mpeVisCount');
+        var visible  = 0;
+
+        cards.forEach(function (card) {
+            var title    = card.getAttribute('data-title')    || '';
+            var role     = card.getAttribute('data-role')     || '';
+            var location = card.getAttribute('data-location') || '';
+            var show     = !query || title.includes(query) || role.includes(query) || location.includes(query);
+            card.classList.toggle('mpe-filtered-out', !show);
+            if (show) visible++;
+        });
+
+        if (visCount) visCount.textContent = visible;
+    };
+
+    // ── Animate stat values ───────────────────────────────────────────────────
+    document.querySelectorAll('.mpe-stat-value').forEach(function (el) {
+        var target = parseInt(el.textContent, 10);
+        if (isNaN(target) || target === 0) return;
+        var current  = 0;
+        var step     = Math.max(1, Math.ceil(target / 20));
+        var interval = setInterval(function () {
+            current = Math.min(current + step, target);
+            el.textContent = current;
+            if (current >= target) clearInterval(interval);
+        }, 35);
+    });
+
+    // ── Hover card lift ───────────────────────────────────────────────────────
+    document.querySelectorAll('.mpe-card').forEach(function (card) {
+        card.addEventListener('mouseenter', function () {
+            this.style.transition = 'transform .2s, box-shadow .2s';
+        });
+    });
+
+});
+</script>
