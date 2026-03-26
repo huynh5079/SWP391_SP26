@@ -124,5 +124,6 @@ namespace AEMS_Solution.Controllers.Event.Feedback
 				return RedirectToAction("Detail", "StudentEvent", new { id = eventId });
 			}
 		}
+		
 	}
 }

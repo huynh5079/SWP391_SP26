@@ -22,7 +22,5 @@ namespace BusinessLogic.Service.Event.Sub_Service.Feedback
 		Task<List<EventTopRatingDto>> GetTopRatedEvents(int top);
 		Task<int> AnalyzeEventFeedbacksAsync(string eventId);
 
-
-
 	}
 }

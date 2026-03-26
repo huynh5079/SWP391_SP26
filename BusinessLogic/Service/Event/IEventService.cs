@@ -1,4 +1,5 @@
 using BusinessLogic.DTOs.Role.Organizer;
+using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Http;
 
@@ -22,22 +23,22 @@ namespace BusinessLogic.Service.Event
 
         // Paged + filtered variant used by UI
         Task<PagedResult<EventListDto>> GetMyEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
-		Task SoftDeleteEventAsync(string userId, string eventId);
-		Task RestoreEventAsync(string userId, string eventId);
+        Task SoftDeleteEventAsync(string userId, string eventId);
+        Task RestoreEventAsync(string userId, string eventId);
 
-		// Team Management
-		Task<bool> CreateEventTeamAsync(string eventId, string teamName, string? description);
-		Task<bool> DeleteEventTeamAsync(string teamId);
-		Task<bool> AddMemberToTeamAsync(string teamId, string? studentUserId, string? staffUserId, string roleName);
-		Task<bool> RemoveMemberFromTeamAsync(string memberId);
-		Task<List<EventTeamDto>> GetEventTeamsAsync(string eventId);
+        // Team Management
+        Task<bool> CreateEventTeamAsync(string eventId, string teamName, string? description);
+        Task<bool> DeleteEventTeamAsync(string teamId);
+        Task<bool> AddMemberToTeamAsync(string teamId, string? studentUserId, string? staffUserId, string roleName);
+        Task<bool> RemoveMemberFromTeamAsync(string memberId);
+        Task<List<EventTeamDto>> GetEventTeamsAsync(string eventId);
 
-		// Paged deleted events (soft-deleted)
-		Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
-		
-		// Agendas and Documents
-		Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto);
-		Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto);
+        // Paged deleted events (soft-deleted)
+        Task<PagedResult<EventListDto>> GetMyDeletedEventsAsync(string userId, string? search, EventStatusEnum? status, string? semesterId, int page = 1, int pageSize = 10);
+
+        // Agendas and Documents
+        Task<string> CreateEventAgendaAsync(string userId, CreateEventAgendaDto dto);
+        Task<string> CreateEventDocumentAsync(string userId, CreateEventDocumentDto dto);
 
         // Get expired events for organizer
         Task<List<EventListDto>> GetExpiredEventsAsync(string userId);
@@ -45,5 +46,13 @@ namespace BusinessLogic.Service.Event
         Task<string?> UpdateThumbnailAsync(string eventId, IFormFile file, string userId);
         Task<string> AddEventImageAsync(string eventId, IFormFile file, string userId);
         Task RemoveEventImageAsync(string eventId, string imageUrl, string userId);
-	}
+
+        // Get Feedback list for Organizer (delegates to FeedbackService)
+        Task<List<DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto>> ShowFeedbackForOrganizer(string userId, FeedbackForOrganizerDTO dto);
+
+        // Get Feedback list for Approver (no ownership check)
+        Task<List<DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto>> ShowFeedbackForApprover(string eventId);
+
+
+    }
 }

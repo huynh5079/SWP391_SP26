@@ -284,22 +284,88 @@
     .ee-perf-row { display: flex; align-items: center; gap: .4rem; color: var(--ee-muted); }
     .ee-perf-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
-    /* ── Action buttons ── */
-    .ee-actions { display: flex; gap: .4rem; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
-    .ee-act {
-        width: 31px; height: 31px; border-radius: 8px; border: 1px solid #e2e8f0;
-        background: #f8fafc; display: inline-flex; align-items: center; justify-content: center;
-        font-size: .8rem; cursor: pointer; transition: all .15s;
-        text-decoration: none; color: #64748b;
+    /* ── Action Buttons ── */
+    .ee-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        position: relative;
+        min-height: 40px;
+        overflow: visible;
     }
-    .ee-act:hover             { transform: translateY(-1px); }
-    .ee-act.view:hover        { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
-    .ee-act.edit:hover        { background: #fef9c3; border-color: #fde68a; color: #d97706; }
-    .ee-act.delete:hover      { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
-    .ee-act.waitlist:hover    { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
-    .ee-act.budget:hover      { background: #ecfdf5; border-color: #6ee7b7; color: #059669; }
-    .ee-act.feedback:hover    { background: #fdf4ff; border-color: #e879f9; color: #a21caf; }
-    .ee-act-form { display: inline; }
+
+    .ee-actions-trigger {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        cursor: pointer;
+        transition: all .2s;
+        z-index: 2;
+    }
+
+    .ee-actions:hover .ee-actions-trigger {
+        background: var(--ee-primary);
+        color: #fff;
+        border-color: var(--ee-primary);
+        transform: rotate(90deg);
+    }
+
+    .ee-actions-menu {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+        position: absolute;
+        right: 44px; /* Start right after trigger */
+        background: #fff;
+        padding: 4px 10px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0,0,0,.08);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(10px);
+        transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 10;
+        white-space: nowrap;
+    }
+
+    .ee-actions:hover .ee-actions-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(0);
+    }
+
+    .ee-act {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .9rem;
+        cursor: pointer;
+        transition: all .2s;
+        text-decoration: none;
+        color: #64748b;
+    }
+
+    .ee-act:hover             { transform: scale(1.1); box-shadow: 0 3px 8px rgba(0,0,0,.1); }
+    .ee-act.view:hover        { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
+    .ee-act.edit:hover        { background: #fef9c3; border-color: #d97706; color: #d97706; }
+    .ee-act.delete:hover      { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+    .ee-act.waitlist:hover    { background: #f0fdf4; border-color: #16a34a; color: #16a34a; }
+    .ee-act.budget:hover      { background: #ecfdf5; border-color: #059669; color: #059669; }
+    .ee-act.feedback:hover    { background: #fdf4ff; border-color: #a21caf; color: #a21caf; }
+    
+    .ee-act-form { display: inline-flex; }
 
     /* ── Empty state ── */
     .ee-empty {
@@ -584,72 +650,77 @@
                                 </td>
 
                                 @* Actions *@
-                                <td>
+                                <td style="overflow: visible;">
                                     <div class="ee-actions">
-                                        @* View *@
-                                        <a class="ee-act view"
-                                           asp-controller="Organizer" asp-action="Manage"
-                                           asp-route-operation="detailevent" asp-route-id="@e.EventId"
-                                           title="View Details">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-
-                                        @if (e.IsOwnedByCurrentUser)
-                                        {
-                                            @* Edit *@
-                                            @if (e.CanEdit)
-                                            {
-                                                <a class="ee-act edit"
-                                                   asp-action="Edit" asp-route-id="@e.EventId"
-                                                   title="Edit Event">
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                            }
-
-                                            @* Waitlist *@
-                                            <a class="ee-act waitlist"
-                                               asp-controller="EventWaitlist" asp-action="Index"
-                                               asp-route-eventId="@e.EventId"
-                                               title="View Waitlist">
-                                                <i class="bi bi-people"></i>
+                                        <div class="ee-actions-menu">
+                                            @* View *@
+                                            <a class="ee-act view"
+                                               asp-controller="Organizer" asp-action="Manage"
+                                               asp-route-operation="detailevent" asp-route-id="@e.EventId"
+                                               title="View Details">
+                                                <i class="bi bi-eye"></i>
                                             </a>
 
-                                            @* Budget *@
-                                            @if (e.HasBudget)
+                                            @if (e.IsOwnedByCurrentUser)
                                             {
-                                                <a class="ee-act budget"
-                                                   asp-controller="BudgetProposal" asp-action="Detail"
+                                                @* Edit *@
+                                                @if (e.CanEdit)
+                                                {
+                                                    <a class="ee-act edit"
+                                                       asp-action="Edit" asp-route-id="@e.EventId"
+                                                       title="Edit Event">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                }
+
+                                                @* Waitlist *@
+                                                <a class="ee-act waitlist"
+                                                   asp-controller="EventWaitlist" asp-action="Index"
                                                    asp-route-eventId="@e.EventId"
-                                                   title="View Budget">
-                                                    <i class="bi bi-cash-stack"></i>
+                                                   title="View Waitlist">
+                                                    <i class="bi bi-people"></i>
                                                 </a>
-                                            }
 
-                                            @* Feedback *@
-                                            @if (e.FeedbackCount > 0)
-                                            {
-                                                <a class="ee-act feedback"
-                                                   asp-controller="Organizer" asp-action="Manage"
-                                                   asp-route-operation="detailevent" asp-route-id="@e.EventId"
-                                                   title="View Feedback (@e.FeedbackCount)">
-                                                    <i class="bi bi-chat-left-text"></i>
-                                                </a>
-                                            }
+                                                @* Budget *@
+                                                @if (e.HasBudget)
+                                                {
+                                                    <a class="ee-act budget"
+                                                       asp-controller="BudgetProposal" asp-action="Detail"
+                                                       asp-route-eventId="@e.EventId"
+                                                       title="View Budget">
+                                                        <i class="bi bi-cash-stack"></i>
+                                                    </a>
+                                                }
 
-                                            @* Delete *@
-                                            <form asp-controller="Organizer" asp-action="Manage"
-                                                  method="post" class="ee-act-form">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="operation" value="softdelete" />
-                                                <input type="hidden" name="id" value="@e.EventId" />
-                                                <button type="submit"
-                                                        class="ee-act delete"
-                                                        title="Delete Event"
-                                                        onclick="return confirm('Bạn có chắc muốn xóa sự kiện \"@Html.Raw(e.Title?.Replace("'", "\\'"))\"?');">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        }
+                                                @* Feedback *@
+                                                @if (e.FeedbackCount > 0)
+                                                {
+                                                    <a class="ee-act feedback"
+                                                       asp-controller="Organizer" asp-action="Manage"
+                                                       asp-route-operation="viewfeedback" asp-route-id="@e.EventId"
+                                                       title="View Feedback (@e.FeedbackCount)">
+                                                        <i class="bi bi-chat-left-text"></i>
+                                                    </a>
+                                                }
+
+                                                @* Delete *@
+                                                <form asp-controller="Organizer" asp-action="Manage"
+                                                      method="post" class="ee-act-form">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="operation" value="softdelete" />
+                                                    <input type="hidden" name="id" value="@e.EventId" />
+                                                    <button type="submit"
+                                                            class="ee-act delete"
+                                                            title="Delete Event"
+                                                            onclick="return confirm('Bạn có chắc muốn xóa sự kiện \"@Html.Raw(e.Title?.Replace("'", "\\'"))\"?');">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                        <div class="ee-actions-trigger">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>

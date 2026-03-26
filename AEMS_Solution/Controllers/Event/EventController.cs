@@ -203,7 +203,26 @@ namespace AEMS_Solution.Controllers.Event
 				return View("~/Views/Event/ExpiredEvent.cshtml", new OrganizerExpiredEventViewModel());
 			}
 		}
-
+		[HttpGet]
+		public async Task<IActionResult> ShowwFeedBackForOrganizer()
+		{
+			var userId = CurrentUserId;
+			if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
+			try
+			{
+				var events = await _eventService.GetExpiredEventsAsync(userId);
+				var vm = new OrganizerExpiredEventViewModel
+				{
+					Events = events
+				};
+				return View("~/Views/Event/ExpiredEvent.cshtml", vm);
+			}
+			catch (Exception)
+			{
+				SetError("Đã xảy ra lỗi khi tải danh sách sự kiện hết hạn.");
+				return View("~/Views/Event/ExpiredEvent.cshtml", new OrganizerExpiredEventViewModel());
+			}
+		}
 
 	}
 }

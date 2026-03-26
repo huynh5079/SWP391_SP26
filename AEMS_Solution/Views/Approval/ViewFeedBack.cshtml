@@ -1,0 +1,312 @@
+@model List<BusinessLogic.DTOs.Event.EventFeedbackSummary.EventFeedbackSummaryDto>
+@using DataAccess.Enum
+@{
+    Layout = "~/Views/Shared/_Approvallayout.cshtml";
+    ViewData["Title"] = "Feedback - " + (ViewBag.EventTitle ?? "Event");
+
+    string eventTitle = ViewBag.EventTitle ?? "Event";
+    string eventId = ViewBag.EventId ?? "";
+    double avgRating = ViewBag.AvgRating ?? 0;
+    int totalFeedbacks = ViewBag.TotalFeedbacks ?? 0;
+
+    // Helper to render star icons
+    string RenderStars(int rating)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 1; i <= 5; i++)
+        {
+            sb.Append(i <= rating
+                ? "<i class=\"bi bi-star-fill vf-star filled\"></i>"
+                : "<i class=\"bi bi-star vf-star empty\"></i>");
+        }
+        return sb.ToString();
+    }
+}
+
+<style>
+    /* ── ViewFeedback Scoped Styles ── */
+    :root {
+        --vf-primary: #6366f1;
+        --vf-primary-light: #818cf8;
+        --vf-bg: #f8fafc;
+        --vf-card: #ffffff;
+        --vf-border: #e2e8f0;
+        --vf-text: #1e293b;
+        --vf-muted: #94a3b8;
+        --vf-success: #10b981;
+        --vf-warning: #f59e0b;
+        --vf-danger: #ef4444;
+    }
+
+    .vf-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+    }
+
+    /* ── Header ── */
+    .vf-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .vf-header-left { display: flex; flex-direction: column; gap: .35rem; }
+
+    .vf-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        color: var(--vf-muted);
+        text-decoration: none;
+        font-size: .82rem;
+        transition: color .2s;
+    }
+
+    .vf-back-link:hover { color: var(--vf-primary); }
+
+    .vf-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--vf-text);
+        margin: 0;
+    }
+
+    .vf-subtitle {
+        font-size: .85rem;
+        color: var(--vf-muted);
+    }
+
+    /* ── Summary Cards ── */
+    .vf-summary-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .vf-summary-card {
+        background: var(--vf-card);
+        border: 1px solid var(--vf-border);
+        border-radius: 14px;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: .4rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+
+    .vf-summary-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: var(--vf-muted);
+        font-weight: 600;
+    }
+
+    .vf-summary-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--vf-text);
+    }
+
+    .vf-summary-stars { font-size: 1.1rem; }
+
+    .vf-star.filled { color: #f59e0b; }
+    .vf-star.empty { color: #e2e8f0; }
+
+    /* ── Feedback Table ── */
+    .vf-table-wrap {
+        background: var(--vf-card);
+        border: 1px solid var(--vf-border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+
+    .vf-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: .85rem;
+    }
+
+    .vf-table thead th {
+        background: #f1f5f9;
+        padding: .85rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: #64748b;
+        border-bottom: 1px solid var(--vf-border);
+    }
+
+    .vf-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background .15s;
+    }
+
+    .vf-table tbody tr:hover { background: #f8fafc; }
+    .vf-table tbody tr:last-child { border-bottom: none; }
+
+    .vf-table td {
+        padding: .8rem 1rem;
+        vertical-align: top;
+        color: var(--vf-text);
+    }
+
+    .vf-student-code {
+        font-weight: 600;
+        color: var(--vf-primary);
+        font-size: .82rem;
+    }
+
+    .vf-comment {
+        max-width: 400px;
+        line-height: 1.5;
+        color: #475569;
+    }
+
+    .vf-comment-empty {
+        color: var(--vf-muted);
+        font-style: italic;
+    }
+
+    .vf-date {
+        font-size: .78rem;
+        color: var(--vf-muted);
+        white-space: nowrap;
+    }
+
+    .vf-rating-cell {
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        font-size: .9rem;
+    }
+
+    /* ── Empty State ── */
+    .vf-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--vf-muted);
+    }
+
+    .vf-empty i {
+        font-size: 3rem;
+        margin-bottom: .75rem;
+        display: block;
+        opacity: .4;
+    }
+
+    .vf-empty p {
+        font-size: .9rem;
+        margin: 0;
+    }
+
+    /* ── Responsive ── */
+    @@media (max-width: 768px) {
+        .vf-summary-row { grid-template-columns: 1fr 1fr; }
+        .vf-table { font-size: .78rem; }
+        .vf-table td, .vf-table th { padding: .6rem .7rem; }
+    }
+</style>
+
+<div class="vf-container">
+    <!-- Header -->
+    <div class="vf-header">
+        <div class="vf-header-left">
+            <a asp-controller="Approver" asp-action="AllEvents" class="vf-back-link">
+                <i class="bi bi-arrow-left"></i> Quay lại
+            </a>
+            <h1 class="vf-title">
+                <i class="bi bi-chat-left-text" style="color: var(--vf-primary);"></i>
+                Feedback — @eventTitle
+            </h1>
+            <div class="vf-subtitle">Tổng hợp đánh giá từ sinh viên tham gia sự kiện</div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="vf-summary-row">
+        <div class="vf-summary-card">
+            <div class="vf-summary-label">Tổng feedback</div>
+            <div class="vf-summary-value">@totalFeedbacks</div>
+        </div>
+        <div class="vf-summary-card">
+            <div class="vf-summary-label">Đánh giá trung bình</div>
+            <div class="vf-summary-value">@avgRating.ToString("F1") <span style="font-size:.8rem; color:var(--vf-muted);">/ 5</span></div>
+            <div class="vf-summary-stars">
+                @Html.Raw(RenderStars((int)Math.Round(avgRating)))
+            </div>
+        </div>
+        <div class="vf-summary-card">
+            <div class="vf-summary-label">Có nhận xét</div>
+            <div class="vf-summary-value">@Model.Count(f => !string.IsNullOrWhiteSpace(f.Comment))</div>
+        </div>
+    </div>
+
+    <!-- Feedback Table -->
+    <div class="vf-table-wrap">
+        @if (Model.Any())
+        {
+            <table class="vf-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Sinh viên</th>
+                        <th>Rating</th>
+                        <th>Nhận xét</th>
+                        <th>Ngày gửi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int idx = 0; }
+                    @foreach (var fb in Model)
+                    {
+                        idx++;
+                        int ratingVal = fb.Rating.HasValue ? (int)fb.Rating.Value : 0;
+                        <tr>
+                            <td style="color:var(--vf-muted); font-weight:500;">@idx</td>
+                            <td>
+                                <span class="vf-student-code">@(fb.StudentCode ?? "N/A")</span>
+                            </td>
+                            <td>
+                                <div class="vf-rating-cell">
+                                    @Html.Raw(RenderStars(ratingVal))
+                                    <span style="font-size:.75rem; color:var(--vf-muted); margin-left:.2rem;">(@ratingVal)</span>
+                                </div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(fb.Comment))
+                                {
+                                    <div class="vf-comment">@fb.Comment</div>
+                                }
+                                else
+                                {
+                                    <span class="vf-comment-empty">Không có nhận xét</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="vf-date">
+                                    @(fb.CreatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="vf-empty">
+                <i class="bi bi-chat-square-text"></i>
+                <p>Chưa có feedback nào cho sự kiện này.</p>
+            </div>
+        }
+    </div>
+</div>

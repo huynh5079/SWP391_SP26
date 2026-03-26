@@ -4,7 +4,7 @@ using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 
 namespace BusinessLogic.Service.Event.Sub_Service.Feedback.DeepLearningService
 {
-	public class DLService
+	public class DLService : IDLService
 	{
 		private readonly HttpClient _httpClient;
 

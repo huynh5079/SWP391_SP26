@@ -363,42 +363,90 @@
     /* ── Action Buttons ── */
     .me-actions {
         display: flex;
-        gap: .4rem;
-        align-items: center;
-        flex-wrap: nowrap;
         justify-content: flex-end;
+        align-items: center;
+        position: relative;
+        min-height: 40px;
+        overflow: visible;
+    }
+
+    .me-actions-trigger {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        cursor: pointer;
+        transition: all .2s;
+        z-index: 2;
+    }
+
+    .me-actions:hover .me-actions-trigger {
+        background: var(--me-primary);
+        color: #fff;
+        border-color: var(--me-primary);
+        transform: rotate(90deg);
+    }
+
+    .me-actions-menu {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+        position: absolute;
+        right: 44px; /* Start right after trigger */
+        background: #fff;
+        padding: 4px 10px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0,0,0,.08);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(10px);
+        transition: all .3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 10;
+        white-space: nowrap;
+    }
+
+    .me-actions:hover .me-actions-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(0);
     }
 
     .me-act {
-        width: 30px;
-        height: 30px;
-        border-radius: 7px;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
         border: 1px solid #e2e8f0;
         background: #f8fafc;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: .8rem;
+        font-size: .9rem;
         cursor: pointer;
-        transition: all .15s;
+        transition: all .2s;
         text-decoration: none;
         color: #64748b;
     }
 
-    .me-act:hover               { transform: translateY(-1px); }
-    .me-act.view:hover          { background: #eff6ff;  border-color: #bfdbfe; color: #3b82f6; }
-    .me-act.edit:hover          { background: #fef9c3;  border-color: #fde68a; color: #d97706; }
-    .me-act.publish:hover       { background: #f0fdf4;  border-color: #86efac; color: #16a34a; }
-    .me-act.send:hover          { background: #e0e7ff;  border-color: #a5b4fc; color: #4f46e5; }
-    .me-act.waitlist:hover      { background: #f8fafc;  border-color: #cbd5e1; color: #475569; }
-    .me-act.budget:hover        { background: #ecfdf5;  border-color: #6ee7b7; color: #059669; }
-    .me-act.cancel:hover        { background: #fff7ed;  border-color: #fdba74; color: #ea580c; }
-    .me-act.sync:hover          { background: #eff6ff;  border-color: #93c5fd; color: #2563eb; }
-    .me-act.delete:hover        { background: #fee2e2;  border-color: #fca5a5; color: #dc2626; }
-    .me-act.unlock:hover        { background: #f0fdf4;  border-color: #86efac; color: #16a34a; }
+    .me-act:hover               { transform: scale(1.1); box-shadow: 0 3px 8px rgba(0,0,0,.1); }
+    .me-act.view:hover          { background: #eff6ff;  border-color: #3b82f6; color: #3b82f6; }
+    .me-act.edit:hover          { background: #fef9c3;  border-color: #d97706; color: #d97706; }
+    .me-act.publish:hover       { background: #f0fdf4;  border-color: #16a34a; color: #16a34a; }
+    .me-act.send:hover          { background: #e0e7ff;  border-color: #4f46e5; color: #4f46e5; }
+    .me-act.waitlist:hover      { background: #f8fafc;  border-color: #475569; color: #475569; }
+    .me-act.budget:hover        { background: #ecfdf5;  border-color: #059669; color: #059669; }
+    .me-act.cancel:hover        { background: #fff7ed;  border-color: #ea580c; color: #ea580c; }
+    .me-act.sync:hover          { background: #eff6ff;  border-color: #2563eb; color: #2563eb; }
+    .me-act.delete:hover        { background: #fee2e2;  border-color: #dc2626; color: #dc2626; }
+    .me-act.unlock:hover        { background: #f0fdf4;  border-color: #16a34a; color: #16a34a; }
 
     /* form as inline */
-    .me-act-form { display: inline; }
+    .me-act-form { display: inline-flex; }
 
     /* ── Pagination ── */
     .me-pagination-bar {
@@ -674,106 +722,119 @@
                                     </td>
 
                                     @* Actions *@
-                                    <td>
+                                    <td style="overflow: visible;">
                                         <div class="me-actions">
-                                            @* View *@
-                                            <a class="me-act view"
-                                               asp-controller="Organizer" asp-action="Manage"
-                                               asp-route-operation="detailevent" asp-route-id="@e.EventId"
-                                               title="View Details">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-
-                                            @if (e.IsOwnedByCurrentUser)
-                                            {
-                                                @* Edit *@
-                                                @if (e.CanEdit)
-                                                {
-                                                    <a class="me-act edit"
-                                                       asp-action="Edit" asp-route-id="@e.EventId"
-                                                       title="Edit">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </a>
-                                                }
-
-                                                @* Publish *@
-                                                @if (e.CanPublish)
-                                                {
-                                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="operation" value="publish" />
-                                                        <input type="hidden" name="id" value="@e.EventId" />
-                                                        <button type="submit" class="me-act publish" title="Publish">
-                                                            <i class="bi bi-megaphone"></i>
-                                                        </button>
-                                                    </form>
-                                                }
-
-                                                @* Send for Approval *@
-                                                @if (e.CanSendForApproval)
-                                                {
-                                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="operation" value="sendforapproval" />
-                                                        <input type="hidden" name="id" value="@e.EventId" />
-                                                        <button type="submit" class="me-act send" title="Send for Approval">
-                                                            <i class="bi bi-send"></i>
-                                                        </button>
-                                                    </form>
-                                                }
-
-                                                @* Waitlist *@
-                                                <a class="me-act waitlist"
-                                                   asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId"
-                                                   title="Waitlist">
-                                                    <i class="bi bi-people"></i>
+                                            <div class="me-actions-menu">
+                                                @* View *@
+                                                <a class="me-act view"
+                                                   asp-controller="Organizer" asp-action="Manage"
+                                                   asp-route-operation="detailevent" asp-route-id="@e.EventId"
+                                                   title="View Details">
+                                                    <i class="bi bi-eye"></i>
                                                 </a>
 
-                                                @* Budget *@
-                                                @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
+                                                @if (e.IsOwnedByCurrentUser)
                                                 {
-                                                    <a class="me-act budget"
-                                                       asp-controller="BudgetProposal" asp-action="Detail" asp-route-eventId="@e.EventId"
-                                                       title="Budget">
-                                                        <i class="bi bi-cash-stack"></i>
-                                                    </a>
-                                                }
+                                                    @* Edit *@
+                                                    @if (e.CanEdit)
+                                                    {
+                                                        <a class="me-act edit"
+                                                           asp-action="Edit" asp-route-id="@e.EventId"
+                                                           title="Edit">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                    }
 
-                                                @* Cancel *@
-                                                @if (e.CanCancel)
-                                                {
+                                                    @* Publish *@
+                                                    @if (e.CanPublish)
+                                                    {
+                                                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="operation" value="publish" />
+                                                            <input type="hidden" name="id" value="@e.EventId" />
+                                                            <button type="submit" class="me-act publish" title="Publish">
+                                                                <i class="bi bi-megaphone"></i>
+                                                            </button>
+                                                        </form>
+                                                    }
+
+                                                    @* Send for Approval *@
+                                                    @if (e.CanSendForApproval)
+                                                    {
+                                                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="operation" value="sendforapproval" />
+                                                            <input type="hidden" name="id" value="@e.EventId" />
+                                                            <button type="submit" class="me-act send" title="Send for Approval">
+                                                                <i class="bi bi-send"></i>
+                                                            </button>
+                                                        </form>
+                                                    }
+
+                                                    @* Waitlist *@
+                                                    <a class="me-act waitlist"
+                                                       asp-controller="EventWaitlist" asp-action="Index" asp-route-eventId="@e.EventId"
+                                                       title="Waitlist">
+                                                        <i class="bi bi-people"></i>
+                                                    </a>
+
+                                                    @* Budget *@
+                                                    @if (e.Status != EventStatusEnum.Cancelled && e.Status != EventStatusEnum.Completed)
+                                                    {
+                                                        <a class="me-act budget"
+                                                           asp-controller="BudgetProposal" asp-action="Detail" asp-route-eventId="@e.EventId"
+                                                           title="Budget">
+                                                            <i class="bi bi-cash-stack"></i>
+                                                        </a>
+                                                    }
+
+                                                    @* Cancel *@
+                                                    @if (e.CanCancel)
+                                                    {
+                                                        <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="operation" value="cancel" />
+                                                            <input type="hidden" name="id" value="@e.EventId" />
+                                                            <button type="submit" class="me-act cancel" title="Cancel Event"
+                                                                    onclick="return confirm('Bạn có chắc muốn hủy sự kiện này?');">
+                                                                <i class="bi bi-x-circle"></i>
+                                                            </button>
+                                                        </form>
+                                                    }
+
+                                                    @* Sync Sentiment *@
                                                     <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
                                                         @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="operation" value="cancel" />
+                                                        <input type="hidden" name="operation" value="reanalyze-sentiment" />
                                                         <input type="hidden" name="id" value="@e.EventId" />
-                                                        <button type="submit" class="me-act cancel" title="Cancel Event"
-                                                                onclick="return confirm('Bạn có chắc muốn hủy sự kiện này?');">
-                                                            <i class="bi bi-x-circle"></i>
+                                                        <button type="submit" class="me-act sync" title="Sync Sentiment">
+                                                            <i class="bi bi-arrow-repeat"></i>
+                                                        </button>
+                                                    </form>
+
+                                                    @* View Feedback *@
+                                                    <a class="me-act feedback"
+                                                       asp-controller="Organizer" asp-action="Manage"
+                                                       asp-route-operation="viewfeedback" asp-route-id="@e.EventId"
+                                                       title="View Feedback">
+                                                        <i class="bi bi-chat-left-text"></i>
+                                                    </a>
+
+                                                    @* Delete *@
+                                                    <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="operation" value="softdelete" />
+                                                        <input type="hidden" name="id" value="@e.EventId" />
+                                                        <button type="submit" class="me-act delete" title="Delete"
+                                                                onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">
+                                                            <i class="bi bi-trash"></i>
                                                         </button>
                                                     </form>
                                                 }
-
-                                                @* Sync Sentiment *@
-                                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="operation" value="reanalyze-sentiment" />
-                                                    <input type="hidden" name="id" value="@e.EventId" />
-                                                    <button type="submit" class="me-act sync" title="Sync Sentiment">
-                                                        <i class="bi bi-arrow-repeat"></i>
-                                                    </button>
-                                                </form>
-
-                                                @* Delete *@
-                                                <form asp-controller="Organizer" asp-action="Manage" method="post" class="me-act-form">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="operation" value="softdelete" />
-                                                    <input type="hidden" name="id" value="@e.EventId" />
-                                                    <button type="submit" class="me-act delete" title="Delete"
-                                                            onclick="return confirm('Bạn có chắc muốn xóa sự kiện này?');">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-                                            }
+                                            </div>
+                                            <div class="me-actions-trigger">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
