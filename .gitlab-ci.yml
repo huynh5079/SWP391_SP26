@@ -37,6 +37,7 @@ deploy_to_azure:
   # Note: Dùng $env: cho biến môi trường trên Windows PowerShell
   script:
     - echo "=== ĐANG DEPLOY LÊN AZURE WEB APP ==="
+    - echo "DEBUG - AZURE_CLIENT_ID exists: $(($env:AZURE_CLIENT_ID -ne $null) -and ($env:AZURE_CLIENT_ID -ne ''))"
     - az login --service-principal -u "$env:AZURE_CLIENT_ID" -p "$env:AZURE_CLIENT_SECRET" --tenant "$env:AZURE_TENANT_ID"
     - az webapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --src publish.zip
     - echo "=== DEPLOY HOÀN TẤT! ==="
