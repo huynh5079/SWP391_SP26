@@ -164,6 +164,91 @@ body {
     padding: 1.5rem 0;
 }
 
+.brand-icon-box {
+    background-color: var(--primary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #fff;
+    text-decoration: none;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+}
+
+.sidebar-toggle-btn {
+    background: rgba(255,255,255,0.05);
+    border: none;
+    color: var(--text-sidebar);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* Sidebar toggle button removed from HTML */
+.sidebar-toggle-btn {
+    display: none !important;
+}
+
+/* Hide text when collapsed and NOT hovered */
+/* Hide text and elements when NOT hovered */
+.organizer-sidebar:not(:hover) .brand-text,
+.organizer-sidebar:not(:hover) .nav-link span,
+.organizer-sidebar:not(:hover) .nav-link::after,
+.organizer-sidebar:not(:hover) .nav-link i:not(:first-child),
+.organizer-sidebar:not(:hover) .sidebar-submenu,
+.organizer-sidebar:not(:hover) .btn-solid-primary span,
+.organizer-sidebar:not(:hover) .ms-auto,
+.organizer-sidebar:not(:hover) .dropdown-divider,
+.organizer-sidebar:not(:hover) .new-event-btn-container span {
+    display: none !important;
+}
+
+.organizer-sidebar:not(:hover) .new-event-btn-container {
+    padding: 10px !important;
+    display: flex;
+    justify-content: center;
+}
+
+.organizer-sidebar:not(:hover) .new-event-btn-container .btn-solid-primary {
+    width: 40px !important;
+    height: 40px;
+    padding: 0 !important;
+    border-radius: 50%;
+    justify-content: center;
+}
+
+.organizer-sidebar:not(:hover) .new-event-btn-container .btn-solid-primary i {
+    display: inline-block !important;
+    margin: 0 !important;
+}
+
+/* Custom handling for nav items to keep icons centered when NOT hovered */
+.organizer-sidebar:not(:hover) .nav-link {
+    justify-content: center;
+    padding: 10px 0;
+    gap: 0;
+}
+
+.organizer-sidebar:not(:hover) .brand-wrapper {
+    justify-content: center;
+    padding: 1.5rem 0;
+}
+
 .brand-link {
     display: flex;
     align-items: center;
@@ -345,6 +430,10 @@ body {
     display: flex;
     flex-direction: column;
     transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.organizer-sidebar:hover ~ .main-wrapper {
+    margin-left: 260px;
 }
 
 .organizer-sidebar:hover ~ .main-wrapper {
