@@ -3,177 +3,394 @@
     var isReadOnly = ViewBag.IsReadOnly == true;
     ViewData["Title"] = isReadOnly ? "Hồ sơ người dùng" : "Hồ sơ cá nhân";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Trim().Split(' ');
+        return parts.Length == 1 ? parts[0][0].ToString().ToUpper() : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+    
+    var roleBg = Model.RoleName switch {
+        "Admin" => "#fee2e2", "Organizer" => "#dbeafe", "Approver" => "#f3e8ff", "Student" => "#dcfce7", _ => "#f1f5f9"
+    };
+    var roleColor = Model.RoleName switch {
+        "Admin" => "#ef4444", "Organizer" => "#3b82f6", "Approver" => "#a855f7", "Student" => "#22c55e", _ => "#64748b"
+    };
 }
 
-<div class="container py-5">
-    <div class="row">
-        <!-- Identity Column -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-body text-center">
-                     <div class="position-relative d-inline-block mb-3" id="avatar-container">
-                        <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.FullName : Model.AvatarUrl)" 
-                             alt="@Model.FullName" 
-                             class="rounded-circle img-thumbnail"
-                             style="width: 150px; height: 150px; object-fit: cover;">
-                        
-                        <div id="avatar-spinner" class="position-absolute top-50 start-50 translate-middle d-none">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                        @if (!isReadOnly)
-                        {
-                            <div class="position-absolute bottom-0 end-0 bg-white rounded-circle p-1 shadow-sm border border-2 border-white" style="cursor: pointer;" onclick="document.getElementById('avatar-input').click();">
-                                <i class="bi bi-camera-fill text-primary" style="font-size: 1.2rem;"></i>
-                            </div>
-                        }
-                    </div>
-                    
-                    <h4 class="fw-bold mb-1">@Model.FullName</h4>
-                    <p class="text-muted mb-2">@Model.Email</p>
-                    <span class="badge bg-primary px-3 py-2 rounded-pill">@Model.RoleName</span>
-                    
-                    @if (Model.CreatedAt.HasValue)
-                    {
-                        <div class="mt-3 text-muted small">
-                            <i class="bi bi-calendar3 me-1"></i> Tham gia từ: @Model.CreatedAt.Value.ToString("MM/yyyy")
-                        </div>
-                    }
+<style>
+/* ============================================================
+   PROFILE PAGE — Luminous Ultra-Premium
+============================================================ */
+:root {
+    --up-bg: #f8fafc;
+    --up-card: #ffffff;
+    --up-text: #0f172a;
+    --up-muted: #64748b;
+    --up-border: #e2e8f0;
+    --up-primary: #6366f1;
+    --up-primary-hover: #4f46e5;
+    --up-shadow: 0 10px 40px rgba(15,23,42,0.06);
+    --up-radius: 24px;
+}
+
+body { background: var(--up-bg); }
+
+@@keyframes up-fade-in { from{opacity:0;transform:translateY(15px)} to{opacity:1;transform:none} }
+@@keyframes up-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+
+.up-page-wrapper {
+    max-width: 1100px;
+    margin: 2rem auto 4rem;
+    padding: 0 1.5rem;
+    animation: up-fade-in 0.4s ease both;
+}
+
+/* ── HEADER BANNER ── */
+.up-banner {
+    position: relative;
+    height: 180px;
+    border-radius: var(--up-radius) var(--up-radius) 0 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1e1b4b, #312e81, #4c1d95);
+    box-shadow: 0 4px 20px rgba(0,0,0,.15);
+}
+.up-banner::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at 80% 20%, rgba(139,92,246,.4) 0%, transparent 60%);
+}
+.up-banner::after {
+    content:''; position:absolute; inset:0;
+    background: url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.05)"/></svg>') repeat;
+}
+
+/* ── PROFILE CONTAINER ── */
+.up-container {
+    background: var(--up-card);
+    border-radius: 0 0 var(--up-radius) var(--up-radius);
+    padding: 0 3rem 3rem;
+    box-shadow: var(--up-shadow);
+    position: relative;
+    border: 1px solid var(--up-border);
+    border-top: none;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 3rem;
+}
+@@media(max-width:850px) {
+    .up-container { grid-template-columns: 1fr; padding: 0 1.5rem 2rem; }
+}
+
+/* ── SIDEBAR (Identity) ── */
+.up-sidebar {
+    transform: translateY(-70px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.up-avatar-wrap {
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: #fff;
+    padding: 5px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    position: relative;
+    margin-bottom: 1.2rem;
+    flex-shrink: 0;
+}
+.up-avatar {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e0e7ff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; font-weight: 800; color: #6366f1;
+}
+.up-avatar-btn {
+    position: absolute; bottom: 5px; right: 5px;
+    width: 38px; height: 38px;
+    border-radius: 50%; background: var(--up-primary);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: 3px solid #fff;
+    transition: all .2s; box-shadow: 0 4px 10px rgba(99,102,241,.4);
+}
+.up-avatar-btn:hover { background: var(--up-primary-hover); transform: scale(1.1); }
+.up-avatar-spinner {
+    position: absolute; inset: 0; background: rgba(255,255,255,.7);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.up-avatar-spinner.active { opacity: 1; pointer-events: all; }
+
+.up-name { font-size: 1.45rem; font-weight: 800; color: var(--up-text); margin-bottom: .2rem; }
+.up-email { font-size: .9rem; color: var(--up-muted); margin-bottom: 1rem; }
+.up-role-badge {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .35rem 1rem; border-radius: 20px;
+    font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+}
+.up-join-date {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .8rem; color: #94a3b8; font-weight: 600;
+    margin-top: 1.5rem; padding: .6rem 1rem;
+    background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;
+}
+
+/* ── MAIN CONTENT ── */
+.up-main {
+    padding-top: 2rem;
+}
+.up-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #f1f5f9;
+}
+.up-title { font-size: 1.1rem; font-weight: 800; color: var(--up-text); margin: 0; }
+.up-actions { display: flex; gap: .6rem; }
+
+.up-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .5rem 1.1rem; border-radius: 10px;
+    font-size: .85rem; font-weight: 700; cursor: pointer;
+    transition: all .2s; text-decoration: none; border: none; outline: none;
+}
+.up-btn-primary { background: var(--up-primary); color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,.3); }
+.up-btn-primary:hover { background: var(--up-primary-hover); transform: translateY(-1px); color: #fff; }
+.up-btn-outline { background: #fff; border: 1.5px solid #e2e8f0; color: #475569; }
+.up-btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; color: var(--up-text); }
+.up-btn-danger { background: #fef2f2; border: 1px solid #fca5a5; color: #ef4444; }
+.up-btn-danger:hover { background: #fee2e2; color: #dc2626; }
+
+/* ── INFO GRID ── */
+.up-info-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+@@media(max-width:600px) { .up-info-grid { grid-template-columns: 1fr; } }
+.up-info-item {
+    background: #f8fafc;
+    padding: 1.2rem;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    transition: all .2s;
+}
+.up-info-item:hover { background: #fff; border-color: #e0e7ff; box-shadow: 0 4px 20px rgba(99,102,241,.05); }
+.up-info-label { font-size: .75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem; }
+.up-info-val { font-size: 1rem; font-weight: 700; color: var(--up-text); }
+.up-info-empty { color: #cbd5e1; font-weight: 500; font-style: italic; }
+
+/* ── EDIT FORM ── */
+.up-edit-wrap {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,.03);
+    margin-top: 1rem;
+    display: none; /* hidden by default, toggled via JS */
+    animation: up-fade-in .3s ease both;
+}
+.up-edit-wrap.active { display: block; }
+.up-form-group { margin-bottom: 1.2rem; }
+.up-form-label { font-size: .8rem; font-weight: 700; color: #475569; margin-bottom: .4rem; display: block; }
+.up-form-control {
+    width: 100%; padding: .7rem 1rem; font-size: .9rem;
+    border-radius: 10px; border: 1.5px solid #e2e8f0;
+    transition: all .2s; outline: none; background: #fafbff;
+    font-family: inherit; color: var(--up-text); font-weight: 500;
+}
+.up-form-control:focus { border-color: var(--up-primary); box-shadow: 0 0 0 3px rgba(99,102,241,.15); background:#fff; }
+.up-form-control.readonly { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+</style>
+
+<div class="up-page-wrapper">
+    <div class="up-banner"></div>
+    
+    <div class="up-container">
+        <!-- ── SIDEBAR ── -->
+        <div class="up-sidebar">
+            <div class="up-avatar-wrap">
+                @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                {
+                    <img src="@Model.AvatarUrl" alt="Avatar" class="up-avatar" id="upAvatarImg" onerror="this.style.display='none'; document.getElementById('upAvatarInitials').style.display='flex';" />
+                    <div class="up-avatar" id="upAvatarInitials" style="display:none; position:absolute; inset:0;">@GetInitials(Model.FullName)</div>
+                }
+                else
+                {
+                    <img src="" alt="Avatar" class="up-avatar" id="upAvatarImg" style="display:none;" />
+                    <div class="up-avatar" id="upAvatarInitials" style="position:absolute; inset:0;">@GetInitials(Model.FullName)</div>
+                }
+
+                <div class="up-avatar-spinner" id="upAvatarSpinner">
+                    <div class="spinner-border text-primary" role="status" style="width:1.5rem;height:1.5rem;"></div>
                 </div>
+
+                @if (!isReadOnly)
+                {
+                    <div class="up-avatar-btn" onclick="document.getElementById('avatar-input').click();" title="Thay đổi ảnh đại diện">
+                        <i class="bi bi-camera-fill"></i>
+                    </div>
+                }
             </div>
+
+            <div class="up-name">@Model.FullName</div>
+            <div class="up-email">@Model.Email</div>
+            
+            <div class="up-role-badge" style="background:@roleBg; color:@roleColor;">
+                <i class="bi bi-person-fill"></i> @Model.RoleName
+            </div>
+
+            @if (Model.CreatedAt.HasValue)
+            {
+                <div class="up-join-date">
+                    <i class="bi bi-calendar-check text-primary"></i>
+                    <span>Tham gia: @Model.CreatedAt.Value.ToString("MM/yyyy")</span>
+                </div>
+            }
         </div>
 
-        <!-- Details Column -->
-        <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white border-bottom-0">
-                    <h6 class="m-0 font-weight-bold text-primary">Thông tin chi tiết</h6>
+        <!-- ── MAIN CONTENT ── -->
+        <div class="up-main">
+            <div class="up-header">
+                <h4 class="up-title">
+                    <i class="bi bi-person-lines-fill text-primary me-2"></i>
+                    Thông tin chi tiết
+                </h4>
+                <div class="up-actions">
                     @if (!isReadOnly)
                     {
-                        <div>
-                            @if (Model.HasPassword)
-                            {
-                                <a asp-controller="Auth" asp-action="ChangePassword" class="btn btn-sm btn-outline-secondary me-2">
-                                    <i class="bi bi-key me-1"></i> Đổi mật khẩu
-                                </a>
-                            }
-                            else
-                            {
-                                <a asp-controller="Auth" asp-action="SetPassword" class="btn btn-sm btn-outline-danger me-2">
-                                    <i class="bi bi-shield-lock-fill me-1"></i> Thiết lập mật khẩu
-                                </a>
-                            }
-                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#editForm" aria-expanded="false" aria-controls="editForm">
-                                <i class="bi bi-pencil me-1"></i> Chỉnh sửa
-                            </button>
-                        </div>
+                        @if (Model.HasPassword)
+                        {
+                            <a asp-controller="Auth" asp-action="ChangePassword" class="up-btn up-btn-outline">
+                                <i class="bi bi-shield-lock"></i> Đổi mật khẩu
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Auth" asp-action="SetPassword" class="up-btn up-btn-danger">
+                                <i class="bi bi-key-fill"></i> Tạo mật khẩu
+                            </a>
+                        }
+                        <button type="button" class="up-btn up-btn-primary" id="btnToggleEdit">
+                            <i class="bi bi-pencil-square"></i> Cập nhật
+                        </button>
                     }
                     else
                     {
-                        <div>
-                            <button type="button" class="btn btn-sm btn-primary" data-open-chat-user="@Model.Id">
-                                <i class="bi bi-chat-dots me-1"></i> Nhắn tin
-                            </button>
-                        </div>
+                        <button type="button" class="up-btn up-btn-primary" data-open-chat-user="@Model.Id">
+                            <i class="bi bi-chat-quote-fill"></i> Nhắn tin
+                        </button>
                     }
                 </div>
-                <div class="card-body">
-                    
-                    <!-- View Mode (Static Info) -->
-                    <div class="row mb-4">
-                        <div class="col-md-6 mb-3">
-                            <label class="small text-muted fw-bold">Số điện thoại</label>
-                            <div class="h6">@(string.IsNullOrEmpty(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</div>
+            </div>
+
+            <!-- View Mode -->
+            <div class="up-info-grid" id="infoGrid">
+                <div class="up-info-item">
+                    <div class="up-info-label">Số điện thoại</div>
+                    <div class="up-info-val @(string.IsNullOrEmpty(Model.Phone) ? "up-info-empty" : "")">
+                        @(string.IsNullOrEmpty(Model.Phone) ? "Chưa cung cấp" : Model.Phone)
+                    </div>
+                </div>
+                <div class="up-info-item">
+                    <div class="up-info-label">Phòng ban / Khoa</div>
+                    <div class="up-info-val @(string.IsNullOrEmpty(Model.DepartmentName) ? "up-info-empty" : "")">
+                        @(string.IsNullOrEmpty(Model.DepartmentName) ? "Chưa cập nhật" : Model.DepartmentName)
+                    </div>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(Model.StudentCode))
+                {
+                    <div class="up-info-item">
+                        <div class="up-info-label">Mã số Sinh viên</div>
+                        <div class="up-info-val">@Model.StudentCode</div>
+                    </div>
+                    <div class="up-info-item">
+                        <div class="up-info-label">Kỳ học</div>
+                        <div class="up-info-val @(string.IsNullOrEmpty(Model.CurrentSemester) ? "up-info-empty" : "")">
+                            @(string.IsNullOrEmpty(Model.CurrentSemester) ? "Chưa cập nhật" : Model.CurrentSemester)
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="small text-muted fw-bold">Phòng ban / Khoa</label>
-                            <div class="h6">@(string.IsNullOrEmpty(Model.DepartmentName) ? "Chưa cập nhật" : Model.DepartmentName)</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.StaffCode))
+                {
+                    <div class="up-info-item">
+                        <div class="up-info-label">Mã Nhân viên</div>
+                        <div class="up-info-val">@Model.StaffCode</div>
+                    </div>
+                    <div class="up-info-item">
+                        <div class="up-info-label">Chức vụ</div>
+                        <div class="up-info-val @(string.IsNullOrEmpty(Model.Position) ? "up-info-empty" : "")">
+                            @(string.IsNullOrEmpty(Model.Position) ? "Chưa phân công" : Model.Position)
                         </div>
-                        
-                        @if (!string.IsNullOrEmpty(Model.StudentCode))
-                        {
-                            <div class="col-md-6 mb-3">
-                                <label class="small text-muted fw-bold">Mã số sinh viên</label>
-                                <div class="h6">@Model.StudentCode</div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="small text-muted fw-bold">Kỳ học hiện tại</label>
-                                <div class="h6">@(string.IsNullOrEmpty(Model.CurrentSemester) ? "Chưa cập nhật" : Model.CurrentSemester)</div>
-                            </div>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(Model.StaffCode))
-                        {
-                            <div class="col-md-6 mb-3">
-                                <label class="small text-muted fw-bold">Mã nhân viên</label>
-                                <div class="h6">@Model.StaffCode</div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="small text-muted fw-bold">Chức vụ</label>
-                                <div class="h6">@(string.IsNullOrEmpty(Model.Position) ? "Chưa cập nhật" : Model.Position)</div>
-                            </div>
-                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Edit Form -->
+            @if (!isReadOnly)
+            {
+                <div class="up-edit-wrap" id="editFormWrap">
+                    <div style="display:flex;align-items:center;margin-bottom:1.5rem;">
+                        <i class="bi bi-pencil-fill text-primary me-2"></i>
+                        <h5 style="margin:0;font-size:1rem;font-weight:800;color:var(--up-text);">Cập nhật hồ sơ</h5>
                     </div>
 
-                    @if (!isReadOnly)
-                    {
-                        <hr />
-
-                        <div class="collapse" id="editForm">
-                            <form asp-action="Update" method="post">
-                                <input type="file" id="avatar-input" class="d-none" accept="image/*">
-                            
-                            <!-- Hidden read-only fields for binding if needed or just handled by backend -->
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Họ và Tên</label>
-                                <input type="text" name="FullName" class="form-control" value="@Model.FullName" required>
-                                <span class="text-danger small" data-valmsg-for="FullName"></span>
+                    <form asp-action="Update" method="post" id="profileForm">
+                        <input type="file" id="avatar-input" class="d-none" accept="image/*">
+                        
+                        <div class="up-info-grid" style="margin-bottom:1.5rem;">
+                            <div class="up-form-group">
+                                <label class="up-form-label">Họ và Tên</label>
+                                <input type="text" name="FullName" class="up-form-control" value="@Model.FullName" required>
+                                <span class="text-danger small mt-1" data-valmsg-for="FullName"></span>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Số điện thoại</label>
-                                <input type="tel" name="Phone" class="form-control" value="@Model.Phone">
-                                <span class="text-danger small" data-valmsg-for="Phone"></span>
+                            <div class="up-form-group">
+                                <label class="up-form-label">Số điện thoại</label>
+                                <input type="tel" name="Phone" class="up-form-control" value="@Model.Phone">
+                                <span class="text-danger small mt-1" data-valmsg-for="Phone"></span>
                             </div>
 
                             @if (!string.IsNullOrEmpty(Model.StudentCode))
                             {
-                                <div class="mb-3">
-                                    <label class="form-label">Mã số sinh viên (Read-only)</label>
-                                    <input type="text" class="form-control bg-light" value="@Model.StudentCode" readonly>
+                                <div class="up-form-group">
+                                    <label class="up-form-label">Mã SV (Chỉ đọc)</label>
+                                    <input type="text" class="up-form-control readonly" value="@Model.StudentCode" readonly tabindex="-1">
                                     <input type="hidden" name="StudentCode" value="@Model.StudentCode">
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Kỳ học hiện tại</label>
-                                    <input type="text" name="CurrentSemester" class="form-control" value="@Model.CurrentSemester">
+                                <div class="up-form-group">
+                                    <label class="up-form-label">Kỳ học hiện tại</label>
+                                    <input type="text" name="CurrentSemester" class="up-form-control" value="@Model.CurrentSemester">
                                 </div>
                             }
 
                             @if (!string.IsNullOrEmpty(Model.StaffCode))
                             {
-                                <div class="mb-3">
-                                    <label class="form-label">Mã nhân viên (Read-only)</label>
-                                    <input type="text" class="form-control bg-light" value="@Model.StaffCode" readonly>
+                                <div class="up-form-group">
+                                    <label class="up-form-label">Mã NV (Chỉ đọc)</label>
+                                    <input type="text" class="up-form-control readonly" value="@Model.StaffCode" readonly tabindex="-1">
                                     <input type="hidden" name="StaffCode" value="@Model.StaffCode">
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Chức vụ</label>
-                                    <input type="text" name="Position" class="form-control" value="@Model.Position">
+                                <div class="up-form-group">
+                                    <label class="up-form-label">Chức vụ</label>
+                                    <input type="text" name="Position" class="up-form-control" value="@Model.Position">
                                 </div>
                             }
-
-                                <div class="text-end">
-                                    <button type="button" class="btn btn-secondary me-2" data-bs-toggle="collapse" data-bs-target="#editForm">Hủy</button>
-                                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-                                </div>
-                            </form>
                         </div>
-                    }
 
+                        <div style="display:flex;gap:.5rem;justify-content:flex-end;border-top:1px solid #f1f5f9;padding-top:1rem;">
+                            <button type="button" class="up-btn up-btn-outline" id="btnCancelEdit">Hủy bỏ</button>
+                            <button type="submit" class="up-btn up-btn-primary">
+                                <i class="bi bi-check2-circle"></i> Lưu thông tin
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </div>
+            }
+
         </div>
     </div>
 </div>
@@ -183,57 +400,75 @@
     @section Scripts {
         <partial name="_ValidationScriptsPartial" />
         <script>
-            document.getElementById('avatar-input').addEventListener('change', function(event){
-                const file = event.target.files[0];
-                if (!file) return;
-
-                // 1. Show Preview Immediately (UX)
-                const reader = new FileReader();
-                const output = document.querySelector('.img-thumbnail');
-                const spinner = document.getElementById('avatar-spinner');
-                
-                reader.onload = function(){
-                    output.src = reader.result;
-                    output.style.opacity = '0.5';
-                    spinner.classList.remove('d-none');
-                };
-                reader.readAsDataURL(file);
-
-                // 2. AJAX Upload
-                const formData = new FormData();
-                formData.append('file', file);
-
-                fetch('@Url.Action("UploadAvatar", "Profile")', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    output.style.opacity = '1';
-                    spinner.classList.add('d-none');
-                    
-                    if (data.success) {
-                        output.src = data.url;
-                        // Use a global notification if available, else alert
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({ icon: 'success', title: 'Thành công', text: 'Ảnh đại diện đã được cập nhật!', timer: 2000, showConfirmButton: false });
-                        } else {
-                            alert('Cập nhật ảnh đại diện thành công!');
-                        }
-                    } else {
-                        alert('Lỗi: ' + (data.message || 'Không thể tải ảnh lên.'));
-                    }
-                })
-                .catch(error => {
-                    output.style.opacity = '1';
-                    spinner.classList.add('d-none');
-                    console.error('Error:', error);
-                    alert('Đã xảy ra lỗi khi tải ảnh lên.');
+        document.addEventListener('DOMContentLoaded', () => {
+            // Edit Form Toggle Logic
+            const btnToggle = document.getElementById('btnToggleEdit');
+            const btnCancel = document.getElementById('btnCancelEdit');
+            const editWrap  = document.getElementById('editFormWrap');
+            
+            if(btnToggle && btnCancel && editWrap) {
+                btnToggle.addEventListener('click', () => {
+                    editWrap.classList.add('active');
+                    btnToggle.style.display = 'none';
                 });
-            });
+                btnCancel.addEventListener('click', () => {
+                    editWrap.classList.remove('active');
+                    btnToggle.style.display = 'inline-flex';
+                });
+            }
+
+            // Avatar Upload Logic
+            const fileInput = document.getElementById('avatar-input');
+            const imgEl     = document.getElementById('upAvatarImg');
+            const initEl    = document.getElementById('upAvatarInitials');
+            const spinner   = document.getElementById('upAvatarSpinner');
+
+            if(fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    // Show local preview immediately
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        initEl.style.display = 'none';
+                        imgEl.style.display = 'block';
+                        imgEl.src = reader.result;
+                        spinner.classList.add('active'); // show spinner
+                    };
+                    reader.readAsDataURL(file);
+
+                    // Upload via Fetch
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    fetch('@Url.Action("UploadAvatar", "Profile")', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        spinner.classList.remove('active');
+                        if (data.success) {
+                            imgEl.src = data.url;
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({ icon: 'success', title: 'Thành công', text: 'Đã cập nhật ảnh đại diện!', timer: 2000, showConfirmButton: false });
+                            }
+                        } else {
+                            alert('Lỗi: ' + (data.message || 'Không thể tải ảnh.'));
+                        }
+                    })
+                    .catch(err => {
+                        spinner.classList.remove('active');
+                        console.error('Error:', err);
+                        alert('Đã xảy ra lỗi hệ thống khi tải ảnh lên.');
+                    });
+                });
+            }
+        });
         </script>
     }
 }

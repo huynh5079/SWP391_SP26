@@ -408,15 +408,7 @@ namespace AEMS_Solution.Controllers.Authentication
 
         private IActionResult RedirectToDashboard(string role)
         {
-            return role switch
-            {
-                "Student" => RedirectToAction("Index", "Student"),
-                "Organizer" => RedirectToAction("Index", "Organizer"), // Correct mapping
-                "Approver" => RedirectToAction("Index", "Approver"), // Temporary: Approver uses Organizer Dashboard until separated
-                "Admin" => RedirectToAction("Index", "Admin"),
-
-                _ => RedirectToAction("Index", "Home") // Default fall back
-            };
+            return RedirectToAction("Index", "Home");
         }
     }
 }
