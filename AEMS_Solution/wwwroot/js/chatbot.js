@@ -38,8 +38,20 @@ class ChatbotManager {
     }
 
     attachEventListeners() {
-        // Mở/đóng chatbot
-        this.chatbotToggle?.addEventListener('click', () => this.togglePanel());
+        // Mở/đóng chatbot - Support both the default FAB and any other triggers
+        this.chatbotToggle?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.togglePanel();
+        });
+
+        // Add listeners for any elements with data-chatbot-trigger attribute
+        document.querySelectorAll('[data-chatbot-trigger], #organizerChatbotToggle').forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.togglePanel();
+            });
+        });
+
         this.chatbotClose?.addEventListener('click', () => this.closePanel());
         this.chatbotStartBtn?.addEventListener('click', () => this.focusInput());
 
