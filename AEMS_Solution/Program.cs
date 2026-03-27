@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.HttpOverrides;
 using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event;
 using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
@@ -269,6 +270,12 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Fix for Azure SSL Termination (Google Auth Redirect URI mismatch)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 // Global Exception Handler - Place after StaticFiles but before Routing
 // This ensures it catches all exceptions from controllers/endpoints
