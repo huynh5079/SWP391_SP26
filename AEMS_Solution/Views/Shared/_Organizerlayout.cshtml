@@ -135,9 +135,8 @@
                             </a>
                         </li>
                         <li class="nav-item mb-1">
-                            <a class="nav-link py-1 px-3 fs-6 @(Context.Request.Query["operation"] == "manageticket" ? "active" : "")"
-                               asp-controller="Organizer" asp-action="Manage"
-                               asp-route-operation="manageticket">
+                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Ticket" ? "active" : "")"
+                                asp-controller="Ticket" asp-action="Index">
                                 <i class="bi bi-ticket me-2 fs-6"></i> Manage Tickets
                             </a>
                         </li>
