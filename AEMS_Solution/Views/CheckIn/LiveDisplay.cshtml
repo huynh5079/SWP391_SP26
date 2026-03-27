@@ -108,7 +108,7 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            padding: 0 10%;
+            padding: 5rem 15% 0 15%; /* Thêm padding top để tránh đè lên branding header */
         }
 
         .default-hero {
@@ -127,13 +127,16 @@
         }
 
         .event-title-main {
-            font-size: 4.5rem;
+            font-size: clamp(2.5rem, 6vw, 4rem); /* Co giãn linh hoạt hơn */
             font-weight: 800;
             line-height: 1.1;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
             background: linear-gradient(to right, #ffffff, #94a3b8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         /* Welcome Card */
