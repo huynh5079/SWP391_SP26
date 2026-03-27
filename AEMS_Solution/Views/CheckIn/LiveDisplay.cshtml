@@ -176,9 +176,13 @@
 
         <!-- Default State -->
         <div id="default-view" class="default-state">
-            <h1 class="display-3 fw-bold mb-3">Sẵn sàng chào đón 🎉</h1>
+            <h1 class="display-3 fw-bold mb-2">Chào mừng đến với sự kiện 🎉</h1>
+            @if (!string.IsNullOrEmpty(ViewBag.EventTitle as string))
+            {
+                <h2 class="display-5 fw-bold mb-4" style="color: #a5b4fc;">@ViewBag.EventTitle</h2>
+            }
             <p class="lead text-muted">
-                <span class="status-dot"></span> Hệ thống đang kết nối...
+                <span class="status-dot"></span> Sẵn sàng chào đón khách tham dự
             </p>
         </div>
 
@@ -186,7 +190,7 @@
         <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
             <img id="display-avatar" src="" class="user-avatar" alt="Avatar" style="display: none;" />
             <div class="welcome-text">Chào mừng</div>
-            <div id="display-name" class="user-name text-center">Nguyễn Văn A</div>
+            <div id="display-name" class="user-name text-center">...</div>
             <div class="welcome-text text-center">đến với sự kiện <span class="emoji-float d-inline-block mt-2">🫶</span></div>
         </div>
 

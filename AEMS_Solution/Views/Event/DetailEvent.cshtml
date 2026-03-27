@@ -197,6 +197,21 @@
             top: 24px;
         }
     }
+
+    /* ============================================================
+       MOBILE RESPONSIVENESS
+    ============================================================ */
+    @@media (max-width: 767.98px) {
+        .event-detail-page .hero-title { font-size: 1.75rem; }
+        .event-detail-page .detail-card .card-body { padding: 1.5rem !important; }
+        .event-detail-page .sidebar-image, 
+        .event-detail-page .carousel-item img { height: 220px; }
+        .event-detail-page .info-grid { grid-template-columns: 1fr; }
+        .event-detail-page .agenda-meta-grid { grid-template-columns: 1fr; }
+        
+        .event-detail-page .section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .event-detail-page .action-list .btn { padding: 0.8rem; font-size: 1rem; }
+    }
 </style>
 
 <div class="container mt-4 event-detail-page">
