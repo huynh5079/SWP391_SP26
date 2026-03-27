@@ -1,4 +1,4 @@
-# Cấu hình tối ưu cho GitLab Runner chạy trên Windows (PowerShell)
+# Cấu hình CI/CD Tối ưu: Tự đóng gói Runtime (Self-Contained) để tránh lỗi 500.31 trên Azure
 image: mcr.microsoft.com/dotnet/sdk:8.0
 
 stages:
@@ -14,10 +14,10 @@ variables:
 build_app:
   stage: build
   script:
-    - echo "=== BẮT ĐẦU BUILD (WINDOWS/POWERSHELL) ==="
+    - echo "=== BẮT ĐẦU BUILD (SELF-CONTAINED WIN-X64) ==="
     - dotnet restore "$PROJECT_PATH"
-    - dotnet build "$PROJECT_PATH" -c Release --no-restore
-    - dotnet publish "$PROJECT_PATH" -c Release -o ./publish --no-build
+    # Publish kèm theo Runtime win-x64 và nén tất cả thư viện cần thiết vào thư mục publish
+    - dotnet publish "$PROJECT_PATH" -c Release -o ./publish -r win-x64 --self-contained true
     # Lệnh nén file bằng PowerShell (cho Windows Runner)
     - if (Test-Path publish.zip) { Remove-Item publish.zip }
     - Compress-Archive -Path ./publish/* -DestinationPath ./publish.zip -Force
@@ -34,10 +34,8 @@ build_app:
 # --- 2. DEPLOY Stage ---
 deploy_to_azure:
   stage: deploy
-  # Note: Dùng $env: cho biến môi trường trên Windows PowerShell
   script:
     - echo "=== ĐANG DEPLOY LÊN AZURE WEB APP ==="
-    - echo "DEBUG - AZURE_CLIENT_ID exists: $(($env:AZURE_CLIENT_ID -ne $null) -and ($env:AZURE_CLIENT_ID -ne ''))"
     - az login --service-principal -u "$env:AZURE_CLIENT_ID" -p "$env:AZURE_CLIENT_SECRET" --tenant "$env:AZURE_TENANT_ID"
     - az webapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --src publish.zip
     - echo "=== DEPLOY HOÀN TẤT! ==="
