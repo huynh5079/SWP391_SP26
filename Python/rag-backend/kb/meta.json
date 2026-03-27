@@ -2,5 +2,5 @@
   "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
   "llm_model": "llama-3.3-70b-versatile",
   "kb_chunks": 642,
-  "updated_at": "2026-03-27T12:59:50.598335"
+  "updated_at": "2026-03-27T13:05:24.365279"
 }
