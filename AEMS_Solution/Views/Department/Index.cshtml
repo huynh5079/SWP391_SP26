@@ -1,14 +1,16 @@
 @model AEMS_Solution.Models.Admin.DepartmentIndexViewModel
 @{
-    ViewData["Title"] = "Quản lý Phòng Ban";
-    Layout = "_Layout";
+    ViewData["Title"] = "Manage Departments";
+    if (User.IsInRole("Admin")) Layout = "_AdminLayout";
+    else if (User.IsInRole("Organizer") || User.IsInRole("Staff")) Layout = "_Organizerlayout";
+    else Layout = "_Approvallayout";
 }
 
 <style>
     .dept-page-bg {
-        background: #f7f8fc;
-        min-height: 100vh;
-        padding: 2rem 0;
+        background: transparent;
+        min-height: auto;
+        padding: 0;
     }
 
     .dept-header {
@@ -288,10 +290,20 @@
         border-radius: 20px;
         margin-left: 0.5rem;
     }
+    /* ── Staggered Row Animations ── */
+    .dept-table tbody tr { animation: dept-row-in 0.4s ease both; }
+    @@keyframes dept-row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .dept-table tbody tr:nth-child(1)  { animation-delay: .05s; }
+    .dept-table tbody tr:nth-child(2)  { animation-delay: .08s; }
+    .dept-table tbody tr:nth-child(3)  { animation-delay: .11s; }
+    .dept-table tbody tr:nth-child(4)  { animation-delay: .14s; }
+    .dept-table tbody tr:nth-child(5)  { animation-delay: .17s; }
+    .dept-table tbody tr:nth-child(6)  { animation-delay: .20s; }
 </style>
 
-<div class="dept-page-bg">
-    <div class="container-fluid px-4">
+<div class="dept-page-bg animate-fade-in">
+    <div class="container-fluid p-0">
 
         @if (TempData["SuccessMessage"] != null)
         {
@@ -311,28 +323,28 @@
 
         <div class="dept-header">
             <div class="dept-title-area">
-                <h1><i class="bi bi-bar-chart-steps" style="color:#4f46e5;"></i> Quản lý Phòng Ban</h1>
-                <p>Hệ thống quản lý danh sách phòng ban trong trường</p>
+                <h1><i class="bi bi-bar-chart-steps" style="color:#4f46e5;"></i> Manage Departments</h1>
+                <p>System for managing the list of university departments</p>
             </div>
-            <a asp-action="Create" class="dept-add-btn">
-                <i class="bi bi-plus-circle-fill"></i> Thêm Phòng Ban Mới
+            <a asp-action="Create" class="dept-add-btn animate-fade-in animate-delay-1">
+                <i class="bi bi-plus-circle-fill"></i> Add New Department
             </a>
         </div>
 
-        <div class="dept-table-card">
+        <div class="dept-table-card animate-fade-in animate-delay-2">
             <div class="dept-table-card-header">
                 <span class="label">
-                    Danh sách đơn vị
+                    Unit List
                     <span class="dept-count-badge" id="deptCount">@Model.Departments.Count</span>
                 </span>
                 <div class="d-flex align-items-center gap-2">
                     <div class="dept-search-wrapper">
                         <i class="bi bi-search"></i>
-                        <input type="text" id="deptSearch" placeholder="Tìm kiếm phòng ban..." autocomplete="off" />
+                        <input type="text" id="deptSearch" placeholder="Search departments..." autocomplete="off" />
                     </div>
                     <div class="actions">
-                        <span class="icon-btn" title="Lọc"><i class="bi bi-funnel"></i></span>
-                        <span class="icon-btn" title="Xuất dữ liệu"><i class="bi bi-download"></i></span>
+                        <span class="icon-btn" title="Filter"><i class="bi bi-funnel"></i></span>
+                        <span class="icon-btn" title="Export data"><i class="bi bi-download"></i></span>
                     </div>
                 </div>
             </div>
@@ -340,9 +352,9 @@
             <table class="dept-table" id="deptTable">
                 <thead>
                     <tr>
-                        <th>Tên Phòng Ban</th>
-                        <th>Mã Phòng Ban (Code)</th>
-                        <th style="text-align:right;">Thao Tác</th>
+                        <th>Department Name</th>
+                        <th>Department Code</th>
+                        <th style="text-align:right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="deptTableBody">
@@ -350,15 +362,15 @@
                     {
                         @foreach (var dept in Model.Departments)
                         {
-                            <tr class="dept-row" data-name="@dept.Name.ToLower()" data-code="@dept.Code.ToLower()">
+                            <tr class="dept-row animate-fade-in" data-name="@dept.Name.ToLower()" data-code="@dept.Code.ToLower()">
                                 <td><span class="dept-name">@dept.Name</span></td>
                                 <td><span class="dept-code-badge">@dept.Code</span></td>
                                 <td>
                                     <div class="dept-actions">
-                                        <a asp-action="Edit" asp-route-id="@dept.Id" class="dept-action-btn edit" title="Chỉnh sửa">
+                                        <a asp-action="Edit" asp-route-id="@dept.Id" class="dept-action-btn edit" title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <button type="button" class="dept-action-btn delete" onclick="confirmDelete('@dept.Id', '@Html.Raw(dept.Name.Replace("'", "\\'"))')" title="Xóa">
+                                        <button type="button" class="dept-action-btn delete" onclick="confirmDelete('@dept.Id', '@Html.Raw(dept.Name.Replace("'", "\\'"))')" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
@@ -372,7 +384,7 @@
                             <td colspan="3">
                                 <div class="dept-empty">
                                     <i class="bi bi-building-slash"></i>
-                                    <p>Chưa có phòng ban nào trong hệ thống.</p>
+                                    <p>No departments found in the system.</p>
                                 </div>
                             </td>
                         </tr>
@@ -382,7 +394,7 @@
 
             <div class="text-center py-4 d-none" id="noSearchResult">
                 <i class="bi bi-search text-muted" style="font-size:1.5rem;"></i>
-                <p class="text-muted small mt-2 mb-0">Không tìm thấy phòng ban nào phù hợp.</p>
+                <p class="text-muted small mt-2 mb-0">No matching departments found.</p>
             </div>
         </div>
 
@@ -390,25 +402,25 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal fade dept-modal" id="deleteModal" tabindex="-1" aria-label="Xác nhận xóa" aria-hidden="true">
+<div class="modal fade dept-modal" id="deleteModal" tabindex="-1" aria-label="Confirm Delete" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold text-danger">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Bạn có chắc chắn muốn xóa phòng ban <strong id="deleteTargetName"></strong>?<br />
-                <span class="text-muted small">Lưu ý: Không thể xóa nếu có người dùng hoặc sự kiện đang thuộc phòng ban này.</span>
+                Are you sure you want to delete department <strong id="deleteTargetName"></strong>?<br />
+                <span class="text-muted small">Note: Cannot be deleted if there are users or events belonging to this department.</span>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
                 <form asp-action="Delete" method="post" id="deleteForm">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" id="deleteTargetId" />
-                    <button type="submit" class="btn btn-danger rounded-pill px-4">Xóa ngay</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Delete Now</button>
                 </form>
             </div>
         </div>

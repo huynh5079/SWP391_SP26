@@ -1,7 +1,7 @@
-﻿@model AEMS_Solution.Models.Approver.ApproverActionFormVm
+@model AEMS_Solution.Models.Approver.ApproverActionFormVm
 
 @{
-    ViewData["Title"] = Model.Heading ?? "Thực hiện hành động";
+    ViewData["Title"] = Model.Heading ?? "Perform Action";
     Layout = "_Approvallayout";
 }
 
@@ -9,7 +9,7 @@
     <h3 class="mb-3">@Model.Heading</h3>
     <div class="card shadow-sm">
         <div class="card-body">
-            <p class="text-muted">Vui lòng nhập ghi chú cho hành động này.</p>
+            <p class="text-muted">Please enter a comment for this action.</p>
 
             <form asp-controller="Approver" asp-action="@Model.Operation" method="post">
                 @Html.AntiForgeryToken()
@@ -17,13 +17,13 @@
 
                 <div class="mb-3">
                     @{ var requireComment = !(Model.Operation?.Equals("Approve", StringComparison.OrdinalIgnoreCase) ?? false); }
-                    <label class="form-label">Comment @(requireComment ? "(bắt buộc)" : "(không bắt buộc)")</label>
-                    <textarea name="comment" class="form-control" rows="4" placeholder="Nhập lý do hoặc ghi chú" @(requireComment ? "required" : "")></textarea>
+                    <label class="form-label">Comment @(requireComment ? "(required)" : "(optional)")</label>
+                    <textarea name="comment" class="form-control" rows="4" placeholder="Enter reason or notes" @(requireComment ? "required" : "")></textarea>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                    <a asp-controller="Approver" asp-action="Index" class="btn btn-secondary">Hủy</a>
-                    <button type="submit" class="btn btn-primary">Gửi</button>
+                    <a asp-controller="Approver" asp-action="Index" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Submit</button>
                 </div>
             </form>
         </div>

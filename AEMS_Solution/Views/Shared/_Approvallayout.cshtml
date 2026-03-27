@@ -11,143 +11,147 @@
     <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="~/css/approval-dashboard.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="aems-navbar navbar navbar-expand-lg" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); box-shadow: 0 2px 20px rgba(0,0,0,0.4); padding: 0.6rem 0;">
-            <div class="container-fluid px-4">
-                <a class="navbar-brand fw-bold text-white d-flex align-items-center gap-2" asp-controller="Home" asp-action="Index"
-                   style="font-size:1.3rem; letter-spacing:0.04em;">
-                    <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:8px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
-                        <i class="bi bi-calendar-event-fill text-white" style="font-size:.85rem;"></i>
-                    </span>
-                    AEMS
-                </a>
-                <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
-                    <i class="bi bi-list" style="font-size:1.5rem;"></i>
-                </button>
-                <div class="collapse navbar-collapse" id="mainNavbar">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
-                        <li class="nav-item">
-                            <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Home" asp-action="Index" style="font-size:.9rem;">
-                                <i class="bi bi-house-door me-1"></i>Home
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Approver" asp-action="PendingApprovals" style="font-size:.9rem;">
-                                <i class="bi bi-check2-circle me-1"></i>Ph&#234; duy&#7879;t
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Approver" asp-action="MyParticipatedEvents" style="font-size:.9rem;">
-                                <i class="bi bi-person-workspace me-1"></i>S&#7921; ki&#7879;n tham gia
-                            </a>
-                        </li>
-                        <!-- Approver Manage Dropdown -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle px-3 text-white opacity-80 fw-medium" href="#" id="approverManageDropdown"
-                               role="button" data-bs-toggle="dropdown" style="font-size:.9rem;">
-                                <i class="bi bi-grid me-1"></i>Manage
-                            </a>
-                            <ul class="dropdown-menu shadow-lg border-0 mt-2 aems-dropdown" aria-labelledby="approverManageDropdown"
-                                style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Approver" asp-action="Index"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Approver" asp-action="AllEvents"><i class="bi bi-collection me-2"></i>T&#7845;t c&#7843; s&#7921; ki&#7879;n</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Topic" asp-action="Index"><i class="bi bi-tags me-2"></i>Topics</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Approver" asp-action="Semester"><i class="bi bi-calendar3 me-2"></i>Semesters</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Location" asp-action="Index"><i class="bi bi-geo-alt me-2"></i>Locations</a></li>
-                                <li><a class="dropdown-item aems-dd-item" asp-controller="Approver" asp-action="Agenda"><i class="bi bi-list-task me-2"></i>Agenda</a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav ms-auto d-flex flex-row align-items-center gap-1">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            @await Component.InvokeAsync("Notification")
-                            <partial name="_ChatCustomerServiceLayout" />
-                            <li class="nav-item dropdown ms-1">
-                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 text-white rounded-3"
-                                   href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown"
-                                   style="background:rgba(255,255,255,.08); transition:background .2s; font-size:.875rem;">
-                                    <i class="bi bi-person-circle" style="font-size:1.1rem;"></i>
-                                    <span class="d-none d-lg-inline fw-semibold">@(User.Identity.Name?.Split('@')[0] ?? "User")</span>
-                                    <span class="badge bg-warning text-dark" style="font-size:.65rem;">Approver</span>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 aems-dropdown mt-2"
-                                    aria-labelledby="userProfileDropdown"
-                                    style="background:rgba(15,23,42,.97); backdrop-filter:blur(16px); border-radius:12px; min-width:220px; padding:.5rem;">
-                                    <li class="px-3 py-2">
-                                        <div class="text-white fw-semibold" style="font-size:.85rem;">@(User.Identity.Name)</div>
-                                        <div class="text-muted" style="font-size:.75rem;">Approver</div>
-                                    </li>
-                                    <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
-                                    <li><a class="dropdown-item aems-dd-item" asp-controller="Profile" asp-action="Index"><i class="bi bi-person me-2"></i>My Profile</a></li>
-                                    <li><a class="dropdown-item aems-dd-item" asp-controller="Auth" asp-action="ChangePassword"><i class="bi bi-key me-2"></i>Change Password</a></li>
-                                    <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
-                                    <li><a class="dropdown-item aems-dd-item" asp-controller="Approver" asp-action="Index"><i class="bi bi-speedometer2 me-2"></i>Approver Dashboard</a></li>
-                                    <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
-                                    <li>
-                                        <form asp-controller="Auth" asp-action="Logout" method="post" class="d-inline">
-                                            <button type="submit" class="dropdown-item aems-dd-item text-danger">
-                                                <i class="bi bi-box-arrow-right me-2"></i>Logout
-                                            </button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link px-3 text-white opacity-80" asp-controller="Auth" asp-action="Login" style="font-size:.9rem;">Login</a>
-                            </li>
-                        }
-                    </ul>
+    <!-- Sidebar -->
+    <aside class="approver-sidebar">
+        <div class="brand-wrapper">
+            <a href="@Url.Action("Index", "Home")" class="brand-link">
+                <div class="brand-icon-box">
+                    <i class="bi bi-calendar-event-fill"></i>
                 </div>
-            </div>
-        </nav>
-        <style>
-            .aems-navbar .nav-link:hover { opacity: 1 !important; }
-            .aems-dd-item { color: rgba(255,255,255,.8) !important; border-radius: 8px !important; padding: .5rem .9rem !important; font-size: .875rem !important; transition: background .15s, color .15s !important; }
-            .aems-dd-item:hover { background: rgba(99,102,241,.25) !important; color: #fff !important; }
-            .aems-dd-item.text-danger { color: #f87171 !important; }
-            .aems-dd-item.text-danger:hover { background: rgba(239,68,68,.2) !important; }
-            .dropdown-menu.aems-dropdown { animation: fadeInDown .15s ease; }
-            @@keyframes fadeInDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-            /* Notification bell override for dark navbar */
-            .aems-navbar .notification-bell, .aems-navbar [data-notification-bell] { color: #fff !important; }
-        </style>
-    </header>
-
-    <div class="container">
-
-        <main role="main" class="pb-3">
-            @* Legacy Alert Block - Replaced by Toastr
-            @if (TempData["NotificationMessage"] != null)
-            {
-                var type = TempData["NotificationType"]?.ToString() == "error" ? "danger" : "success";
-                <div class="alert alert-@type alert-dismissible fade show" role="alert">
-                    @TempData["NotificationMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <div class="brand-text">
+                    <span class="brand-title">AEMS</span>
+                    <span class="brand-subtitle">APPROVER WORKSPACE</span>
                 </div>
+            </a>
+        </div>
+
+        <ul class="sidebar-nav">
+            @{
+                var currentCtrl = ViewContext.RouteData.Values["Controller"]?.ToString();
+                var currentAct = ViewContext.RouteData.Values["Action"]?.ToString();
             }
-            *@
+            <li class="nav-item">
+                <a href="@Url.Action("Index", "Home")"
+                   class="nav-link @(currentCtrl == "Home" && currentAct == "Index" ? "active" : "")">
+                    <i class="bi bi-house-door-fill"></i>
+                    <span>Home</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("Index", "Approver")"
+                   class="nav-link @(currentCtrl == "Approver" && currentAct == "Index" ? "active" : "")">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+
+            <div class="menu-label">Tasks</div>
+            <li class="nav-item">
+                <a class="nav-link @(currentCtrl == "Approver" && currentAct == "PendingApprovals" ? "active" : "")" href="@Url.Action("PendingApprovals", "Approver")">
+                    <i class="bi bi-check2-circle"></i>
+                    <span>Approvals</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(currentCtrl == "Approver" && currentAct == "MyParticipatedEvents" ? "active" : "")" href="@Url.Action("MyParticipatedEvents", "Approver")">
+                    <i class="bi bi-calendar-check"></i>
+                    <span>Participated Events</span>
+                </a>
+            </li>
+
+            <div class="menu-label">Manage</div>
+            <li class="nav-item">
+                <a class="nav-link @(currentCtrl != "Home" && currentCtrl != "Approver" ? "" : "collapsed")" data-bs-toggle="collapse" href="#manageCollapse" role="button" 
+                   aria-expanded="@(currentCtrl != "Home" && currentCtrl != "Approver" ? "true" : "false")" aria-controls="manageCollapse">
+                    <i class="bi bi-grid-fill"></i>
+                    <span>Management</span>
+                    <i class="bi bi-chevron-down ms-auto" style="font-size: 0.7rem; transition: transform 0.3s; transform: rotate(@(currentCtrl != "Home" && currentCtrl != "Approver" ? "180deg" : "0deg"));"></i>
+                </a>
+                <div class="collapse @(currentCtrl != "Home" && currentCtrl != "Approver" ? "show" : "")" id="manageCollapse">
+                    <ul class="nav flex-column sidebar-submenu mt-1">
+                        <li><a class="nav-link @(currentCtrl == "Approver" && currentAct == "AllEvents" ? "active" : "")" href="@Url.Action("AllEvents", "Approver")"><i class="bi bi-collection me-2"></i> All Events</a></li>
+                        <li><a class="nav-link @(currentCtrl == "Topic" ? "active" : "")" href="@Url.Action("Index", "Topic")"><i class="bi bi-tags me-2"></i> Topics</a></li>
+                        <li><a class="nav-link @(currentCtrl == "Approver" && currentAct == "Semester" ? "active" : "")" href="@Url.Action("Semester", "Approver")"><i class="bi bi-calendar3 me-2"></i> Semesters</a></li>
+                        <li><a class="nav-link @(currentCtrl == "Location" ? "active" : "")" href="@Url.Action("Index", "Location")"><i class="bi bi-geo-alt me-2"></i> Locations</a></li>
+                        <li><a class="nav-link @(currentCtrl == "Approver" && currentAct == "Agenda" ? "active" : "")" href="@Url.Action("Agenda", "Approver")"><i class="bi bi-list-task me-2"></i> Agenda</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <div class="menu-label">System</div>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="bi bi-question-circle"></i>
+                    <span>Support Center</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-links">
+                <a href="#">Support</a>
+                <a href="#">Terms</a>
+                <a href="#">Privacy</a>
+            </div>
+            <span class="mt-2 d-block" style="font-size:.6rem; opacity:.5;">&copy; 2026 - AEMS Approver</span>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="search-box animate-fade-in animate-delay-1">
+                <i class="bi bi-search"></i>
+                <input type="text" class="search-input" placeholder="Search events, topics...">
+            </div>
+
+            <div class="header-actions">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    @await Component.InvokeAsync("Notification")
+                    <partial name="_ChatCustomerServiceLayout" />
+                    
+                    <div class="user-profile ms-3">
+                        <div class="user-info dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-details d-none d-md-block">
+                                <span class="user-name">@(User.Identity.Name?.Split('@')[0] ?? "User")</span>
+                                <span class="user-role d-block">Approver</span>
+                            </div>
+                            <img src="https://ui-avatars.com/api/?name=@(User.Identity.Name)&background=0d9488&color=fff" class="avatar ms-2" alt="Profile">
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" style="border-radius:12px; min-width:200px; padding:8px;">
+                            <li><a class="dropdown-item py-2" asp-controller="Profile" asp-action="Index"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item py-2" asp-controller="Auth" asp-action="ChangePassword"><i class="bi bi-key me-2"></i>Password</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-controller="Auth" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item py-2 text-danger">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </header>
+
+        <main role="main" class="pb-3 px-4 animate-fade-in animate-delay-2">
             <partial name="_Notification" />
             @RenderBody()
         </main>
-    </div>
-    @if (User.Identity?.IsAuthenticated == true)
-    {
-        <partial name="_ChatbotBar" />
-    }
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - AEMS_Solution - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <partial name="_ChatbotBar" />
+        }
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>

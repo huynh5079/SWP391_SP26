@@ -1,0 +1,233 @@
+/* ============================================================
+   approval-dashboard.css — PREMIUM REDESIGN
+   Palette: Teal/Cyan dark sidebar, clean white content
+============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* ── CSS Variables ── */
+:root {
+    --apr-sidebar-w:  260px;
+    --apr-primary:    #0d9488; /* Teal */
+    --apr-accent:     #0891b2; /* Cyan */
+    --apr-dark:       #0f172a;
+    --apr-dark2:      #1e293b;
+    --apr-bg:         #f8fafc;
+    --apr-card:       #ffffff;
+    --apr-border:     #e2e8f0;
+    --apr-text:       #1e293b;
+    --apr-muted:      #64748b;
+    --apr-radius:     14px;
+    --apr-shadow:     0 4px 24px rgba(13,148,136,.09);
+    --apr-sidebar-bg: linear-gradient(180deg, #0f172a 0%, #134e4a 50%, #0f766e 100%);
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--apr-bg);
+    color: var(--apr-text);
+    margin: 0; padding: 0;
+    font-size: 14px;
+}
+
+/* ============================================================
+   SIDEBAR (mini → expanded on hover)
+============================================================ */
+.approver-sidebar {
+    width: 60px;
+    height: 100vh;
+    position: fixed;
+    top: 0; left: 0;
+    background: var(--apr-sidebar-bg);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    box-shadow: 4px 0 24px rgba(0,0,0,.18);
+}
+
+.approver-sidebar:hover {
+    width: 260px;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.2);
+}
+
+.brand-wrapper {
+    padding: 18px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 1rem;
+    min-height: 80px;
+    overflow: hidden;
+}
+
+.brand-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #fff;
+    text-decoration: none;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+}
+
+.brand-icon-box {
+    background: linear-gradient(135deg, var(--apr-primary), var(--apr-accent));
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; color: #fff; flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(13,148,136,.4);
+    transition: transform .2s;
+}
+
+.approver-sidebar:hover .brand-icon-box { transform: scale(1.05); }
+
+.brand-text { display: flex; flex-direction: column; overflow: hidden; }
+.brand-title    { font-weight: 800; font-size: 1rem; line-height: 1.2; letter-spacing: -.01em; white-space: nowrap; }
+.brand-subtitle { font-size: .6rem; text-transform: uppercase; color: rgba(255,255,255,.5); letter-spacing: .08em; white-space: nowrap; }
+
+/* ── Hide text when not hovered ── */
+.approver-sidebar:not(:hover) .brand-text,
+.approver-sidebar:not(:hover) .nav-link > span,
+.approver-sidebar:not(:hover) .ms-auto,
+.approver-sidebar:not(:hover) .sidebar-submenu,
+.approver-sidebar:not(:hover) .menu-label,
+.approver-sidebar:not(:hover) .sidebar-footer-links,
+.approver-sidebar:not(:hover) .sidebar-footer span { display: none !important; }
+
+.approver-sidebar:not(:hover) .nav-link { justify-content: center; padding: 10px 0; gap: 0; }
+.approver-sidebar:not(:hover) .brand-wrapper { justify-content: center; padding: 18px 0; }
+.approver-sidebar:not(:hover) .sidebar-footer { padding: 10px !important; }
+
+/* ── Section labels ── */
+.menu-label {
+    font-size: .62rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.35);
+    padding: 18px 20px 6px;
+    transition: opacity 0.3s;
+}
+
+/* ── Nav ── */
+.sidebar-nav {
+    flex-grow: 1; display: flex; flex-direction: column;
+    padding: 8px 8px 0; gap: 2px;
+    list-style: none; margin: 0; overflow-y: auto;
+}
+.sidebar-nav::-webkit-scrollbar { width: 3px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 3px; }
+
+.sidebar-nav .nav-item { margin-bottom: 1px; }
+
+.sidebar-nav .nav-link {
+    color: rgba(255,255,255,.65);
+    padding: 9px 12px; border-radius: 10px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: .875rem; font-weight: 600;
+    text-decoration: none; transition: all .18s;
+    position: relative; white-space: nowrap;
+}
+
+.sidebar-nav .nav-link i { font-size: 1.05rem; color: rgba(255,255,255,.45); flex-shrink: 0; transition: color .18s; }
+.sidebar-nav .nav-link:hover { background: rgba(255,255,255,.09); color: #fff; }
+.sidebar-nav .nav-link:hover i { color: #5eead4; }
+
+.sidebar-nav .nav-link.active {
+    background: linear-gradient(135deg, rgba(13,148,136,.55), rgba(8,145,178,.35));
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(13,148,136,.25);
+}
+.sidebar-nav .nav-link.active i { color: #99f6e4; }
+.sidebar-nav .nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: -10px; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 18px;
+    background: var(--apr-primary);
+    border-radius: 0 3px 3px 0;
+}
+
+/* Submenu */
+.sidebar-submenu {
+    list-style: none; padding-left: .75rem !important;
+    margin: 2px 0 0; overflow: hidden;
+}
+.sidebar-submenu .nav-link { font-size: .8rem; padding: 7px 10px; }
+.sidebar-submenu .nav-link i { font-size: .9rem; }
+
+.nav-link:not(.collapsed) .bi-chevron-down {
+    transform: rotate(180deg);
+}
+
+/* ── Sidebar footer ── */
+.sidebar-footer {
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    font-size: .7rem;
+    color: rgba(255,255,255,.3);
+    text-align: center;
+    margin-top: auto;
+}
+.sidebar-footer-links { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
+.sidebar-footer-links a { color: rgba(255,255,255,.3); text-decoration: none; font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; transition: color .15s; }
+.sidebar-footer-links a:hover { color: rgba(255,255,255,.65); }
+
+
+/* ============================================================
+   MAIN CONTENT
+============================================================ */
+.main-wrapper {
+    margin-left: 60px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.approver-sidebar:hover ~ .main-wrapper {
+    margin-left: 260px;
+}
+
+/* ── Top Header ── */
+.top-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(248,250,252,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--apr-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 60px;
+    gap: 1rem;
+}
+
+/* User profile & actions */
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.user-profile { display: flex; align-items: center; gap: 14px; }
+.user-info    { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.user-details { text-align: right; line-height: 1.25; }
+.user-name  { font-weight: 700; font-size: .88rem; color: var(--apr-text); }
+.user-role  { font-size: .7rem; color: var(--apr-muted); }
+.avatar     { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #99f6e4; }
+
+.notification-icon { color: var(--apr-muted); font-size: 1.15rem; cursor: pointer; }
+.search-box { position: relative; width: 300px; }
+.search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+.search-input { width: 100%; padding: 7px 15px 7px 35px; border-radius: 20px; border: 1px solid var(--apr-border); font-size: .85rem; outline: none; transition: all .2s; }
+.search-input:focus { border-color: var(--apr-primary); box-shadow: 0 0 0 3px rgba(13,148,136,.1); }
+
+/* ── Content Body wrapper ── */
+.main-wrapper > *:not(.top-header) {
+    padding: 28px 32px;
+}

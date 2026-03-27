@@ -1,8 +1,11 @@
-﻿@model AEMS_Solution.Models.Event.Semester.ApproverSemesterViewModel
+@model AEMS_Solution.Models.Event.Semester.ApproverSemesterViewModel
 @using DataAccess.Enum
 @{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_AdminLayout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
     ViewData["Title"] = Model.PageTitle;
-    Layout = "_Approvallayout";
 }
 
 <div class="container py-4">
@@ -27,7 +30,7 @@
                 else
                 {
                     <button type="button" class="btn btn-secondary" disabled>
-                        <i class="bi bi-clock-history me-1"></i> Chờ đến kỳ tiếp theo
+                        <i class="bi bi-clock-history me-1"></i> Wait for next semester
                     </button>
                 }
         </div>
@@ -36,7 +39,7 @@
         @if (!Model.CanCreateNextSemester)
         {
             <div class="alert alert-info">
-                Đã có semester kế tiếp trong hệ thống. Khi semester đó bắt đầu, nút tạo mới sẽ tự mở lại.
+                The next semester is already in the system. The creation button will be available once the current semester starts.
             </div>
         }
 
@@ -45,20 +48,20 @@
         <div class="card-body">
             <form method="get" asp-controller="Approver" asp-action="Semester" class="row g-3 align-items-end">
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Tìm kiếm</label>
+                    <label class="form-label fw-semibold">Search</label>
                     <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Name, code..." />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold">Trạng thái</label>
+                    <label class="form-label fw-semibold">Status</label>
                     <select name="status" class="form-select">
-                        <option value="">-- Tất cả trạng thái --</option>
+                        <option value="">-- All Statuses --</option>
                         <option value="Upcoming" selected="@(Model.Status == "Upcoming")">Upcoming</option>
                         <option value="Active" selected="@(Model.Status == "Active")">Active</option>
                         <option value="Finished" selected="@(Model.Status == "Finished")">Finished</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-grid">
-                    <button type="submit" class="btn btn-outline-primary">Lọc</button>
+                    <button type="submit" class="btn btn-outline-primary">Filter</button>
                 </div>
             </form>
         </div>
@@ -112,7 +115,7 @@
             }
             else
             {
-                <div class="alert alert-info mb-0">Chưa có học kỳ nào phù hợp với bộ lọc hiện tại.</div>
+                <div class="alert alert-info mb-0">No semesters match the current filter.</div>
             }
         </div>
     </div>

@@ -1,11 +1,11 @@
 @{
-    var displayName = User?.Identity?.Name ?? "Người dùng";
-    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
-    var currentRole = User.IsInRole("Admin") ? "Admin"
-        : User.IsInRole("Staff") ? "Staff"
-        : User.IsInRole("Organizer") ? "Organizer"
-        : User.IsInRole("Approver") || User.IsInRole("Approval") ? "Approver"
-        : User.IsInRole("Student") ? "Student"
+    var displayName = User?.Identity?.Name ?? "User";
+    var currentUserId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+    var currentRole = User?.IsInRole("Admin") == true ? "Admin"
+        : User?.IsInRole("Staff") == true ? "Staff"
+        : User?.IsInRole("Organizer") == true ? "Organizer"
+        : (User?.IsInRole("Approver") == true || User?.IsInRole("Approval") == true) ? "Approver"
+        : User?.IsInRole("Student") == true ? "Student"
         : "User";
     var nameParts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
     var initials = string.Empty;
@@ -28,7 +28,7 @@
     data-contacts-url="@Url.Action("Contacts", "Chat")"
     data-conversation-url="@Url.Action("Conversation", "Chat")"
     data-chat-hub-url="/hub/v1/chat">
-    <button type="button" class="nav-link text-white messenger-nav-trigger" id="messengerToggle" aria-label="Mở chat giữa người dùng">
+    <button type="button" class="nav-link text-white messenger-nav-trigger" id="messengerToggle" aria-label="Open peer-to-peer chat">
         <span class="messenger-nav-icon">
             <i class="bi bi-messenger text-white"></i>
             <span class="messenger-fab-badge d-none" id="messengerFabBadge">0</span>
@@ -40,16 +40,16 @@
         <aside class="messenger-sidebar">
             <div class="messenger-sidebar-header">
                 <div>
-                    <div class="messenger-title">Tin nhắn</div>
-                    <div class="messenger-subtitle">Chat giữa các role</div>
+                    <div class="messenger-title">Messages</div>
+                    <div class="messenger-subtitle">Role-based Chat</div>
                 </div>
-                <button type="button" class="messenger-close" id="messengerClose" aria-label="Đóng khung chat">
+                <button type="button" class="messenger-close" id="messengerClose" aria-label="Close chat">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
 
             <div class="messenger-search">
-                <input type="text" id="messengerSearch" placeholder="Tìm tên, role..." autocomplete="off" />
+                <input type="text" id="messengerSearch" placeholder="Search name, role..." autocomplete="off" />
             </div>
 
             <div class="messenger-contact-list" id="messengerContactList"></div>
@@ -60,27 +60,27 @@
                 <div class="d-flex align-items-center gap-3">
                     <div class="messenger-avatar--lg" id="messengerActiveAvatar" style="background:#4f46e5">@initials</div>
                     <div>
-                        <div class="messenger-active-name" id="messengerActiveName">Chọn một cuộc trò chuyện</div>
-                        <div class="messenger-active-status" id="messengerActiveStatus">Đang tải danh sách chat...</div>
+                        <div class="messenger-active-name" id="messengerActiveName">Select a conversation</div>
+                        <div class="messenger-active-status" id="messengerActiveStatus">Loading chat list...</div>
                     </div>
                 </div>
             </div>
 
             <div class="messenger-empty" id="messengerEmptyState">
                 <div class="messenger-empty-icon"><i class="bi bi-chat-dots-fill"></i></div>
-                <h5 class="mb-0">Khung chat giữa người với người</h5>
-                <div class="messenger-empty-subtitle">UI này tách riêng với chatbot AI. Chọn một người dùng để bắt đầu chat realtime.</div>
+                <h5 class="mb-0">Peer-to-Peer Chat</h5>
+                <div class="messenger-empty-subtitle">This interface is separate from the AI chatbot. Select a user to start real-time chat.</div>
             </div>
 
             <div class="messenger-thread d-none" id="messengerThread">
                 <div class="messenger-messages" id="messengerMessages"></div>
 
                 <form class="messenger-composer" id="messengerComposer" onsubmit="return false;">
-                    <button type="button" class="messenger-tool-btn" title="Nút UI đính kèm">
+                    <button type="button" class="messenger-tool-btn" title="Add attachment">
                         <i class="bi bi-plus-lg"></i>
                     </button>
-                    <input type="text" id="messengerInput" placeholder="Nhập tin nhắn..." autocomplete="off" disabled />
-                    <button type="button" class="messenger-send" id="messengerSend" aria-label="Gửi tin nhắn">
+                    <input type="text" id="messengerInput" placeholder="Type a message..." autocomplete="off" disabled />
+                    <button type="button" class="messenger-send" id="messengerSend" aria-label="Send message">
                         <i class="bi bi-send-fill"></i>
                     </button>
                 </form>

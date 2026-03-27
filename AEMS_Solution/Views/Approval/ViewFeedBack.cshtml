@@ -221,31 +221,31 @@
     <div class="vf-header">
         <div class="vf-header-left">
             <a asp-controller="Approver" asp-action="AllEvents" class="vf-back-link">
-                <i class="bi bi-arrow-left"></i> Quay lại
+                <i class="bi bi-arrow-left"></i> Back
             </a>
             <h1 class="vf-title">
                 <i class="bi bi-chat-left-text" style="color: var(--vf-primary);"></i>
                 Feedback — @eventTitle
             </h1>
-            <div class="vf-subtitle">Tổng hợp đánh giá từ sinh viên tham gia sự kiện</div>
+            <div class="vf-subtitle">Summary of ratings from participating students</div>
         </div>
     </div>
 
     <!-- Summary Cards -->
     <div class="vf-summary-row">
         <div class="vf-summary-card">
-            <div class="vf-summary-label">Tổng feedback</div>
+            <div class="vf-summary-label">Total Feedbacks</div>
             <div class="vf-summary-value">@totalFeedbacks</div>
         </div>
         <div class="vf-summary-card">
-            <div class="vf-summary-label">Đánh giá trung bình</div>
+            <div class="vf-summary-label">Average Rating</div>
             <div class="vf-summary-value">@avgRating.ToString("F1") <span style="font-size:.8rem; color:var(--vf-muted);">/ 5</span></div>
             <div class="vf-summary-stars">
                 @Html.Raw(RenderStars((int)Math.Round(avgRating)))
             </div>
         </div>
         <div class="vf-summary-card">
-            <div class="vf-summary-label">Có nhận xét</div>
+            <div class="vf-summary-label">With Comments</div>
             <div class="vf-summary-value">@Model.Count(f => !string.IsNullOrWhiteSpace(f.Comment))</div>
         </div>
     </div>
@@ -258,10 +258,10 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Sinh viên</th>
+                        <th>Student</th>
                         <th>Rating</th>
-                        <th>Nhận xét</th>
-                        <th>Ngày gửi</th>
+                        <th>Comment</th>
+                        <th>Submission Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -288,7 +288,7 @@
                                 }
                                 else
                                 {
-                                    <span class="vf-comment-empty">Không có nhận xét</span>
+                                    <span class="vf-comment-empty">No comment provided</span>
                                 }
                             </td>
                             <td>
@@ -305,7 +305,7 @@
         {
             <div class="vf-empty">
                 <i class="bi bi-chat-square-text"></i>
-                <p>Chưa có feedback nào cho sự kiện này.</p>
+                <p>No feedback available for this event.</p>
             </div>
         }
     </div>

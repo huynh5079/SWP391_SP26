@@ -14,90 +14,94 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <aside class="sidebar">
-        <a href="@Url.Action("Index", "Admin")" class="brand-logo">
-            <div class="brand-icon">
-                <i class="bi bi-grid-fill"></i>
-            </div>
-            AEMS <span style="font-weight:400; opacity:.6; font-size:.8rem; margin-left:2px;">Admin</span>
-        </a>
+    <aside class="admin-sidebar">
+        <div class="brand-wrapper">
+            <a href="@Url.Action("Index", "Admin")" class="brand-link">
+                <div class="brand-icon-box">
+                    <i class="bi bi-grid-fill"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">AEMS</span>
+                    <span class="brand-subtitle">EXECUTIVE ADMIN</span>
+                </div>
+            </a>
+        </div>
 
-        <div class="menu-label">Main Menu</div>
-        <ul class="nav flex-column mb-auto">
+        <ul class="sidebar-nav">
+            @{
+                var currentCtrl = ViewContext.RouteData.Values["Controller"]?.ToString();
+                var currentAct = ViewContext.RouteData.Values["Action"]?.ToString();
+            }
             <li class="nav-item">
                 <a href="@Url.Action("Index", "Admin")"
-                   class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+                   class="nav-link @(currentCtrl == "Admin" && currentAct == "Index" ? "active" : "")">
                     <i class="bi bi-grid-1x2-fill"></i>
-                    Overview
+                    <span>Overview</span>
                 </a>
             </li>
-            <li class="nav-item dropdown">
-                <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-calendar-event-fill"></i>
-                    Events Data
-                    <i class="bi bi-chevron-down ms-auto" style="font-size:.7rem;"></i>
-                </a>
-                <ul class="dropdown-menu border-0 shadow-sm">
-                    <li><a class="dropdown-item" href="@Url.Action("Index", "Department")"><i class="bi bi-building me-2"></i>Departments</a></li>
-                    <li><a class="dropdown-item" href="@Url.Action("Index", "Topic")"><i class="bi bi-tags me-2"></i>Topics</a></li>
-                    <li><a class="dropdown-item" href="@Url.Action("Index", "Location")"><i class="bi bi-geo-alt me-2"></i>Locations</a></li>
-                </ul>
-            </li>
-            <li class="nav-item">
-                <a href="@Url.Action("Index", "UserManagement")"
-                   class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "UserManagement" ? "active" : "")">
-                    <i class="bi bi-people-fill"></i>
-                    Community
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="@Url.Action("Index", "AdminReport")"
-                   class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "AdminReport" ? "active" : "")">
-                    <i class="bi bi-bar-chart-fill"></i>
-                    Reports
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="@Url.Action("Index", "AdminFeedback")"
-                   class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "AdminFeedback" ? "active" : "")">
-                    <i class="bi bi-chat-left-text-fill"></i>
-                    Feedback
-                </a>
-            </li>
-        </ul>
 
-        <div class="menu-label">System</div>
-        <ul class="nav flex-column mb-auto">
+            <div class="menu-label">Create</div>
             <li class="nav-item">
-                <a href="@Url.Action("Index", "SystemLog")"
-                   class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "SystemLog" ? "active" : "")">
-                    <i class="bi bi-journal-text"></i>
-                    System Logs
-                    @{
-                        // Show 30-day error badge if available from Admin dashboard context
-                        int errBadge = 0;
-                        if (ViewBag.TotalLast30Days is int b30) { errBadge = b30; }
-                        else if (ViewData["TotalLast30Days"] is int vd30) { errBadge = vd30; }
-                    }
-                    @if (errBadge > 0)
-                    {
-                        <span class="ms-auto" style="background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:.6rem;font-weight:800;padding:.1rem .4rem;border-radius:20px;line-height:1.4;">
-                            @errBadge
-                        </span>
-                    }
+                <a class="nav-link collapsed" data-bs-toggle="collapse" href="#createCollapse" role="button" aria-expanded="false" aria-controls="createCollapse">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Create New</span>
+                    <i class="bi bi-chevron-down ms-auto" style="font-size: 0.7rem; transition: transform 0.3s;"></i>
                 </a>
+                <div class="collapse" id="createCollapse">
+                    <ul class="nav flex-column sidebar-submenu mt-1">
+                        <li>
+                            <a class="nav-link @(currentCtrl == "Department" && currentAct == "Create" ? "active" : "")" href="@Url.Action("Create", "Department")">
+                                <i class="bi bi-building-add me-2"></i> Create Department
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link @(currentCtrl == "Topic" && currentAct == "Create" ? "active" : "")" href="@Url.Action("Create", "Topic")">
+                                <i class="bi bi-tags-fill me-2"></i> Create Topic
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link @(currentCtrl == "Location" && currentAct == "Create" ? "active" : "")" href="@Url.Action("Create", "Location")">
+                                <i class="bi bi-geo-alt-fill me-2"></i> Create Location
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
+
+            <div class="menu-label">Manage</div>
             <li class="nav-item">
-                <a href="#" class="nav-link">
-                    <i class="bi bi-gear-fill"></i>
-                    Settings
+                <a class="nav-link @(currentCtrl != "Admin" && currentCtrl != "SystemLog" ? "" : "collapsed")" data-bs-toggle="collapse" href="#manageCollapse" role="button" 
+                   aria-expanded="@(currentCtrl != "Admin" && currentCtrl != "SystemLog" ? "true" : "false")" aria-controls="manageCollapse">
+                    <i class="bi bi-grid"></i>
+                    <span>Manage Data</span>
+                    <i class="bi bi-chevron-down ms-auto" style="font-size: 0.7rem; transition: transform 0.3s; transform: rotate(@(currentCtrl != "Admin" && currentCtrl != "SystemLog" ? "180deg" : "0deg"));"></i>
                 </a>
+                <div class="collapse @(currentCtrl != "Admin" && currentCtrl != "SystemLog" ? "show" : "")" id="manageCollapse">
+                    <ul class="nav flex-column sidebar-submenu mt-1">
+                        <li><a class="nav-link @(currentCtrl == "Department" && currentAct != "Create" ? "active" : "")" href="@Url.Action("Index", "Department")"><i class="bi bi-building me-2"></i> Departments</a></li>
+                        <li><a class="nav-link @(currentCtrl == "Topic" && currentAct != "Create" ? "active" : "")" href="@Url.Action("Index", "Topic")"><i class="bi bi-tags me-2"></i> Topics</a></li>
+                        <li><a class="nav-link @(currentCtrl == "Location" && currentAct != "Create" ? "active" : "")" href="@Url.Action("Index", "Location")"><i class="bi bi-geo-alt me-2"></i> Locations</a></li>
+                        <li><a class="nav-link @(currentCtrl == "UserManagement" ? "active" : "")" href="@Url.Action("Index", "UserManagement")"><i class="bi bi-people-fill me-2"></i> Users</a></li>
+                        <li><a class="nav-link @(currentCtrl == "AdminFeedback" ? "active" : "")" href="@Url.Action("Index", "AdminFeedback")"><i class="bi bi-chat-left-text-fill me-2"></i> Feedback</a></li>
+                    </ul>
+                </div>
             </li>
+
+            <div class="menu-label">System</div>
             <li class="nav-item">
-                <a href="#" class="nav-link">
-                    <i class="bi bi-shield-check"></i>
-                    Security
+                <a class="nav-link @(currentCtrl == "SystemLog" ? "" : "collapsed")" data-bs-toggle="collapse" href="#systemCollapse" role="button" 
+                   aria-expanded="@(currentCtrl == "SystemLog" ? "true" : "false")" aria-controls="systemCollapse">
+                    <i class="bi bi-cpu"></i>
+                    <span>System Settings</span>
+                    <i class="bi bi-chevron-down ms-auto" style="font-size: 0.7rem; transition: transform 0.3s; transform: rotate(@(currentCtrl == "SystemLog" ? "180deg" : "0deg"));"></i>
                 </a>
+                <div class="collapse @(currentCtrl == "SystemLog" ? "show" : "")" id="systemCollapse">
+                    <ul class="nav flex-column sidebar-submenu mt-1">
+                        <li><a class="nav-link @(currentCtrl == "SystemLog" ? "active" : "")" href="@Url.Action("Index", "SystemLog")"><i class="bi bi-journal-text me-2"></i> System Logs</a></li>
+                        <li><a class="nav-link" href="#"><i class="bi bi-gear-fill me-2"></i> Settings</a></li>
+                        <li><a class="nav-link" href="#"><i class="bi bi-shield-lock-fill me-2"></i> Security</a></li>
+                    </ul>
+                </div>
             </li>
         </ul>
 
@@ -108,12 +112,12 @@
         </div>
 
         <div class="sidebar-footer">
-            <i class="bi bi-grid-fill me-1"></i> AEMS Admin &copy; 2026
             <div class="sidebar-footer-links">
                 <a href="#">Support</a>
                 <a href="#">Terms</a>
                 <a href="#">Privacy</a>
             </div>
+            <span class="mt-2 d-block" style="font-size:.6rem; opacity:.5;">&copy; 2026 - AEMS Admin</span>
         </div>
     </aside>
 
@@ -121,7 +125,7 @@
     <main class="main-content">
         <!-- Top Header -->
         <header class="top-header">
-            <div class="search-box">
+            <div class="search-box animate-fade-in animate-delay-1">
                 <i class="bi bi-search"></i>
                 <input type="text" class="search-input" placeholder="Search events, users, or logs…">
             </div>
@@ -161,7 +165,7 @@
         </header>
 
         <!-- Body Render -->
-        <div style="padding:24px 32px; flex:1;">
+        <div class="animate-fade-in animate-delay-2" style="padding:24px 32px; flex:1;">
             @RenderBody()
         </div>
 

@@ -1,0 +1,326 @@
+@model AEMS_Solution.Models.Approver.Manage.ManageRoomViewModel
+@using DataAccess.Enum
+@{
+    ViewData["Title"] = "Manage Rooms";
+    Layout = "_Approvallayout";
+}
+
+<style>
+    /* ==============================================================
+       MANAGE ROOMS — PREMIUM ADMIN UI
+    ============================================================== */
+    :root {
+        --rm-primary:   #6366f1;
+        --rm-secondary: #8b5cf6;
+        --rm-bg:        #f0f2ff;
+        --rm-card:      #ffffff;
+        --rm-border:    #e0e7ff;
+        --rm-text:      #1e1b4b;
+        --rm-muted:     #64748b;
+        --rm-radius:    16px;
+        --rm-shadow:    0 4px 24px rgba(99,102,241,.08);
+        --rm-focus:     0 0 0 3px rgba(99,102,241,.2);
+    }
+
+    /* ── Animations ── */
+    @@keyframes rm-fadein { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+    @@keyframes rm-row-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+    .rm-page { background:var(--rm-bg); min-height:100vh; padding:2rem 0 4rem; animation:rm-fadein .4s ease both; }
+
+    .rm-header { margin-bottom:2rem; }
+    .rm-header-title {
+        font-size:1.9rem; font-weight:900; color:var(--rm-text); letter-spacing:-.025em;
+        display:flex; align-items:center; gap:.5rem;
+    }
+    .rm-header-icon {
+        width:46px; height:46px; border-radius:14px; background:linear-gradient(135deg,#6366f1,#8b5cf6);
+        display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.3rem;
+        box-shadow:0 4px 14px rgba(99,102,241,.3);
+    }
+
+    .rm-card {
+        background:var(--rm-card); border-radius:var(--rm-radius); border:1px solid var(--rm-border);
+        box-shadow:var(--rm-shadow); margin-bottom:2rem; overflow:hidden;
+    }
+    .rm-card-header { padding:1.2rem 1.45rem; border-bottom:1px solid #f1f5f9; background:#fff; font-weight:800; color:var(--rm-text); }
+    .rm-card-body { padding:1.45rem; }
+
+    .rm-table { width:100%; border-collapse:collapse; }
+    .rm-table thead th { background:#f8fafc; padding:.8rem 1.1rem; text-transform:uppercase; font-size:.68rem; font-weight:800; color:#94a3b8; letter-spacing:.05em; border-bottom:1px solid #f1f5f9; }
+    .rm-table tbody tr { border-bottom:1px solid #f8fafc; animation:rm-row-in .3s ease both; transition:background .15s; }
+    .rm-table tbody tr:hover { background:#f5f3ff; }
+    .rm-table tbody td { padding:1rem 1.1rem; font-size:.9rem; color:var(--rm-text); vertical-align:middle; }
+
+    .rm-table tbody tr:nth-child(1) { animation-delay:.05s; }
+    .rm-table tbody tr:nth-child(2) { animation-delay:.08s; }
+    .rm-table tbody tr:nth-child(3) { animation-delay:.11s; }
+    .rm-table tbody tr:nth-child(4) { animation-delay:.14s; }
+    .rm-table tbody tr:nth-child(5) { animation-delay:.17s; }
+
+    .rm-btn {
+        display:inline-flex; align-items:center; gap:.4rem; font-size:.85rem; font-weight:700;
+        padding:.6rem 1.2rem; border-radius:30px; border:none; transition:all .2s; cursor:pointer;
+    }
+    .rm-btn-primary { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; box-shadow:0 4px 12px rgba(99,102,241,.25); }
+    .rm-btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 15px rgba(99,102,241,.35); color:#fff; }
+
+    .form-label { font-size:.85rem; font-weight:700; color:var(--rm-text); margin-bottom:.4rem; }
+    .form-control, .form-select { border-radius:10px; border:1px solid #e2e8f0; font-size:.9rem; padding:.6rem .8rem; }
+    .form-control:focus, .form-select:focus { border-color:var(--rm-primary); box-shadow:var(--rm-focus); }
+</style>
+
+<div class="rm-page">
+<div class="container-fluid px-4">
+
+    <div class="rm-header">
+        <h2 class="rm-header-title">
+            <div class="rm-header-icon"><i class="bi bi-door-open-fill"></i></div>
+            Manage Rooms
+        </h2>
+    </div>
+
+    @* Alerts *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm rounded-4 mb-4">
+            <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <!-- Create Room Form -->
+    <div class="rm-card">
+        <div class="rm-card-header">
+            <i class="bi bi-plus-circle me-1"></i> Create New Room
+        </div>
+        <div class="rm-card-body">
+            <form asp-controller="Approver" asp-action="CreateRoom" method="post">
+                @Html.AntiForgeryToken()
+                @Html.ValidationSummary(false, "", new { @class = "text-danger mb-3" })
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label asp-for="NewRoom.Name" class="form-label">Room Name <span class="text-danger">*</span></label>
+                        <input asp-for="NewRoom.Name" class="form-control" placeholder="e.g., Seminar Room A" />
+                        <span asp-validation-for="NewRoom.Name" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="NewRoom.Building" class="form-label">Building</label>
+                        <input asp-for="NewRoom.Building" class="form-control" placeholder="e.g., Block A" />
+                    </div>
+                    <div class="col-md-2">
+                        <label asp-for="NewRoom.Floor" class="form-label">Floor</label>
+                        <input asp-for="NewRoom.Floor" class="form-control" placeholder="e.g., 3" />
+                    </div>
+                    <div class="col-md-2">
+                        <label asp-for="NewRoom.Room" class="form-label">Room No.</label>
+                        <input asp-for="NewRoom.Room" class="form-control" placeholder="e.g., 301" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="NewRoom.Capacity" class="form-label">Capacity <span class="text-danger">*</span></label>
+                        <input asp-for="NewRoom.Capacity" type="number" min="1" class="form-control" />
+                        <span asp-validation-for="NewRoom.Capacity" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="NewRoom.Type" class="form-label">Type <span class="text-danger">*</span></label>
+                        <select asp-for="NewRoom.Type" asp-items="Html.GetEnumSelectList<LocationTypeEnum>()" class="form-select">
+                            <option value="">-- Select Type --</option>
+                        </select>
+                        <span asp-validation-for="NewRoom.Type" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="NewRoom.Status" class="form-label">Status</label>
+                        <select asp-for="NewRoom.Status" asp-items="Html.GetEnumSelectList<LocationStatusEnum>()" class="form-select"></select>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="NewRoom.Description" class="form-label">Description</label>
+                        <textarea asp-for="NewRoom.Description" rows="2" class="form-control" placeholder="Room features, technical equipment..."></textarea>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="rm-btn rm-btn-primary">
+                        <i class="bi bi-save me-1"></i> Create Room
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Room List -->
+    <div class="rm-card">
+        <div class="rm-card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-list-ul me-1"></i> Active Rooms</span>
+            <span class="badge bg-indigo-soft text-indigo" style="font-size:.75rem;">@Model.Rooms.Count Total</span>
+        </div>
+        <div class="table-responsive">
+            <table class="rm-table">
+                <thead>
+                    <tr>
+                        <th>Room Name</th>
+                        <th>Address</th>
+                        <th class="text-center">Capacity</th>
+                        <th>Type</th>
+                        <th style="width:200px;">Status</th>
+                        <th style="width:100px; text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Rooms.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No rooms found.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var room in Model.Rooms)
+                        {
+                            <tr>
+                                <td><strong style="color:var(--rm-text);">@room.Name</strong></td>
+                                <td><span class="text-muted" style="font-size:.85rem;"><i class="bi bi-geo-alt me-1"></i>@(string.IsNullOrWhiteSpace(room.Address) ? "—" : room.Address)</span></td>
+                                <td class="text-center">@room.Capacity</td>
+                                <td><span class="badge bg-light text-dark border">@(room.Type?.ToString() ?? "—")</span></td>
+                                <td>
+                                    <form asp-controller="Approver" asp-action="UpdateRoomStatus" method="post" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="LocationId" value="@room.LocationId" />
+                                        <select name="Status" class="form-select form-select-sm" style="font-size:.78rem;">
+                                            @foreach (LocationStatusEnum status in Enum.GetValues(typeof(LocationStatusEnum)))
+                                            {
+                                                <option value="@status" selected="@(room.Status == status ? "selected" : null)">@status</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary border-0 rounded-circle" title="Update Status">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td style="text-align:right;">
+                                    <button type="button" class="btn btn-sm btn-outline-indigo rounded-pill px-3"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editRoomModal"
+                                            data-id="@room.LocationId"
+                                            data-name="@room.Name"
+                                            data-capacity="@room.Capacity"
+                                            data-type="@((int?)room.Type ?? -1)"
+                                            data-status="@((int)room.Status)"
+                                            data-description="@room.Description"
+                                            data-address="@room.Address">
+                                        <i class="bi bi-pencil me-1"></i> Edit
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Edit Room Modal -->
+<div class="modal fade" id="editRoomModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:20px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-900" style="color:var(--rm-text);"><i class="bi bi-pencil-square me-2" style="color:var(--rm-primary);"></i>Edit Room</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Approver" asp-action="UpdateRoom" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <input type="hidden" name="LocationId" id="editLocationId" />
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Room Name <span class="text-danger">*</span></label>
+                            <input type="text" name="Name" id="editName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Current Address</label>
+                            <input type="text" id="editAddressDisplay" class="form-control bg-light" readonly />
+                            <small class="text-muted">Enter Building/Floor/Room below to override.</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Building</label>
+                            <input type="text" name="Building" id="editBuilding" class="form-control" placeholder="e.g., Block A" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Floor</label>
+                            <input type="text" name="Floor" id="editFloor" class="form-control" placeholder="e.g., 3" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Room No.</label>
+                            <input type="text" name="Room" id="editRoom" class="form-control" placeholder="e.g., 301" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Capacity <span class="text-danger">*</span></label>
+                            <input type="number" name="Capacity" id="editCapacity" class="form-control" min="1" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Type <span class="text-danger">*</span></label>
+                            <select name="Type" id="editType" class="form-select" required>
+                                <option value="">-- Select Type --</option>
+                                @foreach (LocationTypeEnum t in Enum.GetValues(typeof(LocationTypeEnum)))
+                                {
+                                    <option value="@((int)t)">@t</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="Status" id="editStatus" class="form-select">
+                                @foreach (LocationStatusEnum s in Enum.GetValues(typeof(LocationStatusEnum)))
+                                {
+                                    <option value="@((int)s)">@s</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="Description" id="editDescription" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="rm-btn rm-btn-primary">
+                        <i class="bi bi-save me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<partial name="_ValidationScriptsPartial" />
+
+@section Scripts {
+<script>
+    var editModal = document.getElementById('editRoomModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            document.getElementById('editLocationId').value  = btn.getAttribute('data-id');
+            document.getElementById('editName').value        = btn.getAttribute('data-name');
+            document.getElementById('editCapacity').value    = btn.getAttribute('data-capacity');
+            document.getElementById('editDescription').value = btn.getAttribute('data-description') || '';
+            document.getElementById('editAddressDisplay').value = btn.getAttribute('data-address') || '';
+
+            // Select Type
+            var typeVal = btn.getAttribute('data-type');
+            var typeSelect = document.getElementById('editType');
+            for (var i = 0; i < typeSelect.options.length; i++) {
+                typeSelect.options[i].selected = (typeSelect.options[i].value == typeVal);
+            }
+
+            // Select Status
+            var statusVal = btn.getAttribute('data-status');
+            var statusSelect = document.getElementById('editStatus');
+            for (var i = 0; i < statusSelect.options.length; i++) {
+                statusSelect.options[i].selected = (statusSelect.options[i].value == statusVal);
+            }
+        });
+    }
+</script>
+}

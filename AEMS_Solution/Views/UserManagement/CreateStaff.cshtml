@@ -1,88 +1,198 @@
 @model BusinessLogic.DTOs.Authentication.Register.RegisterStaffRequestDto
 @{
-    ViewData["Title"] = "Tạo tài khoản Nhân viên/Ban tổ chức";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Create Staff/Organizer Account";
+    if (User.IsInRole("Admin")) Layout = "_AdminLayout";
+    else if (User.IsInRole("Organizer") || User.IsInRole("Staff")) Layout = "_Organizerlayout";
+    else Layout = "_Approvallayout";
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 mb-0 text-gray-800">Tạo Mới Người Dùng Từ Hệ Thống</h2>
-        <a asp-action="Index" class="btn btn-sm btn-secondary shadow-sm">
-            <i class="bi bi-arrow-left"></i> Quay lại
+<style>
+    .form-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    .form-title-area h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .form-title-area p { color: #64748b; font-size: 0.9rem; margin: 0; }
+    
+    .glass-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #e8edf3;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.035);
+        padding: 2rem;
+    }
+
+    .form-label { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 0.5rem; }
+    .form-control-premium, .form-select-premium {
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 0.92rem;
+        transition: all 0.2s;
+        background: #f8fafc;
+    }
+    .form-control-premium:focus, .form-select-premium:focus {
+        border-color: #6366f1;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .btn-premium {
+        border-radius: 30px;
+        padding: 0.65rem 1.75rem;
+        font-weight: 700;
+        font-size: 0.88rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-premium-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #fff;
+        border: none;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+    }
+    .btn-premium-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        color: #fff;
+    }
+    .btn-premium-light {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-premium-light:hover { background: #e2e8f0; color: #1e293b; }
+
+    .form-section-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #6366f1;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
+<div class="container-fluid p-0 animate-fade-in">
+    <div class="mb-4">
+        <a asp-action="Index" class="btn btn-premium btn-premium-light animate-fade-in">
+            <i class="bi bi-arrow-left"></i> Back to Users
         </a>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Thông tin tài khoản</h6>
-                </div>
-                <div class="card-body">
-                    <form asp-action="CreateStaff" method="post">
-                        @Html.AntiForgeryToken()
-                        
-                        @if (!ViewData.ModelState.IsValid)
-                        {
-                            <div class="alert alert-danger">
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i> Vui lòng kiểm tra lại thông tin nhập.
-                            </div>
-                        }
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger rounded-4 shadow-sm mb-4 animate-fade-in">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> Please check the entered information and try again.
+        </div>
+    }
 
-                        <div class="mb-3">
-                            <label class="form-label">Chọn Vai Trò <span class="text-danger">*</span></label>
-                            <select asp-for="RoleName" class="form-select">
-                                <option value="Organizer">Ban tổ chức (Organizer)</option>
-                                <option value="Approver">Người duyệt sự kiện (Approver)</option>
-                                <option value="Admin">Quản trị viên (Admin)</option>
+    <div class="form-header animate-fade-in animate-delay-1">
+        <div class="form-title-area">
+            <h1><i class="bi bi-person-plus-fill" style="color:#6366f1;"></i> Create Staff / Organizer</h1>
+            <p>Provision a new administrative or logistical account for the system.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-9 col-lg-10">
+            <div class="glass-card animate-fade-in animate-delay-2">
+                <form asp-action="CreateStaff" method="post">
+                    @Html.AntiForgeryToken()
+                    
+                    <div class="row g-4">
+                        <!-- Account Security Section -->
+                        <div class="col-12 animate-fade-in animate-delay-3">
+                            <h6 class="form-section-title"><i class="bi bi-shield-lock"></i> Account Security</h6>
+                        </div>
+
+                        <div class="col-md-4 animate-fade-in animate-delay-3">
+                            <label class="form-label">System Role <span class="text-danger">*</span></label>
+                            <select asp-for="RoleName" class="form-select form-select-premium">
+                                <option value="Organizer">Organizer</option>
+                                <option value="Approver">Approver</option>
+                                <option value="Admin">Admin</option>
                             </select>
-                            <span asp-validation-for="RoleName" class="text-danger"></span>
-                            <small class="text-muted d-block mt-1">Lưu ý: Nếu chọn Quản trị viên, mã nhân viên và chức vụ sẽ chỉ lưu thông tin như Staff bình thường.</small>
+                            <span asp-validation-for="RoleName" class="text-danger small mt-1 d-block"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
-                            <input asp-for="Email" class="form-control" placeholder="example@domain.com" />
-                            <span asp-validation-for="Email" class="text-danger"></span>
+                        <div class="col-md-4 animate-fade-in animate-delay-3">
+                            <label asp-for="Email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input asp-for="Email" class="form-control form-control-premium" placeholder="e.g., johndoe@fpt.edu.vn" autocomplete="off" />
+                            <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Password" class="form-label">Mật khẩu khởi tạo <span class="text-danger">*</span></label>
-                            <input asp-for="Password" type="text" class="form-control" placeholder="Mật khẩu ít nhất 6 ký tự" />
-                            <span asp-validation-for="Password" class="text-danger"></span>
-                        </div>
-                        
-                        <hr class="my-4">
-                        <h6 class="font-weight-bold text-primary mb-3">Thông tin hồ sơ</h6>
-
-                        <div class="mb-3">
-                            <label asp-for="FullName" class="form-label">Họ và tên <span class="text-danger">*</span></label>
-                            <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" />
-                            <span asp-validation-for="FullName" class="text-danger"></span>
+                        <div class="col-md-4 animate-fade-in animate-delay-3">
+                            <label asp-for="Password" class="form-label">Initial Password <span class="text-danger">*</span></label>
+                            <input asp-for="Password" type="text" class="form-control form-control-premium" placeholder="At least 6 chars" />
+                            <span asp-validation-for="Password" class="text-danger small mt-1 d-block"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="StaffCode" class="form-label">Mã số nhân viên (Mã BTC) <span class="text-danger">*</span></label>
-                            <input asp-for="StaffCode" class="form-control" placeholder="STF12345" />
-                            <span asp-validation-for="StaffCode" class="text-danger"></span>
+                        <!-- Profile Details Section -->
+                        <div class="col-12 mt-5 animate-fade-in animate-delay-4">
+                            <h6 class="form-section-title"><i class="bi bi-person-badge"></i> Profile Details</h6>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Phone" class="form-label">Số điện thoại</label>
-                            <input asp-for="Phone" class="form-control" placeholder="0123456789" />
-                            <span asp-validation-for="Phone" class="text-danger"></span>
+                        <div class="col-md-6 animate-fade-in animate-delay-4">
+                            <label asp-for="FullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input asp-for="FullName" class="form-control form-control-premium" placeholder="e.g., John Doe" autocomplete="off" />
+                            <span asp-validation-for="FullName" class="text-danger small mt-1 d-block"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Position" class="form-label">Chức vụ / Vị trí <span class="text-danger">*</span></label>
-                            <input asp-for="Position" class="form-control" placeholder="Ví dụ: Giảng viên, Trưởng câu lạc bộ" />
-                            <span asp-validation-for="Position" class="text-danger"></span>
+                        <div class="col-md-6 animate-fade-in animate-delay-4">
+                            <label asp-for="Phone" class="form-label">Phone Number</label>
+                            <input asp-for="Phone" class="form-control form-control-premium" placeholder="e.g., 0123 456 789" autocomplete="off" />
+                            <span asp-validation-for="Phone" class="text-danger small mt-1 d-block"></span>
                         </div>
 
-                        <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">Tạo Tài Khoản</button>
+                        <div class="col-md-6 animate-fade-in animate-delay-5">
+                            <label asp-for="StaffCode" class="form-label">Staff / Organizer Code <span class="text-danger">*</span></label>
+                            <input asp-for="StaffCode" class="form-control form-control-premium" placeholder="e.g., STF88291" autocomplete="off" />
+                            <span asp-validation-for="StaffCode" class="text-danger small mt-1 d-block"></span>
                         </div>
-                    </form>
+
+                        <div class="col-md-6 animate-fade-in animate-delay-5">
+                            <label asp-for="Position" class="form-label">Official Position <span class="text-danger">*</span></label>
+                            <input asp-for="Position" class="form-control form-control-premium" placeholder="e.g., Department Head, Club Mentor" autocomplete="off" />
+                            <span asp-validation-for="Position" class="text-danger small mt-1 d-block"></span>
+                        </div>
+
+                        <div class="col-12 mt-5 animate-fade-in animate-delay-6">
+                            <div class="d-flex justify-content-end gap-3">
+                                <a asp-action="Index" class="btn btn-premium btn-premium-light">Cancel</a>
+                                <button type="submit" class="btn btn-premium btn-premium-primary">
+                                    <i class="bi bi-person-check-fill"></i> Create Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="mt-4 p-3 rounded-4 animate-fade-in animate-delay-7" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.2);">
+                <div class="d-flex gap-3">
+                    <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                    <p class="small text-muted mb-0">
+                        <strong>Important:</strong> New accounts will have their passwords visible during creation for administrative convenience. Users are encouraged to update their passwords upon first login. All staff and organizers must be associated with valid identity codes.
+                    </p>
                 </div>
             </div>
         </div>

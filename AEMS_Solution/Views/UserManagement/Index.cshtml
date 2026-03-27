@@ -2,7 +2,9 @@
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "User Management";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    if (User.IsInRole("Admin")) Layout = "_AdminLayout";
+    else if (User.IsInRole("Organizer") || User.IsInRole("Staff")) Layout = "_Organizerlayout";
+    else Layout = "_Approvallayout";
 
     // ── Helpers ────────────────────────────────────────────────────────────────
     string RoleColor(string r) => r switch {
@@ -42,443 +44,673 @@
 }
 
 <style>
-/* ============================================================
-   USER MANAGEMENT — ULTRA PREMIUM REDESIGN
-   Prefix: um2-
-============================================================ */
-@@keyframes um2-fadein  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
-@@keyframes um2-card-in { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:none} }
-@@keyframes um2-row-in  { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
-@@keyframes um2-pulse-g { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
-@@keyframes um2-pulse-r { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
-@@keyframes um2-avatar  { from{transform:scale(.5) rotate(-15deg);opacity:0} to{transform:none;opacity:1} }
+    /* ============================================================
+       USER MANAGEMENT PAGE — PREMIUM DESIGN
+    ============================================================ */
+    :root {
+        --um-primary:      #1e40af;
+        --um-primary-light:#3b82f6;
+        --um-bg:           #f8fafc;
+        --um-card-bg:      #ffffff;
+        --um-border:       #e2e8f0;
+        --um-text:         #0f172a;
+        --um-muted:        #64748b;
+        --um-radius:       14px;
+        --um-shadow:       0 4px 24px rgba(0,0,0,.04);
+        --um-focus-ring:   0 0 0 3px rgba(59,130,246,.2);
+    }
 
-:root {
-    --um2-primary: #6366f1;
-    --um2-violet:  #8b5cf6;
-    --um2-radius:  16px;
-    --um2-shadow:  0 4px 24px rgba(99,102,241,.09);
-    --um2-border:  #e0e7ff;
-    --um2-text:    #1e1b4b;
-    --um2-muted:   #64748b;
-    --um2-card:    #ffffff;
-}
+    .um-page-wrapper {
+        background: transparent;
+        min-height: auto;
+        padding: 0;
+    }
 
-.um2-page { background: #f0f2ff; min-height: 100vh; padding: 0 0 3rem; animation: um2-fadein .4s ease both; }
+    /* ── Page header ── */
+    .um-page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
 
-/* ── HERO ── */
-.um2-hero {
-    background: linear-gradient(130deg,#0f172a 0%,#1e1b4b 35%,#312e81 70%,#4c1d95 100%);
-    padding: 2rem 2.5rem 2rem; position: relative; overflow: hidden;
-    box-shadow: 0 6px 32px rgba(15,23,42,.3);
-    animation: um2-card-in .4s ease both;
-}
-.um2-hero::before {
-    content:""; position:absolute; right:-80px; top:-80px;
-    width:280px; height:280px; border-radius:50%;
-    background:rgba(255,255,255,.03); pointer-events:none;
-}
-.um2-hero::after {
-    content:""; position:absolute; left:-50px; bottom:-60px;
-    width:180px; height:180px; border-radius:50%;
-    background:rgba(139,92,246,.07); pointer-events:none;
-}
-.um2-hero-icon {
-    width:62px; height:62px; border-radius:18px;
-    background:rgba(255,255,255,.14); backdrop-filter:blur(6px);
-    display:flex; align-items:center; justify-content:center;
-    font-size:1.9rem; color:#fff; flex-shrink:0;
-    box-shadow:0 4px 16px rgba(0,0,0,.2);
-}
-.um2-hero-title { font-size:1.75rem; font-weight:900; color:#fff; letter-spacing:-.04em; }
-.um2-hero-sub   { color:rgba(255,255,255,.55); font-size:.87rem; margin-top:.12rem; }
-.um2-hero-chip  {
-    display:inline-flex; align-items:center; gap:.3rem; font-size:.71rem;
-    color:rgba(255,255,255,.5);
-    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18);
-    padding:.23rem .7rem; border-radius:20px; margin-top:.4rem;
-}
-.um2-kpis  { display:flex; gap:1.6rem; flex-wrap:wrap; align-items:center; }
-.um2-kpi-v { font-size:1.4rem; font-weight:900; color:#fff; line-height:1; }
-.um2-kpi-l { font-size:.6rem; font-weight:700; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.08em; }
-.um2-sep   { width:1px; height:40px; background:rgba(255,255,255,.13); flex-shrink:0; }
+    .um-page-header h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--um-text);
+        margin-bottom: .3rem;
+        letter-spacing: -.02em;
+    }
 
-/* Hero buttons */
-.um2-hero-btn {
-    display:inline-flex; align-items:center; gap:.35rem;
-    font-size:.82rem; font-weight:800; padding:.6rem 1.2rem;
-    border-radius:30px; border:none; cursor:pointer; text-decoration:none; transition:all .18s;
-}
-.um2-hbtn-white { background:#fff; color:#6366f1; box-shadow:0 2px 10px rgba(0,0,0,.15); }
-.um2-hbtn-white:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.2); color:#4f46e5; }
-.um2-hbtn-glass { background:rgba(255,255,255,.13); color:#fff; border:1.5px solid rgba(255,255,255,.28); }
-.um2-hbtn-glass:hover { background:rgba(255,255,255,.22); color:#fff; }
+    .um-page-header p {
+        color: var(--um-muted);
+        font-size: .9rem;
+        margin: 0;
+    }
 
-/* ── STAT CARDS ── */
-.um2-stats {
-    display:grid; grid-template-columns:repeat(4,1fr); gap:1rem;
-    padding: 1.4rem 2.5rem 0; max-width:100%;
-}
-@@media(max-width:900px){ .um2-stats{grid-template-columns:repeat(2,1fr);} }
-@@media(max-width:540px){ .um2-stats{grid-template-columns:1fr;} }
+    .um-create-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: .9rem;
+        padding: .7rem 1.6rem;
+        border-radius: 50px;
+        text-decoration: none;
+        border: none;
+        box-shadow: 0 4px 14px rgba(30,64,175,.28);
+        transition: all .22s;
+        white-space: nowrap;
+    }
 
-.um2-stat {
-    background:var(--um2-card); border-radius:var(--um2-radius);
-    border:1px solid var(--um2-border); box-shadow:var(--um2-shadow);
-    padding:1.1rem 1.2rem; position:relative; overflow:hidden;
-    transition:transform .2s,box-shadow .2s; animation:um2-card-in .38s ease both;
-}
-.um2-stat:hover { transform:translateY(-4px); box-shadow:0 14px 32px rgba(99,102,241,.14); }
-.um2-stat-bar { height:3px; border-radius:2px; margin-bottom:.85rem; transition:width .3s; }
-.um2-stat-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:.6rem; }
-.um2-stat-icon { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; }
-.um2-stat-badge{ font-size:.63rem; font-weight:800; padding:.18rem .5rem; border-radius:20px; }
-.um2-stat-lbl  { font-size:.62rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.15rem; }
-.um2-stat-val  { font-size:2rem; font-weight:900; color:var(--um2-text); line-height:1; }
-.um2-stat-sub  { font-size:.7rem; color:#94a3b8; margin-top:.12rem; }
+    .um-create-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(30,64,175,.35);
+        color: #fff;
+    }
 
-/* ── CONTENT AREA ── */
-.um2-content { padding: 1.2rem 2.5rem 0; }
+    /* ── Filter Card ── */
+    .um-filter-card {
+        background: var(--um-card-bg);
+        border-radius: var(--um-radius);
+        border: 1px solid var(--um-border);
+        box-shadow: var(--um-shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
 
-/* ── FILTER CARD ── */
-.um2-filter {
-    background:var(--um2-card); border-radius:var(--um2-radius);
-    border:1px solid var(--um2-border); box-shadow:var(--um2-shadow);
-    padding:1.2rem 1.5rem; margin-bottom:1.2rem;
-    animation:um2-card-in .38s .06s ease both;
-}
-.um2-filter-label { font-size:.63rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.5rem; }
-.um2-filter-grid { display:grid; grid-template-columns:1fr 200px 200px auto; gap:.8rem; align-items:end; }
-@@media(max-width:960px){ .um2-filter-grid{grid-template-columns:1fr 1fr;} }
-@@media(max-width:540px){ .um2-filter-grid{grid-template-columns:1fr;} }
+    .um-filter-label {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        color: var(--um-muted);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+    }
 
-.um2-input, .um2-select {
-    width:100%; background:#fafbff; border:1.5px solid var(--um2-border);
-    border-radius:10px; padding:.6rem 1rem; font-size:.87rem; outline:none;
-    transition:border-color .2s,box-shadow .2s; font-family:inherit; color:var(--um2-text);
-}
-.um2-search-wrap { position:relative; }
-.um2-search-wrap i { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.85rem; }
-.um2-search-wrap .um2-input { padding-left:2.4rem; }
-.um2-input:focus,.um2-select:focus { border-color:var(--um2-primary); box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+    .um-filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 220px 220px auto;
+        gap: 1rem;
+        align-items: end;
+    }
 
-.um2-filter-btn {
-    display:inline-flex; align-items:center; gap:.4rem;
-    font-size:.85rem; font-weight:800; padding:.62rem 1.3rem;
-    border-radius:10px; border:none; cursor:pointer;
-    background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff;
-    transition:all .18s; box-shadow:0 3px 12px rgba(99,102,241,.3);
-    white-space:nowrap;
-}
-.um2-filter-btn:hover { transform:translateY(-1px); box-shadow:0 5px 18px rgba(99,102,241,.4); }
-.um2-reset-btn {
-    display:inline-flex; align-items:center; gap:.3rem;
-    font-size:.83rem; font-weight:700; padding:.62rem .9rem;
-    border-radius:10px; border:1.5px solid var(--um2-border);
-    background:#f8faff; color:var(--um2-muted); text-decoration:none; transition:all .15s;
-}
-.um2-reset-btn:hover { background:#e0e7ff; color:var(--um2-primary); }
+    @@media (max-width: 992px) {
+        .um-filter-grid { grid-template-columns: 1fr 1fr; }
+    }
 
-/* Filter tags */
-.um2-filter-tags { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.65rem; }
-.um2-ftag {
-    display:inline-flex; align-items:center; gap:.28rem;
-    font-size:.69rem; font-weight:700; padding:.2rem .6rem; border-radius:20px;
-    background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; cursor:pointer; transition:all .15s;
-    text-decoration:none;
-}
-.um2-ftag:hover { background:#6366f1; color:#fff; border-color:#6366f1; }
+    @@media (max-width: 576px) {
+        .um-filter-grid { grid-template-columns: 1fr; }
+    }
 
-/* ── TABLE CARD ── */
-.um2-card {
-    background:var(--um2-card); border-radius:var(--um2-radius);
-    border:1px solid var(--um2-border); box-shadow:var(--um2-shadow);
-    overflow:hidden; margin-bottom:2rem;
-    animation:um2-card-in .4s .1s ease both;
-}
-.um2-card-header {
-    padding:.95rem 1.5rem; border-bottom:1px solid #f1f5f9;
-    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
-}
-.um2-card-title { font-size:.9rem; font-weight:800; color:var(--um2-text); }
-.um2-card-sub   { font-size:.74rem; color:var(--um2-muted); margin-top:.05rem; }
-.um2-card-pill  {
-    font-size:.73rem; font-weight:800; padding:.2rem .65rem; border-radius:20px;
-    background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd;
-}
+    .um-filter-field-label {
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--um-text);
+        margin-bottom: .35rem;
+        display: block;
+    }
 
-/* ── TABLE ── */
-.um2-table { width:100%; border-collapse:collapse; }
-.um2-table thead th {
-    background:#f8fafc; font-size:.62rem; font-weight:800;
-    text-transform:uppercase; letter-spacing:.08em; color:#94a3b8;
-    padding:.78rem 1.1rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;
-}
-.um2-table thead th:first-child { padding-left:1.5rem; }
-.um2-table thead th:last-child  { padding-right:1.5rem; text-align:right; }
-.um2-table tbody tr {
-    border-bottom:1px solid #f8fafc; transition:background .12s;
-    animation:um2-row-in .28s ease both;
-}
-.um2-table tbody tr:last-child { border-bottom:none; }
-.um2-table tbody tr:hover { background:#f5f3ff !important; }
-.um2-table tbody td { padding:.9rem 1.1rem; vertical-align:middle; font-size:.87rem; }
-.um2-table tbody td:first-child { padding-left:1.5rem; }
-.um2-table tbody td:last-child  { padding-right:1.5rem; text-align:right; }
+    .um-filter-input,
+    .um-filter-select {
+        width: 100%;
+        padding: .65rem 1rem;
+        border: 1px solid var(--um-border);
+        border-radius: 10px;
+        font-size: .88rem;
+        color: var(--um-text);
+        background: #f8fafc;
+        transition: all .18s;
+        outline: none;
+    }
 
-/* ── AVATAR ── */
-.um2-avatar-wrap { display:flex; align-items:center; gap:.8rem; }
-.um2-avatar {
-    width:38px; height:38px; border-radius:50%; object-fit:cover;
-    flex-shrink:0; font-size:.78rem; font-weight:800;
-    display:flex; align-items:center; justify-content:center;
-    color:#fff; position:relative;
-    animation:um2-avatar .3s ease both;
-    box-shadow:0 2px 8px rgba(0,0,0,.12);
-}
-.um2-avatar img { width:100%; height:100%; border-radius:50%; object-fit:cover; }
-.um2-status-dot {
-    position:absolute; bottom:1px; right:1px;
-    width:10px; height:10px; border-radius:50%; border:2px solid #fff; flex-shrink:0;
-}
-.um2-user-name  { font-weight:700; color:#0f172a; font-size:.88rem; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.um2-user-email { font-size:.75rem; color:#64748b; margin-top:.05rem; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .um-filter-input:focus,
+    .um-filter-select:focus {
+        background: #fff;
+        border-color: var(--um-primary-light);
+        box-shadow: var(--um-focus-ring);
+    }
 
-/* ── ROLE PILL ── */
-.um2-role {
-    display:inline-flex; align-items:center; gap:.28rem;
-    font-size:.7rem; font-weight:800; padding:.22rem .65rem;
-    border-radius:20px; text-transform:uppercase; letter-spacing:.04em;
-}
+    .um-search-wrapper {
+        position: relative;
+    }
 
-/* ── STATUS PILL ── */
-.um2-status {
-    display:inline-flex; align-items:center; gap:.35rem;
-    font-size:.75rem; font-weight:700; padding:.28rem .72rem; border-radius:20px;
-}
-.um2-status-dot-inner { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .um-search-wrapper i {
+        position: absolute;
+        top: 50%;
+        left: .85rem;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: .85rem;
+        pointer-events: none;
+    }
 
-/* ── ACTION BUTTONS ── */
-.um2-actions { display:flex; gap:.35rem; align-items:center; justify-content:flex-end; }
-.um2-btn-action {
-    width:32px; height:32px; border-radius:9px; border:1.5px solid #e2e8f0;
-    background:#f8fafc; display:inline-flex; align-items:center; justify-content:center;
-    font-size:.82rem; cursor:pointer; transition:all .15s; text-decoration:none; color:#64748b;
-}
-.um2-btn-action:hover { transform:translateY(-1px); }
-.um2-btn-action.view:hover  { background:#eff6ff; border-color:#bfdbfe; color:#3b82f6; }
-.um2-btn-action.lock:hover  { background:#fee2e2; border-color:#fca5a5; color:#ef4444; }
-.um2-btn-action.timed:hover { background:#fef3c7; border-color:#fde68a; color:#d97706; }
-.um2-btn-action.unlock:hover{ background:#f0fdf4; border-color:#86efac; color:#16a34a; }
+    .um-search-wrapper .um-filter-input {
+        padding-left: 2.35rem;
+    }
 
-/* ── PAGINATION ── */
-.um2-pag {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:.9rem 1.5rem; border-top:1px solid #f1f5f9; flex-wrap:wrap; gap:.5rem;
-}
-.um2-pag-info { font-size:.78rem; color:var(--um2-muted); font-weight:600; }
-.um2-pag-btns { display:flex; gap:.28rem; }
-.um2-pbt {
-    display:inline-flex; align-items:center; justify-content:center;
-    width:34px; height:34px; border-radius:9px; font-size:.8rem; font-weight:700;
-    text-decoration:none; border:1.5px solid var(--um2-border); color:var(--um2-muted);
-    background:#fff; transition:all .15s;
-}
-.um2-pbt:hover   { background:#f5f3ff; border-color:#c4b5fd; color:var(--um2-primary); }
-.um2-pbt.active  { background:var(--um2-primary); color:#fff; border-color:var(--um2-primary); }
-.um2-pbt.disabled{ opacity:.4; pointer-events:none; }
+    .um-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .65rem 1.4rem;
+        border-radius: 10px;
+        font-size: .88rem;
+        font-weight: 700;
+        border: none;
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
+        color: #fff;
+        cursor: pointer;
+        transition: all .18s;
+        box-shadow: 0 3px 10px rgba(59,130,246,.25);
+        white-space: nowrap;
+    }
 
-/* ── EMPTY STATE ── */
-.um2-empty { text-align:center; padding:4rem 1rem; }
-.um2-empty-icon {
-    width:80px; height:80px; border-radius:50%;
-    background:linear-gradient(135deg,#ede9fe,#c4b5fd);
-    display:flex; align-items:center; justify-content:center;
-    font-size:2.2rem; color:#6d28d9; margin:0 auto .9rem;
-}
-.um2-empty h4 { font-size:1.1rem; font-weight:800; color:#374151; margin-bottom:.35rem; }
-.um2-empty p  { font-size:.87rem; color:var(--um2-muted); max-width:320px; margin:0 auto; }
+    .um-filter-btn:hover {
+        opacity: .92;
+        transform: translateY(-1px);
+    }
 
-/* ── TOAST ── */
-.um2-toast {
-    display:flex; align-items:center; gap:.7rem;
-    border-radius:12px; border:none; padding:.9rem 1.25rem;
-    font-size:.9rem; font-weight:600; margin:0 2.5rem 1rem;
-}
+    .um-filter-reset {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .65rem 1rem;
+        border-radius: 10px;
+        font-size: .85rem;
+        font-weight: 600;
+        border: 1px solid var(--um-border);
+        background: #f8fafc;
+        color: var(--um-muted);
+        cursor: pointer;
+        transition: all .18s;
+        text-decoration: none;
+        margin-left: .5rem;
+    }
 
-/* ── MODAL ── */
-.um2-modal .modal-content {
-    border:none; border-radius:20px;
-    box-shadow:0 20px 60px rgba(0,0,0,.18); overflow:hidden;
-}
-.um2-modal .modal-header {
-    background:linear-gradient(130deg,#1e1b4b,#4c1d95);
-    border:none; padding:1.2rem 1.5rem;
-}
-.um2-modal .modal-title { color:#fff; font-weight:900; font-size:1rem; }
-.um2-modal .btn-close   { filter:invert(1); }
-.um2-modal .modal-body  { padding:1.4rem 1.5rem; background:#fafbff; }
-.um2-modal .modal-footer{ background:#fff; border-top:1px solid #f1f5f9; padding:.9rem 1.5rem; }
+    .um-filter-reset:hover {
+        background: #e2e8f0;
+        color: var(--um-text);
+    }
+
+    /* ── Main Table Card ── */
+    .um-table-card {
+        background: var(--um-card-bg);
+        border-radius: var(--um-radius);
+        border: 1px solid var(--um-border);
+        box-shadow: var(--um-shadow);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .um-table-card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .um-table-section-label {
+        font-size: .7rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .um-count-pill {
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 700;
+        padding: .15rem .55rem;
+        border-radius: 20px;
+    }
+
+    /* ── Main Table ── */
+    .um-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .um-table thead tr th {
+        background: #f8fafc;
+        font-size: .68rem;
+        font-weight: 800;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        padding: .8rem 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+        white-space: nowrap;
+    }
+
+    .um-table tbody tr {
+        border-bottom: 1px solid #f8fafc;
+        transition: background .12s;
+    }
+
+    .um-table tbody tr:last-child { border-bottom: none; }
+
+    .um-table tbody tr:hover { background: #fafbff; }
+
+    .um-table tbody td {
+        padding: .95rem 1.25rem;
+        vertical-align: middle;
+        font-size: .9rem;
+        color: var(--um-text);
+    }
+
+    /* ── Avatar ── */
+    .um-avatar-wrap {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+    }
+
+    .um-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        font-size: .78rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        letter-spacing: .03em;
+        position: relative;
+    }
+
+    .um-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .um-avatar-initials {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .78rem;
+        font-weight: 800;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .um-status-dot {
+        position: absolute;
+        bottom: 1px;
+        right: 1px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+    }
+
+    .um-avatar-meta {
+        min-width: 0;
+    }
+
+    .um-user-name {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: .9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+    }
+
+    .um-user-email {
+        font-size: .78rem;
+        color: #64748b;
+        margin-top: .1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 220px;
+    }
+
+    /* ── Role Badge ── */
+    .um-role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .75rem;
+        border-radius: 20px;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    /* ── Status Badge ── */
+    .um-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .3rem .7rem;
+        border-radius: 20px;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .um-status-badge .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .um-status-active  { background: #f0fdf4; color: #16a34a; }
+    .um-status-active  .dot { background: #22c55e; }
+
+    .um-status-banned  { background: #fef2f2; color: #dc2626; }
+    .um-status-banned  .dot { background: #ef4444; }
+
+    .um-status-inactive { background: #f8fafc; color: #64748b; }
+    .um-status-inactive .dot { background: #94a3b8; }
+
+    /* ── Action Buttons ── */
+    .um-actions {
+        display: flex;
+        gap: .4rem;
+        align-items: center;
+    }
+
+    .um-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .82rem;
+        cursor: pointer;
+        transition: all .15s;
+        text-decoration: none;
+        color: #64748b;
+    }
+
+    .um-action-btn:hover { transform: translateY(-1px); }
+
+    .um-action-btn.view:hover      { background: #eff6ff; border-color: #bfdbfe; color: #3b82f6; }
+    .um-action-btn.lock:hover      { background: #fee2e2; border-color: #fca5a5; color: #ef4444; }
+    .um-action-btn.lock-timed:hover { background: #fef3c7; border-color: #fde68a; color: #d97706; }
+    .um-action-btn.unlock:hover    { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
+
+    /* ── Pagination ── */
+    .um-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .um-page-info {
+        font-size: .82rem;
+        color: #64748b;
+    }
+
+    .um-page-info strong { color: #0f172a; }
+
+    .um-page-nav {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .um-page-nav a,
+    .um-page-nav span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        font-size: .82rem;
+        font-weight: 600;
+        border: 1px solid transparent;
+        color: #0f172a;
+        text-decoration: none;
+        transition: all .15s;
+        background: transparent;
+    }
+
+    .um-page-nav a:hover        { background: #f1f5f9; border-color: #e2e8f0; }
+    .um-page-nav .active a,
+    .um-page-nav .active span   { background: #1e40af; color: #fff; border-color: #1e40af; }
+    .um-page-nav .disabled a,
+    .um-page-nav .disabled span { color: #cbd5e1; pointer-events: none; }
+
+    .um-page-nav .ellipsis span { cursor: default; color: #94a3b8; }
+
+    /* ── Stat Cards ── */
+    .um-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .um-stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .um-stat-card {
+        background: var(--um-card-bg);
+        border-radius: var(--um-radius);
+        border: 1px solid var(--um-border);
+        box-shadow: var(--um-shadow);
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .um-stat-card::after {
+        content: '';
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        opacity: .06;
+        background: var(--stat-color, #1e40af);
+    }
+
+    .um-stat-label {
+        font-size: .7rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: .5rem;
+    }
+
+    .um-stat-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--um-text);
+        line-height: 1;
+        margin-bottom: .4rem;
+    }
+
+    .um-stat-sub {
+        font-size: .78rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    .um-stat-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        font-size: .75rem;
+        font-weight: 700;
+        padding: .15rem .5rem;
+        border-radius: 20px;
+    }
+
+    .um-stat-trend.up   { background: #f0fdf4; color: #16a34a; }
+    .um-stat-trend.warn { background: #fff7ed; color: #d97706; }
+
+    /* ── Empty state ── */
+    .um-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+
+    .um-empty i     { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
+    .um-empty p     { font-size: .88rem; margin: 0; }
+
+    /* ── Alert toasts ── */
+    .um-toast {
+        border-radius: 12px;
+        border: none;
+        padding: .9rem 1.25rem;
+        font-size: .9rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+    }
+
+    /* ── Lock modal ── */
+    .um-modal .modal-content {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0,0,0,.15);
+    }
+
+    .um-modal .modal-header { border-bottom: none; padding: 1.5rem 1.5rem .75rem; }
+    .um-modal .modal-body   { padding: .75rem 1.5rem 1.25rem; }
+    .um-modal .modal-footer { border-top: 1px solid #f1f5f9; padding: 1rem 1.5rem 1.25rem; }
+    /* ── Staggered Row Animations ── */
+    .um-table tbody tr { animation: um-row-in 0.4s ease both; }
+    @@keyframes um-row-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    
+    .um-table tbody tr:nth-child(1)  { animation-delay: .05s; }
+    .um-table tbody tr:nth-child(2)  { animation-delay: .08s; }
+    .um-table tbody tr:nth-child(3)  { animation-delay: .11s; }
+    .um-table tbody tr:nth-child(4)  { animation-delay: .14s; }
+    .um-table tbody tr:nth-child(5)  { animation-delay: .17s; }
+    .um-table tbody tr:nth-child(6)  { animation-delay: .20s; }
+    .um-table tbody tr:nth-child(7)  { animation-delay: .23s; }
+    .um-table tbody tr:nth-child(8)  { animation-delay: .26s; }
+    .um-table tbody tr:nth-child(9)  { animation-delay: .29s; }
+    .um-table tbody tr:nth-child(10) { animation-delay: .32s; }
 </style>
 
-<div class="um2-page">
+<div class="um-page-wrapper animate-fade-in">
+    <div class="container-fluid p-0">
 
-    @* ════════════ ALERT TOASTS ════════════ *@
-    @if (TempData["Success"] != null)
-    {
-        <div class="um2-toast" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;margin-top:1rem;">
-            <i class="bi bi-check-circle-fill"></i> @TempData["Success"]
-        </div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="um2-toast" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;margin-top:1rem;">
-            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["Error"]
-        </div>
-    }
+        @* Alerts *@
+        @if (TempData["Success"] != null)
+        {
+            <div class="um-toast alert-success shadow-sm">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                @TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="um-toast alert-danger shadow-sm">
+                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                @TempData["Error"]
+            </div>
+        }
 
-    @* ════════════ HERO HEADER ════════════ *@
-    <div class="um2-hero">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.2rem;">
-            <div style="display:flex;align-items:center;gap:1.1rem;">
-                <div class="um2-hero-icon"><i class="bi bi-people-fill"></i></div>
-                <div>
-                    <h1 class="um2-hero-title">User Management</h1>
-                    <p class="um2-hero-sub">Quản trị, phân quyền và kiểm soát tài khoản hệ thống.</p>
-                    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.35rem;">
-                        <span class="um2-hero-chip"><i class="bi bi-calendar3"></i> @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
-                        <span class="um2-hero-chip"><i class="bi bi-database"></i> @totalUsers tài khoản trong DB</span>
-                        <span class="um2-hero-chip" style="color:#86efac;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.1);">
-                            <i class="bi bi-circle-fill" style="font-size:.38rem;"></i> Live
-                        </span>
-                    </div>
-                </div>
+        @* Header *@
+        <div class="um-page-header">
+            <div>
+                <h1>User Management</h1>
+                <p>Project management and authorization of system users.</p>
             </div>
-            <div style="display:flex;flex-direction:column;gap:.85rem;align-items:flex-end;">
-                <a asp-action="CreateStaff" class="um2-hero-btn um2-hbtn-white">
-                    <i class="bi bi-person-plus-fill"></i> Tạo Tài Khoản Mới
-                </a>
-                <div class="um2-kpis">
-                    <div class="text-center">
-                        <div class="um2-kpi-v">@totalUsers</div>
-                        <div class="um2-kpi-l">Tổng</div>
-                    </div>
-                    <div class="um2-sep"></div>
-                    <div class="text-center">
-                        <div class="um2-kpi-v" style="color:#86efac;">@activeCount</div>
-                        <div class="um2-kpi-l">Hoạt động</div>
-                    </div>
-                    <div class="um2-sep"></div>
-                    <div class="text-center">
-                        <div class="um2-kpi-v" style="color:#fca5a5;">@bannedCount</div>
-                        <div class="um2-kpi-l">Bị khóa</div>
-                    </div>
-                    <div class="um2-sep"></div>
-                    <div class="text-center">
-                        <div class="um2-kpi-v">@Model.TotalPages</div>
-                        <div class="um2-kpi-l">Trang</div>
-                    </div>
-                </div>
-            </div>
+            <a asp-action="CreateStaff" class="um-create-btn animate-fade-in animate-delay-1">
+                <i class="bi bi-person-plus-fill"></i> Create New Account
+            </a>
         </div>
-    </div>
 
-    @* ════════════ STAT CARDS ════════════ *@
-    <div class="um2-stats">
-        <div class="um2-stat" style="animation-delay:.04s;">
-            <div class="um2-stat-bar" style="width:40px;background:#6366f1;"></div>
-            <div class="um2-stat-top">
-                <div class="um2-stat-icon" style="background:#ede9fe;color:#6d28d9;"><i class="bi bi-people-fill"></i></div>
-                <span class="um2-stat-badge" style="background:#ede9fe;color:#6d28d9;">Total</span>
+        @* ── Filter Card ── *@
+        <div class="um-filter-card animate-fade-in animate-delay-2">
+            <div class="um-filter-label">
+                <i class="bi bi-funnel-fill"></i> Filter &amp; Search
             </div>
-            <div class="um2-stat-lbl">Tổng Tài Khoản</div>
-            <div class="um2-stat-val" style="color:#6d28d9;" id="um2c-total">@totalUsers</div>
-            <div class="um2-stat-sub">Trong toàn hệ thống</div>
-        </div>
-        <div class="um2-stat @(activeCount > 0 ? "" : "")" style="animation-delay:.07s;">
-            <div class="um2-stat-bar" style="width:40px;background:#22c55e;"></div>
-            <div class="um2-stat-top">
-                <div class="um2-stat-icon" style="background:#dcfce7;color:#15803d;"><i class="bi bi-person-check-fill"></i></div>
-                <span class="um2-stat-badge" style="background:#dcfce7;color:#15803d;">Active</span>
-            </div>
-            <div class="um2-stat-lbl">Đang Hoạt Động</div>
-            <div class="um2-stat-val" style="color:#15803d;" id="um2c-active">@activeCount</div>
-            <div class="um2-stat-sub">@(totalUsers > 0 ? (activeCount * 100 / totalUsers) : 0)% tổng hệ thống (trang này)</div>
-        </div>
-        <div class="um2-stat @(bannedCount > 0 ? "" : "")" style="animation-delay:.10s;">
-            <div class="um2-stat-bar" style="width:40px;background:#ef4444;"></div>
-            <div class="um2-stat-top">
-                <div class="um2-stat-icon" style="background:#fee2e2;color:#b91c1c;"><i class="bi bi-shield-x-fill"></i></div>
-                @if (bannedCount > 0)
-                { <span class="um2-stat-badge" style="background:#fee2e2;color:#b91c1c;">⚠ Locked</span> }
-                else
-                { <span class="um2-stat-badge" style="background:#dcfce7;color:#15803d;">✓ None</span> }
-            </div>
-            <div class="um2-stat-lbl">Bị Khoá</div>
-            <div class="um2-stat-val" style="color:@(bannedCount > 0 ? "#b91c1c" : "#15803d");" id="um2c-banned">@bannedCount</div>
-            <div class="um2-stat-sub">Tài khoản bị hạn chế</div>
-        </div>
-        <div class="um2-stat" style="animation-delay:.13s;">
-            <div class="um2-stat-bar" style="width:40px;background:#f59e0b;"></div>
-            <div class="um2-stat-top">
-                <div class="um2-stat-icon" style="background:#fef3c7;color:#92400e;"><i class="bi bi-person-dash-fill"></i></div>
-                <span class="um2-stat-badge" style="background:#fef3c7;color:#92400e;">Inactive</span>
-            </div>
-            <div class="um2-stat-lbl">Không Hoạt Động</div>
-            <div class="um2-stat-val" style="color:#92400e;" id="um2c-inactive">@inactiveCount</div>
-            <div class="um2-stat-sub">Trên trang hiện tại</div>
-        </div>
-    </div>
-
-    @* ════════════ CONTENT ════════════ *@
-    <div class="um2-content" style="padding-top:1.2rem;">
-
-        @* ── Filter Bar ── *@
-        <div class="um2-filter">
-            <div class="um2-filter-label"><i class="bi bi-funnel-fill me-1"></i>Bộ lọc & Tìm kiếm</div>
-            <form asp-action="Index" method="get" id="um2FilterForm">
-                <div class="um2-filter-grid">
+            <form asp-action="Index" method="get" id="filterForm">
+                <div class="um-filter-grid">
                     <div>
-                        <div class="um2-filter-label" style="margin-bottom:.3rem;">Tìm kiếm</div>
-                        <div class="um2-search-wrap">
+                        <label class="um-filter-field-label">SEARCH</label>
+                        <div class="um-search-wrapper">
                             <i class="bi bi-search"></i>
-                            <input type="text" name="searchTerm" class="um2-input"
-                                   placeholder="Tên hoặc email..."
-                                   value="@ViewBag.SearchTerm" id="um2SearchInput" />
+                            <input type="text"
+                                   name="searchTerm"
+                                   class="um-filter-input"
+                                   placeholder="Name or email..."
+                                   value="@ViewBag.SearchTerm" />
                         </div>
                     </div>
                     <div>
-                        <div class="um2-filter-label" style="margin-bottom:.3rem;">Vai Trò</div>
-                        <select name="role" class="um2-select" id="um2RoleSelect">
-                            <option value="">— Tất cả vai trò —</option>
-                            @foreach (var opt in new[]{"Student","Organizer","Approver","Staff","Admin"})
-                            {
-                                if (ViewBag.Role?.ToString() == opt)
-                                { <option value="@opt" selected>@opt</option> }
-                                else
-                                { <option value="@opt">@opt</option> }
-                            }
+                        <label class="um-filter-field-label">ROLE</label>
+                        <select name="role" class="um-filter-select">
+                            <option value="">All roles</option>
+                            <option value="Student"   selected="@(ViewBag.Role?.ToString() == "Student"   ? "selected" : null)">Student</option>
+                            <option value="Organizer" selected="@(ViewBag.Role?.ToString() == "Organizer" ? "selected" : null)">Organizer</option>
+                            <option value="Approver"  selected="@(ViewBag.Role?.ToString() == "Approver"  ? "selected" : null)">Approver</option>
+                            <option value="Staff"     selected="@(ViewBag.Role?.ToString() == "Staff"     ? "selected" : null)">Staff</option>
+                            <option value="Admin"     selected="@(ViewBag.Role?.ToString() == "Admin"     ? "selected" : null)">Admin</option>
                         </select>
                     </div>
                     <div>
-                        <div class="um2-filter-label" style="margin-bottom:.3rem;">Trạng Thái</div>
-                        <select name="status" class="um2-select" id="um2StatusSelect">
-                            <option value="">— Tất cả trạng thái —</option>
+                        <label class="um-filter-field-label">STATUS</label>
+                        <select name="status" class="um-filter-select">
+                            <option value="">All statuses</option>
                             @foreach (var s in Html.GetEnumSelectList<UserStatusEnum>())
                             {
-                                if (ViewBag.Status?.ToString() == s.Value)
-                                { <option value="@s.Value" selected>@s.Text</option> }
+                                if (ViewBag.Status?.ToString() == s.Text)
+                                { <option value="@s.Text" selected>@s.Text</option> }
                                 else
-                                { <option value="@s.Value">@s.Text</option> }
+                                { <option value="@s.Text">@s.Text</option> }
                             }
                         </select>
                     </div>
-                    <div style="display:flex;gap:.4rem;align-items:center;">
-                        <button type="submit" class="um2-filter-btn">
-                            <i class="bi bi-funnel-fill"></i> Lọc
+
+                    <div style="display:flex; gap:.5rem; align-items:center;">
+                        <button type="submit" class="um-filter-btn">
+                            <i class="bi bi-search"></i> Filter Results
                         </button>
-                        <a asp-action="Index" class="um2-reset-btn" title="Xóa bộ lọc">
-                            <i class="bi bi-x-circle"></i>
+                        <a asp-action="Index" class="um-filter-reset" title="Reset">
+                            <i class="bi bi-arrow-counterclockwise"></i>
                         </a>
                     </div>
                 </div>
@@ -512,16 +744,19 @@
             </form>
         </div>
 
-        @* ── Table Card ── *@
-        <div class="um2-card">
-            <div class="um2-card-header">
-                <div>
-                    <div class="um2-card-title"><i class="bi bi-table me-1" style="color:#6366f1;"></i>Danh sách Tài khoản</div>
-                    <div class="um2-card-sub">
-                        Trang @Model.PageNumber / @Model.TotalPages
-                        @if (!string.IsNullOrEmpty(ViewBag.SearchTerm?.ToString()))
-                        { <text>· Lọc theo "<strong>@ViewBag.SearchTerm</strong>"</text> }
-                    </div>
+        @* ── Users Table Card ── *@
+        <div class="um-table-card animate-fade-in animate-delay-3">
+            <div class="um-table-card-header">
+                <div class="um-table-section-label">
+                    <i class="bi bi-people-fill"></i>
+                    Users
+                    <span class="um-count-pill">@Model.TotalCount</span>
+                </div>
+                <div style="font-size:.8rem; color:#94a3b8;">
+                    Page @Model.PageNumber / @Model.TotalPages
+                    &nbsp;•&nbsp;
+                    Showing @((Model.PageNumber - 1) * Model.PageSize + 1)–@Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)
+                    of @Model.TotalCount users
                 </div>
                 <span class="um2-card-pill">@totalUsers tài khoản</span>
             </div>
@@ -530,12 +765,12 @@
                 <table class="um2-table">
                     <thead>
                         <tr>
-                            <th style="width:44px;">#</th>
-                            <th>Người dùng</th>
-                            <th>Vai trò</th>
-                            <th>Ngày tạo</th>
-                            <th>Trạng thái</th>
-                            <th>Hành động</th>
+                            <th style="width:56px; text-align:center;">Avatar</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Created At</th>
+                            <th>Status</th>
+                            <th style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -546,31 +781,48 @@
                             {
                                 bool isBanned   = user.IsBanned == true;
                                 bool isActive   = user.Status == UserStatusEnum.Active && !isBanned;
-                                string dotColor = isBanned ? "#ef4444" : isActive ? "#22c55e" : "#94a3b8";
-                                string statusLabel = isBanned ? "Đã khóa" : isActive ? "Hoạt động" : "Inactive";
-                                string statusBg    = isBanned ? "#fee2e2" : isActive ? "#f0fdf4" : "#f8fafc";
-                                string statusFg    = isBanned ? "#b91c1c" : isActive ? "#15803d" : "#64748b";
-                                string rowBg       = isBanned ? "rgba(239,68,68,.02)" : "transparent";
-                                <tr style="background:@rowBg;animation-delay:@(rowIdx * 28)ms;">
-                                    <td style="color:#94a3b8;font-weight:800;font-size:.75rem;">@rowIdx</td>
-                                    <td>
-                                        <div class="um2-avatar-wrap">
-                                            <div class="um2-avatar" style="background:@AvatarBg(user.FullName);">
-                                                @if (!string.IsNullOrEmpty(user.AvatarUrl))
-                                                {
-                                                    <img src="@user.AvatarUrl" alt="@user.FullName"
-                                                         onerror="this.style.display='none';this.parentElement.textContent='@GetInitials(user.FullName)';" />
-                                                }
-                                                else
-                                                {
+                                bool isInactive = user.Status != UserStatusEnum.Active && !isBanned;
+
+                                string statusClass = isBanned ? "um-status-banned"
+                                                   : isActive ? "um-status-active"
+                                                   : "um-status-inactive";
+
+                                string statusLabel = isBanned   ? "Locked"
+                                                   : isActive   ? "Active"
+                                                   : "Inactive";
+
+                               string dotStatusColor = isBanned ? "#ef4444"
+                                                      : isActive ? "#22c55e"
+                                                      : "#94a3b8";
+                                <tr class="animate-fade-in">
+                                    @* Avatar *@
+                                    <td style="text-align:center;">
+                                        <div style="position:relative; display:inline-flex;">
+                                            @if (!string.IsNullOrEmpty(user.AvatarUrl))
+                                            {
+                                                <img src="@user.AvatarUrl"
+                                                     alt="@user.FullName"
+                                                     class="um-avatar"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                                <span class="um-avatar-initials"
+                                                      style="display:none; background:@AvatarBg(user.FullName);">
                                                     @GetInitials(user.FullName)
-                                                }
-                                                <span class="um2-status-dot" style="background:@dotColor;" title="@statusLabel"></span>
-                                            </div>
-                                            <div>
-                                                <div class="um2-user-name">@user.FullName</div>
-                                                <div class="um2-user-email">@user.Email</div>
-                                            </div>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="um-avatar-initials" style="background:@AvatarBg(user.FullName);">
+                                                    @GetInitials(user.FullName)
+                                                </span>
+                                            }
+                                            <span class="um2-status-dot" style="background:@dotStatusColor;" title="@statusLabel"></span>
+                                        </div>
+                                    </td>
+                                    @* User Info *@
+                                    <td>
+                                        <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                                            <div class="um2-user-name">@user.FullName</div>
+                                            <div class="um2-user-email">@user.Email</div>
                                         </div>
                                     </td>
                                     <td>
@@ -584,49 +836,67 @@
                                         @(user.CreatedAt.HasValue ? user.CreatedAt.Value.ToString("dd/MM/yyyy") : "—")
                                     </td>
                                     <td>
+                                        @{
+                                            string displayStatusBg = isBanned ? "#fef2f2" : isActive ? "#f0fdf4" : "#f1f5f9";
+                                            string displayStatusFg = isBanned ? "#991b1b" : isActive ? "#166534" : "#475569";
+                                        }
                                         <div>
-                                            <span class="um2-status" style="background:@statusBg;color:@statusFg;">
-                                                <span class="um2-status-dot-inner" style="background:@dotColor;"></span>
+                                            <span class="um2-status" style="background:@displayStatusBg;color:@displayStatusFg;">
+                                                <span class="um2-status-dot-inner" style="background:@dotStatusColor;"></span>
                                                 @statusLabel
                                             </span>
                                             @if (user.ReactivateAt.HasValue && isBanned)
                                             {
-                                                <div style="font-size:.7rem;color:#94a3b8;margin-top:.2rem;">
-                                                    Mở lúc: @user.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")
+                                                <div style="font-size:.72rem; color:#94a3b8; margin-top:.25rem;">
+                                                    Unlock at: @user.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")
                                                 </div>
                                                 <div style="font-size:.7rem;color:#6d28d9;font-weight:700;"
-                                                     class="um2-countdown" data-reactivate-at="@ToLocalDt(user.ReactivateAt)"></div>
+                                                     class="lock-countdown" data-reactivate-at="@ToLocalDt(user.ReactivateAt)"></div>
                                             }
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="um2-actions">
-                                            <a asp-action="Detail" asp-route-id="@user.Id"
-                                               class="um2-btn-action view" title="Xem chi tiết">
+                                        <div class="um-actions" style="justify-content:flex-end;">
+                                            @* View Detail *@
+                                            <a asp-action="Detail"
+                                               asp-route-id="@user.Id"
+                                               class="um-action-btn view"
+                                               title="View Details">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                             @if (isBanned)
                                             {
-                                                <form asp-action="Unban" asp-route-id="@user.Id" method="post" style="display:inline;"
-                                                      onsubmit="return confirm('Mở khóa tài khoản @Html.Raw(user.FullName?.Replace("'", "\\'"))?');">
+                                                @* Unlock Button *@
+                                                <form asp-action="Unban"
+                                                      asp-route-id="@user.Id"
+                                                      method="post"
+                                                      style="display:inline;"
+                                                      onsubmit="return confirmAction(event,'Unlock account for @Html.Raw(user.FullName.Replace("'","\\'")));">
                                                     @Html.AntiForgeryToken()
-                                                    <button type="submit" class="um2-btn-action unlock" title="Mở khóa">
+                                                    <button type="submit"
+                                                            class="um-action-btn unlock"
+                                                            title="Unlock Account">
                                                         <i class="bi bi-unlock-fill"></i>
                                                     </button>
                                                 </form>
                                             }
                                             else
                                             {
-                                                <button type="button" class="um2-btn-action lock um2-open-lock"
-                                                        title="Khóa thủ công"
+                                                @* Lock Manual *@
+                                                <button type="button"
+                                                        class="um-action-btn lock open-lock-modal"
+                                                        title="Manual Lock"
                                                         data-lock-mode="manual"
                                                         data-bs-toggle="modal" data-bs-target="#um2LockModal"
                                                         data-user-id="@user.Id" data-user-name="@user.FullName"
                                                         data-reactivate-at="@ToLocalDt(user.ReactivateAt)">
                                                     <i class="bi bi-lock-fill"></i>
                                                 </button>
-                                                <button type="button" class="um2-btn-action timed um2-open-lock"
-                                                        title="Khóa theo thời gian"
+
+                                                @* Lock Timed *@
+                                                <button type="button"
+                                                        class="um-action-btn lock-timed open-lock-modal"
+                                                        title="Timed Lock"
                                                         data-lock-mode="timed"
                                                         data-bs-toggle="modal" data-bs-target="#um2LockModal"
                                                         data-user-id="@user.Id" data-user-name="@user.FullName"
@@ -644,15 +914,9 @@
                         {
                             <tr>
                                 <td colspan="6">
-                                    <div class="um2-empty">
-                                        <div class="um2-empty-icon"><i class="bi bi-person-slash"></i></div>
-                                        <h4>Không tìm thấy người dùng</h4>
-                                        <p>
-                                            @if (!string.IsNullOrEmpty(ViewBag.SearchTerm?.ToString()) || ViewBag.Role != null || ViewBag.Status != null)
-                                            { <text>Không có tài khoản nào phù hợp với bộ lọc hiện tại.</text> }
-                                            else
-                                            { <text>Hệ thống chưa có tài khoản nào.</text> }
-                                        </p>
+                                    <div class="um-empty">
+                                        <i class="bi bi-person-slash"></i>
+                                        <p>No matching users found.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -669,13 +933,25 @@
                 int ep = Math.Min(Model.TotalPages, sp + ws - 1);
                 if (ep - sp + 1 < ws) sp = Math.Max(1, ep - ws + 1);
 
-                <div class="um2-pag">
-                    <div class="um2-pag-info">
-                        Hiển thị <strong>@((Model.PageNumber-1)*Model.PageSize+1)–@Math.Min(Model.PageNumber*Model.PageSize,Model.TotalCount)</strong>
-                        trong <strong>@Model.TotalCount</strong> tài khoản
+                <div class="um-pagination">
+                    <div class="um-page-info">
+                        Showing <strong>@((Model.PageNumber - 1) * Model.PageSize + 1)–@Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)</strong>
+                        of <strong>@Model.TotalCount</strong> users
                     </div>
-                    <div class="um2-pag-btns">
-                        @if (Model.PageNumber > 1)
+
+                    <ul class="um-page-nav">
+                        <li class="@(!Model.HasPreviousPage ? "disabled" : "")">
+                            <a asp-action="Index"
+                               asp-route-pageNumber="@(Model.PageNumber - 1)"
+                               asp-route-searchTerm="@ViewBag.SearchTerm"
+                               asp-route-role="@ViewBag.Role"
+                               asp-route-status="@ViewBag.Status"
+                               title="Previous Page">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+
+                        @if (sp > 1)
                         {
                             <a href="@Url.Action("Index","UserManagement", new{pageNumber=1,searchTerm=ViewBag.SearchTerm,role=ViewBag.Role,status=ViewBag.Status})" class="um2-pbt" title="Đầu"><i class="bi bi-chevron-double-left"></i></a>
                             <a href="@Url.Action("Index","UserManagement", new{pageNumber=Model.PageNumber-1,searchTerm=ViewBag.SearchTerm,role=ViewBag.Role,status=ViewBag.Status})" class="um2-pbt"><i class="bi bi-chevron-left"></i></a>
@@ -692,20 +968,45 @@
                             else
                             { <a href="@Url.Action("Index","UserManagement", new{pageNumber=pg,searchTerm=ViewBag.SearchTerm,role=ViewBag.Role,status=ViewBag.Status})" class="um2-pbt">@pg</a> }
                         }
-                        @if (Model.PageNumber < Model.TotalPages)
-                        {
-                            <a href="@Url.Action("Index","UserManagement", new{pageNumber=Model.PageNumber+1,searchTerm=ViewBag.SearchTerm,role=ViewBag.Role,status=ViewBag.Status})" class="um2-pbt"><i class="bi bi-chevron-right"></i></a>
-                            <a href="@Url.Action("Index","UserManagement", new{pageNumber=Model.TotalPages,searchTerm=ViewBag.SearchTerm,role=ViewBag.Role,status=ViewBag.Status})" class="um2-pbt" title="Cuối"><i class="bi bi-chevron-double-right"></i></a>
-                        }
-                        else
-                        {
-                            <span class="um2-pbt disabled"><i class="bi bi-chevron-right"></i></span>
-                            <span class="um2-pbt disabled"><i class="bi bi-chevron-double-right"></i></span>
-                        }
-                    </div>
+
+                        <li class="@(!Model.HasNextPage ? "disabled" : "")">
+                            <a asp-action="Index"
+                               asp-route-pageNumber="@(Model.PageNumber + 1)"
+                               asp-route-searchTerm="@ViewBag.SearchTerm"
+                               asp-route-role="@ViewBag.Role"
+                               asp-route-status="@ViewBag.Status"
+                               title="Next Page">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             }
         </div>
+
+        @* ── Stat Cards ── *@
+        <div class="um-stats-grid">
+            <div class="um-stat-card animate-fade-in animate-delay-1" style="--stat-color:#1e40af; border-top: 3px solid #1e40af;">
+                <div class="um-stat-label">Total Users</div>
+                <div class="um-stat-value">@Model.TotalCount.ToString("N0")</div>
+                <span class="um-stat-trend up"><i class="bi bi-graph-up-arrow"></i> Registered in system</span>
+            </div>
+
+            <div class="um-stat-card animate-fade-in animate-delay-2" style="--stat-color:#22c55e; border-top: 3px solid #22c55e;">
+                <div class="um-stat-label">Active Users</div>
+                <div class="um-stat-value" style="color:#16a34a;">@activeCount</div>
+                <p class="um-stat-sub">
+                    Ratio: @(Model.TotalCount > 0 ? (activeCount * 100 / Model.TotalCount) : 0)% of total system
+                </p>
+            </div>
+
+            <div class="um-stat-card animate-fade-in animate-delay-3" style="--stat-color:#ef4444; border-top: 3px solid #ef4444;">
+                <div class="um-stat-label">Banned Users</div>
+                <div class="um-stat-value" style="color:#dc2626;">@bannedCount</div>
+                <p class="um-stat-sub">Requires review: @bannedCount accounts</p>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -713,42 +1014,64 @@
 <div class="modal fade um2-modal" id="um2LockModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form id="um2LockForm" asp-action="Ban" method="post"
-                  onsubmit="return confirm('Bạn có chắc muốn khóa tài khoản này?');">
+            <form id="lockUserForm" asp-action="Ban" method="post" onsubmit="return confirmAction(event, 'Are you sure you want to lock this account?');">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title" id="um2LockTitle">
-                        <i class="bi bi-lock-fill me-2" style="color:#fca5a5;"></i>Khóa tài khoản
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div>
+                        <h5 class="modal-title fw-bold text-danger" id="lockModalTitle">
+                            <i class="bi bi-lock-fill me-2"></i>Lock Account
+                        </h5>
+                        <p class="text-muted small mb-0">This action will prevent the user from logging in.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="um2LockId"   name="Id" />
                     <input type="hidden" name="Status" value="Inactive" />
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Người dùng</label>
-                        <input type="text" id="um2LockName" class="form-control form-control-sm rounded-3 bg-light" readonly />
+                        <label class="form-label fw-semibold small">User</label>
+                        <input type="text" id="lockUserName" class="form-control form-control-sm rounded-3 bg-light" readonly />
                     </div>
-                    <div class="d-none mb-2" id="um2TimedWrapper">
-                        <label class="form-label fw-semibold small">Mở khóa tự động sau</label>
+
+                    <div class="mb-2 d-none" id="lockReactivateAtWrapper">
+                        <label class="form-label fw-semibold small">Auto-unlock after</label>
                         <div class="row g-2">
-                            <div class="col-4"><label class="form-label small text-muted">Năm</label><input type="number" id="um2LkY" class="form-control form-control-sm rounded-3" min="0" placeholder="0" /></div>
-                            <div class="col-4"><label class="form-label small text-muted">Tháng</label><input type="number" id="um2LkM" class="form-control form-control-sm rounded-3" min="0" placeholder="0" /></div>
-                            <div class="col-4"><label class="form-label small text-muted">Ngày</label><input type="number" id="um2LkD" class="form-control form-control-sm rounded-3" min="0" placeholder="0" /></div>
-                            <div class="col-4"><label class="form-label small text-muted">Giờ</label><input type="number" id="um2LkH" class="form-control form-control-sm rounded-3" min="0" placeholder="0" /></div>
-                            <div class="col-4"><label class="form-label small text-muted">Phút</label><input type="number" id="um2LkMn" class="form-control form-control-sm rounded-3" min="0" placeholder="0" /></div>
-                            <div class="col-4"><label class="form-label small text-muted">Giây</label><input type="number" id="um2LkS" class="form-control form-control-sm rounded-3" min="0" placeholder="0" /></div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Years</label>
+                                <input type="number" id="lockYear" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Months</label>
+                                <input type="number" id="lockMonth" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Days</label>
+                                <input type="number" id="lockDay" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Hours</label>
+                                <input type="number" id="lockHour" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Minutes</label>
+                                <input type="number" id="lockMinute" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted">Seconds</label>
+                                <input type="number" id="lockSecond" class="form-control form-control-sm rounded-3" min="0" placeholder="0" />
+                            </div>
                         </div>
                         <input type="hidden" id="um2LkReactivate" name="ReactivateAt" />
                     </div>
-                    <div class="alert alert-warning py-2 px-3 small mt-3 mb-0 rounded-3" id="um2LkPreview">
-                        Khóa thủ công — chỉ mở khi Admin mở khóa.
+
+                    <div class="alert alert-warning py-2 px-3 small mt-3 mb-0 rounded-3" id="lockReactivatePreview">
+                        Manual lock will only be opened when the admin unlocks it.
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger rounded-pill px-4">
-                        <i class="bi bi-lock-fill me-2"></i>Xác nhận khóa
+                        <i class="bi bi-lock-fill me-2"></i>Confirm Lock
                     </button>
                 </div>
             </form>
@@ -759,7 +1082,7 @@
 @section Scripts {
 <script>
 (() => {
-    // ── Counter animations ──────────────────────────────────────────────────
+    // ── Counter animations 
     [
         {id:'um2c-total',   val:@totalUsers},
         {id:'um2c-active',  val:@activeCount},
@@ -776,76 +1099,129 @@
         }, 38);
     });
 
-    // ── Lock Modal ──────────────────────────────────────────────────────────
+    // ── Lock Modal
     const pad = v => String(v).padStart(2,'0');
     const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     const fmtD = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-    const elId    = document.getElementById('um2LockId');
-    const elName  = document.getElementById('um2LockName');
-    const elTitle = document.getElementById('um2LockTitle');
-    const elWrap  = document.getElementById('um2TimedWrapper');
-    const elPrev  = document.getElementById('um2LkPreview');
-    const elReact = document.getElementById('um2LkReactivate');
-    const Y=document.getElementById('um2LkY'), M=document.getElementById('um2LkM'),
-          D=document.getElementById('um2LkD'), H=document.getElementById('um2LkH'),
-          Mn=document.getElementById('um2LkMn'), S=document.getElementById('um2LkS');
-    let mode = 'manual';
+    const lockUserId = document.getElementById('um2LockId');
+    const lockUserName = document.getElementById('lockUserName');
+    const lockModalTitle = document.getElementById('lockModalTitle');
+    const lockReactivateAtWrapper = document.getElementById('lockReactivateAtWrapper');
+    const lockReactivatePreview = document.getElementById('lockReactivatePreview');
+    const lockReactivateAt = document.getElementById('um2LkReactivate');
+    const lockUserForm = document.getElementById('lockUserForm');
 
-    const calcReact = () => {
-        const y=+Y.value||0,m=+M.value||0,d=+D.value||0,h=+H.value||0,mn=+Mn.value||0,s=+S.value||0;
-        if (![y,m,d,h,mn,s].some(v=>v>0)) { elReact.value=''; elPrev.textContent='Ít nhất 1 trường phải > 0.'; return; }
-        const dt = new Date();
-        dt.setFullYear(dt.getFullYear()+y); dt.setMonth(dt.getMonth()+m); dt.setDate(dt.getDate()+d);
-        dt.setHours(dt.getHours()+h); dt.setMinutes(dt.getMinutes()+mn); dt.setSeconds(dt.getSeconds()+s);
-        elReact.value = fmt(dt);
-        elPrev.textContent = `Tự mở khóa lúc: ${fmtD(dt)}`;
-    };
+    const lockYear = document.getElementById('lockYear');
+    const lockMonth = document.getElementById('lockMonth');
+    const lockDay = document.getElementById('lockDay');
+    const lockHour = document.getElementById('lockHour');
+    const lockMinute = document.getElementById('lockMinute');
+    const lockSecond = document.getElementById('lockSecond');
 
-    const setMode = (m, reactAt='') => {
-        mode = m;
-        if (m === 'timed') {
-            elTitle.innerHTML = '<i class="bi bi-clock-history me-2" style="color:#fbbf24;"></i>Khóa theo thời gian';
-            elWrap.classList.remove('d-none');
-            elReact.required = true;
-            if (reactAt) {
-                const dt = new Date(reactAt);
-                if (!isNaN(dt)) { Y.value=dt.getFullYear();M.value=dt.getMonth()+1;D.value=dt.getDate();H.value=dt.getHours();Mn.value=dt.getMinutes();S.value=dt.getSeconds(); }
-                calcReact();
-            } else { elPrev.textContent='Nhập thời gian khóa.'; }
-        } else {
-            elTitle.innerHTML = '<i class="bi bi-lock-fill me-2" style="color:#fca5a5;"></i>Khóa thủ công';
-            elWrap.classList.add('d-none');
-            elReact.required = false; elReact.value = '';
-            elPrev.textContent = 'Khóa thủ công — chỉ mở khi Admin mở khóa.';
+    let currentLockMode = 'manual';
+
+    const updateTimedLockValue = () => {
+        const years = +lockYear.value || 0;
+        const months = +lockMonth.value || 0;
+        const days = +lockDay.value || 0;
+        const hours = +lockHour.value || 0;
+        const minutes = +lockMinute.value || 0;
+        const seconds = +lockSecond.value || 0;
+
+        const vals = [years, months, days, hours, minutes, seconds];
+        if (vals.some(v => isNaN(v) || v < 0)) {
+            lockReactivateAt.value = '';
+            lockReactivatePreview.textContent = 'Values must be greater than or equal to 0.';
+            return;
         }
+        if (!vals.some(v => v > 0)) {
+            lockReactivateAt.value = '';
+            lockReactivatePreview.textContent = 'At least one field must be greater than 0.';
+            return;
+        }
+        const unlockAt = new Date();
+        unlockAt.setFullYear(unlockAt.getFullYear() + years);
+        unlockAt.setMonth(unlockAt.getMonth() + months);
+        unlockAt.setDate(unlockAt.getDate() + days);
+        unlockAt.setHours(unlockAt.getHours() + hours);
+        unlockAt.setMinutes(unlockAt.getMinutes() + minutes);
+        unlockAt.setSeconds(unlockAt.getSeconds() + seconds);
+        lockReactivateAt.value = fmt(unlockAt);
+        lockReactivatePreview.textContent = `Account will auto-unlock at ${fmtD(unlockAt)}.`;
     };
 
-    document.querySelectorAll('.um2-open-lock').forEach(btn => {
+    const applyLockMode = (mode, reactivateAtValue = '') => {
+        currentLockMode = mode;
+        if (mode === 'timed') {
+            lockModalTitle.innerHTML = '<i class="bi bi-clock-history me-2 text-warning"></i>Timed Lock Account';
+            lockReactivateAtWrapper.classList.remove('d-none');
+            lockReactivateAt.required = true;
+            if (reactivateAtValue) {
+                const dt = new Date(reactivateAtValue);
+                if (!isNaN(dt)) {
+                    lockYear.value = lockMonth.value = lockDay.value = lockHour.value = lockMinute.value = lockSecond.value = '';
+                }
+            } else {
+                lockYear.value = lockMonth.value = lockDay.value = lockHour.value = lockMinute.value = lockSecond.value = '';
+            }
+            updateTimedLockValue();
+            if (!lockReactivateAt.value) lockReactivatePreview.textContent = 'Enter duration values below.';
+            return;
+        }
+        lockModalTitle.innerHTML = '<i class="bi bi-lock-fill me-2 text-danger"></i>Manual Lock Account';
+        lockReactivateAtWrapper.classList.add('d-none');
+        lockReactivateAt.required = false;
+        lockReactivateAt.value = '';
+        lockReactivatePreview.textContent = 'Manual lock will remain in effect until manually unlocked.';
+    };
+
+    const lockModalButtons = document.querySelectorAll('.open-lock-modal');
+    lockModalButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            elId.value   = btn.dataset.userId;
-            elName.value = btn.dataset.userName;
-            setMode(btn.dataset.lockMode, btn.dataset.reactivateAt||'');
+            lockUserId.value = btn.dataset.userId;
+            lockUserName.value = btn.dataset.userName;
+            applyLockMode(btn.dataset.lockMode, btn.dataset.reactivateAt || '');
         });
     });
-    [Y,M,D,H,Mn,S].forEach(el => el?.addEventListener('input', calcReact));
-    document.getElementById('um2LockForm')?.addEventListener('submit', e => {
-        if (mode==='timed' && !elReact.value) { e.preventDefault(); elPrev.textContent='Ít nhất 1 trường phải > 0.'; }
-    });
-    setMode('manual');
 
-    // ── Countdown for locked accounts ───────────────────────────────────────
-    const cds = document.querySelectorAll('.um2-countdown');
-    const tick = el => {
-        const at = new Date(el.dataset.reactivateAt);
-        const rem = at - Date.now();
-        if (isNaN(at)) { el.textContent=''; return; }
-        if (rem <= 0)  { el.textContent='Đang chờ tự mở khóa...'; return; }
-        const ts = Math.floor(rem/1000), dy=Math.floor(ts/86400),
-              hr=Math.floor((ts%86400)/3600), mn=Math.floor((ts%3600)/60), sc=ts%60;
-        el.textContent = `Còn: ${dy>0?dy+'d ':'' }${pad(hr)}:${pad(mn)}:${pad(sc)}`;
+    [lockYear, lockMonth, lockDay, lockHour, lockMinute, lockSecond].forEach(el => {
+        el?.addEventListener('input', updateTimedLockValue);
+    });
+
+    lockUserForm?.addEventListener('submit', e => {
+        if (currentLockMode === 'timed' && !lockReactivateAt.value) {
+            e.preventDefault();
+            lockReactivatePreview.textContent = 'At least one field must be greater than 0.';
+        }
+    });
+
+    applyLockMode('manual');
+
+    // ─── Countdown Timers for locked accounts
+    const countdownElements = document.querySelectorAll('.lock-countdown');
+    const updateCountdown = el => {
+        const unlockAt  = new Date(el.dataset.reactivateAt);
+        const remaining = unlockAt.getTime() - Date.now();
+        if (isNaN(unlockAt.getTime())) { el.textContent = ''; return; }
+        if (remaining <= 0) { el.textContent = 'Waiting for auto-unlock...'; return; }
+        const totalSec = Math.floor(remaining / 1000);
+        const d = Math.floor(totalSec / 86400);
+        const h = Math.floor((totalSec % 86400) / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        el.textContent = `Remaining: ${d > 0 ? d + 'd ' : ''}${pad(h)}:${pad(m)}:${pad(s)}`;
     };
-    cds.forEach(el => { tick(el); setInterval(()=>tick(el),1000); });
+    countdownElements.forEach(el => {
+        updateCountdown(el);
+        setInterval(() => updateCountdown(el), 1000);
+    });
 })();
+
+// ─── Confirm wrapper
+function confirmAction(event, message) {
+    if (!confirm(message)) { event.preventDefault(); return false; }
+    return true;
+}
 </script>
 }

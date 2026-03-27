@@ -1,8 +1,12 @@
 @model AEMS_Solution.Models.Event.EventAgenda.MyAgendaViewModel
 @using DataAccess.Enum
 @{
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_AdminLayout"; }
+    else if (Model.IsReadOnly) { Layout = "_Approvallayout"; }
+    else { Layout = "_Organizerlayout"; }
+    
     ViewData["Title"] = Model.PageTitle;
-    Layout = Model.IsReadOnly ? "_Approvallayout" : "_OrganizerLayout";
 
     var allAgendas       = Model.Agendas ?? new List<AEMS_Solution.Models.Event.EventAgenda.AgendaItemViewModel>();
     int totalSessions    = allAgendas.Count;
@@ -468,7 +472,7 @@
                 <a asp-controller="Organizer" asp-action="Manage"
                    asp-route-operation="create" asp-fragment="agendaContainer"
                    class="ag-btn ag-btn-primary">
-                    <i class="bi bi-plus-circle-fill"></i> Thêm agenda từ Create Event
+                    <i class="bi bi-plus-circle-fill"></i> Add agenda from Create Event
                 </a>
             }
         </div>
@@ -518,7 +522,7 @@
     <div class="ag-filter-card">
         <div class="ag-filter-header">
             <i class="bi bi-funnel-fill" style="color:#a5b4fc;"></i>
-            Lọc Agenda
+            Filter Agenda
         </div>
         <div class="ag-filter-body">
             <form method="get"
@@ -527,7 +531,7 @@
                     @* Search *@
                     <div>
                         <label class="ag-filter-label">
-                            <i class="bi bi-search"></i>Tìm kiếm
+                            <i class="bi bi-search"></i>Search
                         </label>
                         <div class="ag-input-wrap">
                             <i class="bi bi-search icon-left"></i>
@@ -540,17 +544,17 @@
                     @* Event select *@
                     <div>
                         <label class="ag-filter-label">
-                            <i class="bi bi-calendar-event"></i>Sự kiện
+                            <i class="bi bi-calendar-event"></i>Event
                         </label>
                         <select name="eventId" class="ag-filter-select" asp-items="Model.EventOptions">
-                            <option value="">-- Tất cả sự kiện --</option>
+                            <option value="">-- All Events --</option>
                         </select>
                     </div>
 
                     @* Submit *@
                     <div>
                         <button type="submit" class="ag-btn ag-btn-filter" style="width:100%; justify-content:center; padding:.66rem 1rem;">
-                            <i class="bi bi-funnel-fill"></i> Lọc
+                            <i class="bi bi-funnel-fill"></i> Filter
                         </button>
                     </div>
                 </div>
@@ -563,15 +567,15 @@
     {
         <div class="ag-empty">
             <div class="ag-empty-icon"><i class="bi bi-calendar2-x"></i></div>
-            <h3>Chưa có agenda nào</h3>
+            <h3>No agendas found</h3>
             <p>
                 @if (!string.IsNullOrWhiteSpace(Model.Search) || !string.IsNullOrWhiteSpace(Model.SelectedEventId))
                 {
-                    <text>Không có agenda phù hợp với bộ lọc hiện tại. Thử thay đổi điều kiện tìm kiếm.</text>
+                    <text>No agendas match the current filter. Try changing your search criteria.</text>
                 }
                 else
                 {
-                    <text>Chưa có session nào được tạo. Hãy tạo event và thêm agenda vào.</text>
+                    <text>No sessions created yet. Create an event and add an agenda.</text>
                 }
             </p>
             @if (!Model.IsReadOnly)
@@ -579,7 +583,7 @@
                 <a asp-controller="Organizer" asp-action="Manage"
                    asp-route-operation="create" asp-fragment="agendaContainer"
                    class="ag-btn ag-btn-primary">
-                    <i class="bi bi-plus-circle-fill"></i> Thêm Agenda Ngay
+                    <i class="bi bi-plus-circle-fill"></i> Add Agenda Now
                 </a>
             }
         </div>
@@ -727,7 +731,7 @@
                                                         @(session.StartTime?.ToString("dd/MM/yyyy HH:mm") ?? "—")
                                                     </div>
                                                     <div class="ag-time-end">
-                                                        đến @(session.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                                        to @(session.EndTime?.ToString("dd/MM/yyyy HH:mm") ?? "—")
                                                     </div>
                                                     @if (!string.IsNullOrEmpty(tlLabel))
                                                     {
@@ -763,7 +767,7 @@
                                                               asp-action="DeleteAgenda"
                                                               asp-route-id="@session.Id"
                                                               method="post" class="ag-act-form"
-                                                              onsubmit="return confirm('Xác nhận xóa session &quot;@Html.Raw(session.SessionName?.Replace("\"","\\\"") ?? "này")&quot;?');">
+                                                              onsubmit="return confirm('Confirm deleting session &quot;@Html.Raw(session.SessionName?.Replace("\"","\\\"") ?? "this")&quot;?');">
                                                             @Html.AntiForgeryToken()
                                                             <button type="submit" class="ag-act delete"
                                                                     title="Delete Session">

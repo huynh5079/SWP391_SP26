@@ -108,7 +108,7 @@
                                     </li>
                                     <li>
                                         <a class="dropdown-item aems-dd-item" asp-controller="Organizer" asp-action="MyParticipatedEvents">
-                                            <i class="bi bi-person-workspace me-2 text-yellow-400"></i>Sự kiện tham gia
+                                            <i class="bi bi-person-workspace me-2 text-yellow-400"></i>Participated Events
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.1); margin:.4rem .8rem;"></li>
@@ -136,13 +136,13 @@
                             <li class="nav-item">
                                 <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Approver" asp-action="PendingApprovals"
                                    style="font-size:.9rem;">
-                                    <i class="bi bi-check2-circle me-1"></i>Phê duyệt
+                                    <i class="bi bi-check2-circle me-1"></i>Approvals
                                 </a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="Approver" asp-action="MyParticipatedEvents"
                                    style="font-size:.9rem;">
-                                    <i class="bi bi-person-workspace me-1"></i>Sự kiện tham gia
+                                    <i class="bi bi-person-workspace me-1"></i>Participated Events
                                 </a>
                             </li>
                         }
@@ -152,13 +152,13 @@
                             <li class="nav-item">
                                 <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="StudentEvent" asp-action="Index"
                                    style="font-size:.9rem;">
-                                    <i class="bi bi-search me-1"></i>Khám phá
+                                    <i class="bi bi-search me-1"></i>Explore
                                 </a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link px-3 text-white opacity-80 fw-medium" asp-controller="StudentEvent" asp-action="MyEvents"
                                    style="font-size:.9rem;">
-                                    <i class="bi bi-person-workspace me-1"></i>Sự kiện của tôi
+                                    <i class="bi bi-person-workspace me-1"></i>My Events
                                 </a>
                             </li>
                         }
@@ -279,7 +279,7 @@
 
     <div class="container">
 
-        <main role="main" class="pb-3">
+        <main role="main" class="pb-3 animate-fade-in">
             @* Legacy Alert Block - Replaced by Toastr
             @if (TempData["NotificationMessage"] != null)
             {
@@ -294,15 +294,15 @@
             @if (lockedCurrentUser?.IsBanned == true && lockedCurrentUser.Status == UserStatusEnum.Inactive)
             {
                 <div class="alert alert-warning shadow-sm mb-4" role="alert">
-                    <div class="fw-bold mb-1">Tài khoản của bạn hiện đang bị khóa.</div>
+                    <div class="fw-bold mb-1">Your account is currently locked.</div>
                     @if (lockedCurrentUser.ReactivateAt.HasValue)
                     {
-                        <div>Tài khoản sẽ tự động mở khóa lúc @lockedCurrentUser.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm").</div>
+                        <div>Your account will automatically unlock at @lockedCurrentUser.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm").</div>
                         <div class="text-danger fw-semibold lock-countdown-global" data-reactivate-at="@lockedCurrentUser.ReactivateAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></div>
                     }
                     else
                     {
-                        <div>Đây là khóa thủ công. Vui lòng liên hệ quản trị viên để được mở khóa.</div>
+                        <div>This is a manual lock. Please contact an administrator to be unlocked.</div>
                     }
                 </div>
             }
@@ -342,7 +342,7 @@
                 }
 
                 if (remaining <= 0) {
-                    element.textContent = 'Đang chờ hệ thống tự mở khóa...';
+                    element.textContent = 'Waiting for system to automatically unlock...';
                     return;
                 }
 
@@ -351,8 +351,8 @@
                 const hours = Math.floor((totalSeconds % 86400) / 3600);
                 const minutes = Math.floor((totalSeconds % 3600) / 60);
                 const seconds = totalSeconds % 60;
-                const dayText = days > 0 ? `${days} ngày ` : '';
-                element.textContent = `Còn lại: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+                const dayText = days > 0 ? `${days} days ` : '';
+                element.textContent = `Remaining: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
             };
 
             countdownElements.forEach(element => {

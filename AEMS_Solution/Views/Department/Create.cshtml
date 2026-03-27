@@ -1,50 +1,140 @@
 @model AEMS_Solution.Models.Admin.DepartmentCreateViewModel
 @{
-    ViewData["Title"] = "Thêm Phòng Ban";
-    Layout = "_Layout";
+    ViewData["Title"] = "Create Department";
+    if (User.IsInRole("Admin")) Layout = "_AdminLayout";
+    else if (User.IsInRole("Organizer") || User.IsInRole("Staff")) Layout = "_Organizerlayout";
+    else Layout = "_Approvallayout";
 }
 
-<div class="container-fluid px-4 mt-4">
+<style>
+    .form-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    .form-title-area h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .form-title-area p { color: #64748b; font-size: 0.9rem; margin: 0; }
+    
+    .glass-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #e8edf3;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.035);
+        padding: 2rem;
+    }
+
+    .form-label { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 0.5rem; }
+    .form-control-premium {
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 0.92rem;
+        transition: all 0.2s;
+        background: #f8fafc;
+    }
+    .form-control-premium:focus {
+        border-color: #6366f1;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .btn-premium {
+        border-radius: 30px;
+        padding: 0.65rem 1.75rem;
+        font-weight: 700;
+        font-size: 0.88rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-premium-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #fff;
+        border: none;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+    }
+    .btn-premium-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        color: #fff;
+    }
+    .btn-premium-light {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-premium-light:hover { background: #e2e8f0; color: #1e293b; }
+</style>
+
+<div class="container-fluid p-0 animate-fade-in">
     <div class="mb-4">
-        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm mb-3">
-            <i class="bi bi-arrow-left me-2"></i>Quay lại danh sách
+        <a asp-action="Index" class="btn btn-premium btn-premium-light animate-fade-in">
+            <i class="bi bi-arrow-left"></i> Back to List
         </a>
-        <h2 class="mb-0 text-primary fw-bold"><i class="bi bi-plus-circle me-2"></i>Thêm Phòng Ban Mới</h2>
-        <p class="text-muted">Nhập thông tin chi tiết cho phòng ban mới</p>
     </div>
 
     @if (TempData["ErrorMessage"] != null)
     {
-        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-4 mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
 
+    <div class="form-header animate-fade-in animate-delay-1">
+        <div class="form-title-area">
+            <h1><i class="bi bi-building-add" style="color:#4f46e5;"></i> Add New Department</h1>
+            <p>Define a new organizational unit for the university system.</p>
+        </div>
+    </div>
+
     <div class="row">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-body p-4">
-                    <form asp-action="Create" method="post">
-                        <div class="mb-3">
-                            <label asp-for="Name" class="form-label fw-semibold">Tên Phòng Ban</label>
-                            <input asp-for="Name" class="form-control form-control-lg rounded-3" placeholder="Ví dụ: Khoa Công nghệ thông tin" />
+        <div class="col-xl-7 col-lg-9">
+            <div class="glass-card animate-fade-in animate-delay-2">
+                <form asp-action="Create" method="post">
+                    <div class="row g-4">
+                        <div class="col-md-8 animate-fade-in animate-delay-3">
+                            <label asp-for="Name" class="form-label">Department Name</label>
+                            <input asp-for="Name" class="form-control form-control-premium" placeholder="e.g., Faculty of Information Technology" autocomplete="off" />
                             <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
                         </div>
-                        <div class="mb-4">
-                            <label asp-for="Code" class="form-label fw-semibold">Mã Phòng Ban</label>
-                            <input asp-for="Code" class="form-control form-control-lg rounded-3" placeholder="Ví dụ: SE, SA" />
+                        <div class="col-md-4 animate-fade-in animate-delay-4">
+                            <label asp-for="Code" class="form-label">Department Code</label>
+                            <input asp-for="Code" class="form-control form-control-premium" placeholder="e.g., IT, SE, BIZ" autocomplete="off" />
                             <span asp-validation-for="Code" class="text-danger small mt-1 d-block"></span>
                         </div>
-
-                        <hr class="text-muted opacity-50 my-4" />
-                        <div class="d-flex justify-content-end gap-2">
-                            <a asp-action="Index" class="btn btn-light rounded-pill px-4">Hủy bỏ</a>
-                            <button type="submit" class="btn btn-primary rounded-pill px-5 shadow-sm">
-                                <i class="bi bi-check2 me-2"></i>Lưu Phòng Ban
-                            </button>
+                        
+                        <div class="col-12 mt-5 animate-fade-in animate-delay-5">
+                            <div class="d-flex justify-content-end gap-3">
+                                <a asp-action="Index" class="btn btn-premium btn-premium-light">Cancel</a>
+                                <button type="submit" class="btn btn-premium btn-premium-primary">
+                                    <i class="bi bi-check-circle-fill"></i> Save Department
+                                </button>
+                            </div>
                         </div>
-                    </form>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="mt-4 p-3 rounded-4 animate-fade-in animate-delay-6" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.2);">
+                <div class="d-flex gap-3">
+                    <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                    <p class="small text-muted mb-0">
+                        <strong>Note:</strong> The department code must be unique and is typically 2-4 characters long. It will be used as a prefix for events and records related to this unit.
+                    </p>
                 </div>
             </div>
         </div>

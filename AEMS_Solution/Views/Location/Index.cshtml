@@ -3,7 +3,7 @@
 @{
     var role       = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
     var canManage  = role == "Admin" || role == "Approver";
-    if      (role == "Admin")                        { Layout = "_Layout"; }
+    if      (role == "Admin")                        { Layout = "_AdminLayout"; }
     else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
     else                                             { Layout = "_Approvallayout"; }
     ViewData["Title"] = "Manage Locations";
@@ -627,7 +627,7 @@
                                             <form asp-controller="Location" asp-action="Delete"
                                                   asp-route-id="@loc.LocationId"
                                                   method="post" class="loc-act-form"
-                                                  onsubmit="return confirm('Bạn có chắc chắn muốn xoá địa điểm &quot;@Html.Raw(loc.Name.Replace("\"","\\\""))&quot;?');">
+                                                  onsubmit="return confirm('Are you sure you want to delete location &quot;@Html.Raw(loc.Name.Replace("\"","\\\""))&quot;?');">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="loc-act delete" title="Delete Location">
                                                     <i class="bi bi-trash"></i>

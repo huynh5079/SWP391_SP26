@@ -2,720 +2,135 @@
 @using DataAccess.Enum
 @{
     ViewData["Title"] = "System Error Logs";
-
-    // ── Stats from ViewBag ────────────────────────────────────────────────────
-    int totalLast30  = ViewBag.TotalLast30Days ?? 0;
-    int todayCount   = ViewBag.TodayCount      ?? 0;
-    int totalRecords = Model.TotalCount;
-    int currentPage  = Model.PageNumber;
-    int totalPages   = Model.TotalPages;
-
-    // ── Severity helpers ──────────────────────────────────────────────────────
-    string StatusPillClass(int? code) => code switch
-    {
-        >= 500 => "sl-pill-500",
-        >= 400 => "sl-pill-400",
-        >= 200 => "sl-pill-200",
-        _      => "sl-pill-other"
-    };
-    string StatusIcon(int? code) => code switch
-    {
-        >= 500 => "bi-exclamation-octagon-fill",
-        >= 400 => "bi-exclamation-triangle-fill",
-        >= 200 => "bi-check-circle-fill",
-        _      => "bi-question-circle-fill"
-    };
-    string RowAccent(int? code) => code switch
-    {
-        >= 500 => "#fee2e2",
-        >= 400 => "#fef3c7",
-        _      => "transparent"
-    };
-
-    // ── Avatar colour hash ────────────────────────────────────────────────────
-    var avatarColors = new[] { "#6366f1","#8b5cf6","#ec4899","#3b82f6","#10b981","#f59e0b","#ef4444" };
-    string AvatarColor(string? s) =>
-        avatarColors[Math.Abs((s ?? "?").GetHashCode()) % avatarColors.Length];
-
-    // ── Time ago ──────────────────────────────────────────────────────────────
-    string TimeAgo(DateTime dt)
-    {
-        var diff = DateTime.Now - dt;
-        if (diff.TotalSeconds < 60)   return $"{(int)diff.TotalSeconds}s ago";
-        if (diff.TotalMinutes < 60)   return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours   < 24)   return $"{(int)diff.TotalHours}h ago";
-        if (diff.TotalDays    < 7)    return $"{(int)diff.TotalDays}d ago";
-        return dt.ToString("dd/MM/yyyy");
-    }
-
-    // ── Severity label ────────────────────────────────────────────────────────
-    bool hasErrors = Model.Data.Any();
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<style>
-/* ============================================================
-   SYSTEM LOG — ULTRA-PREMIUM REDESIGN
-   All prefixed sl- to avoid conflicts
-============================================================ */
-@@keyframes sl-fadein  { from{opacity:0;transform:translateY(14px)}  to{opacity:1;transform:none} }
-@@keyframes sl-card-in { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:none} }
-@@keyframes sl-count-up{ from{opacity:0;transform:scale(.6)} to{opacity:1;transform:scale(1)} }
-@@keyframes sl-bar-grow{ from{width:0} }
-@@keyframes sl-pulse-r {
-    0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}
-}
-@@keyframes sl-pulse-g {
-    0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.45)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}
-}
-@@keyframes sl-blink    { 0%,100%{opacity:1} 50%{opacity:.35} }
-@@keyframes sl-shimmer  { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-@@keyframes sl-row-in   { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:none} }
-@@keyframes sl-spin     { to{transform:rotate(360deg)} }
-
-:root {
-    --sl-primary: #6366f1;
-    --sl-violet:  #8b5cf6;
-    --sl-bg:      #f0f2ff;
-    --sl-card:    #ffffff;
-    --sl-border:  #e0e7ff;
-    --sl-text:    #1e1b4b;
-    --sl-muted:   #64748b;
-    --sl-radius:  16px;
-    --sl-shadow:  0 4px 24px rgba(99,102,241,.08);
-}
-
-/* ── Page wrapper ── */
-.sl-page { animation: sl-fadein .4s ease both; }
-
-/* ─────────── HERO ─────────── */
-.sl-hero {
-    background: linear-gradient(130deg,#1e1b4b 0%,#312e81 45%,#4c1d95 85%,#6d28d9 100%);
-    border-radius: var(--sl-radius);
-    padding: 1.8rem 2rem;
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 1.2rem;
-    margin-bottom: 1.2rem;
-    box-shadow: 0 8px 32px rgba(30,27,75,.3);
-    position: relative; overflow: hidden;
-    animation: sl-card-in .4s ease both;
-}
-.sl-hero::before {
-    content: ""; position: absolute; right: -70px; top: -70px;
-    width: 220px; height: 220px; border-radius: 50%;
-    background: rgba(255,255,255,.04); pointer-events: none;
-}
-.sl-hero-icon {
-    width: 56px; height: 56px; border-radius: 16px;
-    background: rgba(255,255,255,.15); backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.6rem; flex-shrink: 0;
-    box-shadow: 0 4px 14px rgba(0,0,0,.15);
-}
-.sl-hero-title { font-size: 1.65rem; font-weight: 900; color: #fff; letter-spacing: -.03em; margin-bottom: .15rem; }
-.sl-hero-sub   { color: rgba(255,255,255,.6); font-size: .85rem; }
-.sl-hero-chip  {
-    display: inline-flex; align-items: center; gap: .3rem;
-    font-size: .74rem; color: rgba(255,255,255,.5);
-    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
-    padding: .25rem .7rem; border-radius: 20px; margin-top: .4rem;
-}
-
-/* KPI strip */
-.sl-hero-kpis { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-.sl-kpi-val   { font-size: 1.3rem; font-weight: 900; color: #fff; line-height: 1; }
-.sl-kpi-lbl   { font-size: .62rem; font-weight: 700; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .06em; }
-.sl-hero-sep  { width: 1px; height: 38px; background: rgba(255,255,255,.15); flex-shrink: 0; }
-
-/* Hero actions */
-.sl-hero-btn {
-    display: inline-flex; align-items: center; gap: .35rem;
-    font-size: .8rem; font-weight: 800; padding: .6rem 1.15rem;
-    border-radius: 30px; border: none; text-decoration: none; cursor: pointer; transition: all .18s;
-}
-.sl-hbtn-white { background: #fff; color: #6366f1; box-shadow: 0 2px 10px rgba(0,0,0,.13); }
-.sl-hbtn-white:hover { transform: translateY(-2px); box-shadow: 0 5px 16px rgba(0,0,0,.2); color: #4f46e5; }
-.sl-hbtn-glass { background: rgba(255,255,255,.14); color: #fff; border: 1.5px solid rgba(255,255,255,.28); }
-.sl-hbtn-glass:hover { background: rgba(255,255,255,.24); color: #fff; }
-
-/* ─────────── STAT CARDS ─────────── */
-.sl-stats {
-    display: grid; grid-template-columns: repeat(4,1fr);
-    gap: 1rem; margin-bottom: 1.2rem;
-}
-@@media(max-width:880px){ .sl-stats{ grid-template-columns: repeat(2,1fr); } }
-
-.sl-stat {
-    background: var(--sl-card); border-radius: var(--sl-radius);
-    border: 1px solid var(--sl-border); box-shadow: var(--sl-shadow);
-    padding: 1.1rem 1.2rem; position: relative; overflow: hidden;
-    transition: transform .2s, box-shadow .2s; animation: sl-card-in .38s ease both;
-}
-.sl-stat:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(99,102,241,.15); }
-.sl-stat-bar { height: 3px; width: 38px; border-radius: 2px; margin-bottom: .9rem; transition: width .3s; }
-.sl-stat:hover .sl-stat-bar { width: 65px; }
-.sl-stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: .75rem; }
-.sl-stat-icon { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
-.sl-stat-badge { font-size: .66rem; font-weight: 800; padding: .18rem .55rem; border-radius: 20px; }
-.sl-stat-label { font-size: .65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .22rem; }
-.sl-stat-value { font-size: 2rem; font-weight: 900; color: var(--sl-text); line-height: 1; }
-.sl-stat-sub   { font-size: .7rem; color: #94a3b8; margin-top: .15rem; }
-
-.sl-stat.sl-danger { border-color: #fca5a5; animation: sl-pulse-r 2.5s infinite; }
-.sl-stat.sl-safe   { animation: sl-pulse-g 3s infinite; }
-
-/* ─────────── FILTER BAR ─────────── */
-.sl-filter-card {
-    background: var(--sl-card); border-radius: var(--sl-radius);
-    border: 1px solid var(--sl-border); box-shadow: var(--sl-shadow);
-    padding: 1.1rem 1.4rem; margin-bottom: 1.2rem;
-    animation: sl-card-in .38s .08s ease both;
-}
-.sl-filter-label {
-    font-size: .66rem; font-weight: 800; color: #94a3b8;
-    text-transform: uppercase; letter-spacing: .07em; margin-bottom: .45rem;
-}
-.sl-search-wrap { position: relative; }
-.sl-search-wrap i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: .88rem; }
-.sl-search-input {
-    width: 100%; background: #fafbff; border: 1.5px solid var(--sl-border);
-    border-radius: 10px; padding: .6rem 1rem .6rem 2.4rem;
-    font-size: .87rem; outline: none; transition: border-color .2s, box-shadow .2s;
-    font-family: inherit; color: var(--sl-text);
-}
-.sl-search-input:focus { border-color: var(--sl-primary); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
-.sl-select {
-    width: 100%; background: #fafbff; border: 1.5px solid var(--sl-border);
-    border-radius: 10px; padding: .6rem 1rem; font-size: .87rem;
-    outline: none; transition: border-color .2s; font-family: inherit; color: var(--sl-text); cursor: pointer;
-}
-.sl-select:focus { border-color: var(--sl-primary); }
-.sl-filter-btn {
-    display: inline-flex; align-items: center; gap: .4rem;
-    font-size: .84rem; font-weight: 800; padding: .62rem 1.3rem;
-    border-radius: 10px; border: none; cursor: pointer;
-    background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff;
-    transition: all .18s; box-shadow: 0 3px 12px rgba(99,102,241,.3);
-    white-space: nowrap;
-}
-.sl-filter-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(99,102,241,.4); }
-.sl-filter-tags { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; }
-.sl-filter-tag {
-    display: inline-flex; align-items: center; gap: .3rem;
-    font-size: .7rem; font-weight: 700; padding: .22rem .65rem; border-radius: 20px;
-    background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; cursor: pointer; transition: all .15s;
-}
-.sl-filter-tag:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
-.sl-filter-tag.sl-active { background: #6366f1; color: #fff; border-color: #6366f1; }
-
-/* ─────────── MAIN TABLE CARD ─────────── */
-.sl-table-card {
-    background: var(--sl-card); border-radius: var(--sl-radius);
-    border: 1px solid var(--sl-border); box-shadow: var(--sl-shadow);
-    overflow: hidden; margin-bottom: 2rem;
-    animation: sl-card-in .4s .12s ease both;
-}
-.sl-table-head {
-    padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
-}
-.sl-table-title { font-size: .92rem; font-weight: 800; color: var(--sl-text); }
-.sl-table-sub   { font-size: .74rem; color: var(--sl-muted); margin-top: .08rem; }
-.sl-table-count {
-    font-size: .75rem; font-weight: 800; color: #6d28d9;
-    background: #ede9fe; border: 1px solid #c4b5fd;
-    padding: .2rem .65rem; border-radius: 20px;
-}
-
-.sl-table { width: 100%; border-collapse: collapse; }
-.sl-table thead th {
-    background: #f8fafc; font-size: .63rem; font-weight: 800;
-    text-transform: uppercase; letter-spacing: .08em; color: #94a3b8;
-    padding: .8rem 1.1rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
-}
-.sl-table thead th:first-child { padding-left: 1.5rem; }
-.sl-table thead th:last-child  { padding-right: 1.5rem; }
-.sl-table tbody tr {
-    border-bottom: 1px solid #f8fafc; transition: background .12s;
-    animation: sl-row-in .3s ease both;
-}
-.sl-table tbody tr:last-child { border-bottom: none; }
-.sl-table tbody tr:hover { background: #f5f3ff !important; }
-.sl-table tbody td { padding: .9rem 1.1rem; vertical-align: middle; font-size: .87rem; }
-.sl-table tbody td:first-child { padding-left: 1.5rem; }
-.sl-table tbody td:last-child  { padding-right: 1.5rem; }
-
-/* Time cell */
-.sl-time-main  { font-weight: 700; color: var(--sl-text); font-size: .82rem; white-space: nowrap; }
-.sl-time-ago   { font-size: .7rem; color: #94a3b8; margin-top: .06rem; white-space: nowrap; }
-
-/* Status pills */
-.sl-pill {
-    display: inline-flex; align-items: center; gap: .28rem;
-    font-size: .72rem; font-weight: 800; padding: .25rem .65rem;
-    border-radius: 20px; white-space: nowrap; letter-spacing: .03em;
-}
-.sl-pill-500  { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; animation: sl-pulse-r 3s infinite; }
-.sl-pill-400  { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-.sl-pill-200  { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-.sl-pill-other{ background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
-
-/* Exception cell */
-.sl-ex-type   { font-weight: 800; color: var(--sl-text); font-size: .86rem; margin-bottom: .1rem; }
-.sl-ex-msg    { font-size: .74rem; color: var(--sl-muted); max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sl-ex-source { font-size: .68rem; color: #94a3b8; font-family: monospace; margin-top: .04rem; }
-
-/* User avatar */
-.sl-user-cell { display: flex; align-items: center; gap: .55rem; }
-.sl-user-av {
-    width: 30px; height: 30px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .72rem; font-weight: 900; color: #fff; flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(0,0,0,.1);
-}
-.sl-user-id   { font-size: .8rem; font-weight: 700; color: var(--sl-primary); font-family: monospace; text-decoration: none; }
-.sl-user-id:hover { text-decoration: underline; }
-.sl-anon      { font-size: .8rem; color: #94a3b8; font-style: italic; }
-
-/* View btn */
-.sl-view-btn {
-    display: inline-flex; align-items: center; gap: .25rem;
-    font-size: .74rem; font-weight: 700; padding: .33rem .75rem;
-    border-radius: 20px; border: 1.5px solid var(--sl-border);
-    background: #f8faff; color: var(--sl-primary); cursor: pointer;
-    transition: all .15s;
-}
-.sl-view-btn:hover { background: var(--sl-primary); color: #fff; border-color: var(--sl-primary); }
-
-/* ─────────── PAGINATION ─────────── */
-.sl-pagination {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: .9rem 1.5rem; border-top: 1px solid #f1f5f9;
-    flex-wrap: wrap; gap: .5rem;
-}
-.sl-page-info  { font-size: .78rem; color: var(--sl-muted); font-weight: 600; }
-.sl-page-btns  { display: flex; gap: .3rem; }
-.sl-pbt {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 34px; height: 34px; border-radius: 9px;
-    font-size: .8rem; font-weight: 700; text-decoration: none;
-    border: 1.5px solid var(--sl-border); color: var(--sl-muted);
-    background: #fff; transition: all .15s;
-}
-.sl-pbt:hover   { background: #f5f3ff; border-color: #c4b5fd; color: var(--sl-primary); }
-.sl-pbt.active  { background: var(--sl-primary); color: #fff; border-color: var(--sl-primary); }
-.sl-pbt.disabled{ opacity: .4; pointer-events: none; }
-
-/* ─────────── EMPTY STATE ─────────── */
-.sl-empty { text-align: center; padding: 4rem 1rem; }
-.sl-empty-icon {
-    width: 80px; height: 80px; border-radius: 50%;
-    background: linear-gradient(135deg,#dcfce7,#bbf7d0);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 2.2rem; color: #15803d; margin: 0 auto .9rem;
-    animation: sl-pulse-g 3s infinite;
-}
-.sl-empty h4 { font-size: 1.1rem; font-weight: 800; color: #374151; margin-bottom: .4rem; }
-.sl-empty p  { font-size: .87rem; color: var(--sl-muted); max-width: 320px; margin: 0 auto; }
-
-/* ─────────── DETAIL MODAL ─────────── */
-.sl-modal .modal-content {
-    border: none; border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.18); overflow: hidden;
-}
-.sl-modal .modal-header {
-    background: linear-gradient(130deg,#1e1b4b,#312e81);
-    border: none; padding: 1.2rem 1.5rem;
-}
-.sl-modal .modal-title { color: #fff; font-weight: 900; font-size: 1rem; }
-.sl-modal .btn-close { filter: invert(1); }
-.sl-modal .modal-body { padding: 1.5rem; background: #fafbff; }
-.sl-modal .modal-footer { background: #fff; border-top: 1px solid #f1f5f9; padding: .9rem 1.5rem; }
-
-.sl-detail-section { margin-bottom: 1.1rem; }
-.sl-detail-label {
-    font-size: .65rem; font-weight: 800; color: #94a3b8;
-    text-transform: uppercase; letter-spacing: .08em; margin-bottom: .35rem;
-    display: flex; align-items: center; gap: .3rem;
-}
-.sl-detail-label i { font-size: .8rem; }
-.sl-detail-box {
-    background: #fff; border: 1.5px solid var(--sl-border);
-    border-radius: 10px; padding: .75rem 1rem;
-    font-size: .86rem; color: var(--sl-text); word-break: break-word;
-}
-.sl-detail-box.sl-type-val { color: #b91c1c; font-weight: 800; font-size: .9rem; }
-.sl-detail-box.sl-source   { font-family: monospace; font-size: .8rem; color: #6d28d9; }
-.sl-detail-box.sl-stack    {
-    background: #0f172a; color: #a5f3fc;
-    font-family: 'Courier New', monospace; font-size: .78rem; line-height: 1.65;
-    max-height: 320px; overflow-y: auto; white-space: pre-wrap;
-}
-.sl-detail-box.sl-stack::-webkit-scrollbar       { width: 5px; }
-.sl-detail-box.sl-stack::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 5px; }
-
-.sl-copy-btn {
-    display: inline-flex; align-items: center; gap: .35rem;
-    font-size: .82rem; font-weight: 800; padding: .55rem 1.2rem;
-    border-radius: 30px; border: none; cursor: pointer;
-    background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff;
-    box-shadow: 0 3px 12px rgba(99,102,241,.3); transition: all .18s;
-}
-.sl-copy-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(99,102,241,.4); }
-.sl-close-btn {
-    display: inline-flex; align-items: center; gap: .3rem;
-    font-size: .82rem; font-weight: 700; padding: .55rem 1.1rem;
-    border-radius: 30px; background: #f1f5f9; border: none; color: var(--sl-muted);
-    cursor: pointer; transition: all .15s;
-}
-.sl-close-btn:hover { background: #e2e8f0; }
-
-/* ─────────── CHART  ─────────── */
-.sl-chart-card {
-    background: var(--sl-card); border-radius: var(--sl-radius);
-    border: 1px solid var(--sl-border); box-shadow: var(--sl-shadow);
-    padding: 1.2rem 1.4rem; margin-bottom: 1.2rem;
-    animation: sl-card-in .38s .06s ease both;
-}
-.sl-chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .9rem; }
-.sl-chart-title { font-size: .9rem; font-weight: 800; color: var(--sl-text); }
-.sl-chart-badge { font-size: .68rem; font-weight: 800; padding: .2rem .6rem; border-radius: 20px; background: #ede9fe; color: #6d28d9; }
-</style>
-
-<div class="sl-page px-1">
-
-    @* ════════════════════════════════════════════
-       HERO HEADER
-    ════════════════════════════════════════════ *@
-    <div class="sl-hero">
-        <div style="display:flex;align-items:center;gap:1rem;">
-            <div class="sl-hero-icon"><i class="bi bi-journal-medical"></i></div>
-            <div>
-                <h1 class="sl-hero-title">System Error Logs</h1>
-                <p class="sl-hero-sub">Realtime exception monitoring and error diagnostics.</p>
-                <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem;">
-                    <span class="sl-hero-chip"><i class="bi bi-calendar3"></i> @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
-                    <span class="sl-hero-chip"><i class="bi bi-layers"></i> Page @currentPage of @totalPages</span>
-                    @if (totalLast30 > 0)
-                    {
-                        <span class="sl-hero-chip" style="background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.35);color:#fca5a5;">
-                            <i class="bi bi-exclamation-circle"></i> @totalLast30 errors in 30 days
-                        </span>
-                    }
-                </div>
-            </div>
+<div class="animate-fade-in">
+    @* --- Header --- *@
+    <div class="page-header">
+        <div>
+            <h2 class="page-title"><i class="bi bi-journal-medical me-2 text-primary"></i> System Error Logs</h2>
+            <p class="page-subtitle">Monitor and manage server-side exceptions and diagnostic data.</p>
         </div>
-        <div style="display:flex;flex-direction:column;gap:.85rem;align-items:flex-end;">
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                <a href="@Url.Action("Index","Admin")" class="sl-hero-btn sl-hbtn-glass">
-                    <i class="bi bi-arrow-left"></i> Dashboard
-                </a>
-                <form asp-action="DeleteOldLogs" method="post" class="m-0"
-                      onsubmit="return confirm('Bạn có chắc chắn muốn xóa tất cả log cũ hơn 30 ngày?');">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="sl-hero-btn sl-hbtn-glass" style="border-color:rgba(239,68,68,.5);color:#fca5a5;">
-                        <i class="bi bi-trash3"></i> Dọn dẹp Log cũ (&gt;30 ngày)
-                    </button>
-                </form>
-            </div>
-            <div class="sl-hero-kpis">
-                <div class="text-center">
-                    <div class="sl-kpi-val">@totalRecords</div>
-                    <div class="sl-kpi-lbl">Total Records</div>
-                </div>
-                <div class="sl-hero-sep"></div>
-                <div class="text-center">
-                    <div class="sl-kpi-val" style="color:@(totalLast30>0?"#fca5a5":"#86efac");">@totalLast30</div>
-                    <div class="sl-kpi-lbl">Last 30 Days</div>
-                </div>
-                <div class="sl-hero-sep"></div>
-                <div class="text-center">
-                    <div class="sl-kpi-val" style="color:@(todayCount>0?"#fca5a5":"#86efac");">@todayCount</div>
-                    <div class="sl-kpi-lbl">Today</div>
-                </div>
-                <div class="sl-hero-sep"></div>
-                <div class="text-center">
-                    <div class="sl-kpi-val">@totalPages</div>
-                    <div class="sl-kpi-lbl">Pages</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @* ════════════════════════════════════════════
-       STATS STRIP
-    ════════════════════════════════════════════ *@
-    <div class="sl-stats">
-
-        @* 30-Day Errors *@
-        <div class="sl-stat @(totalLast30 > 0 ? "sl-danger" : "sl-safe")" style="animation-delay:.04s;">
-            <div class="sl-stat-bar" style="background:@(totalLast30>0?"#ef4444":"#22c55e");"></div>
-            <div class="sl-stat-top">
-                <div class="sl-stat-icon" style="background:@(totalLast30>0?"#fee2e2":"#dcfce7"); color:@(totalLast30>0?"#ef4444":"#16a34a");">
-                    <i class="bi bi-@(totalLast30>0?"exclamation-octagon-fill":"shield-check-fill")"></i>
-                </div>
-                @if (totalLast30 == 0)
-                { <span class="sl-stat-badge" style="background:#dcfce7;color:#15803d;">✓ CLEAR</span> }
-                else
-                { <span class="sl-stat-badge" style="background:#fee2e2;color:#b91c1c;">⚠ ERRORS</span> }
-            </div>
-            <div class="sl-stat-label">Errors — Last 30 Days</div>
-            <div class="sl-stat-value" id="sl-cnt-30" style="color:@(totalLast30>0?"#ef4444":"#16a34a");">@totalLast30</div>
-            <div class="sl-stat-sub">Total errors this month</div>
-        </div>
-
-        @* Today's Errors *@
-        <div class="sl-stat @(todayCount > 0 ? "sl-danger" : "sl-safe")" style="animation-delay:.07s;">
-            <div class="sl-stat-bar" style="background:@(todayCount>0?"#f97316":"#22c55e");"></div>
-            <div class="sl-stat-top">
-                <div class="sl-stat-icon" style="background:@(todayCount>0?"#ffedd5":"#dcfce7"); color:@(todayCount>0?"#ea580c":"#16a34a");">
-                    <i class="bi bi-clock-fill"></i>
-                </div>
-                @if (todayCount == 0)
-                { <span class="sl-stat-badge" style="background:#dcfce7;color:#15803d;">✓ NONE</span> }
-                else
-                { <span class="sl-stat-badge" style="background:#ffedd5;color:#ea580c;">Today</span> }
-            </div>
-            <div class="sl-stat-label">Errors Today</div>
-            <div class="sl-stat-value" id="sl-cnt-today" style="color:@(todayCount>0?"#ea580c":"#16a34a");">@todayCount</div>
-            <div class="sl-stat-sub">Errors in last 24 hours</div>
-        </div>
-
-        @* Total in DB *@
-        <div class="sl-stat" style="animation-delay:.10s;">
-            <div class="sl-stat-bar" style="background:#6366f1;"></div>
-            <div class="sl-stat-top">
-                <div class="sl-stat-icon" style="background:#ede9fe;color:#6d28d9;">
-                    <i class="bi bi-database-fill"></i>
-                </div>
-                <span class="sl-stat-badge" style="background:#ede9fe;color:#6d28d9;">Total</span>
-            </div>
-            <div class="sl-stat-label">Total Log Records</div>
-            <div class="sl-stat-value" id="sl-cnt-total" style="color:#6d28d9;">@totalRecords</div>
-            <div class="sl-stat-sub">All time in database</div>
-        </div>
-
-        @* Current Page *@
-        <div class="sl-stat" style="animation-delay:.13s;">
-            <div class="sl-stat-bar" style="background:#3b82f6;"></div>
-            <div class="sl-stat-top">
-                <div class="sl-stat-icon" style="background:#dbeafe;color:#1d4ed8;">
-                    <i class="bi bi-file-earmark-text-fill"></i>
-                </div>
-                <span class="sl-stat-badge" style="background:#dbeafe;color:#1d4ed8;">
-                    Pg @currentPage/@totalPages
-                </span>
-            </div>
-            <div class="sl-stat-label">Records This Page</div>
-            <div class="sl-stat-value" style="color:#1d4ed8;">@Model.Data.Count()</div>
-            <div class="sl-stat-sub">Showing 20 per page</div>
-        </div>
-    </div>
-
-    @* ════════════════════════════════════════════
-       30-DAY TREND CHART
-    ════════════════════════════════════════════ *@
-    <div class="sl-chart-card">
-        <div class="sl-chart-head">
-            <div>
-                <div class="sl-chart-title">
-                    <i class="bi bi-graph-up-arrow me-1" style="color:#6366f1;"></i>
-                    Error Trend — Last 30 Days
-                </div>
-                <div style="font-size:.74rem;color:#94a3b8;margin-top:.05rem;">Daily error count over the past 30 days</div>
-            </div>
-            <span class="sl-chart-badge"><i class="bi bi-calendar-range me-1"></i>30 Days</span>
-        </div>
-        <div style="min-height:140px;position:relative;">
-            <canvas id="sl-trend-chart"></canvas>
-        </div>
-    </div>
-
-    @* ════════════════════════════════════════════
-       FILTER BAR
-    ════════════════════════════════════════════ *@
-    <div class="sl-filter-card">
-        <form method="get" id="sl-filter-form">
-            <div style="display:grid;grid-template-columns:1fr auto auto;gap:.75rem;align-items:end;">
-                <div>
-                    <div class="sl-filter-label"><i class="bi bi-search me-1"></i>Search</div>
-                    <div class="sl-search-wrap">
-                        <i class="bi bi-search"></i>
-                        <input type="text" name="search" class="sl-search-input"
-                               placeholder="Search by exception, message, source, user…"
-                               value="@ViewBag.Search" id="sl-search-input" />
-                    </div>
-                </div>
-                <div style="min-width:200px;">
-                    <div class="sl-filter-label"><i class="bi bi-code-slash me-1"></i>Status Code</div>
-                    <select name="statusCode" class="sl-select" id="sl-status-select">
-                        <option value="">— All Status Codes —</option>
-                        @foreach (var status in Enum.GetValues(typeof(DataAccess.Enum.SystemLogStatusEnum)))
-                        {
-                            var statusVal = (int)status;
-                            if (ViewBag.StatusCode == statusVal)
-                            {
-                                <option value="@statusVal" selected>@statusVal — @status</option>
-                            }
-                            else
-                            {
-                                <option value="@statusVal">@statusVal — @status</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div>
-                    <button type="submit" class="sl-filter-btn">
-                        <i class="bi bi-funnel-fill"></i> Filter
-                    </button>
-                </div>
-            </div>
-
-            @* Active filter tags *@
-            @if (!string.IsNullOrEmpty(ViewBag.Search?.ToString()) || ViewBag.StatusCode != null)
-            {
-                <div class="sl-filter-tags">
-                    @if (!string.IsNullOrEmpty(ViewBag.Search?.ToString()))
-                    {
-                        <a href="@Url.Action("Index","SystemLog", new { statusCode = ViewBag.StatusCode })"
-                           class="sl-filter-tag">
-                            <i class="bi bi-search"></i> "@ViewBag.Search" <i class="bi bi-x-circle ms-1"></i>
-                        </a>
-                    }
-                    @if (ViewBag.StatusCode != null)
-                    {
-                        <a href="@Url.Action("Index","SystemLog", new { search = ViewBag.Search })"
-                           class="sl-filter-tag">
-                            <i class="bi bi-code-slash"></i> Status: @ViewBag.StatusCode <i class="bi bi-x-circle ms-1"></i>
-                        </a>
-                    }
-                    <a href="@Url.Action("Index","SystemLog")" class="sl-filter-tag" style="background:#fee2e2;color:#b91c1c;border-color:#fca5a5;">
-                        <i class="bi bi-x-octagon"></i> Clear all
-                    </a>
-                </div>
-            }
+        
+        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirmAction(event, 'Are you sure you want to delete all logs older than 30 days? This action cannot be undone.', 'Delete Now', 'Cancel');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="ex-hbtn ex-hbtn-white text-danger border-danger">
+                <i class="bi bi-trash me-1"></i> Clean up old logs (>30 days)
+            </button>
         </form>
     </div>
 
-    @* ════════════════════════════════════════════
-       TABLE CARD
-    ════════════════════════════════════════════ *@
-    <div class="sl-table-card">
-        <div class="sl-table-head">
+    @* --- Filter Card --- *@
+    <div class="glass-card mb-4 animate-fade-in animate-delay-1">
+        <div class="card-title-box">
             <div>
-                <div class="sl-table-title">
-                    <i class="bi bi-table me-1" style="color:#6366f1;"></i>
-                    Error Log Records
-                </div>
-                <div class="sl-table-sub">
-                    Showing page @currentPage of @totalPages
-                    @if (!string.IsNullOrEmpty(ViewBag.Search?.ToString()))
-                    { <text>· Filtered by "<strong>@ViewBag.Search</strong>"</text> }
+                <h5 class="card-title">Filter Log Data</h5>
+                <p class="card-subtitle">Narrow down results by keywords or HTTP status codes.</p>
+            </div>
+            <i class="bi bi-funnel text-muted" style="font-size:1.2rem;"></i>
+        </div>
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold small text-muted text-uppercase">Search Message / Source / User</label>
+                <div class="search-box p-0 w-100">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="search" class="search-input" placeholder="Enter keywords..." value="@ViewBag.Search">
                 </div>
             </div>
-            <span class="sl-table-count">@totalRecords records total</span>
-        </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-muted text-uppercase">Status Code</label>
+                <select name="statusCode" class="chart-dropdown w-100" style="padding: 9px 16px;">
+                    <option value="">-- All Statuses --</option>
+                    @foreach (var status in Enum.GetValues(typeof(DataAccess.Enum.SystemLogStatusEnum)))
+                    {
+                        var statusVal = (int)status;
+                        <option value="@statusVal" selected="@(ViewBag.StatusCode == statusVal)">@statusVal (@status)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="ex-hbtn ex-hbtn-white w-100 justify-content-center" style="background: var(--ad-primary); color:#fff;">
+                    <i class="bi bi-filter me-1"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
 
+    @* --- Data Table Card --- *@
+    <div class="glass-card p-0 overflow-hidden animate-fade-in animate-delay-2">
         <div class="table-responsive">
-            <table class="sl-table">
+            <table class="events-table">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Time</th>
-                        <th>Status</th>
+                        <th style="width:180px;">Time</th>
+                        <th style="width:100px;">Status</th>
                         <th>Exception / Message</th>
-                        <th>Source</th>
-                        <th>User</th>
+                        <th style="width:150px;">User</th>
                         <th style="text-align:right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (hasErrors)
+                    @if (Model.Data.Any())
                     {
-                        int rowNum = (currentPage - 1) * 20 + 1;
+                        int rowIdx = 0;
                         foreach (var log in Model.Data)
                         {
-                            string rowBg = log.StatusCode >= 500 ? "rgba(239,68,68,.03)"
-                                         : log.StatusCode >= 400 ? "rgba(245,158,11,.03)"
-                                         : "transparent";
-                            string userColor = AvatarColor(log.UserId ?? "anon");
+                            var badgeClass = "badge bg-secondary";
+                            if (log.StatusCode >= 200 && log.StatusCode < 300) { badgeClass = "badge bg-success"; }
+                            else if (log.StatusCode >= 400 && log.StatusCode < 500) { badgeClass = "badge bg-warning text-dark"; }
+                            else if (log.StatusCode >= 500) { badgeClass = "ex-pill-rejected"; } // Using existing premium pill class
 
-                            <tr style="background:@rowBg;" data-row-delay="@(rowNum * 30)ms">
-                                <td style="color:#94a3b8;font-weight:700;font-size:.75rem;width:36px;">@rowNum</td>
-                                <td>
-                                    <div class="sl-time-main">@log.CreatedAt.ToString("dd/MM/yyyy")</div>
-                                    <div class="sl-time-ago">
-                                        <i class="bi bi-clock me-1" style="color:#a5b4fc;font-size:.65rem;"></i>
-                                        @log.CreatedAt.ToString("HH:mm:ss") · @TimeAgo(log.CreatedAt)
-                                    </div>
+                            <tr class="animate-fade-in" style="animation-delay: @(0.1 + (rowIdx * 0.03))s">
+                                <td class="text-nowrap text-muted small">
+                                    <i class="bi bi-clock me-1"></i> @log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
                                 </td>
                                 <td>
-                                    <span class="sl-pill @StatusPillClass(log.StatusCode)">
-                                        <i class="bi @StatusIcon(log.StatusCode)" style="font-size:.6rem;"></i>
+                                    <span class="@(log.StatusCode >= 500 ? "ex-pill ex-pill-rejected" : badgeClass)" style="font-size:.65rem;">
                                         @(log.StatusCode?.ToString() ?? "N/A")
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="sl-ex-type">
-                                        @(string.IsNullOrEmpty(log.ExceptionType) ? "Unknown Exception" : log.ExceptionType)
-                                    </div>
-                                    <div class="sl-ex-msg" title="@log.ExceptionMessage">
-                                        @{
-                                            string msg = log.ExceptionMessage ?? "";
-                                            @(msg.Length > 70 ? msg.Substring(0, 70) + "…" : msg)
-                                        }
+                                    <div class="fw-bold text-dark" style="font-size:.85rem;">@log.ExceptionType</div>
+                                    <div class="text-muted small text-truncate" style="max-width: 450px;">
+                                        @log.ExceptionMessage
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="sl-ex-source" title="@log.Source">
-                                        @{
-                                            string src = log.Source ?? "—";
-                                            @(src.Length > 30 ? "…" + src[^30..] : src)
-                                        }
-                                    </div>
-                                </td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(log.UserId))
+                                    @if(!string.IsNullOrEmpty(log.UserId))
                                     {
-                                        <a href="/UserManagement/Detail/@log.UserId" class="sl-user-id" target="_blank"
-                                           title="@log.UserId">
-                                            @log.UserId[..Math.Min(8, log.UserId.Length)]…
-                                        </a>
+                                         <a href="/UserManagement/Detail/@log.UserId" class="btn-link-custom" target="_blank">
+                                            <i class="bi bi-person-circle"></i> @log.UserId.Substring(0, 8)...
+                                         </a>
                                     }
                                     else
                                     {
-                                        <span class="sl-anon"><i class="bi bi-person-dash me-1"></i>Anonymous</span>
+                                        <span class="text-muted small italic">Anonymous</span>
                                     }
                                 </td>
                                 <td style="text-align:right;">
-                                    <button type="button" class="sl-view-btn"
-                                            data-bs-toggle="modal" data-bs-target="#slDetailModal"
+                                    <button type="button" class="btn-dot" 
+                                            data-bs-toggle="modal" data-bs-target="#logDetailModal"
                                             data-ex-type="@log.ExceptionType"
                                             data-ex-msg="@log.ExceptionMessage"
                                             data-ex-source="@log.Source"
                                             data-ex-stack="@log.StackTrace"
-                                            data-ex-code="@log.StatusCode"
-                                            data-ex-time="@log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")"
-                                            data-ex-user="@(log.UserId ?? "Anonymous")">
-                                        <i class="bi bi-eye"></i> View
+                                            title="View Details">
+                                        <i class="bi bi-eye-fill text-primary"></i>
                                     </button>
                                 </td>
                             </tr>
-                            rowNum++;
+                            rowIdx++;
                         }
                     }
                     else
                     {
                         <tr>
-                            <td colspan="7">
-                                <div class="sl-empty">
-                                    <div class="sl-empty-icon"><i class="bi bi-shield-check"></i></div>
-                                    <h4>No errors found</h4>
-                                    <p>
-                                        @if (!string.IsNullOrEmpty(ViewBag.Search?.ToString()) || ViewBag.StatusCode != null)
-                                        { <text>No logs match your current filters. Try clearing the search.</text> }
-                                        else
-                                        { <text>System is running clean — no error logs found.</text> }
-                                    </p>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="ex-empty">
+                                    <div class="ex-empty-icon"><i class="bi bi-check-circle"></i></div>
+                                    <h4>No matching error logs found</h4>
+                                    <p>Your system is currently running clean. No errors detected for this filter.</p>
                                 </div>
                             </td>
                         </tr>
@@ -723,116 +138,46 @@
                 </tbody>
             </table>
         </div>
-
-        @* ── Premium Pagination ── *@
-        @if (totalPages > 1)
-        {
-            <div class="sl-pagination">
-                <div class="sl-page-info">
-                    Showing <strong>@((currentPage-1)*20+1)–@Math.Min(currentPage*20,totalRecords)</strong>
-                    of <strong>@totalRecords</strong> results
-                </div>
-                <div class="sl-page-btns">
-                    @if (currentPage > 1)
-                    {
-                        <a href="@Url.Action("Index","SystemLog", new{ page=1, search=ViewBag.Search, statusCode=ViewBag.StatusCode })" class="sl-pbt" title="First">
-                            <i class="bi bi-chevron-double-left"></i>
-                        </a>
-                        <a href="@Url.Action("Index","SystemLog", new{ page=currentPage-1, search=ViewBag.Search, statusCode=ViewBag.StatusCode })" class="sl-pbt">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    }
-                    else
-                    {
-                        <span class="sl-pbt disabled"><i class="bi bi-chevron-double-left"></i></span>
-                        <span class="sl-pbt disabled"><i class="bi bi-chevron-left"></i></span>
-                    }
-
-                    @{
-                        int start = Math.Max(1, currentPage - 2);
-                        int end   = Math.Min(totalPages, currentPage + 2);
-                    }
-                    @for (int pg = start; pg <= end; pg++)
-                    {
-                        if (pg == currentPage)
-                        {
-                            <span class="sl-pbt active">@pg</span>
-                        }
-                        else
-                        {
-                            <a href="@Url.Action("Index","SystemLog", new{ page=pg, search=ViewBag.Search, statusCode=ViewBag.StatusCode })" class="sl-pbt">@pg</a>
-                        }
-                    }
-
-                    @if (currentPage < totalPages)
-                    {
-                        <a href="@Url.Action("Index","SystemLog", new{ page=currentPage+1, search=ViewBag.Search, statusCode=ViewBag.StatusCode })" class="sl-pbt">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                        <a href="@Url.Action("Index","SystemLog", new{ page=totalPages, search=ViewBag.Search, statusCode=ViewBag.StatusCode })" class="sl-pbt" title="Last">
-                            <i class="bi bi-chevron-double-right"></i>
-                        </a>
-                    }
-                    else
-                    {
-                        <span class="sl-pbt disabled"><i class="bi bi-chevron-right"></i></span>
-                        <span class="sl-pbt disabled"><i class="bi bi-chevron-double-right"></i></span>
-                    }
-                </div>
-            </div>
-        }
+        
+        @* Pagination *@
+        <div class="px-4 py-3 border-top bg-light">
+            <partial name="_Pagination" model="Model" />
+        </div>
     </div>
-
 </div>
 
-@* ════════════════════════════════════════════
-   DETAIL MODAL — Premium Dark
-════════════════════════════════════════════ *@
-<div class="modal fade sl-modal" id="slDetailModal" tabindex="-1" aria-hidden="true">
+@* --- Log Detail Modal --- *@
+<div class="modal fade" id="logDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-bug-fill me-2" style="color:#fca5a5;"></i>
-                    Error Detail
-                    <span id="sl-modal-code" class="ms-2" style="font-size:.75rem;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.1rem .5rem;border-radius:20px;"></span>
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content border-0 shadow-lg" style="border-radius:18px;">
+            <div class="modal-header bg-danger text-white border-0" style="border-radius:18px 18px 0 0;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Error Detail</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
-                    <div class="sl-detail-section mb-0">
-                        <div class="sl-detail-label"><i class="bi bi-clock"></i> Timestamp</div>
-                        <div class="sl-detail-box" id="sl-modal-time" style="font-weight:700;"></div>
-                    </div>
-                    <div class="sl-detail-section mb-0">
-                        <div class="sl-detail-label"><i class="bi bi-person"></i> User</div>
-                        <div class="sl-detail-box" id="sl-modal-user" style="font-family:monospace;"></div>
-                    </div>
+            <div class="modal-body p-4">
+                <div class="mb-4">
+                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Exception Type</label>
+                    <div class="p-3 bg-light rounded-3 text-danger fw-bold" id="modalExType" style="font-size:1.1rem;">Type</div>
                 </div>
-                <div class="sl-detail-section">
-                    <div class="sl-detail-label"><i class="bi bi-exclamation-octagon"></i> Exception Type</div>
-                    <div class="sl-detail-box sl-type-val" id="sl-modal-type"></div>
+                <div class="mb-4">
+                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Source</label>
+                    <code class="d-block p-2 bg-dark text-info rounded-2" id="modalExSource">Source</code>
                 </div>
-                <div class="sl-detail-section">
-                    <div class="sl-detail-label"><i class="bi bi-geo-alt"></i> Source</div>
-                    <div class="sl-detail-box sl-source" id="sl-modal-source"></div>
+                <div class="mb-4">
+                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Message</label>
+                    <div class="alert alert-secondary border-0 text-break" id="modalExMsg" style="background:#f8fafc; color:#1e293b; font-weight:500;">Message</div>
                 </div>
-                <div class="sl-detail-section">
-                    <div class="sl-detail-label"><i class="bi bi-chat-left-text"></i> Exception Message</div>
-                    <div class="sl-detail-box" id="sl-modal-msg" style="line-height:1.6;"></div>
-                </div>
-                <div class="sl-detail-section mb-0">
-                    <div class="sl-detail-label"><i class="bi bi-code-square"></i> Stack Trace</div>
-                    <div class="sl-detail-box sl-stack" id="sl-modal-stack">No stack trace available.</div>
+                <div class="mb-0">
+                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Stack Trace</label>
+                    <pre class="bg-dark text-light p-3 rounded-3" style="font-size: 0.8rem; max-height: 350px; overflow: auto; border: 1px solid #334155;" id="modalExStack">
+                        Stack Trace...
+                    </pre>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="sl-close-btn" data-bs-dismiss="modal">
-                    <i class="bi bi-x-lg"></i> Close
-                </button>
-                <button type="button" class="sl-copy-btn" onclick="slCopyDetails()">
-                    <i class="bi bi-clipboard-check"></i> Copy Details
+            <div class="modal-footer border-0 p-4 pt-0">
+                <button type="button" class="ex-hbtn ex-hbtn-white" style="background:#f1f5f9; color:#475569;" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="ex-hbtn" style="background:var(--ad-primary); color:#fff;" onclick="copySystemLogDetails()">
+                    <i class="bi bi-clipboard me-1"></i> Copy All Details
                 </button>
             </div>
         </div>
@@ -846,9 +191,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── Counter animations ───────────────────────────────────────────────────
     [
-        { id: 'sl-cnt-30',    target: @totalLast30  },
-        { id: 'sl-cnt-today', target: @todayCount   },
-        { id: 'sl-cnt-total', target: @totalRecords }
+        { id: 'sl-cnt-30',    target: @(ViewBag.TotalLast30Days ?? 0) },
+        { id: 'sl-cnt-today', target: @(ViewBag.TodayCount ?? 0)      },
+        { id: 'sl-cnt-total', target: @Model.TotalCount }
     ].forEach(function (c) {
         var el = document.getElementById(c.id);
         if (!el || c.target === 0) return;
@@ -916,66 +261,42 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ─── Row stagger animation ────────────────────────────────────────────────
-    document.querySelectorAll('.sl-table tbody tr').forEach(function (row, i) {
-        row.style.animationDelay = (i * 28) + 'ms';
-    });
-
-    // ─── Modal fill ───────────────────────────────────────────────────────────
-    var modal = document.getElementById('slDetailModal');
-    if (modal) {
-        modal.addEventListener('show.bs.modal', function (event) {
-            var btn = event.relatedTarget;
-            document.getElementById('sl-modal-type').textContent   = btn.getAttribute('data-ex-type')   || 'Unknown';
-            document.getElementById('sl-modal-msg').textContent    = btn.getAttribute('data-ex-msg')    || 'No message';
-            document.getElementById('sl-modal-source').textContent = btn.getAttribute('data-ex-source') || 'Unknown Source';
-            document.getElementById('sl-modal-stack').textContent  = btn.getAttribute('data-ex-stack')  || 'No Stack Trace available';
-            document.getElementById('sl-modal-code').textContent   = btn.getAttribute('data-ex-code')   || '';
-            document.getElementById('sl-modal-time').textContent   = btn.getAttribute('data-ex-time')   || '';
-            document.getElementById('sl-modal-user').textContent   = btn.getAttribute('data-ex-user')   || 'Anonymous';
-        });
-    }
-
-    // ─── Search live filter (client-side debounce) ────────────────────────────
-    var searchInput = document.getElementById('sl-search-input');
-    if (searchInput) {
-        searchInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                document.getElementById('sl-filter-form').submit();
-            }
-        });
-    }
-});
-
-// ─── Copy details ─────────────────────────────────────────────────────────────
-function slCopyDetails() {
-    var content = [
-        'Exception Type: '  + document.getElementById('sl-modal-type').innerText,
-        'Status Code: '     + document.getElementById('sl-modal-code').innerText,
-        'Timestamp: '       + document.getElementById('sl-modal-time').innerText,
-        'User: '            + document.getElementById('sl-modal-user').innerText,
-        'Source: '          + document.getElementById('sl-modal-source').innerText,
-        '',
-        'Message:',         document.getElementById('sl-modal-msg').innerText,
-        '',
-        'Stack Trace:',     document.getElementById('sl-modal-stack').innerText,
-    ].join('\n');
-
-    navigator.clipboard.writeText(content).then(function () {
-        if (typeof toastr !== 'undefined') {
-            toastr.success('Đã copy chi tiết lỗi vào clipboard!');
-        } else {
-            alert('Copied to clipboard!');
+        function copySystemLogDetails() {
+            var type = document.getElementById('modalExType').innerText;
+            var source = document.getElementById('modalExSource').innerText;
+            var msg = document.getElementById('modalExMsg').innerText;
+            var stack = document.getElementById('modalExStack').innerText;
+            
+            var content = `Exception Type: ${type}\nSource: ${source}\nMessage: ${msg}\n\nStack Trace:\n${stack}`;
+            
+            navigator.clipboard.writeText(content).then(function() {
+                toastr.success('Error details copied to clipboard!');
+            }, function(err) {
+                // Fallback
+                var textArea = document.createElement("textarea");
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    toastr.success('Error details copied to clipboard!');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                document.body.removeChild(textArea);
+            });
         }
-    }).catch(function () {
-        var ta = document.createElement('textarea');
-        ta.value = content;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        if (typeof toastr !== 'undefined') toastr.success('Copied!');
-    });
+    </script>
 }
-</script>
-}
+
+<style>
+    /* Scoped additions for SystemLog */
+    .ex-hbtn {
+        display: inline-flex; align-items: center; gap: .35rem;
+        font-size: .8rem; font-weight: 700; padding: .6rem 1.2rem;
+        border-radius: 30px; border: none; text-decoration: none;
+        cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .ex-hbtn-white { background: #fff; border: 1.5px solid var(--ad-border); color: var(--ad-primary); }
+    .ex-hbtn-white:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+</style>

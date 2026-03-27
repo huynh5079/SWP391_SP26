@@ -1,6 +1,9 @@
 @{
-    ViewData["Title"] = "Sự kiện tôi tham gia";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "My Participated Events";
+    Layout = User.IsInRole("Admin") ? "~/Views/Shared/_AdminLayout.cshtml" : 
+             User.IsInRole("Approver") ? "~/Views/Shared/_Approvallayout.cshtml" :
+             User.IsInRole("Organizer") ? "~/Views/Shared/_Organizerlayout.cshtml" :
+             "~/Views/Shared/_Layout.cshtml";
     var now      = DateTime.Now;
     var model    = (IEnumerable<dynamic>)Model;
     bool isApprover = User.IsInRole("Approver");
@@ -32,9 +35,9 @@
     }
 
     // ── Role pill ─────────────────────────────────────────────────────────────
-    string RoleClass(string? role) => (role ?? "").Contains("tổ chức", StringComparison.OrdinalIgnoreCase)
+    string RoleClass(string? role) => (role ?? "").Contains("organizer", StringComparison.OrdinalIgnoreCase) || (role ?? "").Contains("tổ chức", StringComparison.OrdinalIgnoreCase)
         ? "mpe-role-organizer" : "mpe-role-speaker";
-    string RoleIcon(string? role)  => (role ?? "").Contains("tổ chức", StringComparison.OrdinalIgnoreCase)
+    string RoleIcon(string? role)  => (role ?? "").Contains("organizer", StringComparison.OrdinalIgnoreCase) || (role ?? "").Contains("tổ chức", StringComparison.OrdinalIgnoreCase)
         ? "bi-people-fill" : "bi-mic-fill";
 
     // ── Detail URL ────────────────────────────────────────────────────────────
@@ -330,21 +333,21 @@
         <div style="display:flex; align-items:center; gap:1rem;">
             <div class="mpe-hero-icon"><i class="bi bi-person-workspace"></i></div>
             <div>
-                <h1 class="mpe-hero-title">Sự kiện tôi tham gia</h1>
-                <p class="mpe-hero-sub">Các sự kiện bạn được phân công làm ban tổ chức hoặc diễn giả</p>
+                <h1 class="mpe-hero-title">My Participated Events</h1>
+                <p class="mpe-hero-sub">Events where you are assigned as an organizer or speaker</p>
             </div>
         </div>
         <div class="mpe-hero-actions">
             @if (!isApprover)
             {
                 <a asp-controller="Organizer" asp-action="MyEvents" class="mpe-btn mpe-btn-white">
-                    <i class="bi bi-calendar-check-fill"></i> Sự kiện của tôi
+                    <i class="bi bi-calendar-check-fill"></i> My Events
                 </a>
             }
             else
             {
                 <a asp-controller="Approver" asp-action="PendingApprovals" class="mpe-btn mpe-btn-white">
-                    <i class="bi bi-check2-circle"></i> Phê duyệt
+                    <i class="bi bi-check2-circle"></i> Approvals
                 </a>
             }
         </div>
@@ -357,7 +360,7 @@
                 <i class="bi bi-calendar2-event-fill" style="color:#6d28d9;"></i>
             </div>
             <div>
-                <div class="mpe-stat-label">Tổng sự kiện</div>
+                <div class="mpe-stat-label">Total Events</div>
                 <div class="mpe-stat-value" style="color:#6d28d9;">@totalAll</div>
             </div>
         </div>
@@ -366,7 +369,7 @@
                 <i class="bi bi-arrow-up-right-circle-fill" style="color:#16a34a;"></i>
             </div>
             <div>
-                <div class="mpe-stat-label">Sắp diễn ra</div>
+                <div class="mpe-stat-label">Upcoming</div>
                 <div class="mpe-stat-value" style="color:#16a34a;">@upcoming.Count</div>
             </div>
         </div>
@@ -375,7 +378,7 @@
                 <i class="bi bi-clock-history" style="color:#64748b;"></i>
             </div>
             <div>
-                <div class="mpe-stat-label">Đã qua</div>
+                <div class="mpe-stat-label">Past</div>
                 <div class="mpe-stat-value" style="color:#64748b;">@past.Count</div>
             </div>
         </div>
@@ -384,7 +387,7 @@
                 <i class="bi bi-person-badge-fill" style="color:#d97706;"></i>
             </div>
             <div>
-                <div class="mpe-stat-label">Vai trò</div>
+                <div class="mpe-stat-label">Roles</div>
                 <div class="mpe-stat-value" style="color:#d97706;">@allRoles.Count</div>
             </div>
         </div>
@@ -395,8 +398,8 @@
         @* ── Global Empty ── *@
         <div class="mpe-empty">
             <div class="mpe-empty-icon"><i class="bi bi-calendar-x"></i></div>
-            <h3>Chưa có sự kiện nào</h3>
-            <p>Bạn chưa được phân công tham gia sự kiện nào với tư cách ban tổ chức hoặc diễn giả.</p>
+            <h3>No events found</h3>
+            <p>You haven't been assigned to any events as an organizer or speaker yet.</p>
         </div>
     }
     else
@@ -406,18 +409,18 @@
             <div class="mpe-search-wrap">
                 <i class="bi bi-search"></i>
                 <input type="text" id="mpeSearchInput" class="mpe-search-input"
-                       placeholder="Tìm theo tên sự kiện, địa điểm, vai trò…"
+                       placeholder="Search by event name, location, role…"
                        oninput="mpeLiveFilter()" />
             </div>
             <span class="mpe-result-count">
-                <strong id="mpeVisCount">@totalAll</strong> / @totalAll sự kiện
+                <strong id="mpeVisCount">@totalAll</strong> / @totalAll events
             </span>
         </div>
 
         @* ── UPCOMING ── *@
         <div class="mpe-section-label upcoming">
             <i class="bi bi-broadcast"></i>
-            Sắp diễn ra
+            Upcoming
             <span class="mpe-section-count">@upcoming.Count</span>
             <span class="mpe-section-line"></span>
         </div>
@@ -425,7 +428,7 @@
         @if (!upcoming.Any())
         {
             <div class="mpe-section-empty">
-                <i class="bi bi-calendar-check me-1"></i> Không có sự kiện sắp diễn ra.
+                <i class="bi bi-calendar-check me-1"></i> No upcoming events.
             </div>
         }
         else
@@ -476,7 +479,7 @@
                                 {
                                     <span class="mpe-countdown">
                                         <i class="bi bi-alarm" style="font-size:.6rem;"></i>
-                                        @daysUntil ngày nữa
+                                        @daysUntil days left
                                     </span>
                                 }
                                 @if (isOngoing)
@@ -509,9 +512,9 @@
                         {
                             <div class="mpe-timeline">
                                 <div class="mpe-timeline-labels">
-                                    <span>Bắt đầu</span>
-                                    <span>@pct.ToString("0")% hoàn thành</span>
-                                    <span>Kết thúc</span>
+                                    <span>Start</span>
+                                    <span>@pct.ToString("0")% completed</span>
+                                    <span>End</span>
                                 </div>
                                 <div class="mpe-timeline-bar-bg">
                                     <div class="mpe-timeline-bar ongoing" style="width:@pct%;"></div>
@@ -523,15 +526,15 @@
                                 <i class="bi bi-clock"></i>
                                 @if (isOngoing)
                                 {
-                                    <span style="color:#16a34a; font-weight:800;">Đang diễn ra</span>
+                                    <span style="color:#16a34a; font-weight:800;">Ongoing</span>
                                 }
                                 else
                                 {
-                                    <span>Còn @daysUntil ngày</span>
+                                    <span>@daysUntil days left</span>
                                 }
                             </div>
                             <a href="@detailUrl" class="mpe-view-btn">
-                                <i class="bi bi-box-arrow-up-right"></i> Xem chi tiết
+                                <i class="bi bi-box-arrow-up-right"></i> View Details
                             </a>
                         </div>
                     </div>
@@ -542,7 +545,7 @@
         @* ── PAST ── *@
         <div class="mpe-section-label past">
             <i class="bi bi-clock-history"></i>
-            Đã qua
+            Past
             <span class="mpe-section-count">@past.Count</span>
             <span class="mpe-section-line"></span>
         </div>
@@ -550,7 +553,7 @@
         @if (!past.Any())
         {
             <div class="mpe-section-empty">
-                <i class="bi bi-calendar-minus me-1"></i> Không có sự kiện đã qua.
+                <i class="bi bi-calendar-minus me-1"></i> No past events.
             </div>
         }
         else
@@ -611,8 +614,8 @@
                         </div>
                         <div class="mpe-timeline">
                             <div class="mpe-timeline-labels">
-                                <span>Bắt đầu</span>
-                                <span>Đã kết thúc</span>
+                                <span>Start</span>
+                                <span>Ended</span>
                             </div>
                             <div class="mpe-timeline-bar-bg">
                                 <div class="mpe-timeline-bar done" style="width:100%;"></div>
@@ -621,10 +624,10 @@
                         <div class="mpe-card-footer">
                             <div class="mpe-time-badge">
                                 <i class="bi bi-check2-circle"></i>
-                                <span>@daysAgo ngày trước</span>
+                                <span>@daysAgo days ago</span>
                             </div>
                             <a href="@detailUrl" class="mpe-view-btn" style="border-color:#e2e8f0; color:#64748b;">
-                                <i class="bi bi-box-arrow-up-right"></i> Xem chi tiết
+                                <i class="bi bi-box-arrow-up-right"></i> View Details
                             </a>
                         </div>
                     </div>

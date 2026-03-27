@@ -1,13 +1,52 @@
-@model IEnumerable<AEMS_Solution.Models.Admin.AdminFeedbackViewModel>
+@model List<AEMS_Solution.Models.Admin.AdminFeedbackViewModel>
 @{
-    ViewData["Title"] = "Event Feedbacks";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Participant Feedbacks";
 }
+<style>
+    /* Staggered Row Animations */
+    .events-table tbody tr {
+        animation: row-in 0.4s ease both;
+    }
+
+    @@keyframes row-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    .events-table tbody tr:nth-child(1) {
+        animation-delay: .05s;
+    }
+
+    .events-table tbody tr:nth-child(2) {
+        animation-delay: .08s;
+    }
+
+    .events-table tbody tr:nth-child(3) {
+        animation-delay: .11s;
+    }
+
+    .events-table tbody tr:nth-child(4) {
+        animation-delay: .14s;
+    }
+
+    .events-table tbody tr:nth-child(5) {
+        animation-delay: .17s;
+    }
+</style>
 
 <div class="page-header">
     <div>
         <h1 class="page-title">Participant Feedbacks</h1>
-        <p class="page-subtitle">Review feedback and satisfaction ratings collected before, during, and after events.</p>
+        <p class="page-subtitle">Review feedback and satisfaction ratings collected before, during, and after events.
+        </p>
     </div>
 </div>
 
@@ -33,12 +72,13 @@
                 {
                     foreach (var fw in Model)
                     {
-                        <tr>
+                        <tr class="animate-fade-in">
                             <td>
                                 <div class="event-title">@fw.EventName</div>
                             </td>
                             <td>
-                                <div class="fw-500 text-dark" style="font-weight: 500; color: #1e293b;">@fw.StudentName</div>
+                                <div class="fw-500 text-dark" style="font-weight: 500; color: #1e293b;">@(fw.StudentName ??
+                            "Unknown Participant")</div>
                                 @if (!string.IsNullOrEmpty(fw.StudentCode))
                                 {
                                     <div class="text-muted" style="font-size: 0.85rem; color: #828fa3;">@fw.StudentCode</div>
@@ -83,7 +123,8 @@
                                 }
                             </td>
                             <td>
-                                <div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="@fw.Comment">
+                                <div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                    title="@fw.Comment">
                                     @(string.IsNullOrEmpty(fw.Comment) ? "No comment" : fw.Comment)
                                 </div>
                             </td>
