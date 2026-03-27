@@ -51,7 +51,8 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="@Url.Action("Index", "AdminReport")"
+                   class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "AdminReport" ? "active" : "")">
                     <i class="bi bi-bar-chart-fill"></i>
                     Reports
                 </a>

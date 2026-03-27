@@ -1,0 +1,709 @@
+@model AEMS_Solution.Models.Admin.AdminReportViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "System Report";
+
+    // ── Serialise chart data for JS ───────────────────────────────────────────
+    string monthLabelsJson  = JsonSerializer.Serialize(Model.MonthLabels);
+    string eventsMonthJson  = JsonSerializer.Serialize(Model.EventsPerMonth);
+    string ticketsMonthJson = JsonSerializer.Serialize(Model.TicketsPerMonth);
+
+    string statusLabels = JsonSerializer.Serialize(Model.EventsByStatus.Keys.ToList());
+    string statusCounts = JsonSerializer.Serialize(Model.EventsByStatus.Values.ToList());
+
+    string typeLabels   = JsonSerializer.Serialize(Model.EventsByType.Keys.ToList());
+    string typeCounts   = JsonSerializer.Serialize(Model.EventsByType.Values.ToList());
+
+    string ratingLabels = JsonSerializer.Serialize(new[]{"1★","2★","3★","4★","5★"});
+    string ratingCounts = JsonSerializer.Serialize(new[]{
+        Model.RatingDist.GetValueOrDefault(1),
+        Model.RatingDist.GetValueOrDefault(2),
+        Model.RatingDist.GetValueOrDefault(3),
+        Model.RatingDist.GetValueOrDefault(4),
+        Model.RatingDist.GetValueOrDefault(5)
+    });
+
+    string tkStatusLabels = JsonSerializer.Serialize(Model.TicketsByStatus.Keys.ToList());
+    string tkStatusCounts = JsonSerializer.Serialize(Model.TicketsByStatus.Values.ToList());
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    string StatusColor(string s) => s switch {
+        "Published" or "Completed" or "Approved" => "#22c55e",
+        "Pending"                                 => "#f59e0b",
+        "Rejected" or "Cancelled" or "Expired"   => "#ef4444",
+        "Happening"                               => "#6366f1",
+        "Upcoming"                                => "#3b82f6",
+        _                                         => "#94a3b8"
+    };
+    string StatusBg(string s) => s switch {
+        "Published" or "Completed" or "Approved" => "#dcfce7",
+        "Pending"                                 => "#fef3c7",
+        "Rejected" or "Cancelled" or "Expired"   => "#fee2e2",
+        "Happening"                               => "#ede9fe",
+        "Upcoming"                                => "#dbeafe",
+        _                                         => "#f1f5f9"
+    };
+    string TypeIcon(string t) => t switch {
+        "Workshop"   => "bi-tools",
+        "Seminar"    => "bi-mic-fill",
+        "Competition"=> "bi-trophy-fill",
+        "Training"   => "bi-book-fill",
+        "Social"     => "bi-people-fill",
+        "Bootcamp"   => "bi-lightning-charge-fill",
+        _            => "bi-calendar-event-fill"
+    };
+
+    int maxTickets = Model.TopEvents.Any() ? Model.TopEvents.Max(e => e.TicketCount) : 1;
+    int maxDept    = Model.EventsByDepartment.Any() ? Model.EventsByDepartment.Max(d => d.EventCount) : 1;
+}
+
+<style>
+/* =========================================================
+   ADMIN REPORT PAGE — ULTRA PREMIUM
+   Prefix: rp-
+========================================================= */
+@@keyframes rp-fadein  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+@@keyframes rp-card-in { from{opacity:0;transform:translateY(10px) scale(.97)} to{opacity:1;transform:none} }
+@@keyframes rp-pulse-g { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
+@@keyframes rp-bar-grow { from{width:0} }
+@@keyframes rp-shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+@@keyframes rp-count { from{opacity:0;transform:scale(.7)} to{opacity:1;transform:scale(1)} }
+@@keyframes rp-star-in { from{opacity:0;transform:scale(.4) rotate(-30deg)} to{opacity:1;transform:none} }
+
+:root {
+    --rp-primary: #6366f1;
+    --rp-violet:  #8b5cf6;
+    --rp-bg:      #f0f2ff;
+    --rp-card:    #ffffff;
+    --rp-border:  #e0e7ff;
+    --rp-text:    #1e1b4b;
+    --rp-muted:   #64748b;
+    --rp-radius:  16px;
+    --rp-shadow:  0 4px 24px rgba(99,102,241,.08);
+}
+
+.rp-page { animation: rp-fadein .4s ease both; }
+
+/* ── HERO ── */
+.rp-hero {
+    background: linear-gradient(130deg,#0f172a 0%,#1e1b4b 35%,#312e81 70%,#4c1d95 100%);
+    border-radius: var(--rp-radius); padding: 2rem 2.2rem;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.2rem;
+    margin-bottom: 1.2rem; box-shadow: 0 10px 40px rgba(15,23,42,.35);
+    position: relative; overflow: hidden; animation: rp-card-in .4s ease both;
+}
+.rp-hero::before {
+    content:""; position:absolute; right:-60px; top:-60px;
+    width:220px; height:220px; border-radius:50%;
+    background:rgba(255,255,255,.03); pointer-events:none;
+}
+.rp-hero::after {
+    content:""; position:absolute; left:-40px; bottom:-50px;
+    width:160px; height:160px; border-radius:50%;
+    background:rgba(139,92,246,.08); pointer-events:none;
+}
+.rp-hero-icon {
+    width:60px; height:60px; border-radius:18px;
+    background:rgba(255,255,255,.14); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.8rem; color:#fff; flex-shrink:0;
+    box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.rp-hero-title { font-size:1.7rem; font-weight:900; color:#fff; letter-spacing:-.035em; }
+.rp-hero-sub   { color:rgba(255,255,255,.55); font-size:.85rem; margin-top:.1rem; }
+.rp-hero-chip  {
+    display:inline-flex; align-items:center; gap:.3rem;
+    font-size:.72rem; color:rgba(255,255,255,.5);
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18);
+    padding:.24rem .7rem; border-radius:20px; margin-top:.4rem;
+}
+.rp-kpis   { display:flex; gap:1.6rem; flex-wrap:wrap; align-items:center; }
+.rp-kpi-v  { font-size:1.3rem; font-weight:900; color:#fff; line-height:1; }
+.rp-kpi-l  { font-size:.6rem; font-weight:700; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.08em; }
+.rp-sep    { width:1px; height:38px; background:rgba(255,255,255,.13); flex-shrink:0; }
+.rp-hero-btn {
+    display:inline-flex; align-items:center; gap:.35rem;
+    font-size:.8rem; font-weight:800; padding:.58rem 1.1rem;
+    border-radius:30px; border:none; cursor:pointer; text-decoration:none; transition:all .18s;
+}
+.rp-hbtn-white { background:#fff; color:#6366f1; box-shadow:0 2px 10px rgba(0,0,0,.15); }
+.rp-hbtn-white:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.2); color:#4f46e5; }
+.rp-hbtn-glass { background:rgba(255,255,255,.13); color:#fff; border:1.5px solid rgba(255,255,255,.28); }
+.rp-hbtn-glass:hover { background:rgba(255,255,255,.22); color:#fff; }
+
+/* ── STAT CARDS ── */
+.rp-stats {
+    display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.2rem;
+}
+@@media(max-width:1100px){ .rp-stats{ grid-template-columns:repeat(3,1fr); } }
+@@media(max-width:740px) { .rp-stats{ grid-template-columns:repeat(2,1fr); } }
+
+.rp-stat {
+    background:var(--rp-card); border-radius:var(--rp-radius);
+    border:1px solid var(--rp-border); box-shadow:var(--rp-shadow);
+    padding:1.1rem 1.2rem; position:relative; overflow:hidden;
+    transition:transform .2s,box-shadow .2s; animation:rp-card-in .38s ease both;
+}
+.rp-stat:hover { transform:translateY(-4px); box-shadow:0 14px 32px rgba(99,102,241,.14); }
+.rp-stat-bar { height:3px; border-radius:2px; margin-bottom:.9rem; transition:width .3s; }
+.rp-stat-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:.7rem; }
+.rp-stat-icon { width:46px; height:46px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; }
+.rp-stat-badge { font-size:.65rem; font-weight:800; padding:.18rem .52rem; border-radius:20px; }
+.rp-stat-lbl { font-size:.63rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.18rem; }
+.rp-stat-val { font-size:2rem; font-weight:900; color:var(--rp-text); line-height:1; }
+.rp-stat-sub { font-size:.7rem; color:#94a3b8; margin-top:.15rem; }
+
+/* ── CARD WRAPPER ── */
+.rp-card {
+    background:var(--rp-card); border-radius:var(--rp-radius);
+    border:1px solid var(--rp-border); box-shadow:var(--rp-shadow);
+    overflow:hidden; animation:rp-card-in .4s ease both;
+}
+.rp-card-head {
+    padding:1rem 1.4rem; border-bottom:1px solid #f1f5f9;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
+}
+.rp-card-title { font-size:.9rem; font-weight:800; color:var(--rp-text); }
+.rp-card-sub   { font-size:.74rem; color:var(--rp-muted); margin-top:.05rem; }
+.rp-card-badge { font-size:.68rem; font-weight:800; padding:.18rem .6rem; border-radius:20px; background:#ede9fe; color:#6d28d9; }
+.rp-card-body  { padding:1.2rem 1.4rem; }
+
+/* ── CHART GRID ── */
+.rp-charts-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+.rp-charts-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1rem; }
+@@media(max-width:900px){ .rp-charts-2,.rp-charts-3 { grid-template-columns:1fr; } }
+
+/* ── TOP EVENTS TABLE ── */
+.rp-table { width:100%; border-collapse:collapse; }
+.rp-table thead th {
+    background:#f8fafc; font-size:.62rem; font-weight:800;
+    text-transform:uppercase; letter-spacing:.08em; color:#94a3b8;
+    padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;
+}
+.rp-table thead th:first-child { padding-left:1.4rem; }
+.rp-table thead th:last-child  { padding-right:1.4rem; }
+.rp-table tbody tr {
+    border-bottom:1px solid #f8fafc; transition:background .12s;
+}
+.rp-table tbody tr:last-child { border-bottom:none; }
+.rp-table tbody tr:hover { background:#f5f3ff; }
+.rp-table tbody td { padding:.8rem 1rem; vertical-align:middle; font-size:.85rem; }
+.rp-table tbody td:first-child { padding-left:1.4rem; }
+.rp-table tbody td:last-child  { padding-right:1.4rem; }
+
+.rp-ev-title  { font-weight:800; color:var(--rp-text); font-size:.86rem; margin-bottom:.05rem; }
+.rp-ev-dept   { font-size:.72rem; color:#94a3b8; }
+.rp-ev-type   { display:inline-flex; align-items:center; gap:.22rem; font-size:.7rem; font-weight:700; padding:.18rem .55rem; border-radius:20px; background:#ede9fe; color:#6d28d9; }
+
+/* Status pill */
+.rp-pill { display:inline-flex; align-items:center; gap:.22rem; font-size:.7rem; font-weight:800; padding:.2rem .6rem; border-radius:20px; white-space:nowrap; }
+
+/* Ticket count bar */
+.rp-bar-wrap { display:flex; align-items:center; gap:.6rem; }
+.rp-bar-track { flex:1; height:6px; border-radius:3px; background:#f1f5f9; overflow:hidden; }
+.rp-bar-fill  { height:100%; border-radius:3px; animation:rp-bar-grow .8s ease both; }
+.rp-bar-num   { font-size:.78rem; font-weight:800; color:var(--rp-text); min-width:28px; text-align:right; }
+
+/* Stars */
+.rp-stars { display:inline-flex; gap:1px; }
+.rp-star  { font-size:.8rem; }
+.rp-star.filled { color:#f59e0b; }
+.rp-star.empty  { color:#e2e8f0; }
+
+/* ── RATING SUMMARY ── */
+.rp-rating-big { font-size:3.5rem; font-weight:900; color:#f59e0b; line-height:1; }
+.rp-rating-sub { font-size:.78rem; color:#94a3b8; }
+
+/* ── DEPT ROWS ── */
+.rp-dept-row {
+    display:flex; align-items:center; gap:.75rem; padding:.65rem 0;
+    border-bottom:1px solid #f8fafc;
+}
+.rp-dept-row:last-child { border-bottom:none; }
+.rp-dept-name { font-size:.83rem; font-weight:700; color:var(--rp-text); min-width:130px; }
+.rp-dept-track { flex:1; height:7px; border-radius:4px; background:#f1f5f9; overflow:hidden; }
+.rp-dept-fill  { height:100%; border-radius:4px; background:linear-gradient(90deg,#6366f1,#8b5cf6); animation:rp-bar-grow .9s ease both; }
+.rp-dept-num   { font-size:.78rem; font-weight:800; color:#6d28d9; min-width:36px; text-align:right; }
+
+/* ── REFRESH BADGE ── */
+.rp-generated { font-size:.7rem; color:rgba(255,255,255,.4); margin-top:.25rem; display:flex; align-items:center; gap:.3rem; }
+
+/* ── Mini stat row ── */
+.rp-mini-stats { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+.rp-mini-stat  {
+    background:#f8faff; border:1px solid var(--rp-border); border-radius:10px;
+    padding:.6rem .9rem; flex:1; min-width:100px;
+}
+.rp-mini-lbl { font-size:.62rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em; }
+.rp-mini-val { font-size:1.2rem; font-weight:900; color:var(--rp-text); }
+</style>
+
+<div class="rp-page px-1">
+
+    @* ═══════════════ HERO ═══════════════ *@
+    <div class="rp-hero">
+        <div style="display:flex;align-items:center;gap:1.1rem;">
+            <div class="rp-hero-icon"><i class="bi bi-bar-chart-line-fill"></i></div>
+            <div>
+                <h1 class="rp-hero-title">System Report</h1>
+                <p class="rp-hero-sub">Comprehensive analytics — events, tickets, feedback, budgets.</p>
+                <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.4rem;">
+                    <span class="rp-hero-chip"><i class="bi bi-calendar3"></i> @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+                    <span class="rp-hero-chip"><i class="bi bi-database"></i> @Model.TotalEvents events in database</span>
+                    <span class="rp-hero-chip" style="color:#86efac;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.1);">
+                        <i class="bi bi-circle-fill" style="font-size:.4rem;animation:rp-pulse-g 2s infinite;"></i> Live Data
+                    </span>
+                </div>
+                <p class="rp-generated"><i class="bi bi-clock"></i> Generated: @Model.GeneratedAt.ToString("dd/MM/yyyy HH:mm:ss")</p>
+            </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.8rem;align-items:flex-end;">
+            <a href="@Url.Action("Index","Admin")" class="rp-hero-btn rp-hbtn-glass">
+                <i class="bi bi-arrow-left"></i> Dashboard
+            </a>
+            <div class="rp-kpis">
+                <div class="text-center">
+                    <div class="rp-kpi-v" id="rp-cnt-events">@Model.TotalEvents</div>
+                    <div class="rp-kpi-l">Events</div>
+                </div>
+                <div class="rp-sep"></div>
+                <div class="text-center">
+                    <div class="rp-kpi-v" id="rp-cnt-tickets">@Model.TotalTickets</div>
+                    <div class="rp-kpi-l">Tickets</div>
+                </div>
+                <div class="rp-sep"></div>
+                <div class="text-center">
+                    <div class="rp-kpi-v" id="rp-cnt-participants">@Model.TotalParticipants</div>
+                    <div class="rp-kpi-l">Attended</div>
+                </div>
+                <div class="rp-sep"></div>
+                <div class="text-center">
+                    <div class="rp-kpi-v" id="rp-cnt-feedbacks">@Model.TotalFeedbacks</div>
+                    <div class="rp-kpi-l">Feedbacks</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ═══════════════ STAT CARDS ═══════════════ *@
+    <div class="rp-stats">
+        <div class="rp-stat" style="animation-delay:.03s;">
+            <div class="rp-stat-bar" style="width:40px;background:#6366f1;"></div>
+            <div class="rp-stat-top">
+                <div class="rp-stat-icon" style="background:#ede9fe;color:#6d28d9;"><i class="bi bi-calendar-event-fill"></i></div>
+                <span class="rp-stat-badge" style="background:#ede9fe;color:#6d28d9;">Total</span>
+            </div>
+            <div class="rp-stat-lbl">Total Events</div>
+            <div class="rp-stat-val" style="color:#6d28d9;" id="rpc-ev">@Model.TotalEvents</div>
+            <div class="rp-stat-sub">All time</div>
+        </div>
+        <div class="rp-stat" style="animation-delay:.06s;">
+            <div class="rp-stat-bar" style="width:40px;background:#3b82f6;"></div>
+            <div class="rp-stat-top">
+                <div class="rp-stat-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="bi bi-ticket-perforated-fill"></i></div>
+                <span class="rp-stat-badge" style="background:#dbeafe;color:#1d4ed8;">Tickets</span>
+            </div>
+            <div class="rp-stat-lbl">Total Tickets</div>
+            <div class="rp-stat-val" style="color:#1d4ed8;" id="rpc-tk">@Model.TotalTickets</div>
+            <div class="rp-stat-sub">All registrations</div>
+        </div>
+        <div class="rp-stat" style="animation-delay:.09s;">
+            <div class="rp-stat-bar" style="width:40px;background:#22c55e;"></div>
+            <div class="rp-stat-top">
+                <div class="rp-stat-icon" style="background:#dcfce7;color:#15803d;"><i class="bi bi-person-check-fill"></i></div>
+                <span class="rp-stat-badge" style="background:#dcfce7;color:#15803d;">CheckIn</span>
+            </div>
+            <div class="rp-stat-lbl">Unique Participants</div>
+            <div class="rp-stat-val" style="color:#15803d;" id="rpc-pa">@Model.TotalParticipants</div>
+            <div class="rp-stat-sub">Distinct students attended</div>
+        </div>
+        <div class="rp-stat" style="animation-delay:.12s;">
+            <div class="rp-stat-bar" style="width:40px;background:#f59e0b;"></div>
+            <div class="rp-stat-top">
+                <div class="rp-stat-icon" style="background:#fef3c7;color:#92400e;"><i class="bi bi-chat-square-text-fill"></i></div>
+                <span class="rp-stat-badge" style="background:#fef3c7;color:#92400e;">
+                    @(Model.AverageRating > 0 ? $"⭐ {Model.AverageRating:F1}" : "No data")
+                </span>
+            </div>
+            <div class="rp-stat-lbl">Feedbacks</div>
+            <div class="rp-stat-val" style="color:#92400e;" id="rpc-fb">@Model.TotalFeedbacks</div>
+            <div class="rp-stat-sub">Avg rating: @Model.AverageRating:F1</div>
+        </div>
+        <div class="rp-stat" style="animation-delay:.15s;">
+            <div class="rp-stat-bar" style="width:40px;background:#ec4899;"></div>
+            <div class="rp-stat-top">
+                <div class="rp-stat-icon" style="background:#fce7f3;color:#be185d;"><i class="bi bi-wallet2"></i></div>
+                <span class="rp-stat-badge" style="background:#fce7f3;color:#be185d;">Budget</span>
+            </div>
+            <div class="rp-stat-lbl">Total Budget Planned</div>
+            <div class="rp-stat-val" style="color:#be185d;font-size:1.3rem;">@Model.TotalBudgetPlanned.ToString("N0") ₫</div>
+            <div class="rp-stat-sub">All approved proposals</div>
+        </div>
+    </div>
+
+    @* ═══════════════ TREND CHART — FULL WIDTH ═══════════════ *@
+    <div class="rp-card mb-3" style="animation-delay:.06s;">
+        <div class="rp-card-head">
+            <div>
+                <div class="rp-card-title"><i class="bi bi-graph-up-arrow me-1" style="color:#6366f1;"></i>Monthly Trend — Events & Tickets (12 months)</div>
+                <div class="rp-card-sub">Number of new events created and tickets registered each month</div>
+            </div>
+            <span class="rp-card-badge"><i class="bi bi-calendar-range me-1"></i>12 Months</span>
+        </div>
+        <div class="rp-card-body" style="height:220px;position:relative;">
+            <canvas id="rp-trend-chart"></canvas>
+        </div>
+    </div>
+
+    @* ═══════════════ DOUGHNUT CHARTS ROW ═══════════════ *@
+    <div class="rp-charts-3 mb-3">
+
+        @* Event Status Doughnut *@
+        <div class="rp-card" style="animation-delay:.08s;">
+            <div class="rp-card-head">
+                <div>
+                    <div class="rp-card-title"><i class="bi bi-pie-chart-fill me-1" style="color:#6366f1;"></i>Event by Status</div>
+                    <div class="rp-card-sub">@Model.TotalEvents events total</div>
+                </div>
+            </div>
+            <div class="rp-card-body" style="height:220px;position:relative;">
+                <canvas id="rp-status-chart"></canvas>
+            </div>
+        </div>
+
+        @* Event Type Doughnut *@
+        <div class="rp-card" style="animation-delay:.1s;">
+            <div class="rp-card-head">
+                <div>
+                    <div class="rp-card-title"><i class="bi bi-diagram-3-fill me-1" style="color:#8b5cf6;"></i>Event by Type</div>
+                    <div class="rp-card-sub">Distribution of event categories</div>
+                </div>
+            </div>
+            <div class="rp-card-body" style="height:220px;position:relative;">
+                <canvas id="rp-type-chart"></canvas>
+            </div>
+        </div>
+
+        @* Ticket Status Doughnut *@
+        <div class="rp-card" style="animation-delay:.12s;">
+            <div class="rp-card-head">
+                <div>
+                    <div class="rp-card-title"><i class="bi bi-ticket-fill me-1" style="color:#3b82f6;"></i>Ticket by Status</div>
+                    <div class="rp-card-sub">@Model.TotalTickets tickets total</div>
+                </div>
+            </div>
+            <div class="rp-card-body" style="height:220px;position:relative;">
+                <canvas id="rp-ticket-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    @* ═══════════════ BOTTOM ROW: TOP EVENTS + FEEDBACK + DEPT ═══════════════ *@
+    <div class="rp-charts-2 mb-3">
+
+        @* Feedback rating bar chart + summary *@
+        <div class="rp-card" style="animation-delay:.14s;">
+            <div class="rp-card-head">
+                <div>
+                    <div class="rp-card-title"><i class="bi bi-star-fill me-1" style="color:#f59e0b;"></i>Feedback Ratings</div>
+                    <div class="rp-card-sub">Star distribution from @Model.TotalFeedbacks reviews</div>
+                </div>
+                <span class="rp-card-badge" style="background:#fef3c7;color:#92400e;">
+                    ⭐ @Model.AverageRating.ToString("F1") avg
+                </span>
+            </div>
+            <div class="rp-card-body">
+                <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.1rem;">
+                    <div class="text-center">
+                        <div class="rp-rating-big">@Model.AverageRating.ToString("F1")</div>
+                        <div class="rp-stars" style="justify-content:center;margin:.3rem 0;">
+                            @for(int s=1;s<=5;s++){
+                                <span class="rp-star @(s <= Math.Round(Model.AverageRating) ? "filled" : "empty")"><i class="bi bi-star-fill"></i></span>
+                            }
+                        </div>
+                        <div class="rp-rating-sub">@Model.TotalFeedbacks reviews</div>
+                    </div>
+                    <div style="flex:1;height:180px;position:relative;">
+                        <canvas id="rp-rating-chart"></canvas>
+                    </div>
+                </div>
+                @for(int star=5; star>=1; star--){
+                    int cnt = Model.RatingDist.GetValueOrDefault(star);
+                    double pct = Model.TotalFeedbacks > 0 ? Math.Round((double)cnt / Model.TotalFeedbacks * 100, 1) : 0;
+                    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;">
+                        <span style="font-size:.73rem;font-weight:700;color:#94a3b8;min-width:20px;">@star★</span>
+                        <div style="flex:1;height:6px;border-radius:3px;background:#f1f5f9;overflow:hidden;">
+                            <div style="height:100%;border-radius:3px;background:#f59e0b;width:@pct%;animation:rp-bar-grow .8s ease both;"></div>
+                        </div>
+                        <span style="font-size:.72rem;font-weight:800;color:var(--rp-text);min-width:24px;">@cnt</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Department Breakdown *@
+        <div class="rp-card" style="animation-delay:.16s;">
+            <div class="rp-card-head">
+                <div>
+                    <div class="rp-card-title"><i class="bi bi-building me-1" style="color:#6366f1;"></i>Events by Department</div>
+                    <div class="rp-card-sub">@Model.EventsByDepartment.Count departments</div>
+                </div>
+            </div>
+            <div class="rp-card-body">
+                @if (Model.EventsByDepartment.Any())
+                {
+                    @foreach (var dept in Model.EventsByDepartment)
+                    {
+                        double pct = maxDept > 0 ? Math.Round((double)dept.EventCount / maxDept * 100, 1) : 0;
+                        <div class="rp-dept-row">
+                            <div class="rp-dept-name" title="@dept.DeptName">
+                                @(dept.DeptName.Length > 22 ? dept.DeptName[..22] + "…" : dept.DeptName)
+                            </div>
+                            <div class="rp-dept-track">
+                                <div class="rp-dept-fill" style="width:@pct%;"></div>
+                            </div>
+                            <div class="rp-dept-num">@dept.EventCount</div>
+                            <div style="font-size:.7rem;color:#94a3b8;min-width:50px;text-align:right;">@dept.TicketCount tkts</div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div style="text-align:center;padding:2rem;color:#94a3b8;font-size:.85rem;">
+                        <i class="bi bi-building display-6 d-block mb-2"></i>
+                        No department data available.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ═══════════════ TOP EVENTS TABLE ═══════════════ *@
+    <div class="rp-card mb-3" style="animation-delay:.18s;">
+        <div class="rp-card-head">
+            <div>
+                <div class="rp-card-title"><i class="bi bi-trophy-fill me-1" style="color:#f59e0b;"></i>Top Events by Participation</div>
+                <div class="rp-card-sub">Ranked by total ticket registrations</div>
+            </div>
+            <span class="rp-card-badge">Top @Model.TopEvents.Count</span>
+        </div>
+        <div class="table-responsive">
+            <table class="rp-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Event</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Start Date</th>
+                        <th>Tickets</th>
+                        <th>Checked-In</th>
+                        <th>Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.TopEvents.Any())
+                    {
+                        int r = 1;
+                        foreach (var ev in Model.TopEvents)
+                        {
+                            string color = StatusColor(ev.StatusLabel);
+                            string bg    = StatusBg(ev.StatusLabel);
+                            double tkPct = maxTickets > 0 ? Math.Round((double)ev.TicketCount / maxTickets * 100, 1) : 0;
+                            int checkinPct = ev.TicketCount > 0 ? (int)Math.Round((double)ev.CheckedIn / ev.TicketCount * 100) : 0;
+                            <tr>
+                                <td style="color:#94a3b8;font-weight:800;font-size:.76rem;width:30px;">
+                                    @if(r <= 3){ <span style="color:#f59e0b;">@r</span> }
+                                    else { @r }
+                                </td>
+                                <td>
+                                    <div class="rp-ev-title" title="@ev.Title">
+                                        @(ev.Title.Length > 35 ? ev.Title[..35] + "…" : ev.Title)
+                                    </div>
+                                    <div class="rp-ev-dept"><i class="bi bi-building me-1"></i>@ev.DeptName</div>
+                                </td>
+                                <td>
+                                    <span class="rp-ev-type">
+                                        <i class="bi @TypeIcon(ev.TypeLabel)" style="font-size:.65rem;"></i>
+                                        @ev.TypeLabel
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="rp-pill" style="background:@bg;color:@color;border:1px solid @(color + "44");">
+                                        @ev.StatusLabel
+                                    </span>
+                                </td>
+                                <td style="font-size:.8rem;color:#64748b;white-space:nowrap;">@ev.StartDate</td>
+                                <td>
+                                    <div class="rp-bar-wrap">
+                                        <div class="rp-bar-track">
+                                            <div class="rp-bar-fill" style="width:@tkPct%;background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
+                                        </div>
+                                        <div class="rp-bar-num">@ev.TicketCount</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:.4rem;">
+                                        <span style="font-size:.82rem;font-weight:800;color:#15803d;">@ev.CheckedIn</span>
+                                        <span style="font-size:.7rem;color:#94a3b8;">(@checkinPct%)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if(ev.Rating > 0){
+                                        <div style="display:flex;align-items:center;gap:.3rem;">
+                                            <i class="bi bi-star-fill" style="color:#f59e0b;font-size:.75rem;"></i>
+                                            <span style="font-size:.82rem;font-weight:800;color:#92400e;">@ev.Rating.ToString("F1")</span>
+                                        </div>
+                                    } else {
+                                        <span style="font-size:.75rem;color:#94a3b8;">—</span>
+                                    }
+                                </td>
+                            </tr>
+                            r++;
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" style="text-align:center;padding:3rem;color:#94a3b8;">
+                                <i class="bi bi-calendar-x display-5 d-block mb-2"></i>
+                                No events found in the database.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ─── Counter animations ─────────────────────────────────────────────────
+    [
+        { id:'rpc-ev',  val:@Model.TotalEvents       },
+        { id:'rpc-tk',  val:@Model.TotalTickets      },
+        { id:'rpc-pa',  val:@Model.TotalParticipants },
+        { id:'rpc-fb',  val:@Model.TotalFeedbacks    },
+        { id:'rp-cnt-events',       val:@Model.TotalEvents       },
+        { id:'rp-cnt-tickets',      val:@Model.TotalTickets      },
+        { id:'rp-cnt-participants', val:@Model.TotalParticipants },
+        { id:'rp-cnt-feedbacks',    val:@Model.TotalFeedbacks    },
+    ].forEach(function(c){
+        var el = document.getElementById(c.id);
+        if (!el || c.val === 0) return;
+        var cur = 0, step = Math.max(1, Math.ceil(c.val / 30));
+        var t = setInterval(function(){
+            cur = Math.min(cur + step, c.val);
+            el.textContent = cur;
+            if (cur >= c.val) clearInterval(t);
+        }, 36);
+    });
+
+    // ─── Colour palette ─────────────────────────────────────────────────────
+    var palette = ['#6366f1','#8b5cf6','#3b82f6','#22c55e','#f59e0b','#ef4444','#ec4899','#14b8a6','#f97316','#a855f7'];
+
+    // ─── Monthly trend (line) ────────────────────────────────────────────────
+    var trendCtx = document.getElementById('rp-trend-chart');
+    if (trendCtx) {
+        var ctx = trendCtx.getContext('2d');
+        var gradEv = ctx.createLinearGradient(0,0,0,200);
+        gradEv.addColorStop(0,'rgba(99,102,241,.28)');
+        gradEv.addColorStop(1,'rgba(99,102,241,0)');
+        var gradTk = ctx.createLinearGradient(0,0,0,200);
+        gradTk.addColorStop(0,'rgba(59,130,246,.22)');
+        gradTk.addColorStop(1,'rgba(59,130,246,0)');
+        new Chart(ctx, {
+            type:'line',
+            data:{
+                labels: @Html.Raw(monthLabelsJson),
+                datasets:[
+                    {
+                        label:'Events Created',
+                        data: @Html.Raw(eventsMonthJson),
+                        borderColor:'#6366f1', backgroundColor:gradEv,
+                        borderWidth:2.5, fill:true, tension:.42,
+                        pointBackgroundColor:'#6366f1', pointBorderColor:'#fff', pointBorderWidth:2,
+                        pointRadius:3, pointHoverRadius:6
+                    },
+                    {
+                        label:'Tickets Registered',
+                        data: @Html.Raw(ticketsMonthJson),
+                        borderColor:'#3b82f6', backgroundColor:gradTk,
+                        borderWidth:2, fill:true, tension:.42,
+                        pointBackgroundColor:'#3b82f6', pointBorderColor:'#fff', pointBorderWidth:2,
+                        pointRadius:3, pointHoverRadius:6
+                    }
+                ]
+            },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                animation:{duration:1100, easing:'easeOutQuart'},
+                plugins:{
+                    legend:{labels:{font:{weight:'700',size:11}, color:'#374151', boxWidth:12}},
+                    tooltip:{backgroundColor:'#1e1b4b', padding:11, cornerRadius:10}
+                },
+                scales:{
+                    x:{grid:{display:false}, ticks:{color:'#94a3b8', font:{size:9,weight:'700'}}},
+                    y:{grid:{color:'#f1f5f9'}, ticks:{color:'#94a3b8', font:{size:9}}, beginAtZero:true}
+                },
+                interaction:{mode:'index',intersect:false}
+            }
+        });
+    }
+
+    // ─── Event Status Doughnut ───────────────────────────────────────────────
+    function makeDoughnut(id, labels, data, title){
+        var el = document.getElementById(id);
+        if (!el) return;
+        var colors = data.map(function(_,i){ return palette[i % palette.length]; });
+        new Chart(el, {
+            type:'doughnut',
+            data:{labels:labels, datasets:[{data:data, backgroundColor:colors, borderWidth:2, borderColor:'#fff', hoverOffset:8}]},
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                animation:{duration:900},
+                plugins:{
+                    legend:{position:'right', labels:{font:{weight:'700',size:10}, color:'#374151', boxWidth:10, padding:10}},
+                    tooltip:{backgroundColor:'#1e1b4b', padding:10, cornerRadius:10}
+                },
+                cutout:'62%'
+            }
+        });
+    }
+
+    makeDoughnut('rp-status-chart', @Html.Raw(statusLabels), @Html.Raw(statusCounts), 'Status');
+    makeDoughnut('rp-type-chart',   @Html.Raw(typeLabels),   @Html.Raw(typeCounts),   'Type');
+    makeDoughnut('rp-ticket-chart', @Html.Raw(tkStatusLabels), @Html.Raw(tkStatusCounts), 'Tickets');
+
+    // ─── Rating Bar Chart ────────────────────────────────────────────────────
+    var ratingEl = document.getElementById('rp-rating-chart');
+    if (ratingEl) {
+        new Chart(ratingEl, {
+            type:'bar',
+            data:{
+                labels:['1★','2★','3★','4★','5★'],
+                datasets:[{
+                    data:@Html.Raw(ratingCounts),
+                    backgroundColor:['#ef4444','#f97316','#f59e0b','#84cc16','#22c55e'],
+                    borderRadius:6, borderSkipped:false
+                }]
+            },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                animation:{duration:900},
+                plugins:{legend:{display:false}, tooltip:{backgroundColor:'#1e1b4b', padding:10, cornerRadius:10}},
+                scales:{
+                    x:{grid:{display:false}, ticks:{color:'#94a3b8', font:{size:9}}},
+                    y:{display:false, beginAtZero:true}
+                }
+            }
+        });
+    }
+});
+</script>
+}
