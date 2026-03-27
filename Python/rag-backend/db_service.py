@@ -316,40 +316,43 @@ class DatabaseService:
         user_id: str,
         limit_messages: int = 12,
         exclude_session_id: Optional[str] = None,
+        role: Optional[str] = None,
     ) -> List[dict]:
-        """Retrieve recent chatbot messages across sessions for personalization context."""
+        """Retrieve recent chatbot messages across sessions for personalization context, filtered by role."""
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
+            
+            # Map input role to potential DB roles
+            input_role = (role or "").strip().lower()
+            if input_role in {"admin", "administrator"}:
+                target_roles = ["Admin"]
+            elif input_role in {"staff", "organizer", "approver"}:
+                target_roles = ["Organizer", "Approver"]
+            elif input_role == "student":
+                target_roles = ["Student"]
+            else:
+                target_roles = ["Student"] # Default to Student/Public for safety
+
+            placeholders = ",".join(["?"] * len(target_roles))
+            base_query = f"""
+                SELECT TOP (?) m.[Id], m.[SessionId], m.[Sender], m.[Content], m.[Status], m.[CreatedAt], m.[Role]
+                FROM [dbo].[ChatbotMessage] m
+                INNER JOIN [dbo].[ChatbotSession] s ON s.[Id] = m.[SessionId]
+                WHERE s.[UserId] = ?
+                  AND m.[Role] IN ({placeholders})
+                  AND m.[DeletedAt] IS NULL
+                  AND s.[DeletedAt] IS NULL
+            """
+            params = [limit_messages, user_id] + target_roles
 
             if exclude_session_id:
-                cursor.execute(
-                    """
-                    SELECT TOP (?) m.[Id], m.[SessionId], m.[Sender], m.[Content], m.[Status], m.[CreatedAt], m.[Role]
-                    FROM [dbo].[ChatbotMessage] m
-                    INNER JOIN [dbo].[ChatbotSession] s ON s.[Id] = m.[SessionId]
-                    WHERE s.[UserId] = ?
-                                            AND m.[DeletedAt] IS NULL
-                                            AND s.[DeletedAt] IS NULL
-                      AND s.[Id] <> ?
-                    ORDER BY m.[CreatedAt] DESC
-                    """,
-                    (limit_messages, user_id, exclude_session_id),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT TOP (?) m.[Id], m.[SessionId], m.[Sender], m.[Content], m.[Status], m.[CreatedAt], m.[Role]
-                    FROM [dbo].[ChatbotMessage] m
-                    INNER JOIN [dbo].[ChatbotSession] s ON s.[Id] = m.[SessionId]
-                    WHERE s.[UserId] = ?
-                                            AND m.[DeletedAt] IS NULL
-                                            AND s.[DeletedAt] IS NULL
-                    ORDER BY m.[CreatedAt] DESC
-                    """,
-                    (limit_messages, user_id),
-                )
+                base_query += " AND s.[Id] <> ?"
+                params.append(exclude_session_id)
 
+            base_query += " ORDER BY m.[CreatedAt] DESC"
+            
+            cursor.execute(base_query, tuple(params))
             rows = cursor.fetchall()
             cursor.close()
             conn.close()

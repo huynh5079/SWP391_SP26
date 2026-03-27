@@ -4,6 +4,7 @@ using BusinessLogic.DTOs.Student;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
+using BusinessLogic.Service.ActivityLog;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +16,14 @@ namespace AEMS_Solution.Controllers.Features.Student
         private readonly IStudentEventService _service;
         private readonly ISystemErrorLogService _errorLog;
         private readonly IEventWaitlistService _waitlistService;
+        private readonly IActivityLogService _activityLog;
 
-        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog, IEventWaitlistService waitlistService)
+        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog, IEventWaitlistService waitlistService, IActivityLogService activityLog)
         {
             _service = service;
             _errorLog = errorLog;
             _waitlistService = waitlistService;
+            _activityLog = activityLog;
         }
 
         // ─── Browse (weekly calendar) ─────────────────────────────────────────
@@ -58,6 +61,9 @@ namespace AEMS_Solution.Controllers.Features.Student
 
             var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
             ViewBag.AllFeedbacks = await _service.GetEventFeedbacksAsync(id);
+
+            await _activityLog.LogActivityAsync(CurrentUserId ?? "anonymous", "View", id, "Event", $"Đã xem chi tiết sự kiện '{detail.Title}'");
+
             return View(detail);
         }
 

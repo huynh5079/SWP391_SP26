@@ -1315,8 +1315,8 @@ class RagEngine:
         except Exception as exc:
             print(f"[RAG] Failed to hydrate session from DB: {exc}")
 
-    def _get_user_personal_history_context(self, user_id: Optional[str], current_session_id: Optional[str]) -> str:
-        """Get cross-session user context for personalized responses."""
+    def _get_user_personal_history_context(self, user_id: Optional[str], current_session_id: Optional[str], current_role: str) -> str:
+        """Get cross-session user context for personalized responses, isolated by role."""
         if not user_id or not self.db_service:
             return ""
 
@@ -1325,6 +1325,7 @@ class RagEngine:
                 user_id=user_id,
                 limit_messages=8,
                 exclude_session_id=current_session_id,
+                role=current_role
             )
             if not rows:
                 return ""
@@ -1532,9 +1533,11 @@ class RagEngine:
         context = "\n\n".join(context_parts)
 
         conversation_history = self._get_session_context(session_id)
-        user_personal_history = self._get_user_personal_history_context(user_id=user_id, current_session_id=session_id)
+        user_personal_history = self._get_user_personal_history_context(user_id=user_id, current_session_id=session_id, current_role=normalized_role)
 
+        current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         system_prompt = (
+            f"THỜI GIAN HIỆN TẠI CỦA HỆ THỐNG: {current_time_str}\n\n"
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
             "CHẾ ĐỘ HOẠT ĐỘNG (ƯU TIÊN THEO THỨ TỰ):\n"
             "0. ƯU TIÊN CAO NHẤT - CHỈ CHÀO HỎI ở TIN NHẮN ĐẦU TIÊN của phiên chat:\n"
@@ -1562,6 +1565,7 @@ class RagEngine:
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- QUAN TRỌNG: Nếu dữ liệu cho thấy các sự kiện đã kết thúc so với THỜI GIAN HIỆN TẠI, hãy thông báo cho người dùng một cách tự nhiên (ví dụ: 'Các sự kiện này đã diễn ra trước đó') thay vì báo lỗi kết nối.\n"
             "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
             "- Nếu xuất hiện khối 'Ngữ cảnh truy xuất động', PHẢI ưu tiên khối đó hơn mọi nguồn khác\n"
             "- Khi dữ liệu truy xuất động mâu thuẫn với dữ liệu semantic, chọn dữ liệu truy xuất động\n"
@@ -1571,9 +1575,11 @@ class RagEngine:
         if normalized_role == "admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
-            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+            role_hint = "Bạn đang nói với Cán bộ/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        elif normalized_role == "student":
+            role_hint = "Bạn đang nói với Sinh viên - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
         else:
-            role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
+            role_hint = "Bạn đang nói với Người dùng - chỉ chia sẻ thông tin công khai."
 
         user_prompt = (
             f"{role_hint}\n\n"
@@ -1758,7 +1764,7 @@ class RagEngine:
         context = "\n\n".join(context_parts)
 
         conversation_history = self._get_session_context(session_id)
-        user_personal_history = self._get_user_personal_history_context(user_id=user_id, current_session_id=session_id)
+        user_personal_history = self._get_user_personal_history_context(user_id=user_id, current_session_id=session_id, current_role=normalized_role)
 
         system_prompt = (
             "Bạn là một trợ lý AI thông minh, hỗ trợ sinh viên với thông tin sự kiện tại AEMS.\n\n"
@@ -1788,22 +1794,21 @@ class RagEngine:
             "QUY TẮC DỮ LIỆU:\n"
             "- Chỉ chia sẻ thông tin có trong dữ liệu sự kiện (không bịa đặt)\n"
             "- Nếu không có dữ liệu phù hợp về sự kiện → nói: 'Không tìm thấy sự kiện phù hợp'\n"
+            "- QUAN TRỌNG: Nếu dữ liệu cho thấy các sự kiện đã kết thúc so với THỜI GIAN HIỆN TẠI, hãy thông báo cho người dùng một cách tự nhiên (ví dụ: 'Các sự kiện này đã diễn ra trước đó') thay vì báo lỗi kết nối.\n"
             "- Luôn bám đúng chủ đề câu hỏi hiện tại\n"
             "- Nếu xuất hiện khối 'Ngữ cảnh truy xuất động', PHẢI ưu tiên khối đó hơn mọi nguồn khác\n"
             "- Khi dữ liệu truy xuất động mâu thuẫn với dữ liệu semantic, chọn dữ liệu truy xuất động\n"
             "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
-        if normalized_role == "Admin":
+        if normalized_role == "admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
-            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
-        elif normalized_role == "Approver":
-            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
-        elif normalized_role == "Organizer":
-            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+            role_hint = "Bạn đang nói với Cán bộ/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
+        elif normalized_role == "student":
+            role_hint = "Bạn đang nói với Sinh viên - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
         else:
-            role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."
+            role_hint = "Bạn đang nói với Người dùng - chỉ chia sẻ thông tin công khai."
 
         user_prompt = (
             f"{role_hint}\n\n"
