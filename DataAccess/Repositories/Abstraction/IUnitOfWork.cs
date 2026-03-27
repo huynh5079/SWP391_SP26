@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Storage;
 using DataAccess.Entities;
 using System.Data;
 using System;
@@ -23,7 +23,7 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<Notification> Notifications { get; }
 		IGenericRepository<ChatbotSession> ChatbotSessions { get; }
 		IGenericRepository<ChatbotMessage> ChatbotMessages { get; }
-
+		IGenericRepository<UserActivityLog> UserActivityLogs { get; }
 		// OrganizerService
 		IGenericRepository<Event> Events { get; }
         IGenericRepository<EventAgenda> EventAgenda { get; }

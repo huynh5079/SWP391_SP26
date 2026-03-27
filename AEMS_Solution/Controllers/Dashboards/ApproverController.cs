@@ -10,6 +10,7 @@ using BusinessLogic.DTOs.Event.Semester;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Semester;
+using BusinessLogic.Service.ActivityLog;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
@@ -32,8 +33,9 @@ namespace AEMS_Solution.Controllers.Dashboards
         private readonly IMapper _mapper;
         private readonly IApproverEventAgendaAction _eventAgendaAction;
         private readonly BusinessLogic.Service.Event.IEventService _eventService;
+        private readonly IActivityLogService _activityLog;
 
-        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, ISemesterService semesterService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction, BusinessLogic.Service.Event.IEventService eventService)
+        public ApproverController(IApproverQueryService queryService, IApproverCommandService commandService, ILocationService locationService, ISemesterService semesterService, IUnitOfWork unitOfWork, IMapper mapper, IApproverEventAgendaAction eventAgendaAction, BusinessLogic.Service.Event.IEventService eventService, IActivityLogService activityLog)
         {
             _queryService = queryService;
             _commandService = commandService;
@@ -43,6 +45,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             _mapper = mapper;
             _eventAgendaAction = eventAgendaAction;
             _eventService = eventService;
+            _activityLog = activityLog;
         }
 
         [HttpGet]
@@ -567,6 +570,8 @@ namespace AEMS_Solution.Controllers.Dashboards
 
             var dto = await _queryService.GetEventDetailAsync(id);
             if (dto == null) return NotFound();
+
+            await _activityLog.LogActivityAsync(CurrentUserId ?? "anonymous", "View", id, "Event", $"Đã xem chi tiết sự kiện '{dto.Title}'");
 
             var vm = new ApproverEventDetailVm
             {

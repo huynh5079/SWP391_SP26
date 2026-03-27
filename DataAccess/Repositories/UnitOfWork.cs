@@ -1,4 +1,4 @@
-﻿using DataAccess.Entities;
+using DataAccess.Entities;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
@@ -22,6 +22,7 @@ namespace DataAccess.Repositories
         public IGenericRepository<Notification> Notifications { get; }
         public IGenericRepository<ChatbotSession> ChatbotSessions { get; }
 		public IGenericRepository<ChatbotMessage> ChatbotMessages { get; }
+		public IGenericRepository<UserActivityLog> UserActivityLogs { get; }
         public IGenericRepository<Event> Events { get; }
         public IGenericRepository<EventAgenda> EventAgenda { get; }
         public IGenericRepository<EventDocument> EventDocuments { get; }
@@ -63,6 +64,7 @@ namespace DataAccess.Repositories
             Notifications = new GenericRepository<Notification>(_ctx);
             ChatbotSessions = new GenericRepository<ChatbotSession>(_ctx);
 			ChatbotMessages = new GenericRepository<ChatbotMessage>(_ctx);
+			UserActivityLogs = new GenericRepository<UserActivityLog>(_ctx);
 			// ✅ Update
 			Events = new GenericRepository<Event>(_ctx);
 		    EventAgenda = new GenericRepository<EventAgenda>(_ctx);

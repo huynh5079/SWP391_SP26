@@ -7,7 +7,7 @@ using BusinessLogic.Hubs;
 using BusinessLogic.Service.Chat.ChatforUser;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
-using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.ActivityLog;
 using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
@@ -66,6 +66,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Services (Business Logic)
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
