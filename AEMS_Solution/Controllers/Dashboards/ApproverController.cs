@@ -95,7 +95,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             var canCreate = !allSemesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now);
             if (!canCreate)
             {
-                SetInfo("Đã có semester kế tiếp. Nút tạo mới sẽ mở lại khi semester đó bắt đầu.");
+                SetInfo("The next semester already exists. The creation button will be available once that semester starts.");
                 return RedirectToAction(nameof(Semester));
             }
 
@@ -107,14 +107,14 @@ namespace AEMS_Solution.Controllers.Dashboards
         {
             if (string.IsNullOrWhiteSpace(id))
             {
-                SetError("SemesterId không hợp lệ.");
+                SetError("Invalid SemesterId.");
                 return RedirectToAction(nameof(Semester));
             }
 
             var semester = await _semesterService.GetSemesterByIdAsync(id);
             if (semester == null)
             {
-                SetError("Không tìm thấy học kỳ.");
+                SetError("Semester not found.");
                 return RedirectToAction(nameof(Semester));
             }
 
@@ -131,48 +131,16 @@ namespace AEMS_Solution.Controllers.Dashboards
                 var allSemesters = await _semesterService.GetAllSemestersAsync();
                 if (allSemesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now))
                 {
-                    SetInfo("Đã có semester kế tiếp. Khi semester đó bắt đầu, bạn mới tạo tiếp được.");
+                    SetInfo("The next semester already exists. You can create more once it starts.");
                     return RedirectToAction(nameof(Semester));
                 }
 
                 var created = await _semesterService.AutoCreateSemesterAsync();
-                SetSuccess($"Đã tự động tạo học kỳ {created.Name} ({created.Code}).");
+                SetSuccess($"Automatically created semester {created.Name} ({created.Code}).");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                SetError(ex.Message);
-            }
-
-            return RedirectToAction(nameof(Semester));
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateSemester(SemesterDTO dto)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(dto.SemesterId))
-                {
-                    await _semesterService.UpdateSemesterAsync(dto.SemesterId, dto);
-                    SetSuccess("Cập nhật học kỳ thành công.");
-                    return RedirectToAction(nameof(Semester));
-                }
-
-                var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
-                var allSemesters = await _semesterService.GetAllSemestersAsync();
-                if (allSemesters.Any(x => x.StartDate.HasValue && x.StartDate.Value > now))
-                {
-                    SetInfo("Đã có semester kế tiếp. Khi semester đó bắt đầu, bạn mới tạo tiếp được.");
-                    return RedirectToAction(nameof(Semester));
-                }
-
-                await _semesterService.CreateSemesterAsync(dto);
-                SetSuccess("Tạo học kỳ thủ công thành công.");
-            }
-            catch (Exception ex)
-            {
-                SetError(ex.Message);
+                return RedirectToAction(nameof(Semester));
             }
 
             return RedirectToAction(nameof(Semester));
@@ -192,9 +160,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                 var agendas = (await _unitOfWork.EventAgenda.GetAllAsync(
                     x => x.DeletedAt == null,
                     q => q
-                        .Include(x => x.Event)
-                            .ThenInclude(x => x.Organizer)
-                                .ThenInclude(x => x.User)))
+                        .Include(x => x.Event!)
+                            .ThenInclude(x => x.Organizer!)
+                                .ThenInclude(x => x.User!)))
                     .Where(x => x.Event != null && x.Event.DeletedAt == null);
 
                 if (!string.IsNullOrWhiteSpace(eventId))
@@ -215,7 +183,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 var model = new MyAgendaViewModel
                 {
                     PageTitle = "All Agenda",
-                    PageDescription = "Approver có thể xem toàn bộ agenda của các organizer.",
+                    PageDescription = "Approver can view all agendas from all organizers.",
                     IsReadOnly = true,
                     Search = search,
                     SelectedEventId = eventId,
@@ -254,7 +222,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 q => q.Include(x => x.Location)
                       .Include(x => x.Topic)
                       .Include(x => x.Semester)
-                      .Include(x => x.EventTeams)
+                      .Include(x => x.EventTeams!)
                         .ThenInclude(et => et.TeamMembers)
                       .Include(x => x.EventAgenda));
 
@@ -269,8 +237,8 @@ namespace AEMS_Solution.Controllers.Dashboards
                     EndTime = e.EndTime,
                     Location = e.Location?.Address ?? e.LocationId,
                     Role = e.EventTeams.Any(et => et.TeamMembers.Any(tm => tm.StaffId == staffProfile.Id))
-                        ? "Ban tổ chức"
-                        : "Diễn giả"
+                        ? "Organizer"
+                        : "Speaker"
                 })
                 .ToList();
 
@@ -296,7 +264,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 NewRoom = new CreateRoomViewModel()
             };
 
-            return View("~/Views/Approval/ManageLocation.cshtml", vm);
+            return View("~/Views/Approval/ManageRoom.cshtml", vm);
         }
 
         [HttpPost]
@@ -305,7 +273,7 @@ namespace AEMS_Solution.Controllers.Dashboards
         {
             if (!ModelState.IsValid)
             {
-                return View("~/Views/Approval/ManageLocation.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
+                return View("~/Views/Approval/ManageRoom.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
             }
 
             try
@@ -321,13 +289,13 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Type = vm.NewRoom.Type,
                     Description = vm.NewRoom.Description
                 });
-                SetSuccess("Tạo phòng thành công.");
+                SetSuccess("Create room successfully.");
                 return RedirectToAction(nameof(ManageRoom));
             }
             catch (Exception ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
-                return View("~/Views/Approval/ManageLocation.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
+                return View("~/Views/Approval/ManageRoom.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
             }
         }
 
@@ -351,7 +319,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 return null;
             }
 
-            var normalized = value.Trim();
+            var normalized = value?.Trim() ?? string.Empty;
             if (normalized.StartsWith(prefix + " ", StringComparison.OrdinalIgnoreCase))
             {
                 return normalized;
@@ -367,7 +335,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             var location = await _locationService.GetLocationByIdAsync(vm.LocationId);
             if (location == null)
             {
-                SetError("Không tìm thấy phòng.");
+                SetError("Room not found.");
                 return RedirectToAction(nameof(ManageRoom));
             }
 
@@ -382,7 +350,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Type = location.Type,
                     Description = location.Description
                 });
-                SetSuccess("Cập nhật trạng thái phòng thành công.");
+                SetSuccess("Room status updated successfully.");
             }
             catch (Exception ex)
             {
@@ -398,14 +366,14 @@ namespace AEMS_Solution.Controllers.Dashboards
         {
             if (!ModelState.IsValid)
             {
-                SetError("Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.");
+                SetError("Invalid data. Please check again.");
                 return RedirectToAction(nameof(ManageRoom));
             }
 
             var location = await _locationService.GetLocationByIdAsync(vm.LocationId);
             if (location == null)
             {
-                SetError("Không tìm thấy phòng.");
+                SetError("Room not found.");
                 return RedirectToAction(nameof(ManageRoom));
             }
 
@@ -429,7 +397,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Type = vm.Type,
                     Description = vm.Description ?? string.Empty
                 });
-                SetSuccess("Cập nhật phòng thành công.");
+                SetSuccess("Room updated successfully.");
             }
             catch (Exception ex)
             {
@@ -556,7 +524,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                 e => e.DeletedAt == null && (approverStaffId == null || e.OrganizerId != approverStaffId),
                 includes: q => q.Include(e => e.Location)
                     .Include(e => e.Organizer!)
-                        .ThenInclude(o => o!.User));
+                        .ThenInclude(o => o!.User!));
             var pendingEvents = allEvents.Where(x => x.Status == EventStatusEnum.Pending).ToList();
 
             var vm = new ApproverDashboardStatsViewModel
@@ -630,8 +598,8 @@ namespace AEMS_Solution.Controllers.Dashboards
                 {
                     FileName = d.FileName,
                     FileUrl = d.FileUrl,
-                    FileSizeBytes = 0,// EventDocument entity không có SizeBytes
-                    Type = d.Type 
+                    FileSizeBytes = 0, // EventDocument entity does not have SizeBytes
+                    Type = d.Type
                 }).ToList(),
 
                 // Approval Logs
@@ -652,7 +620,7 @@ namespace AEMS_Solution.Controllers.Dashboards
         {
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(operation))
             {
-                SetError("Event hoặc hành động không hợp lệ.");
+                SetError("Invalid event or action.");
                 return RedirectToAction("Index");
             }
 
@@ -667,7 +635,7 @@ namespace AEMS_Solution.Controllers.Dashboards
 
             if (string.IsNullOrEmpty(actionName))
             {
-                SetError("Hành động không hợp lệ.");
+                SetError("Invalid action.");
                 return RedirectToAction("Index");
             }
 
@@ -677,9 +645,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                 Operation = actionName,
                 Heading = actionName switch
                 {
-                    "Approve" => "Phê duyệt sự kiện",
-                    "Reject" => "Từ chối sự kiện",
-                    _ => "Yêu cầu chỉnh sửa"
+                    "Approve" => "Approve Event",
+                    "Reject" => "Reject Event",
+                    _ => "Request Changes"
                 }
             };
 
@@ -694,7 +662,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var userId = CurrentUserId;
                 await _commandService.ApproveAsync(id, userId ?? string.Empty, comment);
-                SetSuccess("Duyệt thành công.");
+                SetSuccess("Approved successfully.");
             }
             catch (System.Exception ex)
             {
@@ -711,7 +679,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var userId = CurrentUserId;
                 await _commandService.RejectAsync(id, userId ?? string.Empty, comment);
-                SetSuccess("Từ chối thành công.");
+                SetSuccess("Rejected successfully.");
             }
             catch (System.Exception ex)
             {
@@ -728,7 +696,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var userId = CurrentUserId;
                 await _commandService.RequestChangeAsync(id, userId ?? string.Empty, comment);
-                SetSuccess("Yêu cầu chỉnh sửa đã gửi.");
+                SetSuccess("Request for changes sent.");
             }
             catch (System.Exception ex)
             {

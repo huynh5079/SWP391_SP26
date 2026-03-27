@@ -120,7 +120,7 @@
                         <li class="nav-item mb-1">
                             <a class="nav-link py-1 px-3 fs-6 @(currentAct == "MyParticipatedEvents" ? "active" : "")"
                                 asp-controller="Organizer" asp-action="MyParticipatedEvents">
-                                <i class="bi bi-person-workspace me-2 fs-6"></i> Sự kiện tham gia
+                                <i class="bi bi-person-workspace me-2 fs-6"></i> Participated Events
                             </a>
                         </li>
 
@@ -212,7 +212,7 @@
 
     <div class="main-wrapper">
         <header class="top-header">
-            <form asp-controller="Organizer" asp-action="MyEvents" method="get" class="search-container m-0 border-0">
+            <form asp-controller="Organizer" asp-action="MyEvents" method="get" class="search-container m-0 border-0 animate-fade-in animate-delay-1">
                 <i class="bi bi-search"></i>
                 <input type="text" name="search" class="search-input" placeholder="Search events..."
                     value="@Context.Request.Query["search"]" />
@@ -226,7 +226,7 @@
                     }
                 </style>
                 <button type="button" class="nav-link d-flex align-items-center" id="organizerChatbotToggle"
-                    aria-label="Mở chatbot"
+                    aria-label="Open chatbot"
                     style="background:transparent; border:none; gap:6px; margin-right: 12px; padding: 0;"
                     onclick="document.getElementById('chatbotToggle').click()">
                     <span class="messenger-nav-icon"
@@ -305,7 +305,7 @@
             </div>
         </header>
 
-        <div class="page-content">
+        <div class="page-content animate-fade-in animate-delay-2">
             <partial name="_Notification" />
             @RenderBody()
         </div>
