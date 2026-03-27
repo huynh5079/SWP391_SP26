@@ -1,47 +1,182 @@
 @model DataAccess.Entities.PaginationResult<DataAccess.Entities.SystemErrorLog>
 @using DataAccess.Enum
 @{
-    ViewData["Title"] = "System Error Logs";
+    ViewData["Title"] = "Hệ thống Log Lỗi | Admin";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<div class="animate-fade-in">
-    @* --- Header --- *@
-    <div class="page-header">
+<style>
+    :root {
+        --sl-danger: #ef4444;
+        --sl-warning: #f59e0b;
+        --sl-success: #22c55e;
+        --sl-info: #3b82f6;
+    }
+
+    .sl-page { animation: sl-fade-in 0.4s ease both; }
+    @@keyframes sl-fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .sl-header {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+        border-radius: 16px;
+        padding: 1.5rem 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 10px 30px rgba(30, 27, 75, 0.2);
+    }
+
+    .sl-title { font-size: 1.5rem; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+    .sl-subtitle { font-size: 0.9rem; color: rgba(255,255,255,0.6); margin: 0.2rem 0 0; }
+
+    .sl-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+    }
+
+    .sl-stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.25rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        transition: all 0.2s;
+    }
+
+    .sl-stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+
+    .sl-stat-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .sl-stat-value { font-size: 1.75rem; font-weight: 800; color: #1e293b; line-height: 1; }
+
+    .sl-table-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .sl-table { width: 100%; border-collapse: collapse; }
+    .sl-table thead th {
+        background: #f8fafc;
+        padding: 1rem 1.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .sl-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; }
+    .sl-table tbody tr:hover { background: #f8fafc; }
+    .sl-table td { padding: 1.25rem 1.5rem; vertical-align: middle; }
+
+    .sl-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .sl-pill-error { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
+    .sl-pill-warn { background: #fef3c7; color: #f59e0b; border: 1px solid #fde68a; }
+    .sl-pill-success { background: #dcfce7; color: #22c55e; border: 1px solid #bbf7d0; }
+
+    .sl-btn-action {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .sl-btn-action:hover { background: #6366f1; color: white; transform: rotate(90deg); }
+
+    .sl-filter-box {
+        background: #fafbff;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .sl-input {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .sl-input:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+    .sl-btn-primary {
+        background: #6366f1;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 700;
+        transition: all 0.2s;
+    }
+
+    .sl-btn-primary:hover { background: #4f46e5; transform: translateY(-1px); }
+</style>
+
+<div class="sl-page">
+    <div class="sl-header">
         <div>
-            <h2 class="page-title"><i class="bi bi-journal-medical me-2 text-primary"></i> System Error Logs</h2>
-            <p class="page-subtitle">Monitor and manage server-side exceptions and diagnostic data.</p>
+            <h1 class="sl-title"><i class="bi bi-terminal-fill me-2"></i>System Diagnostic Logs</h1>
+            <p class="sl-subtitle">Monitor runtime exceptions and server performance indicators.</p>
         </div>
-        
-        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirmAction(event, 'Are you sure you want to delete all logs older than 30 days? This action cannot be undone.', 'Delete Now', 'Cancel');">
+        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tất cả log cũ hơn 30 ngày?');">
             @Html.AntiForgeryToken()
-            <button type="submit" class="ex-hbtn ex-hbtn-white text-danger border-danger">
-                <i class="bi bi-trash me-1"></i> Clean up old logs (>30 days)
+            <button type="submit" class="btn btn-sm btn-outline-light rounded-pill px-3">
+                <i class="bi bi-trash3-fill me-1 text-danger"></i> Dọn dẹp log (>30 ngày)
             </button>
         </form>
     </div>
 
-    @* --- Filter Card --- *@
-    <div class="glass-card mb-4 animate-fade-in animate-delay-1">
-        <div class="card-title-box">
-            <div>
-                <h5 class="card-title">Filter Log Data</h5>
-                <p class="card-subtitle">Narrow down results by keywords or HTTP status codes.</p>
-            </div>
-            <i class="bi bi-funnel text-muted" style="font-size:1.2rem;"></i>
+    <div class="sl-stats-grid">
+        <div class="sl-stat-card">
+            <div class="sl-stat-label">Total Logs</div>
+            <div class="sl-stat-value">@Model.TotalCount</div>
         </div>
-        <form method="get" class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold small text-muted text-uppercase">Search Message / Source / User</label>
-                <div class="search-box p-0 w-100">
-                    <i class="bi bi-search"></i>
-                    <input type="text" name="search" class="search-input" placeholder="Enter keywords..." value="@ViewBag.Search">
-                </div>
+        <div class="sl-stat-card" style="border-left: 4px solid var(--sl-danger);">
+            <div class="sl-stat-label">Failures Today</div>
+            <div class="sl-stat-value text-danger">@ViewBag.TodayCount</div>
+        </div>
+        <div class="sl-stat-card">
+            <div class="sl-stat-label">Retention Policy</div>
+            <div class="sl-stat-value" style="font-size: 1.1rem; color: #64748b;">30 Days Standard</div>
+        </div>
+    </div>
+
+    <div class="sl-table-card">
+        <form method="get" class="sl-filter-box">
+            <div style="flex: 2; min-width: 300px;">
+                <label class="sl-stat-label d-block">Tìm kiếm Message / Source</label>
+                <input type="text" name="search" class="sl-input w-100" placeholder="Keywords..." value="@ViewBag.Search">
             </div>
-            <div class="col-md-4">
-                <label class="form-label fw-bold small text-muted text-uppercase">Status Code</label>
-                <select name="statusCode" class="chart-dropdown w-100" style="padding: 9px 16px;">
-                    <option value="">-- All Statuses --</option>
+            <div style="flex: 1; min-width: 150px;">
+                <label class="sl-stat-label d-block">Mã trạng thái</label>
+                <select name="statusCode" class="sl-input w-100">
+                    <option value="">Tất cả</option>
                     @foreach (var status in Enum.GetValues(typeof(DataAccess.Enum.SystemLogStatusEnum)))
                     {
                         var statusVal = (int)status;
@@ -49,88 +184,77 @@
                     }
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="ex-hbtn ex-hbtn-white w-100 justify-content-center" style="background: var(--ad-primary); color:#fff;">
-                    <i class="bi bi-filter me-1"></i> Filter
-                </button>
-            </div>
+            <button type="submit" class="sl-btn-primary">
+                Lọc kết quả <i class="bi bi-funnel ms-1"></i>
+            </button>
         </form>
-    </div>
 
-    @* --- Data Table Card --- *@
-    <div class="glass-card p-0 overflow-hidden animate-fade-in animate-delay-2">
         <div class="table-responsive">
-            <table class="events-table">
+            <table class="sl-table">
                 <thead>
                     <tr>
-                        <th style="width:180px;">Time</th>
-                        <th style="width:100px;">Status</th>
-                        <th>Exception / Message</th>
-                        <th style="width:150px;">User</th>
-                        <th style="text-align:right;">Action</th>
+                        <th style="width: 200px;">Timestamp</th>
+                        <th style="width: 120px;">HTTP Status</th>
+                        <th>Exception Type & Message</th>
+                        <th style="width: 180px;">Actor Identity</th>
+                        <th style="width: 80px;"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Data.Any())
                     {
-                        int rowIdx = 0;
                         foreach (var log in Model.Data)
                         {
-                            var badgeClass = "badge bg-secondary";
-                            if (log.StatusCode >= 200 && log.StatusCode < 300) { badgeClass = "badge bg-success"; }
-                            else if (log.StatusCode >= 400 && log.StatusCode < 500) { badgeClass = "badge bg-warning text-dark"; }
-                            else if (log.StatusCode >= 500) { badgeClass = "ex-pill-rejected"; } // Using existing premium pill class
-
-                            <tr class="animate-fade-in" style="animation-delay: @(0.1 + (rowIdx * 0.03))s">
-                                <td class="text-nowrap text-muted small">
-                                    <i class="bi bi-clock me-1"></i> @log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
+                            var pillClass = log.StatusCode >= 500 ? "sl-pill-error" : (log.StatusCode >= 400 ? "sl-pill-warn" : "sl-pill-success");
+                            <tr>
+                                <td>
+                                    <div class="fw-bold" style="font-size: 0.85rem;">@log.CreatedAt.ToString("MMM dd, HH:mm:ss")</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">@log.CreatedAt.ToString("yyyy")</div>
                                 </td>
                                 <td>
-                                    <span class="@(log.StatusCode >= 500 ? "ex-pill ex-pill-rejected" : badgeClass)" style="font-size:.65rem;">
-                                        @(log.StatusCode?.ToString() ?? "N/A")
-                                    </span>
+                                    <span class="sl-pill @pillClass">@log.StatusCode</span>
                                 </td>
                                 <td>
-                                    <div class="fw-bold text-dark" style="font-size:.85rem;">@log.ExceptionType</div>
-                                    <div class="text-muted small text-truncate" style="max-width: 450px;">
+                                    <div class="fw-bold text-dark" style="font-size: 0.9rem;">@log.ExceptionType</div>
+                                    <div class="text-muted text-truncate" style="font-size: 0.8rem; max-width: 500px;" title="@log.ExceptionMessage">
                                         @log.ExceptionMessage
                                     </div>
                                 </td>
                                 <td>
                                     @if(!string.IsNullOrEmpty(log.UserId))
                                     {
-                                         <a href="/UserManagement/Detail/@log.UserId" class="btn-link-custom" target="_blank">
-                                            <i class="bi bi-person-circle"></i> @log.UserId.Substring(0, 8)...
-                                         </a>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div style="width: 28px; height: 28px; background: #eef2ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6366f1;">
+                                                <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
+                                            </div>
+                                            <span class="text-dark fw-semibold" style="font-size: 0.8rem;">@log.UserId.Substring(0, 8)...</span>
+                                        </div>
                                     }
                                     else
                                     {
-                                        <span class="text-muted small italic">Anonymous</span>
+                                        <span class="text-muted small"><i>Unauthenticated</i></span>
                                     }
                                 </td>
-                                <td style="text-align:right;">
-                                    <button type="button" class="btn-dot" 
+                                <td>
+                                    <button class="sl-btn-action" 
                                             data-bs-toggle="modal" data-bs-target="#logDetailModal"
                                             data-ex-type="@log.ExceptionType"
                                             data-ex-msg="@log.ExceptionMessage"
                                             data-ex-source="@log.Source"
-                                            data-ex-stack="@log.StackTrace"
-                                            title="View Details">
-                                        <i class="bi bi-eye-fill text-primary"></i>
+                                            data-ex-stack="@log.StackTrace">
+                                        <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </td>
                             </tr>
-                            rowIdx++;
                         }
                     }
                     else
                     {
                         <tr>
                             <td colspan="5" class="text-center py-5">
-                                <div class="ex-empty">
-                                    <div class="ex-empty-icon"><i class="bi bi-check-circle"></i></div>
-                                    <h4>No matching error logs found</h4>
-                                    <p>Your system is currently running clean. No errors detected for this filter.</p>
+                                <div class="text-muted">
+                                    <i class="bi bi-cloud-check d-block mb-3" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="fw-bold">No logs available matching your search criteria.</p>
                                 </div>
                             </td>
                         </tr>
@@ -138,165 +262,53 @@
                 </tbody>
             </table>
         </div>
-        
-        @* Pagination *@
-        <div class="px-4 py-3 border-top bg-light">
+
+        <div class="p-4 bg-light border-top">
             <partial name="_Pagination" model="Model" />
         </div>
     </div>
 </div>
 
-@* --- Log Detail Modal --- *@
-<div class="modal fade" id="logDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg" style="border-radius:18px;">
-            <div class="modal-header bg-danger text-white border-0" style="border-radius:18px 18px 0 0;">
-                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Error Detail</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Modal logic stays the same but with better styling -->
+<div class="modal fade" id="logDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 24px;">
+            <div class="modal-header border-0 p-4">
+                <h5 class="modal-title fw-800" id="modalExType">Exception Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="mb-4">
-                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Exception Type</label>
-                    <div class="p-3 bg-light rounded-3 text-danger fw-bold" id="modalExType" style="font-size:1.1rem;">Type</div>
+            <div class="modal-body p-4 pt-0">
+                <div class="p-3 mb-3 bg-danger bg-opacity-10 text-danger rounded-4 fw-bold" id="modalExMsg">
+                    Message
                 </div>
-                <div class="mb-4">
-                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Source</label>
-                    <code class="d-block p-2 bg-dark text-info rounded-2" id="modalExSource">Source</code>
+                <div class="mb-3">
+                    <label class="sl-stat-label">Source Component</label>
+                    <div class="p-3 bg-light rounded-3 font-monospace small" id="modalExSource" style="word-break: break-all;">Source</div>
                 </div>
-                <div class="mb-4">
-                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Message</label>
-                    <div class="alert alert-secondary border-0 text-break" id="modalExMsg" style="background:#f8fafc; color:#1e293b; font-weight:500;">Message</div>
+                <div>
+                    <label class="sl-stat-label">Stack Trace Context</label>
+                    <pre class="p-4 bg-dark text-light rounded-4 font-monospace scrollbar-thin" id="modalExStack" style="font-size: 0.75rem; max-height: 400px; line-height: 1.6;">Stack</pre>
                 </div>
-                <div class="mb-0">
-                    <label class="fw-bold small text-muted text-uppercase mb-1 d-block">Stack Trace</label>
-                    <pre class="bg-dark text-light p-3 rounded-3" style="font-size: 0.8rem; max-height: 350px; overflow: auto; border: 1px solid #334155;" id="modalExStack">
-                        Stack Trace...
-                    </pre>
-                </div>
-            </div>
-            <div class="modal-footer border-0 p-4 pt-0">
-                <button type="button" class="ex-hbtn ex-hbtn-white" style="background:#f1f5f9; color:#475569;" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="ex-hbtn" style="background:var(--ad-primary); color:#fff;" onclick="copySystemLogDetails()">
-                    <i class="bi bi-clipboard me-1"></i> Copy All Details
-                </button>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    // ─── Counter animations ───────────────────────────────────────────────────
-    [
-        { id: 'sl-cnt-30',    target: @(ViewBag.TotalLast30Days ?? 0) },
-        { id: 'sl-cnt-today', target: @(ViewBag.TodayCount ?? 0)      },
-        { id: 'sl-cnt-total', target: @Model.TotalCount }
-    ].forEach(function (c) {
-        var el = document.getElementById(c.id);
-        if (!el || c.target === 0) return;
-        var cur = 0;
-        var step = Math.max(1, Math.ceil(c.target / 28));
-        var t = setInterval(function () {
-            cur = Math.min(cur + step, c.target);
-            el.textContent = cur;
-            if (cur >= c.target) clearInterval(t);
-        }, 38);
-    });
-
-    // ─── 30-day trend chart ───────────────────────────────────────────────────
-    var trend30Dates  = @Html.Raw(ViewBag.Trend30Dates  ?? "[]");
-    var trend30Counts = @Html.Raw(ViewBag.Trend30Counts ?? "[]");
-
-    var ctxTrend = document.getElementById('sl-trend-chart');
-    if (ctxTrend && trend30Dates.length > 0) {
-        var ctx = ctxTrend.getContext('2d');
-        var grad = ctx.createLinearGradient(0, 0, 0, 160);
-        grad.addColorStop(0,   'rgba(239,68,68,.28)');
-        grad.addColorStop(0.6, 'rgba(239,68,68,.08)');
-        grad.addColorStop(1,   'rgba(239,68,68,0)');
-
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: trend30Dates,
-                datasets: [{
-                    label: 'Errors',
-                    data: trend30Counts,
-                    borderColor: '#ef4444',
-                    backgroundColor: grad,
-                    borderWidth: 2.5,
-                    pointBackgroundColor: '#ef4444',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.42
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                animation: { duration: 1000, easing: 'easeOutQuart' },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1e1b4b', padding: 11, cornerRadius: 10,
-                        callbacks: {
-                            label: function(ctx) { return '  ' + ctx.parsed.y + ' error(s)'; }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#94a3b8', font: { size: 9, weight: '700' }, maxTicksLimit: 10 }
-                    },
-                    y: { display: false, beginAtZero: true }
-                },
-                interaction: { mode: 'index', intersect: false }
-            }
-        });
-    }
-
-        function copySystemLogDetails() {
-            var type = document.getElementById('modalExType').innerText;
-            var source = document.getElementById('modalExSource').innerText;
-            var msg = document.getElementById('modalExMsg').innerText;
-            var stack = document.getElementById('modalExStack').innerText;
-            
-            var content = `Exception Type: ${type}\nSource: ${source}\nMessage: ${msg}\n\nStack Trace:\n${stack}`;
-            
-            navigator.clipboard.writeText(content).then(function() {
-                toastr.success('Error details copied to clipboard!');
-            }, function(err) {
-                // Fallback
-                var textArea = document.createElement("textarea");
-                textArea.value = content;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    toastr.success('Error details copied to clipboard!');
-                } catch (err) {
-                    console.error('Fallback copy failed', err);
-                }
-                document.body.removeChild(textArea);
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('logDetailModal');
+            modal.addEventListener('show.bs.modal', e => {
+                const btn = e.relatedTarget;
+                modal.querySelector('#modalExType').textContent = btn.dataset.exType;
+                modal.querySelector('#modalExMsg').textContent = btn.dataset.exMsg;
+                modal.querySelector('#modalExSource').textContent = btn.dataset.exSource;
+                modal.querySelector('#modalExStack').textContent = btn.dataset.exStack;
             });
-        }
+        });
     </script>
 }
 
-<style>
-    /* Scoped additions for SystemLog */
-    .ex-hbtn {
-        display: inline-flex; align-items: center; gap: .35rem;
-        font-size: .8rem; font-weight: 700; padding: .6rem 1.2rem;
-        border-radius: 30px; border: none; text-decoration: none;
-        cursor: pointer; transition: all .18s; white-space: nowrap;
-    }
     .ex-hbtn-white { background: #fff; border: 1.5px solid var(--ad-border); color: var(--ad-primary); }
     .ex-hbtn-white:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
 </style>

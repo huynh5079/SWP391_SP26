@@ -437,7 +437,7 @@
                     <input type="hidden" asp-for="TopicId" id="TopicId" />
                     <div class="position-relative">
                         <input type="text" id="topicSearchInput" class="ce-input" placeholder="Search for existing topics... (e.g. AI, Soft Skills)" autocomplete="off" value="@(Model.Topics?.FirstOrDefault(t => t.Value == Model.TopicId)?.Text)" />
-                        <div id="topicSearchResults" class="position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg z-3" style="display:none; max-height: 250px; overflow-y: auto;"></div>
+                        <div id="topicSearchResults" class="position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg" style="display:none; max-height: 250px; overflow-y: auto; z-index: 1050;"></div>
                     </div>
                     <span asp-validation-for="TopicId" class="ce-error"></span>
                 </div>
@@ -451,7 +451,7 @@
                     <input type="hidden" asp-for="LocationId" id="LocationId" />
                     <div class="position-relative">
                         <input type="text" id="locationSearchInput" class="ce-input" placeholder="Search for existing locations... (e.g. Room, Hall)" autocomplete="off" value="@(Model.Locations?.FirstOrDefault(l => l.Value == Model.LocationId)?.Text)" />
-                        <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg z-3" style="display:none; max-height: 250px; overflow-y: auto;"></div>
+                        <div id="locationSearchResults" class="position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg" style="display:none; max-height: 250px; overflow-y: auto; z-index: 1050;"></div>
                     </div>
                     <span asp-validation-for="LocationId" class="ce-error"></span>
                 </div>
@@ -610,7 +610,7 @@
                                 <input type="hidden" name="Agendas[@i].SpeakerUserRole" value="@Model.Agendas[i].SpeakerUserRole" class="agenda-speaker-role" />
                                 <div class="position-relative">
                                     <input name="Agendas[@i].SpeakerInfo" value="@Model.Agendas[i].SpeakerInfo" class="ce-input agenda-speaker-search-input" placeholder="Search speaker by name or email..." autocomplete="off" />
-                                    <div class="agenda-speaker-search-results position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                                    <div class="agenda-speaker-search-results position-absolute w-100 bg-white border border-gray-200 rounded-bottom shadow-lg" style="display:none; max-height: 200px; overflow-y: auto; z-index: 1050;"></div>
                                 </div>
                                 <span asp-validation-for="Agendas[@i].SpeakerInfo" class="ce-error"></span>
                             </div>
