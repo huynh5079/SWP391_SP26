@@ -44,5 +44,3 @@ deploy_to_azure:
   only:
     - main
     - develop
-  # 'when: manual' để bạn có thể tự kiểm soát lúc nào thì đẩy lên server
-  when: manual

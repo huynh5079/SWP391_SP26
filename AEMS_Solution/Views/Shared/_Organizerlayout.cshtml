@@ -24,7 +24,7 @@
         <div class="brand-wrapper">
             <a href="@Url.Action("Index", "Organizer")" class="brand-link">
                 <div class="brand-icon-box" style="background: transparent; border: none; padding: 0;">
-                    <img src="~/images/aems-logo.png" alt="AEMS Logo" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px;" />
+                    <img src="~/images/aems-logo.png" alt="AEMS Logo" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px;" asp-append-version="true" />
                 </div>
                 <div class="brand-text">
                     <span class="brand-title">AEMS</span>
@@ -135,8 +135,8 @@
                             </a>
                         </li>
                         <li class="nav-item mb-1">
-                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Ticket" ? "active" : "")"
-                                asp-controller="Ticket" asp-action="Index">
+                            <a class="nav-link py-1 px-3 fs-6 @(operation == "manageticket" ? "active" : "")"
+                                asp-controller="Organizer" asp-action="Manage" asp-route-operation="manageticket">
                                 <i class="bi bi-ticket me-2 fs-6"></i> Manage Tickets
                             </a>
                         </li>
