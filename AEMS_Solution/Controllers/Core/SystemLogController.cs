@@ -20,12 +20,35 @@ namespace AEMS_Solution.Controllers.Core
         public async Task<IActionResult> Index(int page = 1, string? search = null, DataAccess.Enum.SystemLogStatusEnum? statusCode = null)
         {
             const int pageSize = 20;
+
+            // Load paginated logs
             var logs = await _logService.GetLogsAsync(page, pageSize, search, statusCode);
-            
+
+            // Load 30-day error trend for stats + mini chart
+            var (trendDates, trendCounts, todayCount) = await _logService.GetErrorTrendAsync(30);
+
+            // Compute 30-day total
+            int total30Days = trendCounts.Sum();
+
+            // Also grab last 7 days for the sparkline chart
+            var (dates7, counts7, _) = await _logService.GetErrorTrendAsync(7);
+
             // Pass filters back to view for inputs
-            ViewBag.Search = search;
-            ViewBag.StatusCode = (int?)statusCode;
-            
+            ViewBag.Search         = search;
+            ViewBag.StatusCode     = (int?)statusCode;
+
+            // Stats for the hero/header area
+            ViewBag.TotalLast30Days   = total30Days;
+            ViewBag.TodayCount        = todayCount;
+
+            // Chart data (7-day sparkline)
+            ViewBag.TrendDates  = System.Text.Json.JsonSerializer.Serialize(dates7);
+            ViewBag.TrendCounts = System.Text.Json.JsonSerializer.Serialize(counts7);
+
+            // Chart data (30-day full trend)
+            ViewBag.Trend30Dates  = System.Text.Json.JsonSerializer.Serialize(trendDates);
+            ViewBag.Trend30Counts = System.Text.Json.JsonSerializer.Serialize(trendCounts);
+
             return View(logs);
         }
 

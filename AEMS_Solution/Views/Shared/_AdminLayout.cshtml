@@ -72,6 +72,18 @@
                    class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "SystemLog" ? "active" : "")">
                     <i class="bi bi-journal-text"></i>
                     System Logs
+                    @{
+                        // Show 30-day error badge if available from Admin dashboard context
+                        int errBadge = 0;
+                        if (ViewBag.TotalLast30Days is int b30) { errBadge = b30; }
+                        else if (ViewData["TotalLast30Days"] is int vd30) { errBadge = vd30; }
+                    }
+                    @if (errBadge > 0)
+                    {
+                        <span class="ms-auto" style="background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.4);color:#fca5a5;font-size:.6rem;font-weight:800;padding:.1rem .4rem;border-radius:20px;line-height:1.4;">
+                            @errBadge
+                        </span>
+                    }
                 </a>
             </li>
             <li class="nav-item">
