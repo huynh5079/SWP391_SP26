@@ -31,7 +31,7 @@
                     
                     <StackPanel Grid.Column="0" Margin="0,0,10,0">
                         <TextBlock Text="Type" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8"/>
-                        <ComboBox x:Name="cbType" Style="{StaticResource ModernComboBoxStyle}"/>
+                        <ComboBox x:Name="cbType" Margin="0,0,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Bottom">

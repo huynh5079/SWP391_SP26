@@ -16,6 +16,7 @@ using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using BusinessLogic.Service.Approval;
 
 namespace AEMS_WPF
 {
@@ -76,11 +77,16 @@ namespace AEMS_WPF
             services.AddSingleton<StoragePathResolver>();
             services.AddScoped<IFileStorageService, CloudinaryStorageService>();
             
-            // Add other necessary services here as needed for Staff features
+            // Approval services
+            services.AddScoped<IApproverCommandService, ApproverService>();
+            services.AddScoped<IApproverQueryService, ApproverService>();
 
             // Views
             services.AddTransient<Views.Auth.LoginWindow>();
             services.AddTransient<MainWindow>(); // Using MainWindow as the Shell
+
+          
+            
         }
     }
 }

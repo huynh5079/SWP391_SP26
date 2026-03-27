@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using BusinessLogic.DTOs.Authentication.Login;
 
@@ -21,6 +21,7 @@ namespace AEMS_WPF
             txtUserRole.Text = _user.Role;
             txtUserInitial.Text = string.IsNullOrEmpty(_user.FullName) ? "?" : _user.FullName[0].ToString().ToUpper();
 
+            
             // Handle Menu Visibility
             if (_user.Role == "Admin")
             {
@@ -31,9 +32,11 @@ namespace AEMS_WPF
             else if (_user.Role == "Approver")
             {
                 BtnApprovals.Visibility = Visibility.Visible;
+                BtnEvents.Visibility = Visibility.Collapsed;
+                BtnUsers.Visibility = Visibility.Collapsed;
+                BtnErrorLogs.Visibility = Visibility.Collapsed;
             }
-            
-            // Navigate to default page
+
             MainFrame.Navigate(new Views.Dashboard.OverviewPage(_user));
         }
 
@@ -55,7 +58,10 @@ namespace AEMS_WPF
                     case "BtnErrorLogs":
                         MainFrame.Navigate(new Views.Common.SystemErrorLogPage());
                         break;
-                    // Add more cases as more pages are implemented
+                    case "BtnApprovals":
+                        MainFrame.Navigate(new Views.Dashboard.ApproveDashBoard(_user));
+                        break;
+                        // Add more cases as more pages are implemented
                 }
             }
         }
