@@ -43,7 +43,8 @@
 
     string GetEventClass(BusinessLogic.DTOs.Student.StudentEventBrowseDto ev)
     {
-        if (ev.Status == DataAccess.Enum.EventStatusEnum.Completed) return "event-finished";
+        if (ev.Status == DataAccess.Enum.EventStatusEnum.Completed || 
+            ev.Status == DataAccess.Enum.EventStatusEnum.Expired) return "event-finished";
         if (ev.Status == DataAccess.Enum.EventStatusEnum.Happening) return "event-happening";
         if (ev.IsRegistered) return "event-registered";
         return "event-upcoming";

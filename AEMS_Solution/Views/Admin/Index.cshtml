@@ -1,315 +1,1026 @@
 @model AEMS_Solution.Models.Admin.AdminDashboardViewModel
 @{
     ViewData["Title"] = "Admin Dashboard";
-    Layout = "~/Views/Shared/_AdminLayout.cshtml"; // Apply new Admin Layout
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    // ── Computed helpers ──────────────────────────────────────────────────────
+    var now       = DateTime.Now;
+    int safeTotal = Math.Max(Model.TotalUsers, 1);
+
+    // Chart palette (matches CSS)
+    var palette = new[] { "#6366f1", "#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#14b8a6", "#a855f7" };
+
+    // Avatar initials helper
+    string GetInitials(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "?";
+        var parts = s.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][0].ToString().ToUpper()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    // Avatar colour from string hash
+    string GetColor(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return "#6366f1";
+        return palette[Math.Abs(s.GetHashCode()) % palette.Length];
+    }
+
+    // Error severity helper
+    bool hasCritical = Model.TotalErrorsToday > 10;
+    bool hasWarning  = Model.TotalErrorsToday > 0 && !hasCritical;
+    bool allClear    = Model.TotalErrorsToday == 0;
+
+    // Fill rate colour
+    string FillColor(double pct) =>
+        pct >= 90 ? "#ef4444" : pct >= 60 ? "#f59e0b" : "#22c55e";
+
+    // Distribution rows
+    var distList = Model.UserDistribution?
+        .OrderByDescending(x => x.Value)
+        .ToList()
+        ?? new List<KeyValuePair<string, int>>();
 }
 
-<!-- Page Header -->
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Executive Dashboard</h1>
-        <p class="page-subtitle">Monitor system health and participant engagement.</p>
-    </div>
+@* ─────────────────────────────────────────────────────────────────
+   SCOPED STYLES — all prefixed "ex-" to avoid collisions
+───────────────────────────────────────────────────────────────── *@
+<style>
+/* ============================================================
+   EXECUTIVE DASHBOARD — ULTRA-PREMIUM UI
+   All scoped under .ex-page so nothing bleeds into admin-dashboard.css
+============================================================ */
 
-</div>
+/* ── Animations ── */
+@@keyframes ex-fadein   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+@@keyframes ex-card-in  { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:none} }
+@@keyframes ex-count-up { from{opacity:0;transform:scale(.65)} to{opacity:1;transform:scale(1)} }
+@@keyframes ex-bar-grow { from{width:0} }
+@@keyframes ex-rotate   { to{transform:rotate(360deg)} }
+@@keyframes ex-pulse-red{
+    0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}
+    50%    {box-shadow:0 0 0 10px rgba(239,68,68,0)}
+}
+@@keyframes ex-pulse-green{
+    0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}
+    50%    {box-shadow:0 0 0 10px rgba(34,197,94,0)}
+}
+@@keyframes ex-shimmer  {
+    0%   {background-position:-700px 0}
+    100% {background-position:700px 0}
+}
+@@keyframes ex-live-dot {
+    0%,100%{opacity:1;transform:scale(1)}
+    50%    {opacity:.4;transform:scale(.6)}
+}
+@@keyframes ex-pop {
+    0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)}
+}
 
-<!-- Summary Cards -->
-<div class="summary-cards">
-    <!-- Errors Card -->
-    <div class="stat-card" style="cursor: pointer;" onclick="location.href='@Url.Action("Index", "SystemLog")'">
-        <div class="stat-header">
-            <div class="stat-icon error">
-                <i class="bi bi-exclamation-circle-fill"></i>
+/* ── Root vars ── */
+.ex-page{
+    --ex-primary:  #6366f1;
+    --ex-violet:   #8b5cf6;
+    --ex-bg:       #f0f2ff;
+    --ex-card:     #ffffff;
+    --ex-border:   #e0e7ff;
+    --ex-text:     #1e1b4b;
+    --ex-muted:    #64748b;
+    --ex-radius:   16px;
+    --ex-shadow:   0 4px 28px rgba(99,102,241,.09);
+    --ex-shadow-hov:0 12px 36px rgba(99,102,241,.18);
+}
+
+.ex-page { animation:ex-fadein .45s ease both; }
+
+/* ─────────── HERO HEADER ─────────── */
+.ex-hero{
+    background:linear-gradient(130deg,#1e1b4b 0%,#312e81 45%,#4c1d95 80%,#6d28d9 100%);
+    border-radius:var(--ex-radius);
+    padding:2rem 2.4rem;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:1.2rem; flex-wrap:wrap;
+    margin-bottom:1.2rem;
+    position:relative; overflow:hidden;
+    box-shadow:0 8px 36px rgba(30,27,75,.32);
+    animation:ex-card-in .4s ease both;
+}
+.ex-hero::before{
+    content:"";
+    position:absolute; right:-80px; top:-80px;
+    width:260px; height:260px; border-radius:50%;
+    background:rgba(255,255,255,.04);
+    pointer-events:none;
+}
+.ex-hero::after{
+    content:"";
+    position:absolute; left:-40px; bottom:-60px;
+    width:180px; height:180px; border-radius:50%;
+    background:rgba(255,255,255,.03);
+    pointer-events:none;
+}
+.ex-hero-icon{
+    width:62px; height:62px; border-radius:18px;
+    background:rgba(255,255,255,.15);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.8rem; flex-shrink:0;
+    backdrop-filter:blur(6px);
+    box-shadow:0 4px 16px rgba(0,0,0,.15);
+}
+.ex-hero-title{
+    font-size:1.9rem; font-weight:900; color:#fff;
+    letter-spacing:-.035em; margin-bottom:.2rem; line-height:1.1;
+}
+.ex-hero-sub{ color:rgba(255,255,255,.65); font-size:.88rem; }
+.ex-hero-date{
+    display:inline-flex; align-items:center; gap:.35rem;
+    font-size:.78rem; color:rgba(255,255,255,.55);
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18);
+    padding:.28rem .75rem; border-radius:20px; margin-top:.45rem;
+    backdrop-filter:blur(4px);
+}
+.ex-hero-date i{ font-size:.75rem; }
+
+/* Hero KPI strip */
+.ex-hero-kpis{
+    display:flex; gap:1.6rem; flex-wrap:wrap;
+    align-items:center;
+}
+.ex-hero-kpi-val{ font-size:1.2rem; font-weight:900; color:#fff; line-height:1; }
+.ex-hero-kpi-lbl{ font-size:.65rem; font-weight:700; color:rgba(255,255,255,.5); text-transform:uppercase; letter-spacing:.06em; margin-top:.1rem; }
+.ex-hero-sep    { width:1px; height:40px; background:rgba(255,255,255,.15); flex-shrink:0; }
+
+/* Hero right actions */
+.ex-hero-actions{ display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+.ex-hbtn{
+    display:inline-flex; align-items:center; gap:.35rem;
+    font-size:.8rem; font-weight:800; padding:.6rem 1.2rem;
+    border-radius:30px; border:none; text-decoration:none;
+    cursor:pointer; transition:all .18s; white-space:nowrap;
+}
+.ex-hbtn-white{ background:#fff; color:#6366f1; box-shadow:0 2px 12px rgba(0,0,0,.14); }
+.ex-hbtn-white:hover{ transform:translateY(-2px); box-shadow:0 4px 18px rgba(0,0,0,.2); color:#4f46e5; }
+.ex-hbtn-glass{ background:rgba(255,255,255,.15); color:#fff; border:1.5px solid rgba(255,255,255,.3); }
+.ex-hbtn-glass:hover{ background:rgba(255,255,255,.25); color:#fff; }
+
+/* ─────────── STATUS ALERT BANNER ─────────── */
+.ex-alert{
+    border-radius:14px;
+    padding:.9rem 1.4rem;
+    display:flex; align-items:center; gap:.75rem;
+    margin-bottom:1.2rem; font-size:.88rem; font-weight:600;
+    animation:ex-card-in .4s .04s ease both;
+}
+.ex-alert i{ font-size:1.15rem; flex-shrink:0; }
+.ex-alert-ok   { background:#f0fdf4; border:1.5px solid #86efac; color:#15803d; }
+.ex-alert-warn { background:#fef3c7; border:1.5px solid #fde68a; color:#92400e; }
+.ex-alert-crit { background:#fee2e2; border:1.5px solid #fca5a5; color:#b91c1c; animation:ex-pulse-red 2s infinite; }
+.ex-live-dot   { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; animation:ex-live-dot 1.5s ease-in-out infinite; }
+
+/* ─────────── STATS GRID ─────────── */
+.ex-stats-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1rem; margin-bottom:1.2rem;
+}
+@@media(max-width:980px){ .ex-stats-grid{ grid-template-columns:repeat(2,1fr); } }
+@@media(max-width:480px){ .ex-stats-grid{ grid-template-columns:1fr 1fr; } }
+
+.ex-stat{
+    background:var(--ex-card); border-radius:var(--ex-radius);
+    border:1px solid var(--ex-border); box-shadow:var(--ex-shadow);
+    padding:1.2rem 1.3rem; cursor:pointer;
+    transition:transform .2s,box-shadow .2s,border-color .2s;
+    text-decoration:none; display:block; position:relative; overflow:hidden;
+    animation:ex-card-in .35s ease both;
+}
+.ex-stat::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(135deg,rgba(99,102,241,.04),transparent);
+    opacity:0; transition:opacity .2s;
+}
+.ex-stat:hover{ transform:translateY(-4px); box-shadow:var(--ex-shadow-hov); border-color:#c4b5fd; }
+.ex-stat:hover::after{ opacity:1; }
+
+/* Top accent bar */
+.ex-stat-bar{
+    height:3px; width:40px; border-radius:2px;
+    margin-bottom:.95rem; transition:width .3s;
+}
+.ex-stat:hover .ex-stat-bar{ width:70px; }
+
+.ex-stat-top{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:.85rem; }
+.ex-stat-icon{ width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; }
+.ex-stat-badge{ font-size:.66rem; font-weight:800; padding:.18rem .55rem; border-radius:20px; white-space:nowrap; }
+.ex-badge-neg  { background:#fee2e2; color:#b91c1c; }
+.ex-badge-pos  { background:#dcfce7; color:#15803d; }
+.ex-badge-blue { background:#dbeafe; color:#1e40af; }
+.ex-badge-stab { background:#f1f5f9; color:#64748b; }
+.ex-badge-pulse{ animation:ex-pop 2s ease infinite; }
+
+.ex-stat-label{ font-size:.66rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem; }
+.ex-stat-value{ font-size:2rem; font-weight:900; color:var(--ex-text); line-height:1; animation:ex-count-up .5s ease both; }
+.ex-stat-sub  { font-size:.7rem; color:#94a3b8; margin-top:.18rem; }
+
+/* Error stat pulse */
+.ex-stat.is-critical{ border-color:#fca5a5; animation:ex-pulse-red 2.5s infinite; }
+.ex-stat.is-clear  { animation:ex-pulse-green 3s infinite; }
+
+/* ─────────── CHARTS GRID ─────────── */
+.ex-charts-grid{
+    display:grid; grid-template-columns:3fr 2fr;
+    gap:1rem; margin-bottom:1.2rem;
+}
+@@media(max-width:900px){ .ex-charts-grid{ grid-template-columns:1fr; } }
+
+.ex-chart-card{
+    background:var(--ex-card); border-radius:var(--ex-radius);
+    border:1px solid var(--ex-border); box-shadow:var(--ex-shadow);
+    padding:1.3rem 1.5rem; display:flex; flex-direction:column;
+    animation:ex-card-in .4s .1s ease both;
+}
+.ex-chart-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:1.1rem; gap:.5rem; flex-wrap:wrap;
+}
+.ex-chart-title{ font-size:.92rem; font-weight:800; color:var(--ex-text); }
+.ex-chart-sub  { font-size:.74rem; color:var(--ex-muted); margin-top:.1rem; }
+.ex-chart-badge{
+    font-size:.68rem; font-weight:800; padding:.22rem .65rem;
+    border-radius:20px; background:#ede9fe; color:#6d28d9; flex-shrink:0;
+}
+.ex-chart-select{
+    font-size:.78rem; padding:.38rem .95rem;
+    border:1.5px solid var(--ex-border); border-radius:20px;
+    color:var(--ex-muted); background:#fafbff;
+    outline:none; cursor:pointer; transition:border-color .2s; font-family:inherit;
+}
+.ex-chart-select:focus{ border-color:var(--ex-primary); }
+
+/* Doughnut */
+.ex-doughnut-wrap  { position:relative; width:190px; margin:0 auto .5rem; }
+.ex-doughnut-center{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; pointer-events:none;
+}
+.ex-doughnut-val{ font-size:1.85rem; font-weight:900; color:var(--ex-text); line-height:1; }
+.ex-doughnut-lbl{ font-size:.62rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; }
+
+/* Distribution list */
+.ex-dist-list{ margin-top:1.1rem; }
+.ex-dist-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.48rem 0; border-bottom:1px solid #f8fafc;
+}
+.ex-dist-row:last-child{ border-bottom:none; }
+.ex-dist-left{ display:flex; align-items:center; gap:.55rem; }
+.ex-dist-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.ex-dist-name{ font-size:.82rem; color:var(--ex-muted); font-weight:600; }
+.ex-dist-right{ display:flex; align-items:center; gap:.6rem; }
+.ex-dist-pct { font-size:.82rem; font-weight:900; color:var(--ex-text); }
+.ex-dist-cnt { font-size:.72rem; color:#94a3b8; font-weight:600; }
+.ex-dist-bar-outer{ width:80px; height:5px; background:#e0e7ff; border-radius:3px; overflow:hidden; }
+.ex-dist-bar-inner{ height:100%; border-radius:3px; animation:ex-bar-grow .8s ease both; }
+
+/* ─────────── DARK SYSTEM BANNER ─────────── */
+.ex-banner{
+    background:linear-gradient(130deg,#1e1b4b 0%,#312e81 55%,#4c1d95 100%);
+    border-radius:var(--ex-radius);
+    padding:1.5rem 2rem;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:1.2rem;
+    margin-bottom:1.2rem;
+    box-shadow:0 6px 28px rgba(30,27,75,.28);
+    position:relative; overflow:hidden;
+    animation:ex-card-in .4s .08s ease both;
+}
+.ex-banner::before{
+    content:""; position:absolute; right:-55px; top:-55px;
+    width:200px; height:200px; border-radius:50%;
+    background:rgba(255,255,255,.04); pointer-events:none;
+}
+.ex-banner-left .ex-banner-eyebrow{
+    font-size:.65rem; font-weight:800; letter-spacing:.1em;
+    text-transform:uppercase; color:rgba(255,255,255,.45);
+    display:flex; align-items:center; gap:.4rem; margin-bottom:.35rem;
+}
+.ex-banner-left .ex-banner-title{
+    font-size:.88rem; color:rgba(255,255,255,.72); margin-bottom:.3rem;
+}
+.ex-banner-status{
+    display:inline-flex; align-items:center; gap:.45rem;
+    font-size:.82rem; font-weight:700; padding:.2rem .75rem;
+    border-radius:20px;
+}
+.ex-banner-status.ok  { background:rgba(34,197,94,.18); border:1px solid rgba(34,197,94,.3); color:#86efac; }
+.ex-banner-status.warn{ background:rgba(245,158,11,.18); border:1px solid rgba(245,158,11,.3); color:#fde68a; }
+.ex-banner-status.crit{ background:rgba(239,68,68,.18);  border:1px solid rgba(239,68,68,.3);  color:#fca5a5; animation:ex-pulse-red 2s infinite; }
+
+.ex-banner-kpis{ display:flex; gap:1.8rem; flex-wrap:wrap; align-items:center; }
+.ex-banner-kpi .val{ font-size:1.2rem; font-weight:900; color:#fff; line-height:1; }
+.ex-banner-kpi .lbl{ font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; color:rgba(255,255,255,.45); margin-top:.08rem; }
+.ex-banner-sep { width:1px; height:40px; background:rgba(255,255,255,.12); flex-shrink:0; }
+
+/* ─────────── TABLE CARD ─────────── */
+.ex-table-card{
+    background:var(--ex-card); border-radius:var(--ex-radius);
+    border:1px solid var(--ex-border); box-shadow:var(--ex-shadow);
+    overflow:hidden; margin-bottom:2.5rem;
+    animation:ex-card-in .4s .15s ease both;
+}
+.ex-table-head{
+    padding:1.1rem 1.5rem; border-bottom:1px solid #f1f5f9;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:.5rem;
+}
+.ex-table-title{ font-size:.9rem; font-weight:800; color:var(--ex-text); }
+.ex-table-sub  { font-size:.74rem; color:var(--ex-muted); margin-top:.1rem; }
+.ex-view-all{
+    font-size:.8rem; font-weight:700; color:var(--ex-primary);
+    text-decoration:none; display:inline-flex; align-items:center; gap:.25rem;
+    transition:gap .15s, color .15s;
+}
+.ex-view-all:hover{ gap:.45rem; color:#4f46e5; }
+
+.ex-table{ width:100%; border-collapse:collapse; }
+.ex-table thead th{
+    background:#f8fafc; font-size:.64rem; font-weight:800;
+    text-transform:uppercase; letter-spacing:.08em; color:#94a3b8;
+    padding:.78rem 1.2rem; border-bottom:1px solid #f1f5f9; white-space:nowrap;
+}
+.ex-table thead th:first-child{ padding-left:1.5rem; }
+.ex-table thead th:last-child { padding-right:1.5rem; }
+.ex-table tbody tr{ border-bottom:1px solid #f8fafc; transition:background .12s; }
+.ex-table tbody tr:last-child{ border-bottom:none; }
+.ex-table tbody tr:hover{ background:#f5f3ff; }
+.ex-table tbody td{ padding:.92rem 1.2rem; vertical-align:middle; font-size:.87rem; }
+.ex-table tbody td:first-child{ padding-left:1.5rem; }
+.ex-table tbody td:last-child { padding-right:1.5rem; }
+
+/* Event cell */
+.ex-event-cell{ display:flex; align-items:center; gap:.75rem; }
+.ex-event-av{
+    width:38px; height:38px; border-radius:11px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.8rem; font-weight:900; color:#fff; flex-shrink:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.12); transition:transform .2s;
+}
+.ex-table tbody tr:hover .ex-event-av{ transform:scale(1.1) rotate(4deg); }
+.ex-event-name{ font-weight:700; color:var(--ex-text); font-size:.87rem;
+                max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ex-event-sub { font-size:.68rem; color:#94a3b8; font-family:monospace; margin-top:.05rem; }
+.ex-time-cell { font-size:.82rem; color:var(--ex-muted); white-space:nowrap; }
+.ex-time-cell strong{ color:var(--ex-text); font-weight:700; display:block; }
+
+/* Status pills */
+.ex-pill{
+    display:inline-flex; align-items:center; gap:.25rem;
+    font-size:.69rem; font-weight:800; padding:.22rem .65rem;
+    border-radius:20px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;
+}
+.ex-pill-happening{ background:#dcfce7; color:#15803d; border:1px solid #86efac; animation:ex-pulse-green 2.5s infinite; }
+.ex-pill-approved { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.ex-pill-published{ background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; }
+.ex-pill-pending  { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+.ex-pill-completed{ background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; }
+.ex-pill-draft    { background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; }
+.ex-pill-rejected { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+.ex-pill-cancelled{ background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; }
+
+/* Action btn */
+.ex-action-btn{
+    display:inline-flex; align-items:center; gap:.25rem;
+    font-size:.74rem; font-weight:700; padding:.35rem .8rem;
+    border-radius:20px; border:1.5px solid var(--ex-border);
+    background:#f8faff; color:var(--ex-primary); text-decoration:none;
+    transition:all .15s;
+}
+.ex-action-btn:hover{ background:var(--ex-primary); color:#fff; border-color:var(--ex-primary); }
+
+/* Empty state */
+.ex-empty{ text-align:center; padding:3.5rem 1rem; }
+.ex-empty-icon{
+    width:80px; height:80px; border-radius:50%;
+    background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.2rem; color:#6d28d9; margin:0 auto .9rem;
+}
+.ex-empty h4{ font-size:1rem; font-weight:800; color:#374151; margin-bottom:.4rem; }
+.ex-empty p { font-size:.85rem; color:var(--ex-muted); }
+
+/* Capacity bar */
+.ex-cap-wrap{ display:flex; align-items:center; gap:.55rem; }
+.ex-cap-bg  { width:76px; height:5px; background:#e0e7ff; border-radius:3px; overflow:hidden; }
+.ex-cap-fill{ height:100%; border-radius:3px; animation:ex-bar-grow .7s ease both; animation-delay:.3s; }
+.ex-cap-pct { font-size:.75rem; font-weight:800; color:var(--ex-text); white-space:nowrap; }
+
+/* Quick-action tag */
+.ex-tags{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.75rem; }
+.ex-tag{
+    display:inline-flex; align-items:center; gap:.3rem;
+    font-size:.7rem; font-weight:700; padding:.22rem .65rem;
+    border-radius:20px; cursor:pointer; text-decoration:none; transition:all .15s;
+}
+.ex-tag-indigo{ background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; }
+.ex-tag-indigo:hover{ background:#6366f1; color:#fff; border-color:#6366f1; }
+.ex-tag-blue  { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.ex-tag-blue:hover{ background:#3b82f6; color:#fff; border-color:#3b82f6; }
+.ex-tag-green { background:#dcfce7; color:#15803d; border:1px solid #86efac; }
+.ex-tag-green:hover{ background:#22c55e; color:#fff; border-color:#22c55e; }
+.ex-tag-red   { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+.ex-tag-red:hover{ background:#ef4444; color:#fff; border-color:#ef4444; }
+</style>
+
+<div class="ex-page">
+
+    @* ══════════════════════════════════════════════════════════
+       HERO HEADER
+    ══════════════════════════════════════════════════════════ *@
+    <div class="ex-hero">
+        <div style="display:flex;align-items:center;gap:1.1rem;">
+            <div class="ex-hero-icon">
+                <i class="bi bi-speedometer2"></i>
             </div>
-            <div class="stat-badge negative">-2%</div>
-        </div>
-        <div class="stat-title">System Errors</div>
-        <div class="stat-value">@Model.TotalErrorsToday</div>
-    </div>
-
-    <!-- New Users Card -->
-    <div class="stat-card" @(Model.TotalUsers > 0 ? "style=cursor:pointer; onclick=location.href='" + Url.Action("Index", "UserManagement") + "'" : "style=opacity:0.7;")>
-        <div class="stat-header">
-            <div class="stat-icon users">
-                <i class="bi bi-person-plus-fill"></i>
-            </div>
-            <div class="stat-badge positive-blue">+14%</div>
-        </div>
-        <div class="stat-title">New Users</div>
-        <div class="stat-value">@Model.TotalUsers</div> 
-    </div>
-
-    <!-- Active Students Card -->
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon students">
-                <i class="bi bi-mortarboard-fill"></i>
-            </div>
-            <div class="stat-badge positive-green">+8%</div>
-        </div>
-        <div class="stat-title">Active Students</div>
-        <div class="stat-value">0</div> 
-    </div>
-
-    <!-- Staff Members Card -->
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon staff">
-                <i class="bi bi-person-vcard-fill"></i>
-            </div>
-            <div class="stat-badge neutral">STABLE</div>
-        </div>
-        <div class="stat-title">Staff Members</div>
-        <div class="stat-value">0</div> 
-    </div>
-</div>
-
-<!-- Charts Section -->
-<div class="charts-grid">
-    <!-- Trend Chart -->
-    <div class="glass-card">
-        <div class="card-title-box">
             <div>
-                <h2 class="card-title">System Activity Trend</h2>
-                <p class="card-subtitle">Activity volume monitored over the last 7 days</p>
+                <h1 class="ex-hero-title">Executive Dashboard</h1>
+                <p class="ex-hero-sub">Monitor system health and participant engagement.</p>
+                <div class="ex-hero-date">
+                    <i class="bi bi-calendar3"></i>
+                    @now.ToString("dddd, dd MMMM yyyy")
+                    &nbsp;·&nbsp;
+                    <i class="bi bi-clock"></i>
+                    @now.ToString("HH:mm")
+                </div>
             </div>
-            <select class="chart-dropdown">
-                <option>Last 7 Days</option>
-                <option>Last 30 Days</option>
-            </select>
         </div>
-        <div style="position: relative; height: 300px; width: 100%;">
-            <canvas id="trendChart"></canvas>
+        <div style="display:flex;flex-direction:column;gap:1rem;align-items:flex-end;">
+            <div class="ex-hero-actions">
+                <a href="@Url.Action("Index","UserManagement")" class="ex-hbtn ex-hbtn-white">
+                    <i class="bi bi-people-fill"></i> Users
+                </a>
+                <a href="@Url.Action("Index","SystemLog")" class="ex-hbtn ex-hbtn-glass">
+                    <i class="bi bi-journal-text"></i> Logs
+                </a>
+                <a href="@Url.Action("Index","AdminFeedback")" class="ex-hbtn ex-hbtn-glass">
+                    <i class="bi bi-chat-left-text"></i> Feedback
+                </a>
+            </div>
+            <div class="ex-hero-kpis">
+                <div class="text-center">
+                    <div class="ex-hero-kpi-val">@Model.TotalUsers</div>
+                    <div class="ex-hero-kpi-lbl">Users</div>
+                </div>
+                <div class="ex-hero-sep"></div>
+                <div class="text-center">
+                    <div class="ex-hero-kpi-val">@Model.TotalStudents</div>
+                    <div class="ex-hero-kpi-lbl">Students</div>
+                </div>
+                <div class="ex-hero-sep"></div>
+                <div class="text-center">
+                    <div class="ex-hero-kpi-val">@Model.TotalStaff</div>
+                    <div class="ex-hero-kpi-lbl">Staff</div>
+                </div>
+                <div class="ex-hero-sep"></div>
+                <div class="text-center">
+                    <div class="ex-hero-kpi-val">@Model.TotalErrorsToday</div>
+                    <div class="ex-hero-kpi-lbl">Errors</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- User Category Chart -->
-    <div class="glass-card">
-        <div class="card-title-box">
+    @* ══════════════════════════════════════════════════════════
+       STATUS ALERT BANNER
+    ══════════════════════════════════════════════════════════ *@
+    @if (allClear)
+    {
+        <div class="ex-alert ex-alert-ok">
+            <div class="ex-live-dot"></div>
+            <i class="bi bi-shield-check-fill"></i>
             <div>
-                <h2 class="card-title">User Category</h2>
-                <p class="card-subtitle">Total distribution by role</p>
+                <strong>All systems operational</strong> — No errors detected today.
+                Platform is running normally as of <strong>@now.ToString("HH:mm")</strong>.
             </div>
         </div>
-        <div style="position: relative; height: 200px; width: 100%;">
-            <div style="position: relative; height: 100%; width: 200px; margin: 0 auto;">
-                <canvas id="categoryChart"></canvas>
-            </div>
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
-                <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b;">@Model.TotalUsers</div>
-                <div style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px;">TOTAL</div>
+    }
+    else if (hasWarning)
+    {
+        <div class="ex-alert ex-alert-warn">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>
+                <strong>@Model.TotalErrorsToday error(s) detected today</strong> — Monitor closely.
+                <a href="@Url.Action("Index","SystemLog")" style="color:inherit;font-weight:800;margin-left:.4rem;">View logs →</a>
             </div>
         </div>
-        <div style="margin-top: 24px;">
-            @if(Model.UserDistribution != null && Model.UserDistribution.Any())
-            {
-                var colors = new[] { "#1e293b", "#3b82f6", "#22c55e", "#64748b" };
-                int colorIndex = 0;
-                foreach(var role in Model.UserDistribution)
+    }
+    else
+    {
+        <div class="ex-alert ex-alert-crit">
+            <i class="bi bi-exclamation-octagon-fill"></i>
+            <div>
+                <strong>CRITICAL: @Model.TotalErrorsToday errors detected today!</strong> — Immediate attention required.
+                <a href="@Url.Action("Index","SystemLog")" style="color:inherit;font-weight:800;margin-left:.4rem;">View logs immediately →</a>
+            </div>
+        </div>
+    }
+
+    @* ══════════════════════════════════════════════════════════
+       STATS GRID (4 cards)
+    ══════════════════════════════════════════════════════════ *@
+    <div class="ex-stats-grid">
+
+        @* ── System Errors ── *@
+        <a href="@Url.Action("Index","SystemLog")"
+           class="ex-stat @(hasCritical ? "is-critical" : allClear ? "is-clear" : "")"
+           style="animation-delay:.04s;">
+            <div class="ex-stat-bar" style="background:@(hasCritical?"#ef4444":allClear?"#22c55e":"#f59e0b");"></div>
+            <div class="ex-stat-top">
+                <div class="ex-stat-icon" style="background:@(hasCritical?"#fee2e2":allClear?"#dcfce7":"#fef3c7"); color:@(hasCritical?"#ef4444":allClear?"#16a34a":"#d97706");">
+                    <i class="bi bi-@(hasCritical?"exclamation-octagon-fill":allClear?"shield-check-fill":"exclamation-triangle-fill")"></i>
+                </div>
+                @if (hasCritical)
+                { <span class="ex-stat-badge ex-badge-neg ex-badge-pulse">CRITICAL</span> }
+                else if (hasWarning)
+                { <span class="ex-stat-badge ex-badge-neg">⚠ WARNING</span> }
+                else
+                { <span class="ex-stat-badge ex-badge-pos">✓ CLEAR</span> }
+            </div>
+            <div class="ex-stat-label">System Errors Today</div>
+            <div class="ex-stat-value" id="statErrors"
+                 style="color:@(hasCritical?"#ef4444":allClear?"#16a34a":"#d97706");">
+                @Model.TotalErrorsToday
+            </div>
+            <div class="ex-stat-sub">Click to view system logs</div>
+        </a>
+
+        @* ── Total Users ── *@
+        <a href="@Url.Action("Index","UserManagement")"
+           class="ex-stat" style="animation-delay:.07s;">
+            <div class="ex-stat-bar" style="background:#6366f1;"></div>
+            <div class="ex-stat-top">
+                <div class="ex-stat-icon" style="background:#ede9fe; color:#6d28d9;">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <span class="ex-stat-badge ex-badge-blue">+14%</span>
+            </div>
+            <div class="ex-stat-label">Total Users</div>
+            <div class="ex-stat-value" id="statUsers" style="color:#6d28d9;">@Model.TotalUsers</div>
+            <div class="ex-stat-sub">All registered accounts</div>
+        </a>
+
+        @* ── Students ── *@
+        <div class="ex-stat" style="animation-delay:.10s;">
+            <div class="ex-stat-bar" style="background:#22c55e;"></div>
+            <div class="ex-stat-top">
+                <div class="ex-stat-icon" style="background:#dcfce7; color:#15803d;">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <span class="ex-stat-badge ex-badge-pos">+8%</span>
+            </div>
+            <div class="ex-stat-label">Students</div>
+            <div class="ex-stat-value" id="statStudents" style="color:#15803d;">@Model.TotalStudents</div>
+            <div class="ex-stat-sub">Active student accounts</div>
+        </div>
+
+        @* ── Staff ── *@
+        <div class="ex-stat" style="animation-delay:.13s;">
+            <div class="ex-stat-bar" style="background:#3b82f6;"></div>
+            <div class="ex-stat-top">
+                <div class="ex-stat-icon" style="background:#dbeafe; color:#1d4ed8;">
+                    <i class="bi bi-person-vcard-fill"></i>
+                </div>
+                <span class="ex-stat-badge ex-badge-stab">Stable</span>
+            </div>
+            <div class="ex-stat-label">Staff Members</div>
+            <div class="ex-stat-value" id="statStaff" style="color:#1d4ed8;">@Model.TotalStaff</div>
+            <div class="ex-stat-sub">Active staff accounts</div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════
+       SYSTEM HEALTH BANNER
+    ══════════════════════════════════════════════════════════ *@
+    <div class="ex-banner">
+        <div class="ex-banner-left">
+            <div class="ex-banner-eyebrow">
+                <i class="bi bi-shield-fill"></i> System Health Monitor
+            </div>
+            <div class="ex-banner-title">Platform Real-time Status</div>
+            <div class="mt-1">
+                @if (allClear)
                 {
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: @colors[colorIndex % colors.Length];"></span>
-                            <span style="font-size: 0.85rem; color: #64748b;">@role.Key</span>
+                    <span class="ex-banner-status ok">
+                        <i class="bi bi-broadcast-pin"></i> All systems operational
+                    </span>
+                }
+                else if (hasWarning)
+                {
+                    <span class="ex-banner-status warn">
+                        <i class="bi bi-exclamation-triangle"></i> @Model.TotalErrorsToday error(s) detected
+                    </span>
+                }
+                else
+                {
+                    <span class="ex-banner-status crit">
+                        <i class="bi bi-exclamation-octagon"></i> @Model.TotalErrorsToday CRITICAL errors!
+                    </span>
+                }
+            </div>
+            <div class="ex-tags mt-2">
+                <a href="@Url.Action("Index","SystemLog")" class="ex-tag ex-tag-indigo">
+                    <i class="bi bi-journal-text"></i> View Logs
+                </a>
+                <a href="@Url.Action("Index","UserManagement")" class="ex-tag ex-tag-blue">
+                    <i class="bi bi-people"></i> Manage Users
+                </a>
+                <a href="@Url.Action("Index","AdminFeedback")" class="ex-tag ex-tag-green">
+                    <i class="bi bi-chat-left-text"></i> Feedback
+                </a>
+                @if (Model.TotalErrorsToday > 0)
+                {
+                    <a href="@Url.Action("Index","SystemLog")" class="ex-tag ex-tag-red">
+                        <i class="bi bi-exclamation-circle"></i> @Model.TotalErrorsToday Errors
+                    </a>
+                }
+            </div>
+        </div>
+        <div class="ex-banner-kpis">
+            <div class="ex-banner-kpi text-center">
+                <div class="val">@Model.TotalUsers</div>
+                <div class="lbl">Total Users</div>
+            </div>
+            <div class="ex-banner-sep"></div>
+            <div class="ex-banner-kpi text-center">
+                <div class="val">@Model.TotalStudents</div>
+                <div class="lbl">Students</div>
+            </div>
+            <div class="ex-banner-sep"></div>
+            <div class="ex-banner-kpi text-center">
+                <div class="val">@Model.TotalStaff</div>
+                <div class="lbl">Staff</div>
+            </div>
+            <div class="ex-banner-sep"></div>
+            <div class="ex-banner-kpi text-center">
+                <div class="val">@Model.TotalErrorsToday</div>
+                <div class="lbl">Errors Today</div>
+            </div>
+            <div class="ex-banner-sep"></div>
+            <div class="ex-banner-kpi text-center">
+                <div class="val">@distList.Count</div>
+                <div class="lbl">Roles</div>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════
+       CHARTS ROW — Trend (Line) + User Dist (Doughnut)
+    ══════════════════════════════════════════════════════════ *@
+    <div class="ex-charts-grid">
+
+        @* ── System Activity Trend ── *@
+        <div class="ex-chart-card">
+            <div class="ex-chart-head">
+                <div>
+                    <div class="ex-chart-title">
+                        <i class="bi bi-activity me-1" style="color:#6366f1;"></i>
+                        System Activity Trend
+                    </div>
+                    <div class="ex-chart-sub">Error events monitored over the last 7 days</div>
+                </div>
+                <div style="display:flex;gap:.5rem;align-items:center;">
+                    <span class="ex-chart-badge"><i class="bi bi-clock me-1"></i>7 Days</span>
+                </div>
+            </div>
+            <div style="flex:1; min-height:240px; position:relative;">
+                <canvas id="trendChart"></canvas>
+            </div>
+            @* Mini legend *@
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.75rem;font-size:.74rem;color:#94a3b8;">
+                <span style="width:16px;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:2px;display:inline-block;"></span>
+                System errors / activity
+                &nbsp;·&nbsp;
+                <i class="bi bi-cursor-fill" style="color:#6366f1;font-size:.7rem;"></i>
+                Click chart to open logs
+            </div>
+        </div>
+
+        @* ── User Category Doughnut ── *@
+        <div class="ex-chart-card">
+            <div class="ex-chart-head">
+                <div>
+                    <div class="ex-chart-title">
+                        <i class="bi bi-pie-chart-fill me-1" style="color:#8b5cf6;"></i>
+                        User Category
+                    </div>
+                    <div class="ex-chart-sub">Distribution by role</div>
+                </div>
+                <span class="ex-chart-badge">@Model.TotalUsers total</span>
+            </div>
+
+            <div class="ex-doughnut-wrap">
+                <canvas id="categoryChart" style="max-height:190px;"></canvas>
+                <div class="ex-doughnut-center">
+                    <div class="ex-doughnut-val" id="doughnutCenter">@Model.TotalUsers</div>
+                    <div class="ex-doughnut-lbl">Total</div>
+                </div>
+            </div>
+
+            <div class="ex-dist-list">
+                @{ int ci = 0; }
+                @foreach (var role in distList)
+                {
+                    double pct = Math.Round((double)role.Value / safeTotal * 100, 1);
+                    string color = palette[ci % palette.Length];
+                    <div class="ex-dist-row">
+                        <div class="ex-dist-left">
+                            <span class="ex-dist-dot" style="background:@color;"></span>
+                            <span class="ex-dist-name">@role.Key</span>
                         </div>
-                        <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b;">
-                            @((Model.TotalUsers > 0) ? Math.Round((double)role.Value / Model.TotalUsers * 100) : 0)% 
-                            <span style="color: #94a3b8; font-size: 0.75rem;">(@role.Value)</span>
+                        <div class="ex-dist-right">
+                            <div class="ex-dist-bar-outer">
+                                <div class="ex-dist-bar-inner" style="width:@pct%;background:@color;animation-delay:@(ci * .1)s;"></div>
+                            </div>
+                            <span class="ex-dist-pct">@pct%</span>
+                            <span class="ex-dist-cnt">(@role.Value)</span>
                         </div>
                     </div>
-                    colorIndex++;
+                    ci++;
                 }
-            }
-            else
-            {
-                <div style="text-align: center; color: #64748b; font-size: 0.85rem;">No user data available</div>
-            }
+                @if (!distList.Any())
+                {
+                    <div style="text-align:center;color:#94a3b8;font-size:.83rem;padding:1rem 0;">
+                        <i class="bi bi-inbox me-1"></i>No user data available
+                    </div>
+                }
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Recent Events Table -->
-<div class="glass-card" style="margin-bottom: 40px; padding: 0;">
-    <div style="padding: 24px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #eef0f4;">
-        <div>
-            <h2 class="card-title">Recent Educational Events</h2>
-            <p class="card-subtitle">A comprehensive view of active workshops.</p>
+    @* ══════════════════════════════════════════════════════════
+       RECENT EVENTS TABLE
+    ══════════════════════════════════════════════════════════ *@
+    <div class="ex-table-card">
+        <div class="ex-table-head">
+            <div>
+                <div class="ex-table-title">
+                    <i class="bi bi-calendar-event-fill me-1" style="color:#6366f1;"></i>
+                    Recent Educational Events
+                </div>
+                <div class="ex-table-sub">A comprehensive view of active workshops and seminars</div>
+            </div>
+            <a href="#" class="ex-view-all">
+                View All Events <i class="bi bi-arrow-right-short"></i>
+            </a>
         </div>
-        <a href="#" class="btn-link-custom">View All Events</a>
-    </div>
 
-    <div style="overflow-x: auto;">
-        <table class="events-table">
-            <thead>
-                <tr>
-                    <th style="padding-left: 24px;">EVENT NAME</th>
-                    <th>DEPARTMENT</th>
-                    <th>DATE & TIME</th>
-                    <th>CAPACITY</th>
-                    <th>STATUS</th>
-                    <th style="padding-right: 24px; width: 50px;"></th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Event 1 -->
-                <!-- Template row for Backend Team to iterate (e.g. foreach(var evt in Model.RecentEvents)) -->
-                @* 
-                <tr>
-                    <td style="padding-left: 24px;">
-                        <div class="event-name-flex">
-                            <div class="event-icon @evt.IconClass">@evt.IconText</div>
-                            <div class="event-title">@evt.EventName</div>
-                        </div>
-                    </td>
-                    <td><div class="event-dept">@evt.Department</div></td>
-                    <td>
-                        <div class="event-date">@evt.DateText</div>
-                        <div class="event-time">@evt.TimeText</div>
-                    </td>
-                    <td>
-                        <div class="capacity-wrapper">
-                            <div class="progress-tube">
-                                <div class="progress-fill black" style="width: @evt.CapacityPercent%;"></div>
+        <div class="table-responsive">
+            <table class="ex-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Event Name</th>
+                        <th>Department</th>
+                        <th>Date &amp; Time</th>
+                        <th>Capacity</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @* ── Team TODO: Wire up Model.RecentEvents when added to AdminDashboardViewModel
+                        Sample iteration:
+                        @foreach(var evt in Model.RecentEvents) {
+                            <tr>
+                                <td>1</td>
+                                <td>
+                                    <div class="ex-event-cell">
+                                        <div class="ex-event-av" style="background:#6366f1;">AI</div>
+                                        <div>
+                                            <div class="ex-event-name">@evt.Title</div>
+                                            <div class="ex-event-sub">@evt.EventId</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>@evt.Department</td>
+                                <td>...</td>
+                                <td>...</td>
+                                <td><span class="ex-pill ex-pill-published">@evt.Status</span></td>
+                                <td style="text-align:right;"><a href="#" class="ex-action-btn">View</a></td>
+                            </tr>
+                        }
+                    *@
+                    <tr>
+                        <td colspan="7">
+                            <div class="ex-empty">
+                                <div class="ex-empty-icon"><i class="bi bi-calendar-x"></i></div>
+                                <h4>Chưa có sự kiện gần đây</h4>
+                                <p>Team TODO: thêm <code>RecentEvents</code> vào <code>AdminDashboardViewModel</code> để hiển thị tại đây.</p>
                             </div>
-                            <div class="capacity-text">@evt.CapacityPercent%</div>
-                        </div>
-                    </td>
-                    <td><span class="status-pill @evt.StatusClass">@evt.StatusText</span></td>
-                    <td style="padding-right: 24px; text-align: right;">
-                        <button class="btn-dot"><i class="bi bi-three-dots"></i></button>
-                    </td>
-                </tr> 
-                *@
-                
-                <!-- Display when no events are available -->
-                <tr>
-                    <td colspan="6" style="padding: 40px 24px; text-align: center;">
-                        <div style="color: #94a3b8; font-size: 0.9rem;">
-                            <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
-                            No recent educational events found.
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Load data from ViewModel
-        var trendLabels = @Html.Raw(Json.Serialize(Model.ErrorTrendLabels));
-        var trendData = @Html.Raw(Json.Serialize(Model.ErrorTrendData));
-        
-        // Fallback to Template Mock Data if Database is empty
-        if (!trendLabels || trendLabels.length === 0) {
-            trendLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            trendData = [12, 19, 15, 25, 22, 30, 28];
-        }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
-        var userLabels = [];
-        var userData = [];
-        @if (Model.UserDistribution != null)
+    // ─── Counter animation ────────────────────────────────────────────────────
+    var counters = [
+        { id: 'statErrors',   target: @Model.TotalErrorsToday },
+        { id: 'statUsers',    target: @Model.TotalUsers       },
+        { id: 'statStudents', target: @Model.TotalStudents    },
+        { id: 'statStaff',    target: @Model.TotalStaff       }
+    ];
+    counters.forEach(function (c) {
+        var el = document.getElementById(c.id);
+        if (!el || c.target === 0) return;
+        var current = 0;
+        var step    = Math.max(1, Math.ceil(c.target / 30));
+        var timer   = setInterval(function () {
+            current = Math.min(current + step, c.target);
+            el.textContent = current;
+            if (current >= c.target) clearInterval(timer);
+        }, 40);
+    });
+
+    // ─── Trend data from ViewModel ────────────────────────────────────────────
+    var trendLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ErrorTrendLabels));
+    var trendData   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ErrorTrendData));
+
+    // Fallback when no data
+    if (!trendLabels || trendLabels.length === 0) {
+        trendLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        trendData   = [0, 0, 0, 0, 0, 0, 0];
+    }
+
+    // ─── User distribution data ───────────────────────────────────────────────
+    var userLabels = [];
+    var userData   = [];
+    @if (Model.UserDistribution != null)
+    {
+        foreach (var role in Model.UserDistribution)
         {
-            foreach(var role in Model.UserDistribution)
-            {
-                @:userLabels.push('@Html.Raw(role.Key)');
-                @:userData.push(@role.Value);
-            }
+            @:userLabels.push('@Html.Raw(role.Key)');
+            @:userData.push(@role.Value);
         }
+    }
 
-        // System Activity Trend Chart (Line)
-        var ctxTrend = document.getElementById('trendChart').getContext('2d');
+    // ─── System Activity Trend Chart (Area Line) ──────────────────────────────
+    var ctxTrend = document.getElementById('trendChart').getContext('2d');
 
-        // Create a gradient for the line
-        var gradient = ctxTrend.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(67, 97, 238, 0.2)');
-        gradient.addColorStop(1, 'rgba(67, 97, 238, 0)');
+    // Gradient fill
+    var gradient = ctxTrend.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0,   'rgba(99,102,241,.30)');
+    gradient.addColorStop(0.5, 'rgba(99,102,241,.12)');
+    gradient.addColorStop(1,   'rgba(99,102,241,0)');
 
-        var trendChart = new Chart(ctxTrend, {
-            type: 'line',
-            data: {
-                labels: trendLabels,
-                datasets: [{
-                    label: 'System Errors',
-                    data: trendData, 
-                    borderColor: '#3b82f6', // Bright Blue
-                    backgroundColor: gradient,
-                    borderWidth: 4,
-                    pointRadius: 4, // Show dots for actual data
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.4 // Smooth curve
-                }]
+    new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Activity',
+                data: trendData,
+                borderColor: '#6366f1',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                pointBackgroundColor: '#6366f1',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2.5,
+                pointRadius: 5,
+                pointHoverRadius: 8,
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#6366f1',
+                pointHoverBorderWidth: 3,
+                fill: true,
+                tension: 0.45
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1100,
+                easing: 'easeOutQuart'
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        padding: 10,
-                        titleFont: { size: 13, family: 'Inter' },
-                        bodyFont: { size: 13, family: 'Inter' },
-                        displayColors: false,
+            onClick: function () {
+                window.location.href = '@Url.Action("Index","SystemLog")';
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e1b4b',
+                    titleFont: { size: 12, weight: '700', family: 'Inter' },
+                    bodyFont:  { size: 12, family: 'Inter' },
+                    padding: 12,
+                    cornerRadius: 10,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(ctx) { return ctx[0].label; },
+                        label: function(ctx) { return '  ' + ctx.parsed.y + ' events'; }
                     }
-                },
-                scales: {
-                    x: {
-                        grid: { display: false, drawBorder: false },
-                        ticks: { color: '#94a3b8', font: { size: 11, family: 'Inter' }, padding: 10 }
-                    },
-                    y: {
-                        display: false, // hide y axis completely
-                        min: 0,
-                    }
-                },
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                onClick: (e) => {
-                     window.location.href = '/SystemLog';
                 }
-            }
-        });
-
-        // User Category Chart (Doughnut)
-        var ctxCategory = document.getElementById('categoryChart').getContext('2d');
-        var categoryChart = new Chart(ctxCategory, {
-            type: 'doughnut',
-            data: {
-                labels: userLabels,
-                datasets: [{
-                    data: userData,
-                    backgroundColor: [
-                        '#1e293b', // Black 
-                        '#3b82f6', // Blue 
-                        '#22c55e', // Green 
-                        '#64748b'  // Slate (fallback)
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%', // Make it thin like the mockup
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        callbacks: {
-                            label: function(context) {
-                                return context.label + ': ' + context.raw;
-                            }
+            scales: {
+                x: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { size: 10, weight: '700', family: 'Inter' },
+                        padding: 8
+                    }
+                },
+                y: {
+                    display: false,
+                    beginAtZero: true,
+                    grace: '10%'
+                }
+            },
+            interaction: { mode: 'index', intersect: false }
+        }
+    });
+
+    // ─── User Category Doughnut ───────────────────────────────────────────────
+    var ctxCat  = document.getElementById('categoryChart').getContext('2d');
+    var palette = ['#6366f1','#22c55e','#3b82f6','#f59e0b','#ec4899','#14b8a6','#a855f7'];
+
+    var catChart = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+            labels: userLabels.length ? userLabels : ['No data'],
+            datasets: [{
+                data: userData.length ? userData : [1],
+                backgroundColor: userData.length ? palette : ['#e0e7ff'],
+                borderWidth: 4,
+                borderColor: '#ffffff',
+                hoverOffset: 8,
+                hoverBorderWidth: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '74%',
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1000,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e1b4b',
+                    titleFont: { weight: '800', family: 'Inter' },
+                    bodyFont:  { family: 'Inter' },
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: {
+                        label: function(ctx) {
+                            var total = ctx.dataset.data.reduce(function(a,b){return a+b;},0);
+                            var pct   = total > 0 ? Math.round(ctx.raw / total * 100) : 0;
+                            return '  ' + ctx.label + ': ' + ctx.raw + ' (' + pct + '%)';
                         }
                     }
                 }
+            },
+            onHover: function(event, elements) {
+                var el = document.getElementById('doughnutCenter');
+                if (!el) return;
+                if (elements && elements.length > 0) {
+                    var idx = elements[0].index;
+                    el.textContent = catChart.data.datasets[0].data[idx];
+                    el.style.color = palette[idx % palette.length];
+                } else {
+                    el.textContent = '@Model.TotalUsers';
+                    el.style.color = '#1e1b4b';
+                }
+            }
+        }
+    });
+
+    // ─── Hover pop animation on stat cards ───────────────────────────────────
+    document.querySelectorAll('.ex-stat').forEach(function (card) {
+        card.addEventListener('mouseenter', function () {
+            var val = this.querySelector('.ex-stat-value');
+            if (val) {
+                val.style.transition = 'transform .15s';
+                val.style.transform  = 'scale(1.08)';
             }
         });
-    </script>
+        card.addEventListener('mouseleave', function () {
+            var val = this.querySelector('.ex-stat-value');
+            if (val) val.style.transform = 'scale(1)';
+        });
+    });
+
+});
+</script>
 }

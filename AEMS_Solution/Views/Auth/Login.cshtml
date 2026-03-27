@@ -1,67 +1,275 @@
 @model AEMS_Solution.Models.Authentication.LoginViewModel
 @{
-    ViewData["Title"] = "Đăng nhập";
+    ViewData["Title"] = "Đăng nhập | AEMS";
+    Layout = "_Layout"; // Ensure it uses the main layout or null if it's a standalone page
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-5 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white text-center">
-                <h4 class="mb-0">Đăng nhập</h4>
+<style>
+    :root {
+        --auth-primary: #6366f1;
+        --auth-primary-hover: #4f46e5;
+        --auth-bg: #f8fafc;
+        --auth-card-bg: rgba(255, 255, 255, 0.8);
+        --auth-text: #1e293b;
+        --auth-muted: #64748b;
+    }
+
+    body {
+        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        min-height: 100vh;
+    }
+
+    .auth-container {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+
+    .auth-card {
+        background: var(--auth-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(99, 102, 241, 0.1);
+        width: 100%;
+        max-width: 420px;
+        padding: 2.5rem;
+        animation: auth-fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @@keyframes auth-fade-in {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .auth-logo {
+        width: 64px;
+        height: 64px;
+        background: var(--auth-primary);
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+    }
+
+    .auth-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--auth-text);
+        letter-spacing: -0.02em;
+    }
+
+    .auth-subtitle {
+        color: var(--auth-muted);
+        font-size: 0.95rem;
+    }
+
+    .auth-form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .auth-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--auth-text);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .auth-input-wrapper {
+        position: relative;
+    }
+
+    .auth-input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--auth-muted);
+        font-size: 1.1rem;
+    }
+
+    .auth-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.8rem;
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        color: var(--auth-text);
+    }
+
+    .auth-input:focus {
+        border-color: var(--auth-primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .auth-btn-primary {
+        width: 100%;
+        padding: 0.8rem;
+        background: var(--auth-primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 1rem;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    .auth-btn-primary:hover {
+        background: var(--auth-primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+    }
+
+    .auth-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.5rem 0;
+        color: var(--auth-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .auth-divider::before, .auth-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .auth-divider:not(:empty)::before { margin-right: 1rem; }
+    .auth-divider:not(:empty)::after { margin-left: 1rem; }
+
+    .auth-btn-google {
+        width: 100%;
+        padding: 0.75rem;
+        background: white;
+        color: #374151;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .auth-btn-google:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+        color: #111827;
+    }
+
+    .auth-footer {
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    .auth-link {
+        color: var(--auth-primary);
+        text-decoration: none;
+        font-weight: 700;
+        transition: color 0.2s;
+    }
+
+    .auth-link:hover {
+        color: var(--auth-primary-hover);
+        text-decoration: underline;
+    }
+
+    .auth-error {
+        font-size: 0.8rem;
+        color: #ef4444;
+        margin-top: 0.25rem;
+        font-weight: 600;
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">
+                <i class="bi bi-shield-lock-fill"></i>
             </div>
-            <div class="card-body">
-                @if (TempData["NotificationMessage"] != null)
-                {
-                    var type = TempData["NotificationType"]?.ToString() == "error" ? "danger" : "success";
-                    <div class="alert alert-@type alert-dismissible fade show" role="alert">
-                        @TempData["NotificationMessage"]
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
+            <h2 class="auth-title">Chào mừng trở lại</h2>
+            <p class="auth-subtitle">Đăng nhập để quản lý sự kiện của bạn</p>
+        </div>
 
-                <form asp-action="Login" asp-controller="Auth" method="post">
-                    <input type="hidden" asp-for="ReturnUrl" />
+        @if (TempData["NotificationMessage"] != null)
+        {
+            var type = TempData["NotificationType"]?.ToString() == "error" ? "danger" : "success";
+            <div class="alert alert-@type alert-dismissible fade show mb-4 border-0 shadow-sm" style="border-radius: 12px;" role="alert">
+                <i class="bi bi-@(type == "danger" ? "exclamation-circle" : "check-circle")-fill me-2"></i>
+                @TempData["NotificationMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
 
-                    <div class="mb-3">
-                        <label asp-for="Email" class="form-label">Email</label>
-                        <input asp-for="Email" class="form-control" placeholder="Nhập email của bạn" />
-                        <span asp-validation-for="Email" class="text-danger"></span>
-                    </div>
+        <form asp-action="Login" asp-controller="Auth" method="post">
+            <input type="hidden" asp-for="ReturnUrl" />
 
-                    <div class="mb-3">
-                        <label asp-for="Password" class="form-label">Mật khẩu</label>
-                        <input asp-for="Password" class="form-control" placeholder="Nhập mật khẩu" />
-                        <span asp-validation-for="Password" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3 d-flex justify-content-between">
-                        <div></div>
-                        <a asp-action="ForgotPassword" asp-controller="Auth" class="text-decoration-none small">Quên mật khẩu?</a>
-                    </div>
-
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-primary">Đăng nhập</button>
-                    </div>
-                </form>
-
-                <div class="text-center my-3">
-                    <span class="text-muted">HOẶC</span>
+            <div class="auth-form-group">
+                <label asp-for="Email" class="auth-label">Email Học Thuật</label>
+                <div class="auth-input-wrapper">
+                    <i class="bi bi-envelope auth-input-icon"></i>
+                    <input asp-for="Email" class="auth-input" placeholder="example@@fpt.edu.vn" />
                 </div>
+                <span asp-validation-for="Email" class="auth-error"></span>
+            </div>
 
-                <div class="d-grid mb-3">
-                    <a asp-action="LoginGoogle" asp-controller="Auth" class="btn btn-outline-danger">
-                        <i class="bi bi-google me-2"></i> Đăng nhập bằng Google
-                    </a>
+            <div class="auth-form-group">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label asp-for="Password" class="auth-label mb-0">Mật khẩu</label>
+                    <a asp-action="ForgotPassword" asp-controller="Auth" class="auth-link small" style="font-size: 0.8rem;">Quên mật khẩu?</a>
                 </div>
+                <div class="auth-input-wrapper">
+                    <i class="bi bi-lock auth-input-icon"></i>
+                    <input asp-for="Password" class="auth-input" type="password" placeholder="••••••••" />
+                </div>
+                <span asp-validation-for="Password" class="auth-error"></span>
+            </div>
 
-                <div class="text-center">
-                    <p class="mb-2">
-                        <a asp-action="RegisterStudent" asp-controller="Auth" class="text-decoration-none">Đăng ký tài khoản Sinh viên</a>
-                    </p>
-                    <p class="mb-0">
-                        <a asp-action="RegisterOrganizer" asp-controller="Auth" class="text-decoration-none">Đăng ký tài khoản Tổ chức</a>
-                    </p>
-                </div>
+            <button type="submit" class="auth-btn-primary">
+                Đăng nhập ngay <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+        </form>
+
+        <div class="auth-divider">HOẶC TIẾP TỤC VỚI</div>
+
+        <a asp-action="LoginGoogle" asp-controller="Auth" class="auth-btn-google">
+            <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20" height="20" alt="Google">
+            Tiếp tục với fpt.edu.vn
+        </a>
+
+        <div class="auth-footer">
+            <p class="text-muted mb-2">Chưa có tài khoản?</p>
+            <div class="d-flex flex-column gap-2">
+                <a asp-action="RegisterStudent" asp-controller="Auth" class="auth-link">Đăng ký Sinh viên</a>
+                <a asp-action="RegisterOrganizer" asp-controller="Auth" class="auth-link">Đăng ký Tổ chức sự kiện</a>
             </div>
         </div>
     </div>

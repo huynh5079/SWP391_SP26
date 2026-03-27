@@ -163,3 +163,24 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+
+/* ── Global Staggered Fade-in Animations ── */
+@keyframes page-fade-in {
+    from { 
+        opacity: 0; 
+        transform: translateY(12px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: none; 
+    }
+}
+
+.animate-fade-in {
+    animation: page-fade-in 0.4s ease both;
+}
+
+.animate-delay-1 { animation-delay: 0.1s; }
+.animate-delay-2 { animation-delay: 0.15s; }
+.animate-delay-3 { animation-delay: 0.2s; }
+.animate-delay-4 { animation-delay: 0.25s; }

@@ -1,172 +1,200 @@
 @model BusinessLogic.DTOs.User.UserDetailDto
 @{
-    ViewData["Title"] = "Chi tiết Người dùng";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "User Details";
+    if (User.IsInRole("Admin")) Layout = "_AdminLayout";
+    else if (User.IsInRole("Organizer") || User.IsInRole("Staff")) Layout = "_Organizerlayout";
+    else Layout = "_Approvallayout";
 
     string ToDateTimeLocalValue(DateTime? value) => value?.ToString("yyyy-MM-ddTHH:mm:ss") ?? string.Empty;
 }
 
-<div class="container py-4">
+<div class="container-fluid py-4 animate-fade-in">
     <div class="d-flex align-items-center mb-4">
-        <a asp-action="Index" class="btn btn-outline-secondary me-3">
-            <i class="bi bi-arrow-left"></i> Quay lại
+        <a asp-action="Index" class="btn btn-outline-secondary me-3 rounded-pill px-3 shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back
         </a>
-        <h2 class="h3 mb-0">Hồ sơ: @Model.FullName</h2>
+        <h2 class="h3 mb-0 fw-bold text-gray-800">Profile: @Model.FullName</h2>
     </div>
 
     <div class="row">
+        @* Left Column: Profile Card *@
         <div class="col-lg-4 mb-4">
-            <div class="card shadow">
-                <div class="card-body text-center">
-                    <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.FullName : Model.AvatarUrl)" 
-                         alt="@Model.FullName" 
-                         class="rounded-circle img-thumbnail mb-3"
-                         style="width: 150px; height: 150px; object-fit: cover;">
+            <div class="card shadow-sm border-0 rounded-4 animate-fade-in animate-delay-1 sticky-top" style="top: 2rem; z-index: 10;">
+                <div class="card-body text-center p-4">
+                    <div class="position-relative d-inline-block mb-3">
+                        <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "https://ui-avatars.com/api/?name=" + Model.FullName : Model.AvatarUrl)" 
+                             alt="@Model.FullName" 
+                             class="rounded-circle shadow-sm border border-light"
+                             style="width: 150px; height: 150px; object-fit: cover;">
+                        <span class="position-absolute bottom-0 end-0 p-2 bg-white rounded-circle shadow-sm border" style="transform: translate(-10%, -10%);">
+                            <i class="bi bi-patch-check-fill text-primary"></i>
+                        </span>
+                    </div>
                     
-                    <h5 class="fw-bold">@Model.FullName</h5>
-                    <p class="text-muted">@Model.Email</p>
+                    <h5 class="fw-bold mb-1">@Model.FullName</h5>
+                    <p class="text-muted small mb-3">@Model.Email</p>
                     
-                    <div class="mb-3">
-                        <span class="badge bg-secondary">@Model.RoleName</span>
-                        <span class="badge @(Model.Status == DataAccess.Enum.UserStatusEnum.Active ? "bg-success" : "bg-danger")">
+                    <div class="mb-4">
+                        <span class="badge rounded-pill bg-light text-primary border border-primary px-3 py-2 me-1">@Model.RoleName</span>
+                        <span class="badge rounded-pill @(Model.Status == DataAccess.Enum.UserStatusEnum.Active ? "bg-success" : "bg-danger") px-3 py-2">
                             @(Model.Status?.ToString() ?? "Unknown")
                         </span>
                         @if(Model.IsBanned == true)
                         {
-                            <span class="badge bg-danger">BANNED</span>
+                            <span class="badge rounded-pill bg-dark px-3 py-2 mt-2 d-block mx-auto w-50">BANNED</span>
                         }
                     </div>
 
                      @if (Model.ReactivateAt.HasValue && Model.Status == DataAccess.Enum.UserStatusEnum.Inactive)
                      {
-                         <div class="alert alert-warning text-start small">
-                             <div><strong>Mở khóa lúc:</strong> @Model.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                             <div class="text-primary fw-semibold lock-countdown" data-reactivate-at="@Model.ReactivateAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></div>
-                         </div>
+                          <div class="alert alert-warning text-start border-0 shadow-sm rounded-3 p-3 mb-4">
+                              <div class="small fw-bold mb-1"><i class="bi bi-clock-history me-1"></i> Unlock at:</div>
+                              <div class="small">@Model.ReactivateAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                              <div class="text-primary fw-bold mt-2 lock-countdown" data-reactivate-at="@Model.ReactivateAt.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></div>
+                          </div>
                      }
 
                      @if (Model.IsBanned == true)
                      {
-                         <form asp-action="Unban" asp-route-id="@Model.Id" method="post" onsubmit="return confirmAction(event, 'Xác nhận mở khóa tài khoản?');">
-                             <button type="submit" class="btn btn-success w-100">
-                                 <i class="bi bi-unlock me-2"></i> Mở khóa tài khoản
-                             </button>
-                         </form>
+                          <form asp-action="Unban" asp-route-id="@Model.Id" method="post" onsubmit="return confirmAction(event, 'Confirm unlock account?');">
+                              @Html.AntiForgeryToken()
+                              <button type="submit" class="btn btn-success w-100 rounded-pill py-2 shadow-sm">
+                                  <i class="bi bi-unlock-fill me-2"></i> Unlock Account
+                              </button>
+                          </form>
                      }
                      else
                      {
-                         <form id="detailLockForm" asp-action="Ban" method="post" onsubmit="return confirmAction(event, 'Xác nhận khóa tài khoản?');">
-                             <input type="hidden" name="Id" value="@Model.Id" />
-                             <input type="hidden" name="Status" value="Inactive" />
+                          <div class="border-top pt-4 mt-2">
+                              <form id="detailLockForm" asp-action="Ban" method="post" onsubmit="return confirmAction(event, 'Confirm lock account?');">
+                                  @Html.AntiForgeryToken()
+                                  <input type="hidden" name="Id" value="@Model.Id" />
+                                  <input type="hidden" name="Status" value="Inactive" />
 
-                              <div class="mb-3 text-start">
-                                  <label for="detailLockType" class="form-label fw-bold">Loại khóa</label>
-                                  <select id="detailLockType" class="form-select">
-                                      <option value="manual">Khóa thủ công</option>
-                                      <option value="timed">Khóa theo thời gian</option>
-                                  </select>
-                              </div>
+                                   <div class="mb-3 text-start">
+                                       <label for="detailLockType" class="form-label fw-bold small text-muted">LOCK TYPE</label>
+                                       <select id="detailLockType" class="form-select form-select-sm rounded-3">
+                                           <option value="manual">Manual Lock</option>
+                                           <option value="timed">Timed Lock</option>
+                                       </select>
+                                   </div>
 
-                              <div class="mb-3 text-start d-none" id="detailReactivateAtWrapper">
-                                  <label class="form-label fw-bold">Mở khóa tự động lúc</label>
-                                  <div class="row g-2">
-                                      <div class="col-4">
-                                          <input type="number" id="detailLockYear" class="form-control" min="0" placeholder="Năm" />
-                                      </div>
-                                      <div class="col-4">
-                                          <input type="number" id="detailLockMonth" class="form-control" min="0" placeholder="Tháng" />
-                                      </div>
-                                      <div class="col-4">
-                                          <input type="number" id="detailLockDay" class="form-control" min="0" placeholder="Ngày" />
-                                      </div>
-                                      <div class="col-4">
-                                          <input type="number" id="detailLockHour" class="form-control" min="0" placeholder="Giờ" />
-                                      </div>
-                                      <div class="col-4">
-                                          <input type="number" id="detailLockMinute" class="form-control" min="0" placeholder="Phút" />
-                                      </div>
-                                      <div class="col-4">
-                                          <input type="number" id="detailLockSecond" class="form-control" min="0" placeholder="Giây" />
-                                      </div>
-                                  </div>
-                                  <input type="hidden" id="detailReactivateAt" name="ReactivateAt" value="@ToDateTimeLocalValue(Model.ReactivateAt)" />
-                              </div>
+                                   <div class="mb-3 text-start d-none" id="detailReactivateAtWrapper">
+                                       <label class="form-label fw-bold small text-muted">AUTO-UNLOCK AT</label>
+                                       <div class="row g-2">
+                                           <div class="col-4">
+                                               <input type="number" id="detailLockYear" class="form-control form-control-sm rounded-3" min="0" placeholder="Year" />
+                                           </div>
+                                           <div class="col-4">
+                                               <input type="number" id="detailLockMonth" class="form-control form-control-sm rounded-3" min="0" placeholder="Month" />
+                                           </div>
+                                           <div class="col-4">
+                                               <input type="number" id="detailLockDay" class="form-control form-control-sm rounded-3" min="0" placeholder="Day" />
+                                           </div>
+                                           <div class="col-4">
+                                               <input type="number" id="detailLockHour" class="form-control form-control-sm rounded-3" min="0" placeholder="Hour" />
+                                           </div>
+                                           <div class="col-4">
+                                               <input type="number" id="detailLockMinute" class="form-control form-control-sm rounded-3" min="0" placeholder="Min" />
+                                           </div>
+                                           <div class="col-4">
+                                               <input type="number" id="detailLockSecond" class="form-control form-control-sm rounded-3" min="0" placeholder="Sec" />
+                                           </div>
+                                       </div>
+                                       <input type="hidden" id="detailReactivateAt" name="ReactivateAt" value="@ToDateTimeLocalValue(Model.ReactivateAt)" />
+                                   </div>
 
-                              <small class="text-muted d-block mb-3" id="detailLockPreview">Khóa thủ công sẽ chỉ mở khi admin mở khóa.</small>
+                                   <div class="alert alert-secondary py-2 px-3 small border-0 mb-3" id="detailLockPreview" style="font-size: .75rem;">
+                                       Manual lock will only be opened when the admin unlocks it.
+                                   </div>
 
-                             <button type="submit" class="btn btn-danger w-100">
-                                 <i class="bi bi-lock me-2"></i> Khóa tài khoản
-                             </button>
-                         </form>
+                                  <button type="submit" class="btn btn-danger w-100 rounded-pill py-2 shadow-sm">
+                                      <i class="bi bi-lock-fill me-2"></i> Lock Account
+                                  </button>
+                              </form>
+                          </div>
                      }
                 </div>
             </div>
         </div>
 
+        @* Right Column: Info Cards *@
         <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Thông tin chi tiết</h6>
+            <div class="card shadow-sm border-0 rounded-4 animate-fade-in animate-delay-2 mb-4">
+                <div class="card-header bg-white py-3 border-bottom border-light">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-info-circle me-2"></i>Detailed Information</h6>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
+                <div class="card-body p-4">
+                    <div class="row g-4">
                         <div class="col-sm-6">
-                            <label class="small text-muted fw-bold">ID Hệ thống</label>
-                            <div class="text-break">@Model.Id</div>
+                            <label class="small text-muted fw-bold d-block mb-1">SYSTEM ID</label>
+                            <div class="text-break text-dark fw-medium">@Model.Id</div>
                         </div>
                         <div class="col-sm-6">
-                            <label class="small text-muted fw-bold">Ngày tham gia</label>
-                            <div>@(Model.CreatedAt.HasValue ? Model.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-")</div>
+                            <label class="small text-muted fw-bold d-block mb-1">JOINED DATE</label>
+                            <div class="text-dark fw-medium">@(Model.CreatedAt.HasValue ? Model.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-")</div>
                         </div>
                         <div class="col-sm-6">
-                            <label class="small text-muted fw-bold">Số điện thoại</label>
-                            <div>@(string.IsNullOrEmpty(Model.Phone) ? "Chưa cập nhật" : Model.Phone)</div>
+                            <label class="small text-muted fw-bold d-block mb-1">PHONE NUMBER</label>
+                            <div class="text-dark fw-medium">@(string.IsNullOrEmpty(Model.Phone) ? "Not updated" : Model.Phone)</div>
                         </div>
                         <div class="col-sm-6">
-                            <label class="small text-muted fw-bold">Google ID</label>
-                            <div class="text-break">@(string.IsNullOrEmpty(Model.GoogleId) ? "-" : Model.GoogleId)</div>
+                            <label class="small text-muted fw-bold d-block mb-1">GOOGLE ID</label>
+                            <div class="text-break text-muted small">@(string.IsNullOrEmpty(Model.GoogleId) ? "-" : Model.GoogleId)</div>
                         </div>
 
-                        <div class="col-12"><hr /></div>
+                        <div class="col-12"><hr class="my-2 opacity-25"></div>
 
                         @if (!string.IsNullOrEmpty(Model.StudentCode))
                         {
                             <div class="col-sm-6">
-                                <label class="small text-muted fw-bold">Mã sinh viên</label>
-                                <div class="h6 text-primary">@Model.StudentCode</div>
+                                <label class="small text-muted fw-bold d-block mb-1">STUDENT CODE</label>
+                                <div class="h5 text-primary fw-bold mb-0">@Model.StudentCode</div>
                             </div>
                             <div class="col-sm-6">
-                                <label class="small text-muted fw-bold">Phòng ban / Khoa</label>
-                                <div>@Model.DepartmentName</div>
+                                <label class="small text-muted fw-bold d-block mb-1">DEPARTMENT / FACULTY</label>
+                                <div class="text-dark fw-medium">@Model.DepartmentName</div>
                             </div>
                             <div class="col-sm-6">
-                                <label class="small text-muted fw-bold">Kỳ học</label>
-                                <div>@Model.CurrentSemester</div>
+                                <label class="small text-muted fw-bold d-block mb-1">CURRENT SEMESTER</label>
+                                <div class="text-dark fw-medium">@Model.CurrentSemester</div>
                             </div>
                         }
                         else if (!string.IsNullOrEmpty(Model.StaffCode))
                         {
                             <div class="col-sm-6">
-                                <label class="small text-muted fw-bold">Mã nhân viên</label>
-                                <div class="h6 text-primary">@Model.StaffCode</div>
+                                <label class="small text-muted fw-bold d-block mb-1">STAFF CODE</label>
+                                <div class="h5 text-primary fw-bold mb-0">@Model.StaffCode</div>
                             </div>
                             <div class="col-sm-6">
-                                <label class="small text-muted fw-bold">Phòng ban</label>
-                                <div>@Model.DepartmentName</div>
+                                <label class="small text-muted fw-bold d-block mb-1">DEPARTMENT</label>
+                                <div class="text-dark fw-medium">@Model.DepartmentName</div>
                             </div>
                             <div class="col-sm-6">
-                                <label class="small text-muted fw-bold">Chức vụ</label>
-                                <div>@Model.Position</div>
+                                <label class="small text-muted fw-bold d-block mb-1">POSITION</label>
+                                <div class="text-dark fw-medium">@Model.Position</div>
                             </div>
                         }
                         else
                         {
                             <div class="col-12 text-muted fst-italic">
-                                Không có thông tin hồ sơ bổ sung (Student/Staff profile).
+                                <i class="bi bi-info-circle me-1"></i> No additional profile information (Student/Staff profile).
                             </div>
                         }
                     </div>
                 </div>
+            </div>
+            
+            @* Placeholder for Activity Log or other info *@
+            <div class="card shadow-sm border-0 rounded-4 animate-fade-in animate-delay-3">
+                <div class="card-body p-5 text-center text-muted">
+                    <i class="bi bi-journal-text mb-3 d-block" style="font-size: 2.5rem; opacity: .3;"></i>
+                    <p class="mb-0">Activity log for this user will be displayed here in a future update.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script>
@@ -217,13 +245,13 @@
 
                     if ([years, months, days, hours, minutes, seconds].some(value => Number.isNaN(value) || value < 0)) {
                         detailReactivateAt.value = '';
-                        detailLockPreview.textContent = 'Các giá trị phải lớn hơn hoặc bằng 0.';
+                        detailLockPreview.textContent = 'Values must be greater than or equal to 0.';
                         return;
                     }
 
                     if (![years, months, days, hours, minutes, seconds].some(value => value > 0)) {
                         detailReactivateAt.value = '';
-                        detailLockPreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                        detailLockPreview.textContent = 'At least one field must be greater than 0.';
                         return;
                     }
 
@@ -236,14 +264,14 @@
                     unlockAt.setSeconds(unlockAt.getSeconds() + seconds);
 
                     detailReactivateAt.value = formatDateTimeLocal(unlockAt);
-                    detailLockPreview.textContent = `Tài khoản sẽ tự mở khóa lúc ${formatDateTimeDisplay(unlockAt)}.`;
+                    detailLockPreview.textContent = `Account will auto-unlock at ${formatDateTimeDisplay(unlockAt)}.`;
                     return;
                 }
 
                 detailReactivateAtWrapper.classList.add('d-none');
                 setDetailTimedInputs('');
                 detailReactivateAt.value = '';
-                detailLockPreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
+                detailLockPreview.textContent = 'Manual lock will only be opened when the admin unlocks it.';
             };
 
             const applyDetailLockMode = mode => {
@@ -258,7 +286,7 @@
                     detailReactivateAt.required = true;
                     setDetailTimedInputs('');
                     detailReactivateAt.value = '';
-                    detailLockPreview.textContent = 'Nhập theo thứ tự năm, tháng, ngày, giờ, phút, giây. Có thể để trống hoặc 0, nhưng ít nhất 1 trường phải lớn hơn 0.';
+                    detailLockPreview.textContent = 'Enter values in years, months, days, hours, minutes, seconds.';
                     return;
                 }
 
@@ -266,7 +294,7 @@
                 detailReactivateAt.required = false;
                 setDetailTimedInputs('');
                 detailReactivateAt.value = '';
-                detailLockPreview.textContent = 'Khóa thủ công sẽ chỉ mở khi admin mở khóa.';
+                detailLockPreview.textContent = 'Manual lock will only be opened when the admin unlocks it.';
             };
 
             const updateCountdown = element => {
@@ -279,7 +307,7 @@
                 }
 
                 if (remaining <= 0) {
-                    element.textContent = 'Đang chờ tự mở khóa...';
+                    element.textContent = 'Waiting for auto-unlock...';
                     return;
                 }
 
@@ -289,7 +317,7 @@
                 const minutes = Math.floor((totalSeconds % 3600) / 60);
                 const seconds = totalSeconds % 60;
                 const dayText = days > 0 ? `${days}d ` : '';
-                element.textContent = `Còn lại: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+                element.textContent = `Remaining: ${dayText}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
             };
 
             countdownElements.forEach(element => {
@@ -305,12 +333,17 @@
             detailLockForm?.addEventListener('submit', event => {
                 if (currentDetailLockMode === 'timed' && !detailReactivateAt.value) {
                     event.preventDefault();
-                    detailLockPreview.textContent = 'Ít nhất 1 trường phải lớn hơn 0.';
+                    detailLockPreview.textContent = 'At least one field must be greater than 0.';
                 }
             });
 
             applyDetailLockMode('manual');
         })();
+        
+        function confirmAction(event, message) {
+            if (!confirm(message)) { event.preventDefault(); return false; }
+            return true;
+        }
     </script>
 }
             </div>

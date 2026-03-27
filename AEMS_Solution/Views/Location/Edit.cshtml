@@ -2,79 +2,179 @@
 @using DataAccess.Enum
 @{
     var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
-    if (role == "Admin") { Layout = "_Layout"; }
+    if (role == "Admin") { Layout = "_AdminLayout"; }
     else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
     else { Layout = "_Approvallayout"; }
     ViewData["Title"] = "Edit Location";
 }
 
-<div class="container mt-4">
-    <div class="d-flex align-items-center mb-3 gap-2">
-        <a asp-controller="Location" asp-action="Index" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i>
+<style>
+    .form-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    .form-title-area h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .form-title-area p { color: #64748b; font-size: 0.9rem; margin: 0; }
+    
+    .glass-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #e8edf3;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.035);
+        padding: 2.5rem;
+    }
+
+    .form-label { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 0.5rem; }
+    .form-control-premium, .form-select-premium {
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 0.92rem;
+        transition: all 0.2s;
+        background: #f8fafc;
+    }
+    .form-control-premium:focus, .form-select-premium:focus {
+        border-color: #6366f1;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .btn-premium {
+        border-radius: 30px;
+        padding: 0.65rem 1.75rem;
+        font-weight: 700;
+        font-size: 0.88rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-premium-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #fff;
+        border: none;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+    }
+    .btn-premium-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+        color: #fff;
+    }
+    .btn-premium-light {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
+    .btn-premium-light:hover { background: #e2e8f0; color: #1e293b; }
+</style>
+
+<div class="container-fluid p-0 animate-fade-in">
+    <div class="mb-4">
+        <a asp-controller="Location" asp-action="Index" class="btn btn-premium btn-premium-light animate-fade-in">
+            <i class="bi bi-arrow-left"></i> Back to Locations
         </a>
-        <h2 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Edit Location</h2>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form asp-controller="Location" asp-action="Edit" method="post">
-                @Html.AntiForgeryToken()
-                @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
-                <input asp-for="LocationId" type="hidden" />
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-4 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="Name" class="form-label fw-semibold">Tên địa điểm <span class="text-danger">*</span></label>
-                        <input asp-for="Name" class="form-control" />
-                        <span asp-validation-for="Name" class="text-danger small"></span>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="Address" class="form-label fw-semibold">Địa chỉ</label>
-                        <input asp-for="Address" class="form-control" />
-                    </div>
-                </div>
+    <div class="form-header animate-fade-in animate-delay-1">
+        <div class="form-title-area">
+            <h1><i class="bi bi-pencil-square" style="color:#6366f1;"></i> Edit Location</h1>
+            <p>Modify the details, capacity, or status of an existing facility.</p>
+        </div>
+    </div>
 
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label asp-for="Capacity" class="form-label fw-semibold">Sức chứa <span class="text-danger">*</span></label>
-                        <input asp-for="Capacity" type="number" class="form-control" min="1" />
-                        <span asp-validation-for="Capacity" class="text-danger small"></span>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label asp-for="Type" class="form-label fw-semibold">Loại phòng <span class="text-danger">*</span></label>
-                        <select asp-for="Type" class="form-select">
-                            <option value="">-- Chọn loại --</option>
-                            @foreach (var type in System.Enum.GetValues<LocationTypeEnum>())
-                            {
-                                <option value="@type">@type</option>
-                            }
-                        </select>
-                        <span asp-validation-for="Type" class="text-danger small"></span>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label asp-for="Status" class="form-label fw-semibold">Trạng thái</label>
-                        <select asp-for="Status" class="form-select">
-                            @foreach (var status in System.Enum.GetValues<LocationStatusEnum>())
-                            {
-                                <option value="@status">@status</option>
-                            }
-                        </select>
-                    </div>
-                </div>
+    <div class="row">
+        <div class="col-xl-9">
+            <div class="glass-card animate-fade-in animate-delay-2">
+                <form asp-controller="Location" asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="LocationId" type="hidden" />
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6 animate-fade-in animate-delay-3">
+                            <label asp-for="Name" class="form-label">Location Name <span class="text-danger">*</span></label>
+                            <input asp-for="Name" class="form-control form-control-premium" placeholder="e.g., Room A101, Great Hall" autocomplete="off" />
+                            <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="col-md-6 animate-fade-in animate-delay-3">
+                            <label asp-for="Address" class="form-label">Address / Landmark</label>
+                            <input asp-for="Address" class="form-control form-control-premium" placeholder="e.g., Building A, Floor 1" autocomplete="off" />
+                            <span asp-validation-for="Address" class="text-danger small mt-1 d-block"></span>
+                        </div>
 
-                <div class="mb-3">
-                    <label asp-for="Description" class="form-label fw-semibold">Mô tả</label>
-                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                </div>
+                        <div class="col-md-4 animate-fade-in animate-delay-4">
+                            <label asp-for="Capacity" class="form-label">Capacity <span class="text-danger">*</span></label>
+                            <input asp-for="Capacity" type="number" class="form-control form-control-premium" min="1" placeholder="Max participants" />
+                            <span asp-validation-for="Capacity" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="col-md-4 animate-fade-in animate-delay-4">
+                            <label asp-for="Type" class="form-label">Room Type <span class="text-danger">*</span></label>
+                            <select asp-for="Type" class="form-select form-select-premium">
+                                <option value="">-- Select --</option>
+                                @foreach (var type in System.Enum.GetValues<LocationTypeEnum>())
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Type" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="col-md-4 animate-fade-in animate-delay-4">
+                            <label asp-for="Status" class="form-label">Status</label>
+                            <select asp-for="Status" class="form-select form-select-premium">
+                                @foreach (var status in System.Enum.GetValues<LocationStatusEnum>())
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger small mt-1 d-block"></span>
+                        </div>
 
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-1"></i>Lưu thay đổi
-                    </button>
-                    <a asp-controller="Location" asp-action="Index" class="btn btn-secondary">Hủy</a>
+                        <div class="col-12 animate-fade-in animate-delay-5">
+                            <label asp-for="Description" class="form-label">Description (Optional)</label>
+                            <textarea asp-for="Description" class="form-control form-control-premium" rows="3" placeholder="Features, equipment available, etc..."></textarea>
+                            <span asp-validation-for="Description" class="text-danger small mt-1 d-block"></span>
+                        </div>
+
+                        <div class="col-12 mt-5 animate-fade-in animate-delay-6">
+                            <div class="d-flex justify-content-end gap-3">
+                                <a asp-controller="Location" asp-action="Index" class="btn btn-premium btn-premium-light">Cancel</a>
+                                <button type="submit" class="btn btn-premium btn-premium-primary">
+                                    <i class="bi bi-check-circle-fill"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="mt-4 p-3 rounded-4 animate-fade-in animate-delay-7" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.2);">
+                <div class="d-flex gap-3">
+                    <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                    <p class="small text-muted mb-0">
+                        <strong>Modifying ID:</strong> <code class="text-primary fw-bold">@Model.LocationId</code>. Changing capacity or room type may affect already scheduled events in this location.
+                    </p>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>

@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 # CONFIG
 # =========================
 TEST_FILE = r'D:\PROJECT_SWP_SP26\swp391_sp26-develop\Python\Data\spiltdatatotrain\split\test.csv'
-MODEL_PATH = r'D:\PROJECT_SWP_SP26\swp391_sp26-develop\Python\TrainModel\phobert_sentiment_model\checkpoint-17802'
+MODEL_PATH = r'D:\PROJECT_SWP_SP26\swp391_sp26-develop\Python\TrainModel\phobert_sentiment_model\checkpoint-23736'
 
 # =========================
 # LOAD TEST DATA

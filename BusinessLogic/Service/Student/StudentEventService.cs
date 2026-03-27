@@ -112,7 +112,9 @@ namespace BusinessLogic.Service.Student
             var events = await _uow.Events.GetAllAsync(
                 e => (e.Status == EventStatusEnum.Published ||
                       e.Status == EventStatusEnum.Upcoming  ||
-                      e.Status == EventStatusEnum.Happening) &&
+                      e.Status == EventStatusEnum.Happening ||
+                      e.Status == EventStatusEnum.Completed ||
+                      e.Status == EventStatusEnum.Expired) &&
                      e.DeletedAt == null,
                 q => q.Include(x => x.Location)
                        .Include(x => x.Topic)

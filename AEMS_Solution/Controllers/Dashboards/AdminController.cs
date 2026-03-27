@@ -21,34 +21,36 @@ namespace AEMS_Solution.Controllers.Dashboards
         {
             try 
             {
-                // 1. Error Stats
+                // 1. Error Stats — 7-day trend
                 var (dates, counts, todayErrors) = await _logService.GetErrorTrendAsync(7);
 
-                // 2. User Stats
-                // Note: Fetching all users is heavy. Should add Count methods to Repo later.
+                // 2. Error Stats — 30-day total for sidebar badge + stats
+                var (dates30, counts30, _) = await _logService.GetErrorTrendAsync(30);
+                int total30Days = counts30.Sum();
+
+                // 3. User Stats
                 var allUsers = await _uow.Users.GetAllAsync(null, query => Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.Include(query, u => u.Role));
-                var totalUsers = allUsers.Count();
+                var totalUsers    = allUsers.Count();
                 var totalStudents = allUsers.Count(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Student);
-                var totalStaff = allUsers.Count(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver));
+                var totalStaff    = allUsers.Count(u => u.Role != null && (u.Role.RoleName == DataAccess.Enum.RoleEnum.Organizer || u.Role.RoleName == DataAccess.Enum.RoleEnum.Approver));
                 
-                // Get Admin Count too?
-                // Distribution
                 var userDist = new Dictionary<string, int>
                 {
                     { "Student", totalStudents },
-                    { "Staff", totalStaff },
-                    { "Admin", allUsers.Count(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Admin) }
+                    { "Staff",   totalStaff },
+                    { "Admin",   allUsers.Count(u => u.Role != null && u.Role.RoleName == DataAccess.Enum.RoleEnum.Admin) }
                 };
 
                 var model = new Models.Admin.AdminDashboardViewModel
                 {
-                    TotalUsers = totalUsers,
-                    TotalStudents = totalStudents,
-                    TotalStaff = totalStaff,
-                    TotalErrorsToday = todayErrors,
-                    ErrorTrendData = counts,
-                    ErrorTrendLabels = dates,
-                    UserDistribution = userDist
+                    TotalUsers              = totalUsers,
+                    TotalStudents           = totalStudents,
+                    TotalStaff              = totalStaff,
+                    TotalErrorsToday        = todayErrors,
+                    TotalErrorsLast30Days   = total30Days,
+                    ErrorTrendData          = counts,
+                    ErrorTrendLabels        = dates,
+                    UserDistribution        = userDist
                 };
 
                 return View(model);

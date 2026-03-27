@@ -1,8 +1,11 @@
-﻿@model BusinessLogic.DTOs.Event.Semester.SemesterDTO
+@model BusinessLogic.DTOs.Event.Semester.SemesterDTO
 @using DataAccess.Enum
 @{
-    ViewData["Title"] = "Create Semester";
-    Layout = "_Approvallayout";
+    var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (role == "Admin") { Layout = "_AdminLayout"; }
+    else if (role == "Organizer" || role == "Staff") { Layout = "_Organizerlayout"; }
+    else { Layout = "_Approvallayout"; }
+    
     var isEdit = !string.IsNullOrWhiteSpace(Model.SemesterId);
     ViewData["Title"] = isEdit ? "Edit Semester" : "Create Semester";
     var selectedName = Model.Name ?? "Spring";
@@ -25,10 +28,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1">@(isEdit ? "Edit Semester" : "Create Semester")</h2>
-            <p class="text-muted mb-0">Tạo/cập nhật học kỳ theo đúng nghiệp vụ: Name = Spring/Summer/Fall, Code = SP26/SU26/FA26.</p>
+            <p class="text-muted mb-0">Create or update semesters: Format Name (Spring/Summer/Fall) and Code (SP26/SU26/FA26).</p>
         </div>
         <a asp-controller="Approver" asp-action="Semester" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Quay lại
+            <i class="bi bi-arrow-left"></i> Back
         </a>
     </div>
 
@@ -69,9 +72,9 @@
                 </div>
 
                 <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-                    <a asp-controller="Approver" asp-action="Semester" class="btn btn-light border">Hủy</a>
+                    <a asp-controller="Approver" asp-action="Semester" class="btn btn-light border">Cancel</a>
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check2-circle me-1"></i>@(isEdit ? "Cập nhật Semester" : "Tạo Semester")
+                        <i class="bi bi-check2-circle me-1"></i>@(isEdit ? "Update Semester" : "Create Semester")
                     </button>
                 </div>
             </form>

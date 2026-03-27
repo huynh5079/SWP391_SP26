@@ -3,12 +3,16 @@ Database service for saving chat sessions and messages to SQL Server.
 Maps RAG conversation data to ChatbotSession and ChatbotMessage tables.
 """
 
-import pyodbc
+
 from datetime import datetime, timedelta
 from typing import Optional, List, Any, Dict
 from uuid import uuid4
 
-
+try:
+    import pyodbc
+except Exception as e:
+    pyodbc = None
+    print(f"[RAG] pyodbc import failed: {e}")
 class DatabaseService:
     """Service to save chat sessions and messages to SQL Server"""
 
