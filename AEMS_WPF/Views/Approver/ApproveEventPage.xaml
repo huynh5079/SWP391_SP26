@@ -1,0 +1,147 @@
+<Window x:Class="AEMS_WPF.Views.Approver.ApproveEventPage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:AEMS_WPF.Views.Approver"
+        Title="Approve Event Page" Height="800" Width="1200" WindowStartupLocation="CenterScreen" Background="#F8FAFC">
+
+    <Window.Resources>
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="15" ShadowDepth="1" Opacity="0.05"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Button Grid.Row="0" Content="← Back to Dashboard" Background="White" 
+                Foreground="#64748B" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,24"
+                Click="BtnBack_Click">
+            <Button.Resources>
+                <Style TargetType="Border">
+                    <Setter Property="CornerRadius" Value="8"/>
+                </Style>
+            </Button.Resources>
+        </Button>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2.2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Column="0" Margin="0,0,24,0">
+                <StackPanel>
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <DockPanel>
+                                <TextBlock Text="EVENT OVERVIEW" Style="{StaticResource SectionHeader}"/>
+                                <Border Background="#FFF7ED" CornerRadius="12" Padding="12,4" HorizontalAlignment="Right">
+                                    <TextBlock x:Name="txtStatus" Text="Pending" Foreground="#92560B" FontWeight="Bold" FontSize="12"/>
+                                </Border>
+                            </DockPanel>
+                            <TextBlock x:Name="txtTitle" Text="-" FontSize="28" FontWeight="Bold" Foreground="#0F172A" Margin="0,8"/>
+
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Location: " Foreground="#64748B" FontSize="14"/>
+                                <TextBlock x:Name="txtLocation" Text="-" Foreground="#64748B" FontSize="14"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <UniformGrid Columns="2" Margin="0,0,0,16">
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="START / END TIME" Style="{StaticResource SectionHeader}"/>
+                                <TextBlock x:Name="txtStartEnd" Text="-" FontWeight="Bold" FontSize="15"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardStyle}" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="ORGANIZER" Style="{StaticResource SectionHeader}"/>
+                                <TextBlock x:Name="txtOrganizer" Text="-" FontWeight="Bold" FontSize="15"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="DESCRIPTION" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock x:Name="txtDescription" TextWrapping="Wrap" LineHeight="22" Foreground="#334155" Text="-"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardStyle}">
+                        <TabControl Background="Transparent" BorderThickness="0">
+                            <TabItem Header="Agendas" Padding="15,8">
+                                <ListBox x:Name="lstAgendas" BorderThickness="0" Margin="0,10,0,0" MinHeight="100"/>
+                            </TabItem>
+                            <TabItem Header="Documents" Padding="15,8">
+                                <ListBox x:Name="lstDocuments" BorderThickness="0" Margin="0,10,0,0" MinHeight="100"/>
+                            </TabItem>
+                        </TabControl>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <StackPanel Grid.Column="1">
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="APPROVAL ACTIONS" Style="{StaticResource SectionHeader}"/>
+                        <Button x:Name="btnApprove" Content="✓ Approve" Background="#10B981" Style="{StaticResource ActionButton}" Click="BtnApprove_Click"/>
+                        <Button x:Name="btnReject" Content="✕ Reject" Background="#EF4444" Style="{StaticResource ActionButton}" Click="BtnReject_Click"/>
+                        <Button x:Name="btnRequestChange" Content="↻ Request Change" Background="#D97706" Style="{StaticResource ActionButton}" Click="BtnRequestChange_Click"/>
+
+                        <Separator Margin="0,10" Background="#F1F5F9"/>
+
+                        <TextBlock Text="COMMENT (OPTIONAL)" Style="{StaticResource SectionHeader}" Margin="0,10,0,8"/>
+                        <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="8">
+                            <TextBox x:Name="txtComment" BorderThickness="0" AcceptsReturn="True" Height="100" TextWrapping="Wrap" Background="Transparent"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="APPROVAL LOGS" Style="{StaticResource SectionHeader}"/>
+                        <ListBox x:Name="lstLogs" BorderThickness="0" MaxHeight="250"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
