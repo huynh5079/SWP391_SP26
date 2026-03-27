@@ -1,54 +1,48 @@
-# Sử dụng Docker Image chính chủ của Microsoft cho .NET 8.0
+# Docker Image chính chủ của Microsoft cho .NET 8.0
 image: mcr.microsoft.com/dotnet/sdk:8.0
 
-# Định nghĩa các giai đoạn (Stages) của quy trình
 stages:
   - build
-  - test
+  - deploy
 
 variables:
-  # Đường dẫn đến file project chính (Web App) để build và publish
-  # Lưu ý: Cần trỏ đúng vào file .csproj của project chạy (không phải file .sln)
+  AZURE_WEBAPP_NAME: "AEMS" # Tên Web App trên Azure
+  RESOURCE_GROUP: "SWP391_Group1"
   PROJECT_PATH: "AEMS_Solution/AEMS_Solution.csproj"
-  
-  # Thư mục chứa kết quả build
-  PUBLISH_DIR: "publish"
 
-# --- JOB 1: BUILD & PUBLISH ---
+# --- 1. BUILD Stage ---
 build_app:
   stage: build
   script:
-    - echo "=== BẮT ĐẦU QUÁ TRÌNH BUILD ==="
-    
-    # 1. Restore: Tải các thư viện (Nuget package) cần thiết
-    # Nó sẽ tự động restore luôn cả DataAccess và BusinessLogic nhờ reference
-    - echo "Đang restore các package..."
+    - echo "=== BẮT ĐẦU BUILD ==="
     - dotnet restore "$PROJECT_PATH"
-    
-    # 2. Build: Biên dịch code ra file dll (kiểm tra lỗi cú pháp)
-    - echo "Đang build project..."
     - dotnet build "$PROJECT_PATH" -c Release --no-restore
-    
-    # 3. Publish: Đóng gói code thành bản có thể chạy được (để deploy sau này)
-    - echo "Đang đóng gói (Publish)..."
-    - dotnet publish "$PROJECT_PATH" -c Release -o "$PUBLISH_DIR" --no-build
-    
-  # Artifacts: Lưu lại thư mục 'publish' để có thể tải về từ GitLab nếu cần
+    - dotnet publish "$PROJECT_PATH" -c Release -o ./publish --no-build
+    # Nén sẵn để deploy
+    - apt-get update && apt-get install -y zip
+    - cd publish && zip -r ../publish.zip . && cd ..
   artifacts:
     paths:
-      - "$PUBLISH_DIR"
-    expire_in: 1 week
-  
-  # Chỉ chạy job này khi có code mới ở nhánh main, develop hoặc khi tạo Merge Request
+      - publish.zip
+    expire_in: 1 day
   only:
     - main
     - develop
     - merge_requests
 
-# --- JOB 2: TEST (Placeholder) ---
-# run_tests:
-#   stage: test
-#   script:
-#     - echo "Đang chạy Unit Tests..."
-#     # - dotnet test "AEMS_Solution.Tests/AEMS_Solution.Tests.csproj"
-#   needs: ["build_app"]
+# --- 2. DEPLOY Stage ---
+deploy_to_azure:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli
+  script:
+    - echo "=== ĐANG DEPLOY LÊN AZURE WEB APP ==="
+    - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+    - az webapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --src publish.zip
+    - echo "=== DEPLOY HOÀN TẤT! ==="
+  dependencies:
+    - build_app
+  only:
+    - main
+    - develop
+  # 'when: manual' để bạn có thể tự kiểm soát lúc nào thì đẩy lên server
+  when: manual
