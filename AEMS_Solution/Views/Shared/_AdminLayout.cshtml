@@ -11,14 +11,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+    <link rel="icon" type="image/png" href="~/aems-logo.png" />
 </head>
 <body>
     <!-- Sidebar -->
     <aside class="admin-sidebar">
         <div class="brand-wrapper">
             <a href="@Url.Action("Index", "Admin")" class="brand-link">
-                <div class="brand-icon-box">
-                    <i class="bi bi-grid-fill"></i>
+                <div class="brand-icon-box" style="background: transparent; border: none; padding: 0;">
+                    <img src="~/aems-logo.png" alt="AEMS Logo" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px;" />
                 </div>
                 <div class="brand-text">
                     <span class="brand-title">AEMS</span>

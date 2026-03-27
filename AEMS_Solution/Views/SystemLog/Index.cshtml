@@ -136,6 +136,10 @@
     }
 
     .sl-btn-primary:hover { background: #4f46e5; transform: translateY(-1px); }
+
+    .hover-profile:hover .brand-icon-box, 
+    .hover-profile:hover div { background: #6366f1 !important; color: white !important; }
+    .hover-profile:hover span { color: #6366f1 !important; }
 </style>
 
 <div class="sl-page">
@@ -223,12 +227,12 @@
                                 <td>
                                     @if(!string.IsNullOrEmpty(log.UserId))
                                     {
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div style="width: 28px; height: 28px; background: #eef2ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6366f1;">
+                                        <a href="@Url.Action("Detail", "UserManagement", new { id = log.UserId })" class="d-flex align-items-center gap-2 text-decoration-none hover-profile" title="Xem chi tiết người dùng">
+                                            <div style="width: 28px; height: 28px; background: #eef2ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6366f1; transition: all 0.2s;">
                                                 <i class="bi bi-person-fill" style="font-size: 0.8rem;"></i>
                                             </div>
-                                            <span class="text-dark fw-semibold" style="font-size: 0.8rem;">@log.UserId.Substring(0, 8)...</span>
-                                        </div>
+                                            <span class="text-dark fw-semibold" style="font-size: 0.8rem; transition: all 0.2s;">@log.UserId.Substring(0, 8)...</span>
+                                        </a>
                                     }
                                     else
                                     {
@@ -278,15 +282,23 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 pt-0">
-                <div class="p-3 mb-3 bg-danger bg-opacity-10 text-danger rounded-4 fw-bold" id="modalExMsg">
-                    Message
+                <div class="p-3 mb-3 bg-danger bg-opacity-10 text-danger rounded-4 fw-bold d-flex justify-content-between align-items-center">
+                    <span id="modalExMsg">Message</span>
+                    <button class="btn btn-sm btn-outline-danger border-0 rounded-pill" onclick="copyText('modalExMsg')" title="Sao chép lỗi">
+                        <i class="bi bi-copy"></i>
+                    </button>
                 </div>
                 <div class="mb-3">
                     <label class="sl-stat-label">Source Component</label>
                     <div class="p-3 bg-light rounded-3 font-monospace small" id="modalExSource" style="word-break: break-all;">Source</div>
                 </div>
-                <div>
-                    <label class="sl-stat-label">Stack Trace Context</label>
+                <div class="position-relative">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="sl-stat-label mb-0">Stack Trace Context</label>
+                        <button class="btn btn-xs btn-outline-secondary border-0 py-0" onclick="copyText('modalExStack')" style="font-size: 0.7rem;">
+                            <i class="bi bi-copy me-1"></i> Copy Stack
+                        </button>
+                    </div>
                     <pre class="p-4 bg-dark text-light rounded-4 font-monospace scrollbar-thin" id="modalExStack" style="font-size: 0.75rem; max-height: 400px; line-height: 1.6;">Stack</pre>
                 </div>
             </div>
@@ -306,6 +318,25 @@
                 modal.querySelector('#modalExStack').textContent = btn.dataset.exStack;
             });
         });
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.currentTarget;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+                btn.classList.replace('btn-outline-danger', 'btn-success');
+                btn.classList.replace('btn-outline-secondary', 'btn-success');
+                btn.classList.add('text-white');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.replace('btn-success', 'btn-outline-danger');
+                    btn.classList.replace('btn-success', 'btn-outline-secondary');
+                    btn.classList.remove('text-white');
+                }, 2000);
+            });
+        }
     </script>
 }
 
