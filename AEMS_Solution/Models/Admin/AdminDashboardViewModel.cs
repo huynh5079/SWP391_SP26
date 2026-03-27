@@ -8,6 +8,7 @@ namespace AEMS_Solution.Models.Admin
         public int TotalStudents { get; set; }
         public int TotalStaff { get; set; }
         public int TotalErrorsToday { get; set; }
+        public int TotalErrorsLast30Days { get; set; }
 
         // Chart Data
         public List<int> ErrorTrendData { get; set; } = new List<int>();
