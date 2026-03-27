@@ -1,4 +1,4 @@
-# Docker Image chính chủ của Microsoft cho .NET 8.0
+# Cấu hình tối ưu cho GitLab Runner chạy trên Windows (PowerShell)
 image: mcr.microsoft.com/dotnet/sdk:8.0
 
 stages:
@@ -14,13 +14,14 @@ variables:
 build_app:
   stage: build
   script:
-    - echo "=== BẮT ĐẦU BUILD ==="
+    - echo "=== BẮT ĐẦU BUILD (WINDOWS/POWERSHELL) ==="
     - dotnet restore "$PROJECT_PATH"
     - dotnet build "$PROJECT_PATH" -c Release --no-restore
     - dotnet publish "$PROJECT_PATH" -c Release -o ./publish --no-build
-    # Nén sẵn để deploy
-    - apt-get update && apt-get install -y zip
-    - cd publish && zip -r ../publish.zip . && cd ..
+    # Lệnh nén file bằng PowerShell (cho Windows Runner)
+    - if (Test-Path publish.zip) { Remove-Item publish.zip }
+    - Compress-Archive -Path ./publish/* -DestinationPath ./publish.zip -Force
+    - echo "=== BUILD XONG! ==="
   artifacts:
     paths:
       - publish.zip
@@ -33,7 +34,7 @@ build_app:
 # --- 2. DEPLOY Stage ---
 deploy_to_azure:
   stage: deploy
-  image: mcr.microsoft.com/azure-cli
+  # Note: Image bị bỏ qua khi dùng Shell Runner trên Windows
   script:
     - echo "=== ĐANG DEPLOY LÊN AZURE WEB APP ==="
     - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
