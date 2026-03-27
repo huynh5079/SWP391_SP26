@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: rag-backend
+    env: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: uvicorn rag_api_server:app --host 0.0.0.0 --port $PORT

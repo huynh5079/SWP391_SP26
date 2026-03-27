@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import Any, Optional, AsyncGenerator
 import time
 from uuid import uuid4
-
+from fastapi.middleware.cors import CORSMiddleware
 import faiss
 import json5
 import numpy as np
-import pyodbc
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -23,7 +23,11 @@ from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
 from db_service import DatabaseService
-
+try:
+    import pyodbc
+except Exception as e:
+    pyodbc = None
+    print(f"[RAG] pyodbc import failed: {e}")
 load_dotenv()
 
 
@@ -1990,7 +1994,13 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(title="AEMS Smart Event Chatbot API", version="2.0.0", lifespan=lifespan)
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def health() -> dict[str, Any]:
