@@ -638,7 +638,7 @@
                                          : log.StatusCode >= 400 ? "rgba(245,158,11,.03)"
                                          : "transparent";
                             string userColor = AvatarColor(log.UserId ?? "anon");
-                            string userInitial = string.IsNullOrEmpty(log.UserId) ? "?" : log.UserId[0].ToString().ToUpper();
+
                             <tr style="background:@rowBg;" data-row-delay="@(rowNum * 30)ms">
                                 <td style="color:#94a3b8;font-weight:700;font-size:.75rem;width:36px;">@rowNum</td>
                                 <td>
@@ -676,13 +676,10 @@
                                 <td>
                                     @if (!string.IsNullOrEmpty(log.UserId))
                                     {
-                                        <div class="sl-user-cell">
-                                            <div class="sl-user-av" style="background:@userColor;">@userInitial</div>
-                                            <a href="/UserManagement/Detail/@log.UserId" class="sl-user-id" target="_blank"
-                                               title="@log.UserId">
-                                                @log.UserId[..Math.Min(8, log.UserId.Length)]…
-                                            </a>
-                                        </div>
+                                        <a href="/UserManagement/Detail/@log.UserId" class="sl-user-id" target="_blank"
+                                           title="@log.UserId">
+                                            @log.UserId[..Math.Min(8, log.UserId.Length)]…
+                                        </a>
                                     }
                                     else
                                     {
