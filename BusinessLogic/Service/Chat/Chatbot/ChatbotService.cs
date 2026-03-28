@@ -43,8 +43,13 @@ namespace BusinessLogic.Service.Chat
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 			_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 			
-			// Lấy URL từ Config (Azure Env Var), fallback về localhost nếu không có
-			_ragApiBaseUrl = _configuration["AppSettings:AiEngineUrl"]?.TrimEnd('/') ?? "http://localhost:8000";
+			// Đọc URL từ nhiều nguồn config khác nhau (Azure App Settings hoặc appsettings.json)
+			// Azure App Service: AppSettings__AiEngineUrl => AppSettings:AiEngineUrl
+			// Hoặc biến môi trường trực tiếp: AiEngineUrl
+			_ragApiBaseUrl = (_configuration["AppSettings:AiEngineUrl"]
+				?? _configuration["AppSettings__AiEngineUrl"]
+				?? _configuration["AiEngineUrl"])
+				?.TrimEnd('/') ?? "http://localhost:8000";
 			
 			_jsonOptions = new JsonSerializerOptions
 			{
