@@ -1,0 +1,109 @@
+<Page x:Class="AEMS_WPF.Views.Common.ActivityLogPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AEMS_WPF.Views.Common"
+      mc:Ignorable="d" 
+      d:DesignHeight="700" d:DesignWidth="1000"
+      Title="Activity Logs">
+
+    <Grid Margin="0,0,0,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,25">
+            <StackPanel>
+                <TextBlock Text="User Activity Logs" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
+                <TextBlock Text="Track system interactions and administrative changes." Foreground="{StaticResource TextMutedBrush}" FontSize="14"/>
+            </StackPanel>
+            
+            <Button Content="Clean Up Old Logs" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                    Padding="15,8" Style="{StaticResource PrimaryButtonStyle}" Click="CleanUp_Click"/>
+        </Grid>
+
+        <!-- Data Container -->
+        <Border Grid.Row="1" Background="#1e293b" CornerRadius="15" Padding="15" BorderBrush="{StaticResource LowWhiteBrush}" BorderThickness="1">
+            <DataGrid x:Name="dgLogs" AutoGenerateColumns="False" Background="Transparent" BorderThickness="0"
+                      CanUserAddRows="False" IsReadOnly="True" GridLinesVisibility="None"
+                      RowBackground="Transparent" AlternatingRowBackground="#162030"
+                      Foreground="White" FontSize="13" SelectionMode="Single" SelectionUnit="FullRow">
+                
+                <DataGrid.Resources>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                        <Setter Property="Padding" Value="10,12"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource LowWhiteBrush}"/>
+                    </Style>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="0,8"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="{StaticResource LowWhiteBrush}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="Padding" Value="10,10"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type DataGridCell}">
+                                    <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </DataGrid.Resources>
+
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="TIMESTAMP" Binding="{Binding CreatedAt, StringFormat='dd/MM/yyyy HH:mm:ss'}" Width="160"/>
+                    <DataGridTemplateColumn Header="USER" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="24" Height="24" CornerRadius="12" Background="{StaticResource LowWhiteBrush}" Margin="0,0,10,0">
+                                        <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding User.FullName}" Foreground="White" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="ACTION" Binding="{Binding ActionType}" Width="120">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="{StaticResource IndigoAccentBrush}"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Pagination (Basic) -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button x:Name="btnPrev" Content="&#xE72B;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="White" BorderThickness="0" Click="Prev_Click"/>
+            <TextBlock x:Name="txtPage" Text="Page 1" Foreground="White" VerticalAlignment="Center" Margin="15,0"/>
+            <Button x:Name="btnNext" Content="&#xE72A;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="White" BorderThickness="0" Click="Next_Click"/>
+        </StackPanel>
+    </Grid>
+</Page>

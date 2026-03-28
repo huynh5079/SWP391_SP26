@@ -42,6 +42,49 @@ namespace BusinessLogic.Service.UserActivities
             )).ToList();
         }
 
+        public async Task<IEnumerable<UserActivityLog>> GetRecentActivitiesAsync(int count = 10)
+        {
+            return await _uow.UserActivityLogs.GetAllAsync(
+                null,
+                q => q.Include(l => l.User).OrderByDescending(l => l.CreatedAt).Take(count)
+            );
+        }
+
+        public async Task<DataAccess.Entities.PaginationResult<UserActivityLog>> GetLogsAsync(int page, int pageSize, string? search)
+        {
+            var logs = await _uow.UserActivityLogs.GetAllAsync(null, q => q.Include(l => l.User));
+            IEnumerable<UserActivityLog> result = logs;
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                var lowerSearch = search.ToLower();
+                result = result.Where(x =>
+                    (x.Description != null && x.Description.ToLower().Contains(lowerSearch)) ||
+                    (x.User != null && x.User.FullName != null && x.User.FullName.ToLower().Contains(lowerSearch))
+                );
+            }
+
+            result = result.OrderByDescending(x => x.CreatedAt);
+            var totalCount = result.Count();
+            var data = result.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return new DataAccess.Entities.PaginationResult<UserActivityLog>(data, totalCount, page, pageSize);
+        }
+
+        public async Task DeleteOldLogsAsync(int days = 30)
+        {
+            var threshold = DataAccess.Helper.DateTimeHelper.GetVietnamTime().AddDays(-days);
+            var oldLogs = await _uow.UserActivityLogs.GetAllAsync(x => x.CreatedAt < threshold);
+
+            if (oldLogs != null && oldLogs.Any())
+            {
+                foreach (var log in oldLogs)
+                    await _uow.UserActivityLogs.RemoveAsync(log);
+
+                await _uow.SaveChangesAsync();
+            }
+        }
+
         public async Task<string> GetUserPersonalizationContextAsync(string userId)
         {
             var logs = await GetRecentActivitiesAsync(userId, 20);

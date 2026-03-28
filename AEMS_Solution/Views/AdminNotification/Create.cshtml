@@ -3,86 +3,204 @@
 @model BroadcastNotificationDto
 
 @{
-    ViewData["Title"] = "Create System Notification";
-    Layout = "~/Views/Shared/_Layout.cshtml"; 
+    ViewData["Title"] = "Broadcast System Notification";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml"; // Changed to Admin Layout
 }
 
-<div class="container mt-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0"><i class='bx bx-broadcast'></i> Soạn thông báo toàn hệ thống</h4>
+@* ─────────────────────────────────────────────────────────────────
+   EXECUTIVE DASHBOARD STYLING
+   ───────────────────────────────────────────────────────────────── *@
+<style>
+    .ex-page { 
+        --ex-primary: #6366f1;
+        --ex-bg: #f8fafc;
+        --ex-card: #ffffff;
+        --ex-border: #e2e8f0;
+        --ex-text: #1e1b4b;
+        --ex-muted: #64748b;
+        --ex-radius: 20px;
+        animation: ex-fadein 0.5s ease-out both; 
+    }
+    @@keyframes ex-fadein { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    .ex-card {
+        background: var(--ex-card);
+        border-radius: var(--ex-radius);
+        border: 1px solid var(--ex-border);
+        box-shadow: 0 4px 20px rgba(99, 102, 241, 0.06);
+        overflow: hidden;
+    }
+
+    .ex-card-header {
+        background: linear-gradient(135deg, #1e1b4b, #312e81);
+        padding: 1.5rem 2rem;
+        color: white;
+    }
+
+    .ex-input {
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s;
+        background-color: #f8fafc;
+    }
+    .ex-input:focus {
+        border-color: #6366f1;
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .ex-radio-card {
+        cursor: pointer;
+        padding: 1rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 15px;
+        transition: all 0.2s;
+        position: relative;
+        height: 100%;
+    }
+    .ex-radio-card:hover { border-color: #cbd5e1; background: #f1f5f9; }
+    .ex-radio-input:checked + .ex-radio-card {
+        border-color: #6366f1;
+        background: #f5f3ff;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    }
+    .ex-radio-input:checked + .ex-radio-card .bi-check-circle-fill { display: block !important; }
+
+    .btn-send {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.8rem 2rem;
+        font-weight: 700;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    .btn-send:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(79, 70, 229, 0.4);
+        color: white;
+    }
+</style>
+
+<div class="ex-page container-fluid py-4">
+    <!-- Header Area -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-800 text-indigo-900 mb-1" style="font-weight: 800; color: #1e1b4b;">System-Wide Broadcast</h2>
+            <p class="text-muted">Compose and send urgent notifications to participants across the platform.</p>
         </div>
-        <div class="card-body">
-            @if (TempData["SuccessMessage"] != null)
-            {
-                <div class="alert alert-success alert-dismissible fade show">
-                    @TempData["SuccessMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            }
-            @if (TempData["ErrorMessage"] != null)
-            {
-                <div class="alert alert-danger alert-dismissible fade show">
-                    @TempData["ErrorMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            }
+        <div class="col-md-4 text-md-end">
+             <a asp-action="Index" asp-controller="Admin" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-arrow-left me-2"></i> Dashboard
+             </a>
+        </div>
+    </div>
 
-            <form asp-action="Create" asp-controller="AdminNotification" method="post" id="broadcastForm">
-                @Html.AntiForgeryToken()
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm animate-fade-in" style="border-radius: 12px; background-color: #f0fdf4; color: #166534;">
+            <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+        </div>
+    }
 
-                <div class="mb-3">
-                    <label asp-for="Title" class="form-label fw-bold">Tiêu đề thông báo <span class="text-danger">*</span></label>
-                    <input asp-for="Title" class="form-control" placeholder="VD: Bảo trì hệ thống đêm nay" required />
-                    <span asp-validation-for="Title" class="text-danger"></span>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Message" class="form-label fw-bold">Nội dung <span class="text-danger">*</span></label>
-                    <textarea asp-for="Message" class="form-control" rows="4" placeholder="Nhập chi tiết thông báo..." required></textarea>
-                    <span asp-validation-for="Message" class="text-danger"></span>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label fw-bold">Đố tượng nhận <span class="text-danger">*</span></label>
-                    
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" asp-for="TargetGroup" value="AllSystem" id="targetAll" onclick="toggleTargetFields()" checked>
-                        <label class="form-check-label" for="targetAll">
-                            Gửi cho toàn bộ User trong hệ thống
-                        </label>
+    <div class="row justify-content-center">
+        <div class="col-xl-9 col-lg-10">
+            <div class="ex-card">
+                <div class="ex-card-header d-flex align-items-center">
+                    <div class="rounded-circle bg-white bg-opacity-10 p-3 me-3">
+                        <i class="bi bi-broadcast text-white fs-4"></i>
                     </div>
+                    <div>
+                        <h4 class="mb-0 fw-bold">Compose Message</h4>
+                        <p class="mb-0 text-white text-opacity-75 small">Reach your audience instantly via system notifications.</p>
+                    </div>
+                </div>
 
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" asp-for="TargetGroup" value="ByRole" id="targetRole" onclick="toggleTargetFields()">
-                        <label class="form-check-label" for="targetRole">
-                            Gửi theo Role cụ thể
-                        </label>
-                        <div class="mt-2 ms-4 d-none" id="roleSelectWrapper">
-                            <select asp-for="TargetRole" class="form-select w-50" asp-items="Html.GetEnumSelectList<RoleEnum>()">
-                                <option value="">-- Chọn Role --</option>
-                            </select>
+                <div class="card-body p-4 p-md-5">
+                    <form asp-action="Create" asp-controller="AdminNotification" method="post" id="broadcastForm">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Basic Information -->
+                        <div class="row g-4 mb-5">
+                            <div class="col-12">
+                                <label asp-for="Title" class="form-label fw-bold text-dark small" style="letter-spacing: 0.05em; text-transform: uppercase;">Message Title <span class="text-danger">*</span></label>
+                                <input asp-for="Title" class="form-control ex-input" placeholder="e.g., System Maintenance Tonight" required />
+                                <span asp-validation-for="Title" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Message" class="form-label fw-bold text-dark small" style="letter-spacing: 0.05em; text-transform: uppercase;">Detailed Content <span class="text-danger">*</span></label>
+                                <textarea asp-for="Message" class="form-control ex-input" rows="5" placeholder="Enter the full notification details here..." required></textarea>
+                                <span asp-validation-for="Message" class="text-danger small"></span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" asp-for="TargetGroup" value="SpecificEmail" id="targetEmail" onclick="toggleTargetFields()">
-                        <label class="form-check-label" for="targetEmail">
-                            Gửi cho cá nhân qua Email đăng nhập
-                        </label>
-                        <div class="mt-2 ms-4 d-none" id="emailInputWrapper">
-                            <input asp-for="SpecificEmail" type="email" class="form-control w-50" placeholder="VD: student@fpt.edu.vn" />
-                            <span asp-validation-for="SpecificEmail" class="text-danger"></span>
+                        <!-- Target Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark small mb-3" style="letter-spacing: 0.05em; text-transform: uppercase;">Select Recipients <span class="text-danger">*</span></label>
+                            
+                            <div class="row g-3">
+                                <!-- Option 1: All System -->
+                                <div class="col-md-4">
+                                    <input class="ex-radio-input d-none" type="radio" asp-for="TargetGroup" value="AllSystem" id="targetAll" onclick="toggleTargetFields()" checked>
+                                    <label class="ex-radio-card d-block" for="targetAll">
+                                        <i class="bi bi-check-circle-fill position-absolute end-0 top-0 m-2 text-primary d-none"></i>
+                                        <div class="text-primary fs-3 mb-2"><i class="bi bi-people-fill"></i></div>
+                                        <div class="fw-bold text-dark">Everyone</div>
+                                        <p class="text-muted small mb-0">Send to all users in the system.</p>
+                                    </label>
+                                </div>
+
+                                <!-- Option 2: By Role -->
+                                <div class="col-md-4">
+                                    <input class="ex-radio-input d-none" type="radio" asp-for="TargetGroup" value="ByRole" id="targetRole" onclick="toggleTargetFields()">
+                                    <label class="ex-radio-card d-block" for="targetRole">
+                                        <i class="bi bi-check-circle-fill position-absolute end-0 top-0 m-2 text-primary d-none"></i>
+                                        <div class="text-indigo-600 fs-3 mb-2"><i class="bi bi-person-badge-fill"></i></div>
+                                        <div class="fw-bold text-dark">By Role</div>
+                                        <p class="text-muted small mb-0">Specify groups like Organizers or Students.</p>
+                                    </label>
+                                </div>
+
+                                <!-- Option 3: Specific User -->
+                                <div class="col-md-4">
+                                    <input class="ex-radio-input d-none" type="radio" asp-for="TargetGroup" value="SpecificEmail" id="targetEmail" onclick="toggleTargetFields()">
+                                    <label class="ex-radio-card d-block" for="targetEmail">
+                                        <i class="bi bi-check-circle-fill position-absolute end-0 top-0 m-2 text-primary d-none"></i>
+                                        <div class="text-rose-500 fs-3 mb-2" style="color: #f43f5e;"><i class="bi bi-envelope-at-fill"></i></div>
+                                        <div class="fw-bold text-dark">Personalized</div>
+                                        <p class="text-muted small mb-0">Target a single user via login email.</p>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Selectors -->
+                            <div class="mt-4 p-4 bg-light rounded-4 d-none" id="selectorArea" style="border: 1px dashed #cbd5e1;">
+                                <div class="d-none" id="roleSelectWrapper">
+                                    <label class="form-label fw-bold text-dark small">SELECT TARGET ROLE</label>
+                                    <select asp-for="TargetRole" class="form-select ex-input w-100" asp-items="Html.GetEnumSelectList<RoleEnum>()">
+                                        <option value="">-- Click to choose role --</option>
+                                    </select>
+                                </div>
+                                <div class="d-none" id="emailInputWrapper">
+                                    <label class="form-label fw-bold text-dark small">RECIPIENT EMAIL ADDRESS</label>
+                                    <input asp-for="SpecificEmail" type="email" class="form-control ex-input w-100" placeholder="e.g., student@fpt.edu.vn" />
+                                    <span asp-validation-for="SpecificEmail" class="text-danger small"></span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary px-4" onclick="return confirmAction(event, 'Xác nhận gửi thông báo tới các đối tượng đã chọn?')">
-                        <i class='bx bx-send'></i> Gửi thông báo
-                    </button>
+                        <div class="pt-4 border-top text-center">
+                            <button type="submit" class="btn btn-send" onclick="return confirmAction(event, 'Proceed with broadcasting this message?')">
+                                <i class="bi bi-send-fill me-2"></i> Launch Broadcast
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -92,18 +210,31 @@
     <script>
         function toggleTargetFields() {
             var targetType = document.querySelector('input[name="TargetGroup"]:checked').value;
+            var selectorArea = document.getElementById('selectorArea');
+            var roleWrap = document.getElementById('roleSelectWrapper');
+            var emailWrap = document.getElementById('emailInputWrapper');
             
-            document.getElementById('roleSelectWrapper').classList.add('d-none');
-            document.getElementById('emailInputWrapper').classList.add('d-none');
+            selectorArea.classList.add('d-none');
+            roleWrap.classList.add('d-none');
+            emailWrap.classList.add('d-none');
 
             if (targetType === 'ByRole') {
-                document.getElementById('roleSelectWrapper').classList.remove('d-none');
+                selectorArea.classList.remove('d-none');
+                roleWrap.classList.remove('d-none');
             } else if (targetType === 'SpecificEmail') {
-                document.getElementById('emailInputWrapper').classList.remove('d-none');
+                selectorArea.classList.remove('d-none');
+                emailWrap.classList.remove('d-none');
             }
         }
         
-        // Run once on load to establish correct state if validation fails and postbacks
+        function confirmAction(event, message) {
+            if (!confirm(message)) {
+                event.preventDefault();
+                return false;
+            }
+            return true;
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             toggleTargetFields();
         });

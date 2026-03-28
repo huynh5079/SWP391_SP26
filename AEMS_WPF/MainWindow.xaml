@@ -46,6 +46,7 @@
                     
                     <TextBlock Text="SYSTEM" Foreground="{StaticResource TextMutedBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
                     <Button x:Name="BtnNotifications" Content="Notifications" Tag="&#xEA8F;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click"/>
+                    <Button x:Name="BtnActivityLogs" Content="Activity Logs" Tag="&#xEC92;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click" Visibility="Collapsed"/>
                     <Button x:Name="BtnErrorLogs" Content="Error Logs" Tag="&#xE7BA;" Style="{StaticResource SidebarButtonStyle}" Click="Nav_Click" Visibility="Collapsed"/>
                 </StackPanel>
 

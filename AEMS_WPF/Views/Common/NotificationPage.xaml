@@ -10,31 +10,44 @@
 
     <Grid>
         <StackPanel Margin="0,0,0,20">
-            <TextBlock Text="System Notifications" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
-            <TextBlock Text="Stay updated with the latest event activities and system alerts." Foreground="{StaticResource TextMutedBrush}" FontSize="14" Margin="0,0,0,30"/>
+            <Grid Margin="0,0,0,25">
+                <StackPanel>
+                    <TextBlock Text="System Notifications" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,8"/>
+                    <TextBlock Text="Stay updated with the latest event activities and system alerts." Foreground="{StaticResource TextMutedBrush}" FontSize="14"/>
+                </StackPanel>
+                <Button Content="Clear All" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                        Padding="15,8" Style="{StaticResource PrimaryButtonStyle}" Background="#ef4444" Click="ClearAll_Click"/>
+            </Grid>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="500">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
                 <ItemsControl x:Name="NotificationList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{StaticResource LowWhiteBrush}" CornerRadius="12" Padding="20" Margin="0,0,0,12" BorderBrush="{StaticResource LowWhiteBrush}" BorderThickness="1">
+                            <Border Background="#1e293b" CornerRadius="15" Padding="20" Margin="0,0,0,12" 
+                                    BorderBrush="{StaticResource LowWhiteBrush}" BorderThickness="1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     
-                                    <Border Width="45" Height="45" CornerRadius="22.5" Background="{StaticResource PrimaryButtonGradient}" Margin="0,0,15,0">
+                                    <Border Width="45" Height="45" CornerRadius="22.5" Background="{StaticResource PrimaryButtonGradient}" Margin="0,0,18,0">
                                         <TextBlock Text="&#xEA8F;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Title}" Foreground="White" FontWeight="Bold" FontSize="15" Margin="0,0,0,4"/>
-                                        <TextBlock Text="{Binding Message}" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" FontSize="13"/>
+                                        <TextBlock Text="{Binding Title}" Foreground="White" FontWeight="Bold" FontSize="15" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{Binding Message}" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" FontSize="13" LineHeight="18"/>
                                     </StackPanel>
                                     
-                                    <TextBlock Grid.Column="2" Text="{Binding CreatedAt, StringFormat='dd/MM/yyyy HH:mm'}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding CreatedAt, StringFormat='dd/MM/yyyy HH:mm'}" 
+                                               Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="15,0,15,0" VerticalAlignment="Center"/>
+                                    
+                                    <Button Grid.Column="3" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" 
+                                            Background="Transparent" Foreground="#f87171" FontSize="14"
+                                            BorderThickness="0" Cursor="Hand" Click="Delete_Click" Tag="{Binding Id}"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>

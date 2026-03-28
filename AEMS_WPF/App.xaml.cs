@@ -8,6 +8,8 @@ using BusinessLogic.Service.Organizer.CheckIn;
 using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.ValidationData.Event;
+using BusinessLogic.Service.Storage;
+using BusinessLogic.Service.UserActivities;
 using BusinessLogic.Storage;
 using AEMS_WPF.Services;
 using DataAccess.Entities;
@@ -60,6 +62,7 @@ namespace AEMS_WPF
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
+            services.AddScoped<IUserActivityLogService, UserActivityLogService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IEventService, EventService>();
             services.AddScoped<IDashboardService, DashboardService>();

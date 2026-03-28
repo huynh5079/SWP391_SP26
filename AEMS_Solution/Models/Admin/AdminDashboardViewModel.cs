@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DataAccess.Entities;
 
 namespace AEMS_Solution.Models.Admin
 {
@@ -16,5 +17,9 @@ namespace AEMS_Solution.Models.Admin
 
         // Demographics
         public Dictionary<string, int> UserDistribution { get; set; } = new Dictionary<string, int>();
+
+        // New Insights
+        public List<UserActivityLog> RecentActivities { get; set; } = new List<UserActivityLog>();
+        public List<Notification> RecentNotifications { get; set; } = new List<Notification>();
     }
 }

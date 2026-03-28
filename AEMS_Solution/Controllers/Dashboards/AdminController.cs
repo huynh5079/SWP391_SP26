@@ -1,5 +1,7 @@
 using AEMS_Solution.Controllers.Common;
 using BusinessLogic.Service.System;
+using BusinessLogic.Service.UserActivities;
+using DataAccess.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,6 +17,8 @@ namespace AEMS_Solution.Controllers.Dashboards
         }
 
         private ISystemErrorLogService _logService => HttpContext.RequestServices.GetRequiredService<ISystemErrorLogService>();
+        private IUserActivityLogService _activityService => HttpContext.RequestServices.GetRequiredService<IUserActivityLogService>();
+        private INotificationService _notificationService => HttpContext.RequestServices.GetRequiredService<INotificationService>();
 
         public async Task<IActionResult> Index()
         {
@@ -49,7 +53,9 @@ namespace AEMS_Solution.Controllers.Dashboards
                     TotalErrorsLast30Days   = total30Days,
                     ErrorTrendData          = counts,
                     ErrorTrendLabels        = dates,
-                    UserDistribution        = userDist
+                    UserDistribution        = userDist,
+                    RecentActivities        = (await _activityService.GetRecentActivitiesAsync(10)).ToList(),
+                    RecentNotifications     = (await _notificationService.GetUserNotificationsAsync(CurrentUserId ?? "")).Take(10).ToList()
                 };
 
                 return View(model);
@@ -59,6 +65,36 @@ namespace AEMS_Solution.Controllers.Dashboards
                 await ExecuteErrorAsync(ex, "Failed to load dashboard data: " + ex.Message);
                 return View(new Models.Admin.AdminDashboardViewModel());
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ActivityLog(int page = 1, int pageSize = 20, string? search = null)
+        {
+            try
+            {
+                var result = await _activityService.GetLogsAsync(page, pageSize, search);
+                return View(result);
+            }
+            catch (Exception ex)
+            {
+                await ExecuteErrorAsync(ex, "Failed to load activity logs.");
+                return RedirectToAction("Index");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteOldLogs(int days = 30)
+        {
+            try
+            {
+                await _activityService.DeleteOldLogsAsync(days);
+                TempData["SuccessMessage"] = $"Old logs (older than {days} days) have been cleaned up.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Failed to clean up logs: " + ex.Message;
+            }
+            return RedirectToAction("ActivityLog");
         }
     }
 }
