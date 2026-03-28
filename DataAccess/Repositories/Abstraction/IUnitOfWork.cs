@@ -24,6 +24,7 @@ namespace DataAccess.Repositories.Abstraction
 		IGenericRepository<ChatbotSession> ChatbotSessions { get; }
 		IGenericRepository<ChatbotMessage> ChatbotMessages { get; }
 		IGenericRepository<UserActivityLog> UserActivityLogs { get; }
+
 		// OrganizerService
 		IGenericRepository<Event> Events { get; }
         IGenericRepository<EventAgenda> EventAgenda { get; }

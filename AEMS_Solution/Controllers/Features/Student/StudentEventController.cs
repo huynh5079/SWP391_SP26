@@ -4,7 +4,8 @@ using BusinessLogic.DTOs.Student;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
-using BusinessLogic.Service.ActivityLog;
+using BusinessLogic.Service.UserActivities;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,9 +17,9 @@ namespace AEMS_Solution.Controllers.Features.Student
         private readonly IStudentEventService _service;
         private readonly ISystemErrorLogService _errorLog;
         private readonly IEventWaitlistService _waitlistService;
-        private readonly IActivityLogService _activityLog;
+        private readonly IUserActivityLogService _activityLog;
 
-        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog, IEventWaitlistService waitlistService, IActivityLogService activityLog)
+        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog, IEventWaitlistService waitlistService, IUserActivityLogService activityLog)
         {
             _service = service;
             _errorLog = errorLog;
@@ -62,7 +63,14 @@ namespace AEMS_Solution.Controllers.Features.Student
             var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
             ViewBag.AllFeedbacks = await _service.GetEventFeedbacksAsync(id);
 
-            await _activityLog.LogActivityAsync(CurrentUserId ?? "anonymous", "View", id, "Event", $"Đã xem chi tiết sự kiện '{detail.Title}'");
+            // Log activity (không block response nhưng phải await để tránh tranh chấp DbContext)
+            await _activityLog.LogActivityAsync(
+                userId: CurrentUserId,
+                actionType: UserActionType.USER_VIEWED_EVENT,
+                targetId: id,
+                targetType: TargetType.Event,
+                description: detail?.Title
+            );
 
             return View(detail);
         }
@@ -78,6 +86,14 @@ namespace AEMS_Solution.Controllers.Features.Student
             {
                 await _service.RegisterForEventAsync(CurrentUserId, id);
                 SetSuccess("Đăng ký thành công!");
+
+                // Log registration
+                await _activityLog.LogActivityAsync(
+                    userId: CurrentUserId,
+                    actionType: UserActionType.USER_REGISTERED_EVENT,
+                    targetId: id,
+                    targetType: TargetType.Event
+                );
             }
             catch (Exception ex)
             {

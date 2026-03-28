@@ -70,31 +70,39 @@ public partial class AEMSContext : DbContext
 
 	private void ApplyAuditInfo()
 	{
-		var now = CurrentVietnamTime;
-		var currentUserId = CurrentUserId;
-
-		foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+		try
 		{
-			switch (entry.State)
+			var now = CurrentVietnamTime;
+			var currentUserId = CurrentUserId;
+
+			foreach (var entry in ChangeTracker.Entries<BaseEntity>())
 			{
-				case EntityState.Added:
-					entry.Entity.CreatedAt = now;
-					entry.Entity.UpdatedAt = now;
-					entry.Entity.DeletedAt = null;
-					entry.Entity.CreatedBy = currentUserId;
-					entry.Entity.UpdatedBy = currentUserId;
-					break;
-				case EntityState.Modified:
-					entry.Entity.UpdatedAt = now;
-					entry.Entity.UpdatedBy = currentUserId;
-					break;
-				case EntityState.Deleted:
-					entry.State = EntityState.Modified;
-					entry.Entity.DeletedAt = now;
-					entry.Entity.UpdatedAt = now;
-					entry.Entity.UpdatedBy = currentUserId;
-					break;
+				switch (entry.State)
+				{
+					case EntityState.Added:
+						entry.Entity.CreatedAt = now;
+						entry.Entity.UpdatedAt = now;
+						entry.Entity.DeletedAt = null;
+						entry.Entity.CreatedBy = currentUserId;
+						entry.Entity.UpdatedBy = currentUserId;
+						break;
+					case EntityState.Modified:
+						entry.Entity.UpdatedAt = now;
+						entry.Entity.UpdatedBy = currentUserId;
+						break;
+					case EntityState.Deleted:
+						entry.State = EntityState.Modified;
+						entry.Entity.DeletedAt = now;
+						entry.Entity.UpdatedAt = now;
+						entry.Entity.UpdatedBy = currentUserId;
+						break;
+				}
 			}
+		}
+		catch (InvalidOperationException ex) when (ex.Message.Contains("DbContext"))
+		{
+			// Context is busy, skip auditing for this specific attempt to avoid blocking the main operation
+			// with a secondary concurrency error.
 		}
 	}
 
@@ -212,7 +220,6 @@ public partial class AEMSContext : DbContext
 	public virtual DbSet<User> Users { get; set; }
 
 	public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
-
 	//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
 	//        => optionsBuilder.UseSqlServer("Server=LAPTOP-HYNH\\NGHUY;Database=SWP391_SP26_Group1;User Id=sa;Password=123456;TrustServerCertificate=True;");
@@ -1040,6 +1047,22 @@ public partial class AEMSContext : DbContext
 			entity.Property(x => x.Type)
 				.HasMaxLength(50)
 				.HasConversion<string>();
+		});
+
+		modelBuilder.Entity<UserActivityLog>(entity =>
+		{
+			entity.ToTable("UserActivityLog");
+
+			entity.Property(e => e.ActionType).HasConversion<string>();
+			entity.Property(e => e.TargetType).HasConversion<string>();
+			entity.Property(e => e.UserId).HasMaxLength(450);
+			entity.Property(e => e.TargetId).HasMaxLength(450);
+			entity.Property(e => e.Description).HasMaxLength(1000);
+
+			entity.HasOne(d => d.User).WithMany()
+				.HasForeignKey(d => d.UserId)
+				.OnDelete(DeleteBehavior.Cascade)
+				.HasConstraintName("FK_UserActivityLog_User");
 		});
 
 		ApplyGlobalSoftDeleteQueryFilters(modelBuilder);

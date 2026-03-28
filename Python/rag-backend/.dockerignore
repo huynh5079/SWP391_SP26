@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.git/
+.gitignore
+kb/
+*.log
+*.db
+*.sqlite3
+README_RAG.md
+runtime.txt
+render.yaml
+.env
