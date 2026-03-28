@@ -357,13 +357,29 @@ body { background: var(--up-bg); }
                             @if (!string.IsNullOrEmpty(Model.StudentCode))
                             {
                                 <div class="up-form-group">
-                                    <label class="up-form-label">Mã SV (Chỉ đọc)</label>
-                                    <input type="text" class="up-form-control readonly" value="@Model.StudentCode" readonly tabindex="-1">
-                                    <input type="hidden" name="StudentCode" value="@Model.StudentCode">
+                                    <label class="up-form-label">Mã SV @(string.IsNullOrWhiteSpace(Model.StudentCode) ? "" : "(Chỉ đọc)")</label>
+                                    @if (string.IsNullOrWhiteSpace(Model.StudentCode))
+                                    {
+                                        <input type="text" name="StudentCode" class="up-form-control" value="" placeholder="Nhập mã số sinh viên">
+                                    }
+                                    else
+                                    {
+                                        <input type="text" class="up-form-control readonly" value="@Model.StudentCode" readonly tabindex="-1">
+                                        <input type="hidden" name="StudentCode" value="@Model.StudentCode">
+                                    }
                                 </div>
                                 <div class="up-form-group">
                                     <label class="up-form-label">Kỳ học hiện tại</label>
-                                    <input type="text" name="CurrentSemester" class="up-form-control" value="@Model.CurrentSemester">
+                                    <select name="CurrentSemester" class="up-form-control">
+                                        <option value="">-- Chọn kỳ học --</option>
+                                        @if (ViewBag.Semesters != null)
+                                        {
+                                            foreach (var sem in (List<string>)ViewBag.Semesters)
+                                            {
+                                                <!option value="@sem" @(Model.CurrentSemester == sem ? "selected" : "")>@sem</!option>
+                                            }
+                                        }
+                                    </select>
                                 </div>
                             }
 
@@ -379,6 +395,21 @@ body { background: var(--up-bg); }
                                     <input type="text" name="Position" class="up-form-control" value="@Model.Position">
                                 </div>
                             }
+
+                            <!-- Department Selection (For both Student & Staff) -->
+                            <div class="up-form-group" style="grid-column: span 2;">
+                                <label class="up-form-label">Phòng ban / Khoa</label>
+                                <select name="DepartmentId" class="up-form-control">
+                                    <option value="">-- Chọn Phòng ban / Khoa --</option>
+                                    @if (ViewBag.Departments != null)
+                                    {
+                                        foreach (var dept in (List<DataAccess.Entities.Department>)ViewBag.Departments)
+                                        {
+                                            <!option value="@dept.Id" @(Model.DepartmentName == dept.Name ? "selected" : "")>@dept.Name (@dept.Code)</!option>
+                                        }
+                                    }
+                                </select>
+                            </div>
                         </div>
 
                         <div style="display:flex;gap:.5rem;justify-content:flex-end;border-top:1px solid #f1f5f9;padding-top:1rem;">

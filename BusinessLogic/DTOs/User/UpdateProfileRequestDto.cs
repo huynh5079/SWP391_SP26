@@ -12,6 +12,7 @@ namespace BusinessLogic.DTOs.User
 
         // Student Specific
         public string? StudentCode { get; set; }
+        public string? DepartmentId { get; set; }
         public string? CurrentSemester { get; set; }
 
         // Staff Specific

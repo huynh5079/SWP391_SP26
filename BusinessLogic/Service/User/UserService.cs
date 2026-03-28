@@ -330,6 +330,7 @@ namespace BusinessLogic.Service.User
                     {
                         if (!string.IsNullOrEmpty(request.StudentCode)) user.StudentProfile.StudentCode = request.StudentCode;
                         if (!string.IsNullOrEmpty(request.CurrentSemester)) user.StudentProfile.CurrentSemester = request.CurrentSemester;
+                        if (!string.IsNullOrEmpty(request.DepartmentId)) user.StudentProfile.DepartmentId = request.DepartmentId;
                         user.StudentProfile.UpdatedAt = DateTimeHelper.GetVietnamTime();
                     }
                 }
@@ -339,6 +340,7 @@ namespace BusinessLogic.Service.User
                     {
                         if (!string.IsNullOrEmpty(request.StaffCode)) user.StaffProfile.StaffCode = request.StaffCode;
                         if (!string.IsNullOrEmpty(request.Position)) user.StaffProfile.Position = request.Position;
+                        if (!string.IsNullOrEmpty(request.DepartmentId)) user.StaffProfile.DepartmentId = request.DepartmentId;
                         user.StaffProfile.UpdatedAt = DateTimeHelper.GetVietnamTime();
                     }
                 }

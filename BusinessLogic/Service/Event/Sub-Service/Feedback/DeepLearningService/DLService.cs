@@ -1,17 +1,21 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using BusinessLogic.DTOs.Event.EventFeedbackSummary;
 
 namespace BusinessLogic.Service.Event.Sub_Service.Feedback.DeepLearningService
 {
 	public class DLService : IDLService
 	{
-		private readonly HttpClient _httpClient;
+		private readonly IConfiguration _configuration;
 
-		public DLService(HttpClient httpClient)
+		public DLService(HttpClient httpClient, IConfiguration configuration)
 		{
 			_httpClient = httpClient;
-			_httpClient.BaseAddress = new Uri("http://localhost:8011"); // Use a specific port to avoid conflicts
+			_configuration = configuration;
+			
+			var baseUrl = _configuration["AppSettings:AiEngineUrl"]?.TrimEnd('/') ?? "http://localhost:8011";
+			_httpClient.BaseAddress = new Uri(baseUrl);
 		}
 
 		public async Task<EventFeedbackAPIDTO?> AnalyzeFeedbackAsync(string comment, string eventId)

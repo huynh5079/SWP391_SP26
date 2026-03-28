@@ -26,6 +26,14 @@ namespace AEMS_Solution.Controllers.Features.Profile
             var profile = await _userService.GetMyProfileAsync(CurrentUserId);
             if (profile == null) return NotFound();
 
+            // 1. Departments
+            var departments = await _uow.Departments.GetAllAsync();
+            ViewBag.Departments = departments.OrderBy(d => d.Name).ToList();
+
+            // 2. Semesters (Standard FPT cycle)
+            var year = DateTime.Now.Year;
+            ViewBag.Semesters = new List<string> { $"Spring {year}", $"Summer {year}", $"Fall {year}" };
+
             ViewBag.IsReadOnly = false;
             return View(profile);
         }

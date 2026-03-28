@@ -30,16 +30,20 @@ namespace BusinessLogic.Service.Chat
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly ILogger<ChatbotService> _logger;
-		private readonly string _ragApiBaseUrl;
+		private readonly IConfiguration _configuration;
 		private readonly JsonSerializerOptions _jsonOptions;
 
-		public ChatbotService(HttpClient httpClient, IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<ChatbotService> logger)
+		public ChatbotService(HttpClient httpClient, IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<ChatbotService> logger, IConfiguration configuration)
 		{
 			_httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 			_unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
 			_httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-			_ragApiBaseUrl = "http://localhost:8000";
+			_configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+			
+			// Lấy URL từ Config (Azure Env Var), fallback về localhost nếu không có
+			_ragApiBaseUrl = _configuration["AppSettings:AiEngineUrl"]?.TrimEnd('/') ?? "http://localhost:8000";
+			
 			_jsonOptions = new JsonSerializerOptions
 			{
 				PropertyNameCaseInsensitive = true

@@ -1,4 +1,4 @@
-﻿using BusinessLogic.DTOs.Authentication.Login;
+using BusinessLogic.DTOs.Authentication.Login;
 using BusinessLogic.DTOs.Authentication.Password;
 using BusinessLogic.DTOs.Authentication.Register;
 using BusinessLogic.Helper;
@@ -193,6 +193,7 @@ namespace BusinessLogic.Service.Auth
 
             user.PasswordHash = HashPasswordHelper.HashPassword(req.NewPassword);
             await _uow.Users.UpdateAsync(user);
+            await _uow.SaveChangesAsync();
         }
 
         public async Task SetPasswordAsync(string userId, SetPasswordRequestDto req)
@@ -207,6 +208,7 @@ namespace BusinessLogic.Service.Auth
 
             user.PasswordHash = HashPasswordHelper.HashPassword(req.NewPassword);
             await _uow.Users.UpdateAsync(user);
+            await _uow.SaveChangesAsync();
         }
 
         // Note: For MVP/Production without Redis, we might use a static dictionary or cache.
@@ -263,6 +265,7 @@ namespace BusinessLogic.Service.Auth
 
             user.PasswordHash = HashPasswordHelper.HashPassword(req.NewPassword);
             await _uow.Users.UpdateAsync(user);
+            await _uow.SaveChangesAsync();
         }
 
         public async Task<UserEntity> LoginGoogleAsync(string email, string googleId, string fullName, string avatarUrl)
@@ -287,6 +290,7 @@ namespace BusinessLogic.Service.Auth
                         user.AvatarUrl = avatarUrl;
                     }
                     await _uow.Users.UpdateAsync(user);
+            await _uow.SaveChangesAsync();
                 }
                 return user;
             }
