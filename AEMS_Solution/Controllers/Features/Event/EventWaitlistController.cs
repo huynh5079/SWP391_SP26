@@ -2,8 +2,11 @@ using BusinessLogic.DTOs.Role.Organizer;
 using Microsoft.AspNetCore.Mvc;
 using BusinessLogic.Service.Event;
 using AEMS_Solution.Models.Event;
+using AEMS_Solution.Controllers.Common;
+using DataAccess.Enum;
+
 namespace AEMS_Solution.Controllers.Features.Event;
-public class EventWaitlistController : Controller
+public class EventWaitlistController : BaseController
 {
     private readonly IEventWaitlistService _waitlistService;
 
@@ -32,9 +35,15 @@ public class EventWaitlistController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Add(AddToWaitlistRequestDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        await _waitlistService.AddToWaitlistAsync(dto);
+        try
+        {
+            await _waitlistService.AddToWaitlistAsync(dto);
+            await ExecuteSuccessAsync("Đã thêm vào danh sách chờ.", UserActionType.USER_JOINED_WAITLIST, dto.EventId, TargetType.Event);
+        }
+        catch (Exception ex)
+        {
+            await ExecuteErrorAsync(ex, ex.Message);
+        }
         return RedirectToAction("Index", new { eventId = dto.EventId });
     }
 
@@ -42,9 +51,15 @@ public class EventWaitlistController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Remove(RemoveFromWaitlistRequestDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        await _waitlistService.RemoveFromWaitlistAsync(dto.StudentId, dto.EventId);
+        try
+        {
+            await _waitlistService.RemoveFromWaitlistAsync(dto.StudentId, dto.EventId);
+            await ExecuteSuccessAsync("Đã xóa khỏi danh sách chờ.", UserActionType.RemoveMember, dto.EventId, TargetType.Event);
+        }
+        catch (Exception ex)
+        {
+            await ExecuteErrorAsync(ex, ex.Message);
+        }
         return RedirectToAction("Index", new { eventId = dto.EventId });
     }
 
@@ -52,9 +67,15 @@ public class EventWaitlistController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OfferNext(string eventId)
     {
-        if (string.IsNullOrEmpty(eventId)) return BadRequest("eventId is required");
-
-        await _waitlistService.OfferNextAsync(eventId);
+        try
+        {
+            await _waitlistService.OfferNextAsync(eventId);
+            await ExecuteSuccessAsync("Đã gửi lời mời cho người tiếp theo.", UserActionType.Sync, eventId, TargetType.Event);
+        }
+        catch (Exception ex)
+        {
+            await ExecuteErrorAsync(ex, ex.Message);
+        }
         return RedirectToAction("Index", new { eventId });
     }
 
@@ -62,9 +83,15 @@ public class EventWaitlistController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Respond(RespondOfferRequestDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        await _waitlistService.RespondToOfferAsync(dto);
+        try
+        {
+            await _waitlistService.RespondToOfferAsync(dto);
+            await ExecuteSuccessAsync("Đã phản hồi lời mời.", UserActionType.USER_RESPONDED_OFFER, dto.EventId, TargetType.Event);
+        }
+        catch (Exception ex)
+        {
+            await ExecuteErrorAsync(ex, ex.Message);
+        }
         return RedirectToAction("Index", new { eventId = dto.EventId });
     }
 }

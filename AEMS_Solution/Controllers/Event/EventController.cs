@@ -46,19 +46,13 @@ namespace AEMS_Solution.Controllers.Event
 			try
 			{
 				await _organizerService.SendForApprovalAsync(userId, id);
-				SetSuccess("Gửi duyệt thành công.");
+				await ExecuteSuccessAsync("Gửi duyệt thành công.", UserActionType.Update, id, TargetType.Event);
 			}
-			catch (InvalidOperationException ex)
+			catch (Exception ex)
 			{
-				SetError(ex.Message);
-			}
-			catch (EventValidator.BusinessValidationException ex)
-			{
-				SetError(ex.Message);
-			}
-			catch (Exception)
-			{
-				SetError("Đã xảy ra lỗi khi gửi duyệt. Vui lòng thử lại.");
+				await ExecuteErrorAsync(ex, ex is InvalidOperationException || ex is EventValidator.BusinessValidationException 
+					? ex.Message 
+					: "Đã xảy ra lỗi khi gửi duyệt. Vui lòng thử lại.");
 			}
 
 			return RedirectToAction("MyEvents", "Organizer");
@@ -166,18 +160,19 @@ namespace AEMS_Solution.Controllers.Event
 			try
 			{
 				await _organizerService.UpdateEventAsync(userId, vm.EventId, dto);
-				SetSuccess(targetStatus == EventStatusEnum.Pending
+				var successMsg = targetStatus == EventStatusEnum.Pending
 					? "Cập nhật và chuyển sự kiện sang trạng thái chờ duyệt thành công."
-					: "Cập nhật thành công!");
+					: "Cập nhật thành công!";
+				
+				await ExecuteSuccessAsync(successMsg, UserActionType.Update, vm.EventId, TargetType.Event);
+				
 				return RedirectToAction("MyEvents", "Organizer");
 			}
-			catch (InvalidOperationException ex)
+			catch (Exception ex)
 			{
-				ModelState.AddModelError(string.Empty, ex.Message);
-			}
-			catch (EventValidator.BusinessValidationException ex)
-			{
-				ModelState.AddModelError(string.Empty, ex.Message);
+				await ExecuteErrorAsync(ex, ex is InvalidOperationException || ex is EventValidator.BusinessValidationException
+					? ex.Message
+					: "Đã xảy ra lỗi khi cập nhật sự kiện.");
 			}
 
 			await LoadDropdowns(vm);

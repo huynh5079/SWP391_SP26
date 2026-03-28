@@ -1,10 +1,11 @@
-﻿using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Location;
 using BusinessLogic.DTOs.Event.Location;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.ValidationData.Loction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Controllers.Event.Location
 {
@@ -97,7 +98,7 @@ namespace AEMS_Solution.Controllers.Event.Location
                     Type = vm.Type,
                     Description = vm.Description ?? string.Empty
                 });
-                SetSuccess("Tạo địa điểm thành công.");
+                await ExecuteSuccessAsync("Tạo địa điểm thành công.", UserActionType.Create, null, TargetType.None);
                 return RedirectToAction(nameof(Index));
             }
             catch (LocationValidator.BusinessValidationException ex)
@@ -166,7 +167,7 @@ namespace AEMS_Solution.Controllers.Event.Location
                     return NotFound();
                 }
 
-                SetSuccess("Cập nhật địa điểm thành công.");
+                await ExecuteSuccessAsync("Cập nhật địa điểm thành công.", UserActionType.Update, vm.LocationId, TargetType.None);
                 return RedirectToAction(nameof(Index));
             }
             catch (LocationValidator.BusinessValidationException ex)
@@ -197,20 +198,16 @@ namespace AEMS_Solution.Controllers.Event.Location
                 var result = await _locationService.DeleteLocationAsync(id);
                 if (!result)
                 {
-                    SetError("Địa điểm không tồn tại hoặc đã bị xoá.");
+                    await ExecuteErrorAsync(new Exception("Địa điểm không tồn tại"), "Địa điểm không tồn tại hoặc đã bị xoá.");
                 }
                 else
                 {
-                    SetSuccess("Xoá địa điểm thành công.");
+                    await ExecuteSuccessAsync("Xoá địa điểm thành công.", UserActionType.Delete, id, TargetType.None);
                 }
-            }
-            catch (LocationValidator.BusinessValidationException ex)
-            {
-                SetError(ex.Message);
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi hệ thống: {ex.Message}");
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Index));

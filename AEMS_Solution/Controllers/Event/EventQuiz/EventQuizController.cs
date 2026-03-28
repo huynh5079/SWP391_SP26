@@ -189,15 +189,16 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 }
 
                 SetSuccess("Tạo quiz thành công.");
+                await ExecuteSuccessAsync("Tạo quiz thành công.", UserActionType.Create, created.Quiz.EventQuizId, TargetType.Event);
                 return RedirectToAction(nameof(Details), new { quizId = created.Quiz.EventQuizId });
             }
             catch (ArgumentException ex)
             {
-                ModelState.AddModelError(string.Empty, ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             await LoadDropdowns(vm);
@@ -241,7 +242,7 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -288,11 +289,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
             {
                 vm.NewQuestion.QuizId = quizId;
                 await _quizService.AddQuizQuestionAsync(vm.NewQuestion);
-                SetSuccess("Đã thêm câu hỏi vào quiz.");
+                await ExecuteSuccessAsync("Đã thêm câu hỏi vào quiz.", UserActionType.Update, quizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Details), new { quizId });
@@ -311,11 +312,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     UserId = userId
                 });
 
-                SetSuccess("Đã publish quiz thành công.");
+                await ExecuteSuccessAsync("Đã publish quiz thành công.", UserActionType.Publish, quizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToReferrerOrIndex();
@@ -336,11 +337,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     SharingStatus = QuizSetVisibilityEnum.Public
                 });
 
-                SetSuccess("Question bank đã được chuyển sang Public và chia sẻ cho community.");
+                await ExecuteSuccessAsync("Question bank đã được chuyển sang Public và chia sẻ cho community.", UserActionType.Sync, quizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToReferrerOrIndex();
@@ -361,11 +362,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     SharingStatus = QuizSetVisibilityEnum.Private
                 });
 
-                SetSuccess("Question bank đã được chuyển về Private.");
+                await ExecuteSuccessAsync("Question bank đã được chuyển về Private.", UserActionType.Sync, quizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToReferrerOrIndex();
@@ -385,11 +386,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     UserId = userId
                 });
 
-                SetSuccess("Đã xóa quiz thành công.");
+                await ExecuteSuccessAsync("Đã xóa quiz thành công.", UserActionType.Delete, quizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Index));
@@ -419,11 +420,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                     FileName = vm.FileUpload.FileName
                 });
 
-                SetSuccess("Đã upload file quiz thành công.");
+                await ExecuteSuccessAsync("Đã upload file quiz thành công.", UserActionType.Sync, quizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Details), new { quizId });
@@ -443,11 +444,11 @@ namespace AEMS_Solution.Controllers.Event.EventQuiz
                 request.EventId = string.IsNullOrWhiteSpace(vm.Quiz.EventId) ? vm.EventId : vm.Quiz.EventId;
 
                 await _quizService.UpdateQuizSetAsync(request);
-                SetSuccess("Cập nhật thông tin quiz thành công.");
+                await ExecuteSuccessAsync("Cập nhật thông tin quiz thành công.", UserActionType.Update, vm.Quiz.EventQuizId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Details), new { quizId = vm.Quiz.EventQuizId });

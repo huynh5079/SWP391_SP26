@@ -4,6 +4,7 @@ using BusinessLogic.DTOs.Department;
 using BusinessLogic.Service.Event.EventDepartment;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Controllers.Admin
 {
@@ -55,12 +56,12 @@ namespace AEMS_Solution.Controllers.Admin
                 };
 
                 await _departmentService.CreateDepartmentAsync(dto);
-                SetSuccess("Tạo phòng ban mới thành công.");
+                await ExecuteSuccessAsync("Tạo phòng ban mới thành công.", UserActionType.Create, dto.Code, TargetType.Department);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                SetError($"Có lỗi xảy ra: {ex.Message}");
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -101,12 +102,12 @@ namespace AEMS_Solution.Controllers.Admin
                 };
 
                 await _departmentService.UpdateDepartmentAsync(id, dto);
-                SetSuccess("Cập nhật phòng ban thành công.");
+                await ExecuteSuccessAsync("Cập nhật phòng ban thành công.", UserActionType.Update, id, TargetType.Department);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                SetError($"Có lỗi xảy ra: {ex.Message}");
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -120,11 +121,11 @@ namespace AEMS_Solution.Controllers.Admin
             try
             {
                 await _departmentService.DeleteDepartmentAsync(id);
-                SetSuccess("Đã xóa phòng ban thành công.");
+                await ExecuteSuccessAsync("Đã xóa phòng ban thành công.", UserActionType.Delete, id, TargetType.Department);
             }
             catch (Exception ex)
             {
-                SetError($"Không thể xóa: {ex.Message}");
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Index));

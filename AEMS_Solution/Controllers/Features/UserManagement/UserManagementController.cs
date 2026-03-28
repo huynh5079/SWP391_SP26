@@ -4,11 +4,14 @@ using BusinessLogic.Service.User;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
+
+using AEMS_Solution.Controllers.Common;
 
 namespace AEMS_Solution.Controllers.Features.UserManagement
 {
     [Authorize(Roles = "Admin")]
-    public class UserManagementController : Controller
+    public class UserManagementController : BaseController
     {
         private readonly IUserService _userService;
         private readonly BusinessLogic.Service.Auth.IAuthService _authService;
@@ -58,18 +61,19 @@ namespace AEMS_Solution.Controllers.Features.UserManagement
                 var result = await _userService.SetUserLockAsync(request);
                 if (!result)
                 {
-                    TempData["Error"] = "Failed to update user status.";
+                    await ExecuteErrorAsync(new Exception("Failed to update user status."), "Failed to update user status.");
                 }
                 else
                 {
-                    TempData["Success"] = request.ReactivateAt.HasValue
+                    var msg = request.ReactivateAt.HasValue
                         ? $"Đã khóa tài khoản đến {request.ReactivateAt.Value:dd/MM/yyyy HH:mm}."
                         : "Đã khóa tài khoản vô thời hạn.";
+                    await ExecuteSuccessAsync(msg, UserActionType.Update, request.Id, TargetType.User);
                 }
             }
             catch (Exception ex)
             {
-                TempData["Error"] = ex.Message;
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Index));
@@ -102,13 +106,12 @@ namespace AEMS_Solution.Controllers.Features.UserManagement
             try
             {
                 await _authService.RegisterStaffAsync(model);
-                TempData["Success"] = $"Tạo tài khoản {model.RoleName} thành công.";
+                await ExecuteSuccessAsync($"Tạo tài khoản {model.RoleName} thành công.", UserActionType.AccountRegister, model.Email, TargetType.User);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                // Note: Better to use generic error logging, but exposing message for now to admin
-                TempData["Error"] = ex.Message;
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }

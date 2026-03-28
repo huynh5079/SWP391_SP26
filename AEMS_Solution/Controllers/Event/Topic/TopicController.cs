@@ -5,6 +5,7 @@ using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.ValidationData.Topic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Controllers.Event.Topic
 {
@@ -70,7 +71,7 @@ namespace AEMS_Solution.Controllers.Event.Topic
                     TopicName = vm.TopicName,
                     Description = vm.Description ?? string.Empty
                 });
-                SetSuccess("Tạo topic thành công.");
+                await ExecuteSuccessAsync("Tạo topic thành công.", UserActionType.Create, null, TargetType.None);
                 return RedirectToAction(nameof(Index));
             }
             catch (TopicValidator.BusinessValidationException ex)
@@ -131,7 +132,7 @@ namespace AEMS_Solution.Controllers.Event.Topic
                     return NotFound();
                 }
 
-                SetSuccess("Cập nhật topic thành công.");
+                await ExecuteSuccessAsync("Cập nhật topic thành công.", UserActionType.Update, vm.TopicId, TargetType.None);
                 return RedirectToAction(nameof(Index));
             }
             catch (TopicValidator.BusinessValidationException ex)
@@ -162,20 +163,16 @@ namespace AEMS_Solution.Controllers.Event.Topic
                 var result = await _topicService.DeleteTopicAsync(id);
                 if (!result)
                 {
-                    SetError("Topic không tồn tại hoặc đã bị xoá.");
+                    await ExecuteErrorAsync(new Exception("Topic không tồn tại"), "Topic không tồn tại hoặc đã bị xoá.");
                 }
                 else
                 {
-                    SetSuccess("Xoá topic thành công.");
+                    await ExecuteSuccessAsync("Xoá topic thành công.", UserActionType.Delete, id, TargetType.None);
                 }
-            }
-            catch (TopicValidator.BusinessValidationException ex)
-            {
-                SetError(ex.Message);
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi hệ thống: {ex.Message}");
+                 await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Index));

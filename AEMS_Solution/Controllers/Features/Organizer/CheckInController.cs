@@ -4,10 +4,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
+using AEMS_Solution.Controllers.Common;
+using DataAccess.Enum;
+
 namespace AEMS_Solution.Controllers.Features.Organizer
 {
     [Authorize(Roles = "Organizer")]
-    public class CheckInController : Controller
+    public class CheckInController : BaseController
     {
         private readonly ICheckInService _checkInService;
         private readonly BusinessLogic.Service.Organizer.IOrganizerService _organizerService;
@@ -48,6 +51,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
                 // Call service to process check-in
                 var result = await _checkInService.ProcessCheckInAsync(request, userId);
                 
+                if (result.IsSuccess)
+                {
+                    await LogUserActivity(UserActionType.CheckIn, request.EventId, TargetType.Event, $"Check-in thành công cho {result.StudentEmail}");
+                }
+
                 return Json(new 
                 { 
                     success = result.IsSuccess, 
@@ -58,7 +66,7 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             }
             catch (Exception ex)
             {
-                // Simple generic log; deeper logs handled inside service layers usually
+                await ExecuteErrorAsync(ex, ex.Message);
                 return Json(new { success = false, message = "Có lỗi hệ thống xảy ra: " + ex.Message });
             }
         }

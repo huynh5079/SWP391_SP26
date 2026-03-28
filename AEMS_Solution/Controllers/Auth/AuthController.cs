@@ -8,20 +8,24 @@ using BusinessLogic.Service.System;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
 using System.Security.Claims;
+
+using Microsoft.Extensions.DependencyInjection;
+using DataAccess.Enum;
 
 namespace AEMS_Solution.Controllers.Authentication
 {
     public class AuthController : BaseController
     {
         private readonly IAuthService _authService;
-        private readonly ISystemErrorLogService _systemErrorLogService;
 
-        public AuthController(IAuthService authService, ISystemErrorLogService systemErrorLogService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
-            _systemErrorLogService = systemErrorLogService;
         }
+
+        private ISystemErrorLogService _systemErrorLogService => HttpContext.RequestServices.GetRequiredService<ISystemErrorLogService>();
 
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
@@ -45,13 +49,13 @@ namespace AEMS_Solution.Controllers.Authentication
                 var response = await _authService.LoginAsync(dto);
 
                 // Create Claims
-                var claims = new List<Claim>
+                var claims = new List<System.Security.Claims.Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, response.User.Id),
-                    new Claim(ClaimTypes.Name, response.User.FullName),
-                    new Claim(ClaimTypes.Email, response.User.Email),
-                    new Claim(ClaimTypes.Role, response.User.Role),
-                    new Claim("AvatarUrl", response.User.AvatarUrl ?? "")
+                    new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, response.User.Id),
+                    new System.Security.Claims.Claim(ClaimTypes.Name, response.User.FullName),
+                    new System.Security.Claims.Claim(ClaimTypes.Email, response.User.Email),
+                    new System.Security.Claims.Claim(ClaimTypes.Role, response.User.Role),
+                    new System.Security.Claims.Claim("AvatarUrl", response.User.AvatarUrl ?? "")
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -66,6 +70,7 @@ namespace AEMS_Solution.Controllers.Authentication
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
+                await LogUserActivity(UserActionType.Login, response.User.Id, TargetType.User, $"User {response.User.Email} logged in.");
                 SetSuccess($"Chào mừng trở lại, {response.User.FullName}!");
 
                 if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
@@ -76,14 +81,7 @@ namespace AEMS_Solution.Controllers.Authentication
             }
             catch (Exception ex)
             {
-                // Log error to database for debugging
-                await _systemErrorLogService.LogErrorAsync(
-                    ex, 
-                    CurrentUserId, 
-                    $"{nameof(AuthController)}.{nameof(Login)}"
-                );
-                
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -132,13 +130,13 @@ namespace AEMS_Solution.Controllers.Authentication
                 var user = await _authService.LoginGoogleAsync(email, googleId, name ?? "Unknown", avatarUrl);
 
                 // Create Cookie Claims
-                var userClaims = new List<Claim>
+                var userClaims = new List<System.Security.Claims.Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id),
-                    new Claim(ClaimTypes.Name, user.FullName),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role.RoleName.ToString() ?? ""),
-                    new Claim("AvatarUrl", user.AvatarUrl ?? "")
+                    new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new System.Security.Claims.Claim(ClaimTypes.Name, user.FullName),
+                    new System.Security.Claims.Claim(ClaimTypes.Email, user.Email),
+                    new System.Security.Claims.Claim(ClaimTypes.Role, user.Role.RoleName.ToString() ?? ""),
+                    new System.Security.Claims.Claim("AvatarUrl", user.AvatarUrl ?? "")
                 };
 
                 var claimsIdentity = new ClaimsIdentity(userClaims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -153,6 +151,7 @@ namespace AEMS_Solution.Controllers.Authentication
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
+                await LogUserActivity(UserActionType.Login, user.Id, TargetType.User, $"User {user.Email} logged in via Google.");
                 SetSuccess($"Chào mừng, {user.FullName}!");
                 
                  if (Url.IsLocalUrl(returnUrl) && returnUrl != "/")
@@ -163,12 +162,7 @@ namespace AEMS_Solution.Controllers.Authentication
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi: {ex.Message}");
-                 await _systemErrorLogService.LogErrorAsync(
-                    ex, 
-                    "System", 
-                    $"{nameof(AuthController)}.{nameof(GoogleResponse)}"
-                );
+                await ExecuteErrorAsync(ex, ex.Message);
                 return RedirectToAction(nameof(Login));
             }
         }
@@ -199,19 +193,12 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.RegisterStudentAsync(dto);
-                SetSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
+                await ExecuteSuccessAsync("Đăng ký thành công! Vui lòng đăng nhập.", UserActionType.AccountRegister, model.Email, TargetType.User);
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
             {
-                // Log error to database for debugging
-                await _systemErrorLogService.LogErrorAsync(
-                    ex, 
-                    CurrentUserId, 
-                    $"{nameof(AuthController)}.{nameof(RegisterStudent)}"
-                );
-                
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -241,18 +228,12 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.RegisterStaffAsync(dto);
-                SetSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
+                await ExecuteSuccessAsync("Đăng ký thành công! Vui lòng đăng nhập.", UserActionType.AccountRegister, model.Email, TargetType.User);
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
             {
-                await _systemErrorLogService.LogErrorAsync(
-                    ex, 
-                    CurrentUserId, 
-                    $"{nameof(AuthController)}.{nameof(RegisterOrganizer)}"
-                );
-                
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -262,7 +243,7 @@ namespace AEMS_Solution.Controllers.Authentication
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            SetSuccess("Đăng xuất thành công.");
+            await ExecuteSuccessAsync("Đăng xuất thành công.", UserActionType.Logout, CurrentUserId ?? "Unknown", TargetType.User);
             return RedirectToAction(nameof(Login));
         }
 
@@ -289,12 +270,12 @@ namespace AEMS_Solution.Controllers.Authentication
                 var req = new BusinessLogic.DTOs.Authentication.Password.ForgotPasswordRequestDto { Email = model.Email };
                 await _authService.ForgotPasswordAsync(req);
                 // Always show success message for security
-                SetSuccess("Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu của bạn.");
+                await ExecuteSuccessAsync("Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu của bạn.", UserActionType.Sync, model.Email, TargetType.User);
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -325,12 +306,12 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.ResetPasswordAsync(req);
-                SetSuccess("Đặt lại mật khẩu thành công! Vui lòng đăng nhập.");
+                await ExecuteSuccessAsync("Đặt lại mật khẩu thành công! Vui lòng đăng nhập.", UserActionType.ChangePassword, model.Email, TargetType.User);
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -356,12 +337,12 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.SetPasswordAsync(CurrentUserId, req);
-                SetSuccess("Thiết lập mật khẩu thành công!");
+                await ExecuteSuccessAsync("Thiết lập mật khẩu thành công!", UserActionType.ChangePassword, CurrentUserId, TargetType.User);
                 return RedirectToAction("Index", "Profile");
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }
@@ -388,20 +369,12 @@ namespace AEMS_Solution.Controllers.Authentication
                 };
 
                 await _authService.ChangePasswordAsync(CurrentUserId, req);
-                SetSuccess("Đổi mật khẩu thành công!");
+                await ExecuteSuccessAsync("Đổi mật khẩu thành công!", UserActionType.ChangePassword, CurrentUserId, TargetType.User);
                 return RedirectToAction("Index", "Home");
             }
             catch (Exception ex)
             {
-                // If it's a known logic error (Old password mismatch), display it on the field
-                if (ex.Message.Contains("Mật khẩu cũ không chính xác"))
-                {
-                    ModelState.AddModelError("OldPassword", "Mật khẩu cũ không chính xác");
-                }
-                else
-                {
-                    SetError(ex.Message);
-                }
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View(model);
             }
         }

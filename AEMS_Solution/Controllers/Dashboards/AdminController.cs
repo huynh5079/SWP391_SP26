@@ -9,13 +9,12 @@ namespace AEMS_Solution.Controllers.Dashboards
     public class AdminController : BaseController
     {
         private readonly DataAccess.Repositories.Abstraction.IUnitOfWork _uow;
-        private readonly ISystemErrorLogService _logService;
-
-        public AdminController(DataAccess.Repositories.Abstraction.IUnitOfWork uow, ISystemErrorLogService logService)
+        public AdminController(DataAccess.Repositories.Abstraction.IUnitOfWork uow)
         {
             _uow = uow;
-            _logService = logService;
         }
+
+        private ISystemErrorLogService _logService => HttpContext.RequestServices.GetRequiredService<ISystemErrorLogService>();
 
         public async Task<IActionResult> Index()
         {
@@ -57,7 +56,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
             catch (Exception ex)
             {
-                SetError("Failed to load dashboard data: " + ex.Message);
+                await ExecuteErrorAsync(ex, "Failed to load dashboard data: " + ex.Message);
                 return View(new Models.Admin.AdminDashboardViewModel());
             }
         }

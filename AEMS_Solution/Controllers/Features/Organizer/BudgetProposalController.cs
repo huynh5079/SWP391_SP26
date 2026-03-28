@@ -1,4 +1,4 @@
-﻿using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Organizer.BudgetProposal;
 using BusinessLogic.Service.Organizer.BudgetProposal;
 using BusinessLogic.Service.System;
@@ -14,16 +14,13 @@ namespace AEMS_Solution.Controllers.Features.Organizer
     public class BudgetProposalController : BaseController
     {
         private readonly IBudgetProposalService _service;
-        private readonly ISystemErrorLogService _errorLog;
         private readonly ILogger<BudgetProposalController> _logger;
 
         public BudgetProposalController(
             IBudgetProposalService service,
-            ISystemErrorLogService errorLog,
             ILogger<BudgetProposalController> logger)
         {
             _service = service;
-            _errorLog = errorLog;
             _logger = logger;
         }
 
@@ -126,12 +123,7 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(Detail)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return RedirectToAction("Manage", "Organizer", new { operation = "myevents" });
             }
         }
@@ -152,16 +144,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.CreateAsync(CurrentUserId, dto);
-                SetSuccess("Tạo Budget Proposal thành công!");
+                await ExecuteSuccessAsync("Tạo Budget Proposal thành công!", UserActionType.Create, dto.EventId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(Create)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId = dto.EventId });
@@ -183,16 +170,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.EditProposalAsync(CurrentUserId, proposalId, Title, Description);
-                SetSuccess("Đã cập nhật Proposal. Bạn có thể thêm hạng mục và gửi duyệt lại!");
+                await ExecuteSuccessAsync("Đã cập nhật Proposal. Bạn có thể thêm hạng mục và gửi duyệt lại!", UserActionType.Update, proposalId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(EditProposal)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId });
@@ -208,16 +190,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.DeleteProposalAsync(CurrentUserId, proposalId);
-                SetSuccess("Đã xóa Budget Proposal thành công.");
+                await ExecuteSuccessAsync("Đã xóa Budget Proposal thành công.", UserActionType.Delete, proposalId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(DeleteProposal)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             // Sau khi xóa → quay về MyEvents vì Proposal không còn tồn tại
@@ -240,16 +217,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.AddItemAsync(CurrentUserId, proposalId, dto);
-                SetSuccess("Thêm hạng mục thành công!");
+                await ExecuteSuccessAsync("Thêm hạng mục thành công!", UserActionType.Create, proposalId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(AddItem)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId });
@@ -265,16 +237,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.SubmitForApprovalAsync(CurrentUserId, proposalId);
-                SetSuccess("Đã gửi Budget Proposal lên Approver duyệt!");
+                await ExecuteSuccessAsync("Đã gửi Budget Proposal lên Approver duyệt!", UserActionType.Submit, proposalId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(SubmitForApproval)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId });
@@ -296,16 +263,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.UpdateItemAsync(CurrentUserId, itemId, dto);
-                SetSuccess("Cập nhật hạng mục thành công!");
+                await ExecuteSuccessAsync("Cập nhật hạng mục thành công!", UserActionType.Update, itemId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(UpdateItem)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId });
@@ -321,16 +283,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.RemoveItemAsync(CurrentUserId, itemId);
-                SetSuccess("Đã xóa hạng mục.");
+                await ExecuteSuccessAsync("Đã xóa hạng mục.", UserActionType.Delete, itemId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(RemoveItem)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId });
@@ -352,16 +309,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.AddReceiptAsync(CurrentUserId, proposalId, dto);
-                SetSuccess("Thêm biên lai chi phí thành công!");
+                await ExecuteSuccessAsync("Thêm biên lai chi phí thành công!", UserActionType.Create, proposalId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(AddReceipt)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { eventId });
@@ -375,15 +327,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.EditReceiptAsync(CurrentUserId, receiptId, Title, ActualAmount);
-                SetSuccess("Đã cập nhật biên lai. Trạng thái chuyển về Pending.");
+                await ExecuteSuccessAsync("Đã cập nhật biên lai. Trạng thái chuyển về Pending.", UserActionType.Update, receiptId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(EditReceipt)}");
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction(nameof(Detail), new { eventId });
         }
@@ -396,15 +344,11 @@ namespace AEMS_Solution.Controllers.Features.Organizer
             try
             {
                 await _service.DeleteReceiptAsync(CurrentUserId, receiptId);
-                SetSuccess("Đã xóa biên lai.");
+                await ExecuteSuccessAsync("Đã xóa biên lai.", UserActionType.Delete, receiptId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetProposalController)}.{nameof(DeleteReceipt)}");
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction(nameof(Detail), new { eventId });
         }

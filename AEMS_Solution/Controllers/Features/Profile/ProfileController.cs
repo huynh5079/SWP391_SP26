@@ -4,6 +4,7 @@ using BusinessLogic.Service.User;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
 using DataAccess.Helper;
 
 namespace AEMS_Solution.Controllers.Features.Profile
@@ -12,13 +13,11 @@ namespace AEMS_Solution.Controllers.Features.Profile
     public class ProfileController : BaseController
     {
         private readonly IUserService _userService;
-        private readonly BusinessLogic.Service.System.ISystemErrorLogService _systemErrorLogService;
         private readonly IUnitOfWork _uow;
 
-        public ProfileController(IUserService userService, BusinessLogic.Service.System.ISystemErrorLogService systemErrorLogService, IUnitOfWork uow)
+        public ProfileController(IUserService userService, IUnitOfWork uow)
         {
             _userService = userService;
-            _systemErrorLogService = systemErrorLogService;
             _uow = uow;
         }
 
@@ -71,7 +70,7 @@ namespace AEMS_Solution.Controllers.Features.Profile
             }
             catch (Exception ex)
             {
-                await _systemErrorLogService.LogErrorAsync(ex, CurrentUserId, "ProfileController.UploadAvatar");
+                await ExecuteErrorAsync(ex, ex.Message);
                 return Json(new { success = false, message = ex.Message });
             }
         }
@@ -92,12 +91,11 @@ namespace AEMS_Solution.Controllers.Features.Profile
              try
              {
                  await _userService.UpdateProfileAsync(CurrentUserId, request);
-                 SetSuccess("Cập nhật hồ sơ thành công!");
+                 await ExecuteSuccessAsync("Cập nhật hồ sơ thành công!", UserActionType.Update, CurrentUserId, TargetType.User);
              }
              catch(Exception ex)
              {
-                 await _systemErrorLogService.LogErrorAsync(ex, CurrentUserId, "ProfileController.Update");
-                 SetError("Lỗi khi cập nhật hồ sơ: " + ex.Message);
+                 await ExecuteErrorAsync(ex, ex.Message);
              }
              return RedirectToAction(nameof(Index));
         }

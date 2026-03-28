@@ -1,24 +1,23 @@
 using System.Security.Claims;
 using BusinessLogic.Service.Chat.ChatforUser;
-using BusinessLogic.Service.System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using AEMS_Solution.Controllers.Common;
 
 namespace AEMS_Solution.Controllers.Chat
 {
     [Authorize]
     [Route("chat")]
-    public class ChatController : Controller
+    public class ChatController : BaseController
     {
         private readonly IChatUserService _chatUserService;
         private readonly IChatPresenceTracker _presenceTracker;
-        private readonly ISystemErrorLogService _errorLog;
 
-        public ChatController(IChatUserService chatUserService, IChatPresenceTracker presenceTracker, ISystemErrorLogService errorLog)
+        public ChatController(IChatUserService chatUserService, IChatPresenceTracker presenceTracker)
         {
             _chatUserService = chatUserService;
             _presenceTracker = presenceTracker;
-            _errorLog = errorLog;
         }
 
         [HttpGet("contacts")]
@@ -42,7 +41,7 @@ namespace AEMS_Solution.Controllers.Chat
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, currentUserId, $"{nameof(ChatController)}.{nameof(Contacts)}");
+                await ExecuteErrorAsync(ex, ex.Message);
                 return StatusCode(500, new { success = false, message = "Không tải được danh sách chat." });
             }
         }
@@ -73,12 +72,12 @@ namespace AEMS_Solution.Controllers.Chat
             }
             catch (UnauthorizedAccessException ex)
             {
-                await _errorLog.LogErrorAsync(ex, currentUserId, $"{nameof(ChatController)}.{nameof(Conversation)}");
+                await ExecuteErrorAsync(ex, ex.Message);
                 return Forbid();
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, currentUserId, $"{nameof(ChatController)}.{nameof(Conversation)}");
+                await ExecuteErrorAsync(ex, ex.Message);
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống." });
             }
         }
