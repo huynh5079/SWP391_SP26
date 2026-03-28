@@ -282,16 +282,21 @@ namespace BusinessLogic.Service.Auth
                     throw new Exception(BuildLockedAccountMessage(user));
                 }
 
+                // Always sync profile info from Google to stay updated
+                user.FullName = fullName;
+                if (!string.IsNullOrEmpty(avatarUrl))
+                {
+                    user.AvatarUrl = avatarUrl;
+                }
+
                 if (string.IsNullOrEmpty(user.GoogleId))
                 {
                     user.GoogleId = googleId;
-                    if (!string.IsNullOrEmpty(avatarUrl) && string.IsNullOrEmpty(user.AvatarUrl))
-                    {
-                        user.AvatarUrl = avatarUrl;
-                    }
-                    await _uow.Users.UpdateAsync(user);
-            await _uow.SaveChangesAsync();
                 }
+
+                await _uow.Users.UpdateAsync(user);
+                await _uow.SaveChangesAsync();
+                
                 return user;
             }
 

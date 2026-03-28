@@ -12,7 +12,7 @@ using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Feedback;
 using BusinessLogic.Service.Organizer;
-using BusinessLogic.Service.ActivityLog;
+using BusinessLogic.Service.UserActivities;
 using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -35,7 +35,6 @@ namespace AEMS_Solution.Controllers.Dashboards
         private readonly IEventService _eventService;
         private readonly BusinessLogic.Storage.IFileStorageService _fileStorageService;
         private readonly IFeedBackService _feedbackService;
-        private readonly IActivityLogService _activityLog;
 
         public OrganizerController(
             IOrganizerService organizerService,
@@ -44,8 +43,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             ILocationService locationService,
             IUnitOfWork unitOfWork,
             BusinessLogic.Storage.IFileStorageService fileStorageService,
-            IFeedBackService feedbackService,
-            IActivityLogService activityLog)
+            IFeedBackService feedbackService)
         {
             _organizerService = organizerService;
             _eventService = eventService;
@@ -54,7 +52,6 @@ namespace AEMS_Solution.Controllers.Dashboards
             _unitOfWork = unitOfWork;
             _fileStorageService = fileStorageService;
             _feedbackService = feedbackService;
-            _activityLog = activityLog;
         }
 
         [HttpGet]
@@ -599,7 +596,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
 
-                await _activityLog.LogActivityAsync(CurrentUserId ?? "anonymous", "View", id, "Event", $"Đã xem chi tiết sự kiện '{dto.Title}'");
+                await LogUserActivity(UserActionType.View, id, TargetType.Event, $"Đã xem chi tiết sự kiện '{dto.Title}'");
 
                 var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
                 vm.Teams = dto.Teams.Select(t => new AEMS_Solution.Models.Event.EventTeamVm

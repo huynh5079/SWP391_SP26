@@ -177,8 +177,15 @@
                                 <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 text-white rounded-3"
                                    href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown"
                                    style="background:rgba(255,255,255,.08); transition:background .2s; font-size:.875rem;">
-                                    <i class="bi bi-person-circle" style="font-size:1.1rem;"></i>
-                                    <span class="d-none d-lg-inline fw-semibold">@(User.Identity.Name?.Split('@')[0] ?? "User")</span>
+                                    @if (!string.IsNullOrEmpty(lockedCurrentUser?.AvatarUrl))
+                                    {
+                                        <img src="@lockedCurrentUser.AvatarUrl" alt="P" class="rounded-circle me-1" style="width:24px; height:24px; object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle" style="font-size:1.1rem;"></i>
+                                    }
+                                    <span class="d-none d-lg-inline fw-semibold">@(lockedCurrentUser?.FullName ?? User.Identity.Name?.Split('@')[0] ?? "User")</span>
                                     @{
                                         string roleBg = "bg-secondary";
                                         string roleLabel = "User";

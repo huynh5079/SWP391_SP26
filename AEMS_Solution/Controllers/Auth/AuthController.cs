@@ -381,6 +381,16 @@ namespace AEMS_Solution.Controllers.Authentication
 
         private IActionResult RedirectToDashboard(string role)
         {
+            if (role == "Admin") return RedirectToAction("Index", "Admin");
+            
+            if (role == "Organizer") 
+                return RedirectToAction("Manage", "Organizer", new { operation = "myevents" });
+                
+            if (role == "Approver") return RedirectToAction("Index", "Approver");
+            
+            if (role == "Student") return RedirectToAction("Index", "Student");
+            
+            // Fallback for unknown roles or "User"
             return RedirectToAction("Index", "Home");
         }
     }

@@ -10,7 +10,7 @@ using BusinessLogic.DTOs.Event.Semester;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Semester;
-using BusinessLogic.Service.ActivityLog;
+using BusinessLogic.Service.UserActivities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;

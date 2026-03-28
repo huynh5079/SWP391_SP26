@@ -4,117 +4,303 @@
     Layout = "_AdminLayout";
 }
 
-<div class="row mb-4 animate-fade-in">
-    <div class="col-md-8">
-        <h2 class="fw-800 text-indigo-900 mb-1">System Activity Logs</h2>
-        <p class="text-muted">Track administrative actions and system-wide user interactions.</p>
-    </div>
-    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end">
-        <form asp-action="DeleteOldLogs" method="post" onsubmit="return confirm('Are you sure you want to clean up logs older than 30 days?');">
-            <button type="submit" class="btn btn-outline-danger shadow-sm py-2 px-4" style="border-radius: 10px; font-weight: 600;">
-                <i class="bi bi-trash3-fill me-2"></i> Clean Up Old Logs
-            </button>
-        </form>
+<style>
+    :root {
+        --glass-bg: rgba(255, 255, 255, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.4);
+        --indigo-gradient: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+        --executive-card-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+        background: #f8fafc;
+        font-family: 'Inter', -apple-system, sans-serif;
+    }
+
+    .ex-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        box-shadow: var(--executive-card-shadow);
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .ex-header-gradient {
+        background: var(--indigo-gradient);
+        color: white;
+        padding: 2.5rem 2rem;
+        border-radius: 0 0 40px 40px;
+        margin-bottom: -20px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .table-ex {
+        background: transparent;
+    }
+
+    .table-ex thead th {
+        background: #f1f5f9;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.725rem;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        border: none;
+        padding: 1.25rem 1rem;
+    }
+
+    .table-ex tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.2s ease;
+    }
+
+    .table-ex tbody tr:hover {
+        background: rgba(99, 102, 241, 0.03);
+    }
+
+    .action-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .badge-create { background: #dcfce7; color: #15803d; }
+    .badge-update { background: #fef9c3; color: #854d0e; }
+    .badge-delete { background: #fee2e2; color: #b91c1c; }
+    .badge-other  { background: #e0e7ff; color: #4338ca; }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        object-fit: cover;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .user-initial {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: var(--indigo-gradient);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1rem;
+    }
+
+    .pagination-ex .page-link {
+        border: none;
+        border-radius: 10px;
+        margin: 0 4px;
+        font-weight: 600;
+        color: #64748b;
+        transition: all 0.2s;
+    }
+
+    .pagination-ex .page-item.active .page-link {
+        background: var(--indigo-gradient) !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .filter-pill {
+        background: white !border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 0.6rem 1.25rem;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .filter-pill:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .btn-clean {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 0.6rem 1.25rem;
+        border-radius: 14px;
+        font-weight: 700;
+        transition: all 0.2s;
+    }
+
+    .btn-clean:hover {
+        background: #ef4444;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+    }
+</style>
+
+<div class="ex-header-gradient shadow-lg">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-800 mb-2" style="font-size: 2.25rem; letter-spacing: -0.03em;">Activity Intelligence</h1>
+            <p class="mb-0 opacity-75">Monitoring system integrity and administrative workflow in real-time.</p>
+        </div>
+        <div>
+            <form asp-action="DeleteOldLogs" method="post" id="cleanupForm">
+                <button type="button" onclick="confirmCleanup()" class="btn-clean">
+                    <i class="bi bi-shield-slash me-2"></i> Purge History
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px; background-color: #f0fdf4; color: #15803d;">
-        <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<div class="card border-0 shadow-sm animate-fade-in animate-delay-1" style="border-radius: 20px; overflow: hidden;">
-    <div class="card-header bg-white border-bottom py-3 px-4">
+<div class="container-fluid px-4" style="margin-top: 40px; position: relative; z-index: 2;">
+    <!-- Filters Row -->
+    <div class="ex-card mb-4 p-4">
         <form method="get" class="row g-3">
             <div class="col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0" style="border-radius: 10px 0 0 10px;"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" name="search" class="form-control bg-light border-start-0 py-2" placeholder="Search by description or user..." value="@Context.Request.Query["search"]" style="border-radius: 0 10px 10px 0;">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute text-muted" style="left: 1.25rem; top: 50%; transform: translateY(-50%);"></i>
+                    <input type="text" name="search" class="filter-pill w-100 ps-5" placeholder="Search activities, users, or targets..." value="@Context.Request.Query["search"]">
                 </div>
             </div>
             <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100 py-2" style="border-radius: 10px; font-weight: 600; background: linear-gradient(135deg, #6366f1, #4f46e5); border: none;">Apply Filters</button>
+                <button type="submit" class="btn w-100 py-2 fw-bold text-white shadow-sm" style="background: #0f172a; border-radius: 14px;">
+                    Search Insights
+                </button>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="text-muted small fw-bold">COUNT: @Model.Data.Count() RECORD(S)</div>
             </div>
         </form>
     </div>
-    <div class="card-body p-0">
+
+    <!-- Data Table -->
+    <div class="ex-card mb-5">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light text-muted" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+            <table class="table table-ex align-middle mb-0">
+                <thead>
                     <tr>
-                        <th class="ps-4 py-3">Timestamp</th>
-                        <th class="py-3">User</th>
-                        <th class="py-3">Action</th>
-                        <th class="py-3" style="min-width: 300px;">Description</th>
+                        <th class="ps-4">Actor</th>
+                        <th>Action Protocol</th>
+                        <th style="min-width: 400px;">Outcome & Context</th>
+                        <th class="text-end pe-4">Timestamp</th>
                     </tr>
                 </thead>
-                <tbody style="font-size: 0.85rem;">
+                <tbody>
                     @foreach (var log in Model.Data)
                     {
+                        var badgeClass = log.ActionType.ToString().Contains("Create") ? "badge-create" :
+                                         log.ActionType.ToString().Contains("Update") ? "badge-update" :
+                                         log.ActionType.ToString().Contains("Delete") ? "badge-delete" : "badge-other";
+                        
+                        var icon = log.ActionType.ToString().Contains("Create") ? "bi-plus-circle-fill" :
+                                   log.ActionType.ToString().Contains("Update") ? "bi-pencil-fill" :
+                                   log.ActionType.ToString().Contains("Delete") ? "bi-trash3-fill" : "bi-lightning-charge-fill";
+
                         <tr>
-                            <td class="ps-4 text-muted">@log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-indigo-100 text-indigo-700 d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px; background-color: #e0e7ff; color: #4338ca; font-size: 0.7rem; font-weight: 700;">
-                                        @(log.User?.FullName?.Substring(0, 1).ToUpper() ?? "?")
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    @if (!string.IsNullOrEmpty(log.User?.AvatarUrl))
+                                    {
+                                        <img src="@log.User.AvatarUrl" class="user-avatar" alt="Avatar">
+                                    }
+                                    else
+                                    {
+                                        <div class="user-initial">
+                                            @(log.User?.FullName?.Substring(0, 1).ToUpper() ?? "S")
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="fw-bold text-dark">@(log.User?.FullName ?? "System")</div>
+                                        <div class="text-muted small">#@(log.UserId?.Substring(0, 8) ?? "root")</div>
                                     </div>
-                                    <span class="fw-600">@(log.User?.FullName ?? "System")</span>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge rounded-pill @(log.ActionType.ToString().Contains("CREATE") ? "bg-success-soft" : log.ActionType.ToString().Contains("DELETE") ? "bg-danger-soft" : "bg-primary-soft")" 
-                                      style="font-size: 0.65rem; padding: 0.4em 0.8em; font-weight: 700; @(log.ActionType.ToString().Contains("CREATE") ? "background-color: #dcfce7; color: #166534;" : log.ActionType.ToString().Contains("DELETE") ? "background-color: #fee2e2; color: #991b1b;" : "background-color: #e0e7ff; color: #3730a3;")">
+                                <span class="action-badge @badgeClass">
+                                    <i class="bi @icon"></i>
                                     @log.ActionType
                                 </span>
                             </td>
-                            <td class="text-indigo-950">@log.Description</td>
+                            <td>
+                                <div class="text-dark fw-medium" style="line-height: 1.5;">@log.Description</div>
+                                @if (!string.IsNullOrEmpty(log.TargetId))
+                                {
+                                    <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                                        <i class="bi bi-hash"></i> Target Reference: <span class="badge bg-light text-dark fw-normal">@log.TargetId</span>
+                                    </div>
+                                }
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="fw-bold text-indigo-900">@log.CreatedAt.ToString("HH:mm:ss")</div>
+                                <div class="text-muted small">@log.CreatedAt.ToString("dd MMM yyyy")</div>
+                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-    </div>
-    <div class="card-footer bg-white border-top py-3 px-4">
-        <nav aria-label="Page navigation">
-            <ul class="pagination pagination-sm justify-content-end mb-0">
-                <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
-                    <a class="page-link border-0 shadow-none text-indigo-600" href="@Url.Action("ActivityLog", new { page = Model.PageNumber - 1, search = Context.Request.Query["search"] })">
-                        <i class="bi bi-chevron-left"></i>
-                    </a>
-                </li>
-                @for (int i = 1; i <= Model.TotalPages; i++)
-                {
-                    <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                        <a class="page-link border-0 shadow-none @(i == Model.PageNumber ? "bg-indigo-600 text-white" : "text-indigo-600")" 
-                           href="@Url.Action("ActivityLog", new { page = i, search = Context.Request.Query["search"] })" 
-                           style="@(i == Model.PageNumber ? "background-color: #4f46e5 !important; border-radius: 6px;" : "border-radius: 6px;")">@i</a>
+
+        <!-- Pagination -->
+        <div class="card-footer bg-white border-top py-4 px-4 hstack justify-content-between">
+            <div class="text-muted small fw-600">
+                Page <span class="text-dark">@Model.PageNumber</span> of <span class="text-dark">@Model.TotalPages</span>
+            </div>
+            <nav>
+                <ul class="pagination pagination-ex mb-0">
+                    <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                        <a class="page-link shadow-none" href="@Url.Action("ActivityLog", new { page = Model.PageNumber - 1, search = Context.Request.Query["search"] })">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
                     </li>
-                }
-                <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
-                    <a class="page-link border-0 shadow-none text-indigo-600" href="@Url.Action("ActivityLog", new { page = Model.PageNumber + 1, search = Context.Request.Query["search"] })">
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                </li>
-            </ul>
-        </nav>
+                    
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        if (i == 1 || i == Model.TotalPages || (i >= Model.PageNumber - 2 && i <= Model.PageNumber + 2))
+                        {
+                            <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                                <a class="page-link shadow-none" href="@Url.Action("ActivityLog", new { page = i, search = Context.Request.Query["search"] })">@i</a>
+                            </li>
+                        }
+                    }
+
+                    <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                        <a class="page-link shadow-none" href="@Url.Action("ActivityLog", new { page = Model.PageNumber + 1, search = Context.Request.Query["search"] })">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>
 
 @section Scripts {
-    <style>
-        .fw-800 { font-weight: 800; }
-        .fw-600 { font-weight: 600; }
-        .text-indigo-900 { color: #1e1b4b; }
-        .text-indigo-950 { color: #14113d; }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-        .animate-delay-1 { animation-delay: 0.1s; }
-        
-        @@keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+    <script>
+        function confirmCleanup() {
+            Swal.fire({
+                title: 'Purge Activity Records?',
+                text: "All operational logs older than 30 days will be permanently removed from high-speed storage.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Confirm Purge',
+                cancelButtonText: 'Cancel',
+                background: '#ffffff',
+                borderRadius: '24px'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('cleanupForm').submit();
+                }
+            })
         }
-    </style>
+    </script>
 }
