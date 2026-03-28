@@ -12,5 +12,8 @@ namespace BusinessLogic.Service.System
         /// </summary>
         /// <param name="request">The notification request detail.</param>
         Task SendNotificationAsync(BusinessLogic.DTOs.SendNotificationRequest request);
+        Task<IEnumerable<DataAccess.Entities.Notification>> GetUserNotificationsAsync(string userId);
+        Task DeleteNotificationAsync(string notificationId);
+        Task ClearAllNotificationsAsync(string userId);
     }
 }

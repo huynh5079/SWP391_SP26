@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
+    <link rel="icon" type="image/png" href="~/aems-logo.png" />
 </head>
 <body>
     <header>
@@ -36,8 +37,8 @@
                 <!-- Brand -->
                 <a class="navbar-brand fw-bold text-white d-flex align-items-center gap-2" asp-controller="Home" asp-action="Index"
                    style="font-size:1.3rem; letter-spacing:0.04em;">
-                    <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6); border-radius:8px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
-                        <i class="bi bi-calendar-event-fill text-white" style="font-size:.85rem;"></i>
+                    <span style="background: transparent; border-radius:8px; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
+                        <img src="~/aems-logo.png" alt="AEMS Logo" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px;" />
                     </span>
                     AEMS
                 </a>
@@ -176,8 +177,15 @@
                                 <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 px-3 py-2 text-white rounded-3"
                                    href="#" id="userProfileDropdown" role="button" data-bs-toggle="dropdown"
                                    style="background:rgba(255,255,255,.08); transition:background .2s; font-size:.875rem;">
-                                    <i class="bi bi-person-circle" style="font-size:1.1rem;"></i>
-                                    <span class="d-none d-lg-inline fw-semibold">@(User.Identity.Name?.Split('@')[0] ?? "User")</span>
+                                    @if (!string.IsNullOrEmpty(lockedCurrentUser?.AvatarUrl))
+                                    {
+                                        <img src="@lockedCurrentUser.AvatarUrl" alt="P" class="rounded-circle me-1" style="width:24px; height:24px; object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle" style="font-size:1.1rem;"></i>
+                                    }
+                                    <span class="d-none d-lg-inline fw-semibold">@(lockedCurrentUser?.FullName ?? User.Identity.Name?.Split('@')[0] ?? "User")</span>
                                     @{
                                         string roleBg = "bg-secondary";
                                         string roleLabel = "User";
@@ -403,5 +411,14 @@
         });
     </script>
     @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        // Global fix: clean up stuck Bootstrap modal backdrops on every page load
+        (function () {
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        })();
+    </script>
 </body>
 </html>

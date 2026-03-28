@@ -451,9 +451,24 @@
                             <div class="d-grid gap-3">
                                 @foreach (var d in Model.Documents)
                                 {
-                                    <div class="document-item">
-                                        <strong>@d.FileName</strong>
-                                        <div class="text-muted small mt-1">@(d.Type ?? "No type")</div>
+                                    <div class="document-item position-relative">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>@d.FileName</strong>
+                                                <div class="text-muted small mt-1">@(d.Type ?? "No type")</div>
+                                            </div>
+                                            @if (Model.CanEdit)
+                                            {
+                                                <form asp-controller="Organizer" asp-action="DeleteDocumentFromDetail" method="post" class="m-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="eventId" value="@Model.EventId" />
+                                                    <input type="hidden" name="documentId" value="@d.Id" />
+                                                    <button type="submit" class="btn btn-sm text-danger border-0 p-1" onclick="return confirm('Bạn có chắc chắn muốn xóa tài liệu này?');" title="Xóa tài liệu">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
                                         @if (!string.IsNullOrWhiteSpace(d.Url))
                                         {
                                             <a href="@d.Url" target="_blank" class="btn btn-link px-0 mt-2">Open document</a>

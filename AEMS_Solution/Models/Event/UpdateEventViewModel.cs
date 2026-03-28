@@ -70,6 +70,8 @@ namespace AEMS_Solution.Models.Event
         public string? SessionName { get; set; }
         public string? Description { get; set; }
         public string? SpeakerInfo { get; set; }
+        public string? SpeakerUserId { get; set; }
+        public string? SpeakerUserRole { get; set; }
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public string? Location { get; set; }

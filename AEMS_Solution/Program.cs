@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.HttpOverrides;
 using AEMS_Solution.BaseAction_ValidforController_.Approver.Agenda;
 using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event;
 using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
@@ -7,7 +8,7 @@ using BusinessLogic.Hubs;
 using BusinessLogic.Service.Chat.ChatforUser;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
-using BusinessLogic.Service.Chat.ChatforUser;
+using BusinessLogic.Service.UserActivities;
 using BusinessLogic.Service.Chat.ChatforUser.ChatPerMission;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
@@ -70,6 +71,7 @@ builder.Services.AddScoped<ISystemErrorLogService, SystemErrorLogService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, BusinessLogic.Service.User.UserService>();
+builder.Services.AddScoped<IUserActivityLogService, UserActivityLogService>();
 builder.Services.AddScoped<BusinessLogic.Service.System.ISignalRNotifier, BusinessLogic.Service.System.SignalRNotifier>();
 builder.Services.AddSingleton<IChatPresenceTracker, ChatPresenceTracker>();
 builder.Services.AddHostedService<BusinessLogic.Service.Admin.UserLockExpirationService>();
@@ -77,7 +79,6 @@ builder.Services.AddHostedService<BusinessLogic.Service.Event.EventStatusExpirat
 builder.Services.AddScoped<IChatPermissionService, ChatPermissionService>();
 builder.Services.AddScoped<IChatUserService, ChatUserService>();
 
-// RAG/Chatbot Services
 // RAG/Chatbot Services
 builder.Services.AddScoped<BusinessLogic.Service.Chat.IChatbotService, BusinessLogic.Service.Chat.ChatbotService>();
 // Register refactored services
@@ -179,86 +180,19 @@ builder.Services.AddControllersWithViews()
     });
 
 var app = builder.Build();
-// ==========================================
-// 1.5. Seed Initial Data (Roles)
-// ==========================================
-try
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var context = scope.ServiceProvider.GetRequiredService<AEMSContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        
-        // Ensure database is created and migrated
-        await context.Database.MigrateAsync();
-        
-        // Seed Roles using raw SQL to avoid EF tracking issues
-        var now = DataAccess.Helper.DateTimeHelper.GetVietnamTime();
-        
-        // Insert Admin role if not exists
-        await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Admin')
-            BEGIN
-                INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
-                VALUES (NEWID(), 'Admin', {0}, {0}, NULL)
-            END
-        ", now);
-        
-            // Insert Organizer role if not exists
-        await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Organizer')
-            BEGIN
-                INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
-                VALUES (NEWID(), 'Organizer', {0}, {0}, NULL)
-            END
-        ", now);
-
-        // Insert Approver role if not exists
-        await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Approver')
-            BEGIN
-                INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
-                VALUES (NEWID(), 'Approver', {0}, {0}, NULL)
-            END
-        ", now);
-        
-        // Insert Student role if not exists
-        await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT 1 FROM Role WHERE RoleName = 'Student')
-            BEGIN
-                INSERT INTO Role (Id, RoleName, CreatedAt, UpdatedAt, DeletedAt)
-                VALUES (NEWID(), 'Student', {0}, {0}, NULL)
-            END
-        ", now);
-        
-        logger.LogInformation("Roles seeded successfully.");
-
-        // Seed StaffProfiles cho các user Organizer chưa có StaffProfile
-        await context.Database.ExecuteSqlRawAsync(@"
-            INSERT INTO StaffProfile (Id, UserId, StaffCode, DepartmentId, [Position], CreatedAt, UpdatedAt, DeletedAt)
-            SELECT NEWID(), u.Id, 'ORG-' + SUBSTRING(u.Id, 1, 8), NULL, 'Event Organizer', {0}, {0}, NULL
-            FROM [User] u
-            INNER JOIN Role r ON u.RoleId = r.Id
-            WHERE r.RoleName = 'Organizer'
-            AND NOT EXISTS (
-                SELECT 1 FROM StaffProfile sp WHERE sp.UserId = u.Id
-            )
-        ", now);
-
-        logger.LogInformation("StaffProfiles seeded successfully for Organizer users.");
-    }
-}
-catch (Exception ex)
-{
-    // Log error but don't stop app startup
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "Error seeding Roles: {Message}. Inner Exception: {InnerException}", 
-        ex.Message, ex.InnerException?.Message);
-}
 
 // ==========================================
 // 2. Middleware Pipeline
 // ==========================================
+
+// Fix for Azure SSL Termination (Google Auth Redirect URI mismatch)
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
 
 if (!app.Environment.IsDevelopment())
 {

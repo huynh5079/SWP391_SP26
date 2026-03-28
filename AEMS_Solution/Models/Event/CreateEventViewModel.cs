@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DataAccess.Enum;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using DataAccess.Helper;
 
 namespace AEMS_Solution.Models.Event
 {
@@ -18,10 +19,10 @@ namespace AEMS_Solution.Models.Event
 
 		// ===== 2. Time =====
 		[Required]
-		public DateTime StartTime { get; set; } = DateTime.Now.AddDays(1);
+		public DateTime StartTime { get; set; } = DateTimeHelper.VietnamNow.AddDays(1);
 
 		[Required]
-		public DateTime EndTime { get; set; } = DateTime.Now.AddDays(1).AddHours(2);
+		public DateTime EndTime { get; set; } = DateTimeHelper.VietnamNow.AddDays(1).AddHours(2);
 
 		// ===== 3. Relations =====
 		[Required(ErrorMessage = "Vui lòng chọn Semester")]

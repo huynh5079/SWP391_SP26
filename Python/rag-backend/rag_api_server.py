@@ -1060,7 +1060,7 @@ class RagEngine:
             return "upcoming"
         return "upcoming" # Default for student schedule
 
-    def _build_dynamic_event_context(self, user_id: Optional[str], role: str, question: str, session_id: Optional[str] = None) -> str:
+    def _build_dynamic_event_context(self, user_id: Optional[str], role: str, question: str, session_id: Optional[str] = None, user_profile_context: Optional[str] = None) -> str:
         """Build dynamic event context for any role if intent matches, including follow-up context."""
         if not self.db_service:
             return ""
@@ -1207,7 +1207,31 @@ class RagEngine:
                         lines.append(f"- {e.get('Title')} | Trạng thái: {e.get('Status')} | Bắt đầu: {start}")
                     sections.append("\n".join(lines))
 
-        # 5. Coreference / Follow-up Logic (Resolution for "đó", "nó", "cái đó")
+        # 5. Coreference / Follow-up Logic - ưu tiên C# activity log context trước
+        is_followup = any(kw in lowered for kw in ["đó", "do", "nó", "no", "cái đó", "cai do", "về nó", "ve no", "tư vấn", "tu van"])
+        if is_followup:
+            resolved_title = None
+            # (a) Đọc từ C# personalization context trước
+            if user_profile_context:
+                m = re.search(r'S\u1ef1 ki\u1ec7n \u0111\u01b0\u1ee3c t\u01b0\u01a1ng t\u00e1c g\u1ea7n nh\u1ea5t: "([^"]+)"', user_profile_context)
+                if m:
+                    resolved_title = m.group(1).strip()
+            # (b) Fallback: session history
+            if not resolved_title and session_id and session_id in self._sessions:
+                history = self._sessions[session_id]
+                last_asst = next((msg.content for msg in reversed(history) if msg.role == "assistant"), "")
+                if last_asst:
+                    found = re.findall(r'["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]', last_asst)
+                    if found:
+                        resolved_title = found[0]
+            if resolved_title:
+                detail = self.db_service.get_event_details_by_title(resolved_title)
+                if detail:
+                    hdr = f"[Chi tiết sự kiện '{resolved_title}' (từ lịch sử tương tác)]:"
+                    out = [hdr] + [f"- {k}: {v}" for k, v in detail.items() if v and k not in {"EventId", "TopicId", "LocationId"}]
+                    sections.append("\n".join(out))
+
+        # 6. Absolute Fallback: If it's an event-related question "đó", "nó", "cái đó")
         is_followup = any(kw in lowered for kw in ["đó", "do", "nó", "no", "cái đó", "cai do", "về nó", "ve no", "tư vấn", "tu van"])
         if is_followup and session_id and session_id in self._sessions:
             history = self._sessions[session_id]
@@ -1323,7 +1347,7 @@ class RagEngine:
         try:
             rows = self.db_service.get_user_recent_history(
                 user_id=user_id,
-                limit_messages=8,
+                limit_messages=40,
                 exclude_session_id=current_session_id,
             )
             if not rows:
@@ -1489,7 +1513,10 @@ class RagEngine:
         static_profile_context, original_dynamic_context = self._split_profile_and_dynamic_context(user_profile_context)
         
         # Build our own dynamic context in Python for each role (Approver, Organizer, Student)
-        python_dynamic_context = self._build_dynamic_event_context(user_id=user_id, role=role, question=question, session_id=session_id)
+        python_dynamic_context = self._build_dynamic_event_context(
+            user_id=user_id, role=role, question=question,
+            session_id=session_id, user_profile_context=user_profile_context
+        )
         
         # If .NET side said "No registrations" but Python found some, we prune the .NET side's negative context
         if python_dynamic_context and "Thông tin Đăng ký & Vai trò" in python_dynamic_context:
@@ -1705,14 +1732,20 @@ class RagEngine:
             return
 
         static_profile_context, original_dynamic_context = self._split_profile_and_dynamic_context(user_profile_context)
-
+        
         # Build our own dynamic context in Python for each role (Approver, Organizer, Student)
-        python_dynamic_context = self._build_dynamic_event_context(user_id=user_id, role=role, question=question, session_id=session_id)
+        python_dynamic_context = self._build_dynamic_event_context(
+            user_id=user_id, role=role, question=question,
+            session_id=session_id, user_profile_context=user_profile_context
+        )
+        
+        # If .NET side said "No registrations" but Python found some, we prune the .NET side's negative context
+        if python_dynamic_context and "Thông tin Đăng ký & Vai trò" in python_dynamic_context:
+            if original_dynamic_context and "Bạn chưa đăng ký tham gia sự kiện nào" in original_dynamic_context:
+                original_dynamic_context = original_dynamic_context.replace("Bạn chưa đăng ký tham gia sự kiện nào.", "").strip()
 
         # Combine contexts (giving priority to the one we just built if available)
-        dynamic_retrieval_context = original_dynamic_context
-        if python_dynamic_context:
-            dynamic_retrieval_context = (dynamic_retrieval_context + "\n\n" + python_dynamic_context).strip()
+        dynamic_retrieval_context = (original_dynamic_context + "\n\n" + python_dynamic_context).strip()
 
         retrieved = self.retrieve(question=question, top_k=top_k, role=normalized_role)
         
@@ -1741,15 +1774,7 @@ class RagEngine:
         if session_id not in self._sessions:
             self._sessions[session_id] = []
 
-        # 100% Dynamic Retrieval Priority
-        python_dynamic_context = self._build_dynamic_event_context(user_id=user_id, role=role, question=question, session_id=session_id)
-        
-        # If .NET side said "No registrations" but Python found some, we prune the .NET side's negative context
-        if python_dynamic_context and "Thông tin Đăng ký & Vai trò" in python_dynamic_context:
-            if "Bạn chưa đăng ký tham gia sự kiện nào" in original_dynamic_context:
-                original_dynamic_context = original_dynamic_context.replace("Bạn chưa đăng ký tham gia sự kiện nào.", "").strip()
-
-        dynamic_retrieval_context = (original_dynamic_context + "\n\n" + python_dynamic_context).strip()
+        # Use the already built dynamic_retrieval_context
         context_parts: list[str] = []
         if dynamic_retrieval_context:
             context_parts.append("[ƯU TIÊN CAO NHẤT - DỮ LIỆU TRỰC TIẾP TỪ DB]\n" + dynamic_retrieval_context)
@@ -1794,13 +1819,9 @@ class RagEngine:
             "- Nếu đã có dữ liệu truy xuất động, KHÔNG được bổ sung thêm sự kiện từ dữ liệu semantic\n"
             "- Không hiển thị ID, timestamp kỹ thuật, metadata nội bộ\n"
         )
-        if normalized_role == "Admin":
+        if normalized_role == "admin":
             role_hint = "Bạn đang nói với Admin - có thể chia sẻ tổng quan hệ thống, phân tích sâu, và dữ liệu kỹ thuật."
         elif normalized_role == "staff":
-            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
-        elif normalized_role == "Approver":
-            role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
-        elif normalized_role == "Organizer":
             role_hint = "Bạn đang nói với Staff/Tổ chức sự kiện - tập trung vào quản lý sự kiện, feedback, và chất lượng."
         else:
             role_hint = "Bạn đang nói với Sinh viên/Người dùng - chỉ chia sẻ thông tin công khai, ưu tiên sự kiện chất lượng cao."

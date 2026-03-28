@@ -1,4 +1,4 @@
-﻿using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
+using AEMS_Solution.BaseAction_ValidforController_.Organizer.Event.InterfaceEvent;
 using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Event.EventAgenda;
 using AutoMapper;
@@ -6,6 +6,7 @@ using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
@@ -134,7 +135,7 @@ namespace AEMS_Solution.Controllers.Event.EventAgenda
 				await _unitOfWork.EventAgenda.UpdateAsync(agenda);
 				await _unitOfWork.SaveChangesAsync();
 
-				SetSuccess("Cập nhật agenda thành công.");
+				await ExecuteSuccessAsync("Cập nhật agenda thành công.", UserActionType.Update, agenda.Id, TargetType.Event);
 				return RedirectToAction(nameof(MyAgenda));
 			}
 			catch (UnauthorizedAccessException)
@@ -162,7 +163,7 @@ namespace AEMS_Solution.Controllers.Event.EventAgenda
 				await _unitOfWork.EventAgenda.UpdateAsync(agenda);
 				await _unitOfWork.SaveChangesAsync();
 
-				SetSuccess("Xóa agenda thành công.");
+				await ExecuteSuccessAsync("Xóa agenda thành công.", UserActionType.Delete, agenda.Id, TargetType.Event);
 			}
 			catch (UnauthorizedAccessException)
 			{
@@ -170,7 +171,7 @@ namespace AEMS_Solution.Controllers.Event.EventAgenda
 			}
 			catch (Exception ex) when (ex is KeyNotFoundException || ex is InvalidOperationException)
 			{
-				SetError(ex.Message);
+				await ExecuteErrorAsync(ex, ex.Message);
 			}
 
 			return RedirectToAction(nameof(MyAgenda));

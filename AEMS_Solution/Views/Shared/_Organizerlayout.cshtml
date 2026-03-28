@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="~/css/chatbot.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/messenger-layout.css" asp-append-version="true" />
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/organizer-dashboard.css" asp-append-version="true" />
+    <link rel="icon" type="image/png" href="~/aems-logo.png" />
 </head>
 
 <body>
@@ -23,8 +23,8 @@
     <aside class="organizer-sidebar">
         <div class="brand-wrapper">
             <a href="@Url.Action("Index", "Organizer")" class="brand-link">
-                <div class="brand-icon-box">
-                    <i class="bi bi-grid-fill"></i>
+                <div class="brand-icon-box" style="background: transparent; border: none; padding: 0;">
+                    <img src="~/aems-logo.png" alt="AEMS Logo" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px;" asp-append-version="true" />
                 </div>
                 <div class="brand-text">
                     <span class="brand-title">AEMS</span>
@@ -135,8 +135,8 @@
                             </a>
                         </li>
                         <li class="nav-item mb-1">
-                            <a class="nav-link py-1 px-3 fs-6 @(currentCtrl == "Ticket" ? "active" : "")"
-                                asp-controller="Ticket" asp-action="Index">
+                            <a class="nav-link py-1 px-3 fs-6 @(operation == "manageticket" ? "active" : "")"
+                                asp-controller="Organizer" asp-action="Manage" asp-route-operation="manageticket">
                                 <i class="bi bi-ticket me-2 fs-6"></i> Manage Tickets
                             </a>
                         </li>
@@ -354,6 +354,15 @@
     <script src="~/js/chatbot.js" asp-append-version="true"></script>
     <script src="~/js/messenger-layout.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        // Global fix: clean up stuck Bootstrap modal backdrops on every page load
+        (function () {
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        })();
+    </script>
 </body>
 
 </html>

@@ -45,6 +45,12 @@
                         }
                     </div>
 
+                    <div class="mb-4">
+                        <button type="button" class="btn btn-primary w-100 rounded-pill py-2 shadow-sm mb-2" data-open-chat-user="@Model.Id" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
+                            <i class="bi bi-chat-dots-fill me-2"></i> Nhắn tin
+                        </button>
+                    </div>
+
                      @if (Model.ReactivateAt.HasValue && Model.Status == DataAccess.Enum.UserStatusEnum.Inactive)
                      {
                           <div class="alert alert-warning text-start border-0 shadow-sm rounded-3 p-3 mb-4">

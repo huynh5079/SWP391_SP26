@@ -1,54 +1,46 @@
-# Sử dụng Docker Image chính chủ của Microsoft cho .NET 8.0
+# Cấu hình CI/CD Tối ưu: Dùng win-x86 (32-bit) để tương thích với gói Azure FREE
 image: mcr.microsoft.com/dotnet/sdk:8.0
 
-# Định nghĩa các giai đoạn (Stages) của quy trình
 stages:
   - build
-  - test
+  - deploy
 
 variables:
-  # Đường dẫn đến file project chính (Web App) để build và publish
-  # Lưu ý: Cần trỏ đúng vào file .csproj của project chạy (không phải file .sln)
+  AZURE_WEBAPP_NAME: "AEMS" # Tên Web App trên Azure
+  RESOURCE_GROUP: "SWP391_Group1"
   PROJECT_PATH: "AEMS_Solution/AEMS_Solution.csproj"
-  
-  # Thư mục chứa kết quả build
-  PUBLISH_DIR: "publish"
 
-# --- JOB 1: BUILD & PUBLISH ---
+# --- 1. BUILD Stage ---
 build_app:
   stage: build
   script:
-    - echo "=== BẮT ĐẦU QUÁ TRÌNH BUILD ==="
-    
-    # 1. Restore: Tải các thư viện (Nuget package) cần thiết
-    # Nó sẽ tự động restore luôn cả DataAccess và BusinessLogic nhờ reference
-    - echo "Đang restore các package..."
+    - echo "=== BẮT ĐẦU BUILD (SELF-CONTAINED WIN-X86) ==="
     - dotnet restore "$PROJECT_PATH"
-    
-    # 2. Build: Biên dịch code ra file dll (kiểm tra lỗi cú pháp)
-    - echo "Đang build project..."
-    - dotnet build "$PROJECT_PATH" -c Release --no-restore
-    
-    # 3. Publish: Đóng gói code thành bản có thể chạy được (để deploy sau này)
-    - echo "Đang đóng gói (Publish)..."
-    - dotnet publish "$PROJECT_PATH" -c Release -o "$PUBLISH_DIR" --no-build
-    
-  # Artifacts: Lưu lại thư mục 'publish' để có thể tải về từ GitLab nếu cần
+    # Dùng win-x86 vì gói Azure Free/Shared không hỗ trợ 64-bit
+    - dotnet publish "$PROJECT_PATH" -c Release -o ./publish -r win-x86 --self-contained true
+    # Lệnh nén file bằng PowerShell (cho Windows Runner)
+    - if (Test-Path publish.zip) { Remove-Item publish.zip }
+    - Compress-Archive -Path ./publish/* -DestinationPath ./publish.zip -Force
+    - echo "=== BUILD XONG! ==="
   artifacts:
     paths:
-      - "$PUBLISH_DIR"
-    expire_in: 1 week
-  
-  # Chỉ chạy job này khi có code mới ở nhánh main, develop hoặc khi tạo Merge Request
+      - publish.zip
+    expire_in: 1 day
   only:
     - main
     - develop
     - merge_requests
 
-# --- JOB 2: TEST (Placeholder) ---
-# run_tests:
-#   stage: test
-#   script:
-#     - echo "Đang chạy Unit Tests..."
-#     # - dotnet test "AEMS_Solution.Tests/AEMS_Solution.Tests.csproj"
-#   needs: ["build_app"]
+# --- 2. DEPLOY Stage ---
+deploy_to_azure:
+  stage: deploy
+  script:
+    - echo "=== ĐANG DEPLOY LÊN AZURE WEB APP ==="
+    - az login --service-principal -u "$env:AZURE_CLIENT_ID" -p "$env:AZURE_CLIENT_SECRET" --tenant "$env:AZURE_TENANT_ID"
+    - az webapp deployment source config-zip --resource-group "$RESOURCE_GROUP" --name "$AZURE_WEBAPP_NAME" --src publish.zip
+    - echo "=== DEPLOY HOÀN TẤT! ==="
+  dependencies:
+    - build_app
+  only:
+    - main
+    - develop

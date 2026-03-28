@@ -1,6 +1,7 @@
 using DataAccess.Entities;
 using DataAccess.Repositories.Abstraction;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Service.System
@@ -17,8 +18,6 @@ namespace BusinessLogic.Service.System
             _errorLogService = errorLogService;
             _signalRNotifier = signalRNotifier;
         }
-
-
 
         public async Task SendNotificationAsync(BusinessLogic.DTOs.SendNotificationRequest request)
         {
@@ -45,5 +44,27 @@ namespace BusinessLogic.Service.System
                 await _errorLogService.LogErrorAsync(ex, request.ReceiverId, $"NotificationService.SendNotificationAsync (Type: {request.Type})");
             }
         }
+
+        public async Task<IEnumerable<Notification>> GetUserNotificationsAsync(string userId)
+            => await _uow.Notifications.GetAllAsync(n => n.UserId == userId);
+
+        public async Task DeleteNotificationAsync(string notificationId)
+        {
+            var notification = await _uow.Notifications.GetByIdAsync(notificationId);
+            if (notification != null)
+            {
+                await _uow.Notifications.RemoveAsync(notification);
+                await _uow.SaveChangesAsync();
+            }
+        }
+
+        public async Task ClearAllNotificationsAsync(string userId)
+        {
+            var notifications = await _uow.Notifications.GetAllAsync(n => n.UserId == userId);
+            foreach (var n in notifications)
+                await _uow.Notifications.RemoveAsync(n);
+
+            await _uow.SaveChangesAsync();
+        }
     }
-}    
+}

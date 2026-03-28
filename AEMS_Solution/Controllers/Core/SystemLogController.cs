@@ -1,20 +1,21 @@
 using AEMS_Solution.Controllers.Common;
 using BusinessLogic.Service.System;
 using DataAccess.Entities;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AEMS_Solution.Controllers.Core
 {
     [Authorize(Roles = "Admin")]
     public class SystemLogController : BaseController
     {
-        private readonly ISystemErrorLogService _logService;
-
-        public SystemLogController(ISystemErrorLogService logService)
+        public SystemLogController()
         {
-            _logService = logService;
         }
+
+        private ISystemErrorLogService _logService => HttpContext.RequestServices.GetRequiredService<ISystemErrorLogService>();
 
         [HttpGet]
         public async Task<IActionResult> Index(int page = 1, string? search = null, DataAccess.Enum.SystemLogStatusEnum? statusCode = null)
@@ -80,11 +81,11 @@ namespace AEMS_Solution.Controllers.Core
             try
             {
                 await _logService.DeleteOldLogsAsync(30);
-                SetSuccess("Đã xóa các log lỗi cũ hơn 30 ngày.");
+                await ExecuteSuccessAsync("Đã xóa các log lỗi cũ hơn 30 ngày.", UserActionType.Delete, "Logs", TargetType.None);
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi khi xóa log: {ex.Message}");
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction(nameof(Index));
         }

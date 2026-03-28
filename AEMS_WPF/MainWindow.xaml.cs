@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using BusinessLogic.DTOs.Authentication.Login;
 
@@ -27,6 +27,7 @@ namespace AEMS_WPF
             {
                 BtnUsers.Visibility = Visibility.Visible;
                 BtnErrorLogs.Visibility = Visibility.Visible;
+                BtnActivityLogs.Visibility = Visibility.Visible;
                 BtnApprovals.Visibility = Visibility.Visible;
             }
             else if (_user.Role == "Approver")
@@ -53,10 +54,13 @@ namespace AEMS_WPF
                         MainFrame.Navigate(new Views.Organizer.EventListPage(_user));
                         break;
                     case "BtnNotifications":
-                        MainFrame.Navigate(new Views.Common.NotificationPage());
+                        MainFrame.Navigate(new Views.Common.NotificationPage(_user));
                         break;
                     case "BtnErrorLogs":
                         MainFrame.Navigate(new Views.Common.SystemErrorLogPage());
+                        break;
+                    case "BtnActivityLogs":
+                        MainFrame.Navigate(new Views.Common.ActivityLogPage());
                         break;
                     case "BtnApprovals":
                         MainFrame.Navigate(new Views.Dashboard.ApproveDashBoard(_user));

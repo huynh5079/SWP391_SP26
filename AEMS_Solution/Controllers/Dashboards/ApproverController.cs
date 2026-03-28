@@ -10,6 +10,7 @@ using BusinessLogic.DTOs.Event.Semester;
 using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Semester;
+using BusinessLogic.Service.UserActivities;
 using DataAccess.Enum;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
@@ -136,10 +137,11 @@ namespace AEMS_Solution.Controllers.Dashboards
                 }
 
                 var created = await _semesterService.AutoCreateSemesterAsync();
-                SetSuccess($"Automatically created semester {created.Name} ({created.Code}).");
+                await ExecuteSuccessAsync($"Automatically created semester {created.Name} ({created.Code}).", UserActionType.Create, created.SemesterId, TargetType.None);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                await ExecuteErrorAsync(ex, ex.Message);
                 return RedirectToAction(nameof(Semester));
             }
 
@@ -289,12 +291,12 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Type = vm.NewRoom.Type,
                     Description = vm.NewRoom.Description
                 });
-                SetSuccess("Create room successfully.");
+                await ExecuteSuccessAsync("Create room successfully.", UserActionType.Create, null, TargetType.None);
                 return RedirectToAction(nameof(ManageRoom));
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return View("~/Views/Approval/ManageRoom.cshtml", await BuildManageRoomViewModelAsync(vm.NewRoom));
             }
         }
@@ -350,11 +352,11 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Type = location.Type,
                     Description = location.Description
                 });
-                SetSuccess("Room status updated successfully.");
+                await ExecuteSuccessAsync("Room status updated successfully.", UserActionType.Update, vm.LocationId, TargetType.None);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(ManageRoom));
@@ -397,11 +399,11 @@ namespace AEMS_Solution.Controllers.Dashboards
                     Type = vm.Type,
                     Description = vm.Description ?? string.Empty
                 });
-                SetSuccess("Room updated successfully.");
+                await ExecuteSuccessAsync("Room updated successfully.", UserActionType.Update, vm.LocationId, TargetType.None);
             }
             catch (Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(ManageRoom));
@@ -568,6 +570,8 @@ namespace AEMS_Solution.Controllers.Dashboards
             var dto = await _queryService.GetEventDetailAsync(id);
             if (dto == null) return NotFound();
 
+            await LogUserActivity(UserActionType.View, id, TargetType.Event, $"Đã xem chi tiết sự kiện '{dto.Title}'");
+
             var vm = new ApproverEventDetailVm
             {
                 EventId = dto.EventId,
@@ -662,11 +666,11 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var userId = CurrentUserId;
                 await _commandService.ApproveAsync(id, userId ?? string.Empty, comment);
-                SetSuccess("Approved successfully.");
+                await ExecuteSuccessAsync("Approved successfully.", UserActionType.Approve, id, TargetType.Event);
             }
             catch (System.Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction("Index");
         }
@@ -679,11 +683,11 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var userId = CurrentUserId;
                 await _commandService.RejectAsync(id, userId ?? string.Empty, comment);
-                SetSuccess("Rejected successfully.");
+                await ExecuteSuccessAsync("Rejected successfully.", UserActionType.Reject, id, TargetType.Event);
             }
             catch (System.Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction("Index");
         }
@@ -696,11 +700,11 @@ namespace AEMS_Solution.Controllers.Dashboards
             {
                 var userId = CurrentUserId;
                 await _commandService.RequestChangeAsync(id, userId ?? string.Empty, comment);
-                SetSuccess("Request for changes sent.");
+                await ExecuteSuccessAsync("Request for changes sent.", UserActionType.Update, id, TargetType.Event);
             }
             catch (System.Exception ex)
             {
-                SetError(ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction("Index");
         }

@@ -3,6 +3,7 @@ using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using DataAccess.Helper;
 
 namespace AEMS_Solution.Controllers.Dashboards
 {
@@ -59,7 +60,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                     .ToDictionary(g => g.Key, g => g.Count());
 
                 // ── 6. Monthly trend (last 12 months) ─────────────────────────
-                var now         = DateTime.Now;
+                var now         = DateTimeHelper.VietnamNow;
                 var monthLabels    = new List<string>();
                 var eventsPerMonth = new List<int>();
                 var ticketsPerMonth = new List<int>();
@@ -148,7 +149,7 @@ namespace AEMS_Solution.Controllers.Dashboards
                     RatingDist          = ratingDist,
                     TicketsByStatus     = ticketsByStatus,
                     EventsByDepartment  = deptRows,
-                    GeneratedAt         = DateTime.Now
+                    GeneratedAt         = DateTimeHelper.VietnamNow
                 };
 
                 return View(vm);

@@ -1,4 +1,4 @@
-﻿using AEMS_Solution.Controllers.Common;
+using AEMS_Solution.Controllers.Common;
 using AEMS_Solution.Models.Organizer.BudgetProposal;
 using BusinessLogic.Service.Organizer.BudgetProposal;
 using BusinessLogic.Service.System;
@@ -11,14 +11,10 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
     public class BudgetApprovalController : BaseController
     {
         private readonly IBudgetProposalService _service;
-        private readonly ISystemErrorLogService _errorLog;
 
-        public BudgetApprovalController(
-            IBudgetProposalService service,
-            ISystemErrorLogService errorLog)
+        public BudgetApprovalController(IBudgetProposalService service)
         {
             _service = service;
-            _errorLog = errorLog;
         }
 
         // ─── Helper: build ViewModel ─────────────────────────────────────────
@@ -101,12 +97,7 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetApprovalController)}.{nameof(Review)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 return RedirectToAction("PendingApprovals", "Approver");
             }
         }
@@ -121,16 +112,11 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             try
             {
                 await _service.ApproveAsync(CurrentUserId, proposalId, note);
-                SetSuccess("Đã duyệt Budget Proposal thành công!");
+                await ExecuteSuccessAsync("Đã duyệt Budget Proposal thành công!", UserActionType.Approve, proposalId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetApprovalController)}.{nameof(Approve)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Review), new { eventId });
@@ -152,16 +138,11 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             try
             {
                 await _service.RejectAsync(CurrentUserId, proposalId, note);
-                SetSuccess("Đã từ chối Budget Proposal.");
+                await ExecuteSuccessAsync("Đã từ chối Budget Proposal.", UserActionType.Reject, proposalId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetApprovalController)}.{nameof(Reject)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Review), new { eventId });
@@ -183,12 +164,7 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetApprovalController)}.{nameof(UpdateReceiptStatus)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Review), new { eventId });
@@ -208,11 +184,7 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetApprovalController)}.{nameof(AcceptReceipt)}");
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction(nameof(Review), new { eventId });
         }
@@ -234,15 +206,11 @@ namespace AEMS_Solution.Controllers.Features.ActionApproval
             try
             {
                 await _service.RejectReceiptAsync(CurrentUserId, receiptId, eventId, note);
-                SetSuccess("Đã từ chối biên lai và thông báo cho Organizer.");
+                await ExecuteSuccessAsync("Đã từ chối biên lai và thông báo cho Organizer.", UserActionType.Reject, receiptId, TargetType.None);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(BudgetApprovalController)}.{nameof(RejectReceipt)}");
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
             return RedirectToAction(nameof(Review), new { eventId });
         }

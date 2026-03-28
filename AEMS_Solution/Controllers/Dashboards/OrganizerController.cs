@@ -12,6 +12,7 @@ using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Feedback;
 using BusinessLogic.Service.Organizer;
+using BusinessLogic.Service.UserActivities;
 using BusinessLogic.Service.ValidationData.Event;
 using DataAccess.Entities;
 using DataAccess.Enum;
@@ -252,11 +253,11 @@ namespace AEMS_Solution.Controllers.Dashboards
                 if (ev.OrganizerId != GetOrganizerProfileId()) return Forbid();
 
                 int count = await _feedbackService.AnalyzeEventFeedbacksAsync(id);
-                SetSuccess($"Đã đồng bộ và phân tích xong {count} đánh giá.");
+                await ExecuteSuccessAsync($"Đã đồng bộ và phân tích xong {count} đánh giá.", UserActionType.Sync, id, TargetType.Event);
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi khi đồng bộ cảm xúc: {ex.Message}");
+                await ExecuteErrorAsync(ex, $"Lỗi khi đồng bộ cảm xúc: {ex.Message}");
             }
 
             return RedirectToAction("Manage", new { operation = "myevents" });
@@ -357,8 +358,15 @@ namespace AEMS_Solution.Controllers.Dashboards
                         }
                         var userId = CurrentUserId;
                         if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Auth");
-                        await _organizerService.SoftDeleteEventAsync(userId, id);
-                        SetSuccess("Xóa sự kiện thành công.");
+                        try
+                        {
+                            await _organizerService.SoftDeleteEventAsync(userId, id);
+                            await ExecuteSuccessAsync("Xóa sự kiện thành công.", UserActionType.SoftDelete, id, TargetType.Event);
+                        }
+                        catch (Exception ex)
+                        {
+                            await ExecuteErrorAsync(ex, "Đã xảy ra lỗi khi xóa sự kiện.");
+                        }
                         return RedirectToAction("MyEvents");
 
                     case "restore":
@@ -369,8 +377,15 @@ namespace AEMS_Solution.Controllers.Dashboards
                         }
                         var restoreUser = CurrentUserId;
                         if (string.IsNullOrEmpty(restoreUser)) return RedirectToAction("Login", "Auth");
-                        await _organizerService.RestoreEventAsync(restoreUser, id);
-                        SetSuccess("Khôi phục sự kiện thành công.");
+                        try
+                        {
+                            await _organizerService.RestoreEventAsync(restoreUser, id);
+                            await ExecuteSuccessAsync("Khôi phục sự kiện thành công.", UserActionType.Restore, id, TargetType.Event);
+                        }
+                        catch (Exception ex)
+                        {
+                            await ExecuteErrorAsync(ex, "Đã xảy ra lỗi khi khôi phục sự kiện.");
+                        }
                         return RedirectToAction("MyEventsDelete");
 
                     case "detailevent":
@@ -405,15 +420,11 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _organizerService.PublishEventAsync(userId, id);
-                SetSuccess("Public event thành công.");
+                await ExecuteSuccessAsync("Public event thành công.", UserActionType.Publish, id, TargetType.Event);
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                SetError(ex.Message);
-            }
-            catch (Exception)
-            {
-                SetError("Đã xảy ra lỗi khi public event. Vui lòng thử lại.");
+                await ExecuteErrorAsync(ex, ex is InvalidOperationException ? ex.Message : "Đã xảy ra lỗi khi public event. Vui lòng thử lại.");
             }
             return RedirectToAction("MyEvents", "Organizer");
         }
@@ -432,15 +443,11 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _organizerService.CancelEventAsync(userId, id);
-                SetSuccess("Hủy sự kiện thành công.");
+                await ExecuteSuccessAsync("Hủy sự kiện thành công.", UserActionType.Cancel, id, TargetType.Event);
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                SetError(ex.Message);
-            }
-            catch (Exception)
-            {
-                SetError("Đã xảy ra lỗi khi hủy sự kiện. Vui lòng thử lại.");
+                await ExecuteErrorAsync(ex, ex is InvalidOperationException ? ex.Message : "Đã xảy ra lỗi khi hủy sự kiện. Vui lòng thử lại.");
             }
             return RedirectToAction("MyEvents", "Organizer");
         }
@@ -459,19 +466,13 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _organizerService.SendForApprovalAsync(userId, id);
-                SetSuccess("Gửi duyệt thành công.");
+                await ExecuteSuccessAsync("Gửi duyệt thành công.", UserActionType.Submit, id, TargetType.Event);
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                SetError(ex.Message);
-            }
-            catch (EventValidator.BusinessValidationException ex)
-            {
-                SetError(ex.Message);
-            }
-            catch (Exception)
-            {
-                SetError("Đã xảy ra lỗi khi gửi duyệt. Vui lòng thử lại.");
+                await ExecuteErrorAsync(ex, ex is InvalidOperationException || ex is EventValidator.BusinessValidationException 
+                    ? ex.Message 
+                    : "Đã xảy ra lỗi khi gửi duyệt. Vui lòng thử lại.");
             }
             return RedirectToAction("MyEvents", "Organizer");
         }
@@ -576,15 +577,54 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _organizerService.CreateEventAsync(userId, dto);
-                SetSuccess("Tạo Event thành công (Draft).");
+                await ExecuteSuccessAsync("Tạo Event thành công (Draft).", UserActionType.Create, null, TargetType.Event);
                 return RedirectToAction("Index", "Organizer");
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", ex.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
                 await LoadDropdowns(vm);
                 return View("~/Views/Event/CreateEvent.cshtml", vm);
             }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteDocumentFromDetail(string documentId, string eventId)
+        {
+            if (string.IsNullOrEmpty(documentId) || string.IsNullOrEmpty(eventId))
+            {
+                SetError("Dữ liệu không hợp lệ.");
+                return RedirectToAction("Manage", new { operation = "DetailEvent", id = eventId });
+            }
+
+            try
+            {
+                var ev = await _unitOfWork.Events.GetAsync(e => e.Id == eventId && e.OrganizerId == CurrentUserId);
+                if (ev == null)
+                {
+                    SetError("Sự kiện không tồn tại hoặc bạn không có quyền.");
+                    return RedirectToAction("Index");
+                }
+
+                var doc = await _unitOfWork.EventDocuments.GetAsync(d => d.Id == documentId && d.EventId == eventId);
+                if (doc != null)
+                {
+                    await _unitOfWork.EventDocuments.RemoveAsync(doc);
+                    await _unitOfWork.SaveChangesAsync();
+                    await ExecuteSuccessAsync("Đã xóa tài liệu thành công.", UserActionType.Delete, null, TargetType.Event);
+                }
+                else
+                {
+                    SetError("Tài liệu không tồn tại.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ExecuteErrorAsync(ex, "Lỗi khi xóa tài liệu: " + ex.Message);
+            }
+
+            return RedirectToAction("Manage", new { operation = "DetailEvent", id = eventId });
         }
 
         [HttpGet]
@@ -594,6 +634,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 var dto = await _organizerService.GetEventDetailsAsync(id, CurrentUserId);
+
+                await LogUserActivity(UserActionType.View, id, TargetType.Event, $"Đã xem chi tiết sự kiện '{dto.Title}'");
+
                 var vm = _mapper.Map<AEMS_Solution.Models.Event.EventDetailsViewModel>(dto);
                 vm.Teams = dto.Teams.Select(t => new AEMS_Solution.Models.Event.EventTeamVm
                 {
@@ -670,9 +713,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _eventService.CreateEventTeamAsync(EventId, TeamName, Description);
-                SetSuccess("Đã tạo nhóm thành công.");
+                await ExecuteSuccessAsync("Đã tạo nhóm thành công.", UserActionType.Create, null, TargetType.None);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(DetailEvent), new { id = EventId });
         }
 
@@ -684,9 +727,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _eventService.DeleteEventTeamAsync(TeamId);
-                SetSuccess("Đã xóa nhóm.");
+                await ExecuteSuccessAsync("Đã xóa nhóm.", UserActionType.Delete, TeamId, TargetType.None);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(DetailEvent), new { id = EventId });
         }
 
@@ -698,9 +741,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _eventService.AddMemberToTeamAsync(TeamId, StudentId, StaffId, RoleName);
-                SetSuccess("Đã thêm thành viên vào nhóm.");
+                await ExecuteSuccessAsync("Đã thêm thành viên vào nhóm.", UserActionType.AddMember, TeamId, TargetType.None);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(DetailEvent), new { id = EventId });
         }
 
@@ -712,9 +755,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _eventService.RemoveMemberFromTeamAsync(MemberId);
-                SetSuccess("Đã xóa thành viên khỏi nhóm.");
+                await ExecuteSuccessAsync("Đã xóa thành viên khỏi nhóm.", UserActionType.RemoveMember, MemberId, TargetType.None);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(DetailEvent), new { id = EventId });
         }
 
@@ -736,7 +779,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
             if (!ModelState.IsValid)
             {
-                SetError(ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu agenda không hợp lệ.");
+                await ExecuteErrorAsync(new Exception("Dữ liệu agenda không hợp lệ."), ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage);
                 return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
             }
             var dto = new BusinessLogic.DTOs.Role.Organizer.CreateEventAgendaDto
@@ -754,9 +797,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _eventService.CreateEventAgendaAsync(CurrentUserId, dto);
-                SetSuccess("Tạo agenda thành công.");
+                await ExecuteSuccessAsync("Tạo agenda thành công.", UserActionType.Create, model.EventId, TargetType.Event);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
         }
 
@@ -819,9 +862,12 @@ namespace AEMS_Solution.Controllers.Dashboards
                     await _eventService.CreateEventDocumentAsync(CurrentUserId, dto);
                     successCount++;
                 }
-                if (successCount > 0) SetSuccess($"Tạo thành công {successCount} document(s).");
+                if (successCount > 0)
+                {
+                    await ExecuteSuccessAsync($"Tạo thành công {successCount} document(s).", UserActionType.Create, model.EventId, TargetType.Event);
+                }
             }
-            catch (Exception ex) { SetError("Có lỗi xảy ra: " + ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, "Có lỗi xảy ra: " + ex.Message); }
             return RedirectToAction(nameof(Manage), new { operation = "detailevent", id = model.EventId });
         }
 
@@ -847,7 +893,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi: {ex.Message}");
+                await ExecuteErrorAsync(ex, $"Lỗi: {ex.Message}");
                 return View("~/Views/Event/MyEvent.cshtml", new MyEventsViewModel());
             }
         }
@@ -892,7 +938,7 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
             catch (Exception ex)
             {
-                SetError($"Lỗi: {ex.Message}");
+                await ExecuteErrorAsync(ex, $"Lỗi: {ex.Message}");
                 return View(new OrganizerDashboardViewModel());
             }
         }
@@ -928,9 +974,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _organizerService.ManualRegisterAsync(eventId, userId, CurrentUserId);
-                SetSuccess("Đăng ký thành viên thành công.");
+                await ExecuteSuccessAsync("Đăng ký thành công.", UserActionType.Register, eventId, TargetType.Event);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(Manage), new { operation = "participants", id = eventId });
         }
 
@@ -942,9 +988,9 @@ namespace AEMS_Solution.Controllers.Dashboards
             try
             {
                 await _organizerService.CancelTicketAsync(ticketId, CurrentUserId);
-                SetSuccess("Đã hủy vé thành công.");
+                await ExecuteSuccessAsync("Đã hủy vé thành công.", UserActionType.Cancel, ticketId, TargetType.None);
             }
-            catch (Exception ex) { SetError(ex.Message); }
+            catch (Exception ex) { await ExecuteErrorAsync(ex, ex.Message); }
             return RedirectToAction(nameof(Manage), new { operation = "participants", id = eventId });
         }
 

@@ -4,6 +4,8 @@ using BusinessLogic.DTOs.Student;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Student;
 using BusinessLogic.Service.System;
+using BusinessLogic.Service.UserActivities;
+using DataAccess.Enum;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +15,11 @@ namespace AEMS_Solution.Controllers.Features.Student
     public class StudentEventController : BaseController
     {
         private readonly IStudentEventService _service;
-        private readonly ISystemErrorLogService _errorLog;
         private readonly IEventWaitlistService _waitlistService;
 
-        public StudentEventController(IStudentEventService service, ISystemErrorLogService errorLog, IEventWaitlistService waitlistService)
+        public StudentEventController(IStudentEventService service, IEventWaitlistService waitlistService)
         {
             _service = service;
-            _errorLog = errorLog;
             _waitlistService = waitlistService;
         }
 
@@ -58,6 +58,10 @@ namespace AEMS_Solution.Controllers.Features.Student
 
             var detail = await _service.GetEventDetailAsync(id, CurrentUserId);
             ViewBag.AllFeedbacks = await _service.GetEventFeedbacksAsync(id);
+
+            // Log activity
+            await LogUserActivity(UserActionType.USER_VIEWED_EVENT, id, TargetType.Event, detail?.Title);
+
             return View(detail);
         }
 
@@ -71,19 +75,11 @@ namespace AEMS_Solution.Controllers.Features.Student
             try
             {
                 await _service.RegisterForEventAsync(CurrentUserId, id);
-                SetSuccess("Đăng ký thành công!");
+                await ExecuteSuccessAsync("Đăng ký thành công!", UserActionType.USER_REGISTERED_EVENT, id, TargetType.Event);
             }
             catch (Exception ex)
             {
-                // Log full exception (incl. inner) to system error log
-                await _errorLog.LogErrorAsync(
-                    ex, CurrentUserId,
-                    $"{nameof(StudentEventController)}.{nameof(Register)}");
-
-                // Show deepest message to user
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { id });
@@ -99,17 +95,11 @@ namespace AEMS_Solution.Controllers.Features.Student
             try
             {
                 await _service.CancelRegistrationAsync(CurrentUserId, ticketId);
-                SetSuccess("Hủy đăng ký thành công.");
+                await ExecuteSuccessAsync("Hủy đăng ký thành công.", UserActionType.USER_CANCELLED_EVENT, eventId, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(
-                    ex, CurrentUserId,
-                    $"{nameof(StudentEventController)}.{nameof(Cancel)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { id = eventId });
@@ -143,17 +133,11 @@ namespace AEMS_Solution.Controllers.Features.Student
             try
             {
                 await _service.SubmitFeedbackAsync(CurrentUserId, id, dto);
-                SetSuccess("Feedback đã được gửi. Cảm ơn bạn!");
+                await ExecuteSuccessAsync("Feedback đã được gửi. Cảm ơn bạn!", UserActionType.USER_SUBMITTED_FEEDBACK, id, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(
-                    ex, CurrentUserId,
-                    $"{nameof(StudentEventController)}.{nameof(SubmitFeedback)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { id });
@@ -168,17 +152,11 @@ namespace AEMS_Solution.Controllers.Features.Student
             try
             {
                 await _service.AddToWaitlistAsync(CurrentUserId, id);
-                SetSuccess("Đã đăng ký vào danh sách chờ. Bạn sẽ được thông báo khi có chỗ trống.");
+                await ExecuteSuccessAsync("Đã đăng ký vào danh sách chờ. Bạn sẽ được thông báo khi có chỗ trống.", UserActionType.USER_JOINED_WAITLIST, id, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(
-                    ex, CurrentUserId,
-                    $"{nameof(StudentEventController)}.{nameof(JoinWaitlist)}");
-
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { id });
@@ -200,15 +178,11 @@ namespace AEMS_Solution.Controllers.Features.Student
                     StudentId = detail.WaitlistStudentProfileId!,
                     Accept = true
                 });
-                SetSuccess("Đã xác nhận tham gia! Vé của bạn đã được tạo.");
+                await ExecuteSuccessAsync("Đã xác nhận tham gia! Vé của bạn đã được tạo.", UserActionType.USER_RESPONDED_OFFER, id, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(StudentEventController)}.{nameof(AcceptWaitlist)}");
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { id });
@@ -230,15 +204,11 @@ namespace AEMS_Solution.Controllers.Features.Student
                     StudentId = detail.WaitlistStudentProfileId!,
                     Accept = false
                 });
-                SetSuccess("Đã từ chối. Chỗ trống sẽ được nhường cho người tiếp theo.");
+                await ExecuteSuccessAsync("Đã từ chối. Chỗ trống sẽ được nhường cho người tiếp theo.", UserActionType.USER_RESPONDED_OFFER, id, TargetType.Event);
             }
             catch (Exception ex)
             {
-                await _errorLog.LogErrorAsync(ex, CurrentUserId,
-                    $"{nameof(StudentEventController)}.{nameof(DeclineWaitlist)}");
-                var deepest = ex;
-                while (deepest.InnerException != null) deepest = deepest.InnerException;
-                SetError(deepest.Message);
+                await ExecuteErrorAsync(ex, ex.Message);
             }
 
             return RedirectToAction(nameof(Detail), new { id });

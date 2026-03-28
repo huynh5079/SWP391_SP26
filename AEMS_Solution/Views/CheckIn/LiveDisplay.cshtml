@@ -12,20 +12,24 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="~/aems-logo.png" />
     
     <style>
         :root {
-            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
+            --primary-accent: #6366f1;
+            --secondary-accent: #a855f7;
+            --primary-gradient: linear-gradient(135deg, var(--primary-accent) 0%, var(--secondary-accent) 100%);
+            --glass-bg: rgba(15, 23, 42, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
         body, html {
             height: 100%;
             margin: 0;
             overflow: hidden;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: #0f172a;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background-color: #020617;
             color: #fff;
         }
 
@@ -35,166 +39,248 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), 
+            background: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95)), 
                         url('@(string.IsNullOrEmpty(ViewBag.ThumbnailUrl as string) ? "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" : ViewBag.ThumbnailUrl)');
             background-size: cover;
             background-position: center;
-            filter: blur(10px);
-            transform: scale(1.1);
+            filter: blur(80px); /* Tăng độ mờ để làm nền mượt hơn */
+            transform: scale(1.2);
             z-index: -1;
-            transition: all 1s ease;
+            transition: background-image 1.5s ease-in-out;
         }
 
-        .main-container {
+        .main-wrapper {
             height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 2rem;
+            position: relative;
+            z-index: 1;
         }
 
-        .event-info {
+        /* Branding Top-Left */
+        .branding-header {
             position: absolute;
-            top: 40px;
-            left: 40px;
-            text-align: left;
-            opacity: 0.8;
+            top: 3rem;
+            left: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            z-index: 10;
         }
 
-        .event-logo {
-            width: 100px;
-            height: 100px;
+        .brand-logo-container {
+            width: 80px;
+            height: 80px;
             background: var(--primary-gradient);
-            border-radius: 12px;
+            padding: 4px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
         }
 
-        .welcome-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 30px;
-            padding: 4rem;
-            max-width: 900px;
-            width: 90%;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            display: none; /* Hidden by default */
-            animation-duration: 0.8s;
-        }
-
-        .default-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            animation: fadeIn 1.5s ease;
-        }
-
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            background-color: #22c55e;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-            box-shadow: 0 0 10px #22c55e;
-            animation: pulse 2s infinite;
-        }
-
-        @@keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-        }
-
-        .user-avatar {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
+        .brand-logo-container img {
+            width: 100%;
+            height: 100%;
+            border-radius: 17px;
             object-fit: cover;
-            border: 4px solid var(--glass-border);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-            margin-bottom: 1.5rem;
+            display: block;
         }
 
-        .user-name {
-            font-size: 5rem;
+        .brand-info h4 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-info span {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            letter-spacing: 0.05em;
+        }
+
+        /* Content Center */
+        .central-view {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 5rem 15% 0 15%; /* Thêm padding top để tránh đè lên branding header */
+        }
+
+        .default-hero {
+            text-align: center;
+            max-width: 1200px;
+        }
+
+        .welcome-hint {
+            font-size: 1.25rem;
+            color: var(--secondary-accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .event-title-main {
+            font-size: clamp(2.5rem, 6vw, 4rem); /* Co giãn linh hoạt hơn */
             font-weight: 800;
-            background: linear-gradient(to right, #fff, #cbd5e1);
+            line-height: 1.1;
+            margin-bottom: 2.5rem;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin: 0 0 1.5rem 0;
-            line-height: 1.1;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        .welcome-text {
+        /* Welcome Card */
+        .welcome-card-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: 40px;
+            padding: 5rem;
+            width: 100%;
+            max-width: 1000px;
+            display: none; /* Trạng thái ẩn mặc định */
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.5);
+            animation-duration: 0.6s;
+        }
+
+        .avatar-glow {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            padding: 8px;
+            background: var(--primary-gradient);
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .avatar-glow img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 6px solid #020617;
+        }
+
+        .user-salutation {
             font-size: 2rem;
             color: #94a3b8;
+            font-weight: 400;
+            margin-bottom: 0.5rem;
             letter-spacing: 0.1em;
             text-transform: uppercase;
         }
 
-        .emoji-float {
-            font-size: 4rem;
-            display: block;
-            margin-top: 1rem;
+        .user-fullname {
+            font-size: clamp(3rem, 8vw, 6rem); /* Tự động co giãn theo độ dài tên */
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 2rem;
+            text-align: center;
         }
 
-        .footer-brand {
-            position: absolute;
-            bottom: 40px;
-            opacity: 0.5;
+        .event-welcome-text {
+            font-size: 1.5rem;
+            color: #64748b;
+        }
+
+        .emoji-heart {
+            font-size: 3.5rem;
+            margin-top: 1rem;
+            display: block;
+        }
+
+        /* Status & Footer */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             font-size: 0.9rem;
-            letter-spacing: 0.2rem;
+            color: #475569;
+            margin-top: 2rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+            animation: pulse-green 2s infinite;
+        }
+
+        @@keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .footer-tag {
+            position: absolute;
+            bottom: 3rem;
+            width: 100%;
+            text-align: center;
+            font-size: 0.75rem;
+            letter-spacing: 0.5em;
+            color: #334155;
+            text-transform: uppercase;
         }
     </style>
 </head>
 <body>
     <div class="background-overlay" id="bg-overlay"></div>
 
-    <div class="main-container">
-        <div class="event-info">
-            <div class="event-logo" style="overflow: hidden;">
-                @if (string.IsNullOrEmpty(ViewBag.ThumbnailUrl as string))
-                {
-                    <i class="bi bi-calendar-event-fill" style="font-size: 2.5rem;"></i>
-                }
-                else
-                {
-                    <img src="@ViewBag.ThumbnailUrl" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block;" />
-                }
+    <div class="main-wrapper">
+        <!-- Branding Corner -->
+        <header class="branding-header">
+            <div class="brand-logo-container">
+                <img src="~/aems-logo.png" alt="AEMS Logo" />
             </div>
-            <h4 class="fw-bold mb-0 mt-2">@(string.IsNullOrEmpty(ViewBag.EventTitle as string) ? "AEMS System" : ViewBag.EventTitle)</h4>
-            <p class="text-muted small">Live Check-in Display</p>
-        </div>
+            <div class="brand-info">
+                <h4>@(string.IsNullOrEmpty(ViewBag.EventTitle as string) ? "AEMS" : "Event Center")</h4>
+                <span>LIVE CHECK-IN CONCIERGE</span>
+            </div>
+        </header>
 
         <!-- Default State -->
-        <div id="default-view" class="default-state">
-            <h1 class="display-3 fw-bold mb-2">Chào mừng đến với sự kiện 🎉</h1>
-            @if (!string.IsNullOrEmpty(ViewBag.EventTitle as string))
-            {
-                <h2 class="display-5 fw-bold mb-4" style="color: #a5b4fc;">@ViewBag.EventTitle</h2>
-            }
-            <p class="lead text-muted">
-                <span class="status-dot"></span> Sẵn sàng chào đón khách tham dự
-            </p>
-        </div>
+        <main class="central-view w-100 flex-grow-1 d-flex flex-column justify-content-center align-items-center">
+            <div id="default-view" class="default-state">
+                <h1 class="display-3 fw-bold mb-2">Chào mừng đến với sự kiện 🎉</h1>
+                @if (!string.IsNullOrEmpty(ViewBag.EventTitle as string))
+                {
+                    <h2 class="display-5 fw-bold mb-4" style="color: #a5b4fc;">@ViewBag.EventTitle</h2>
+                }
+                <p class="lead text-muted">
+                    <span class="status-dot"></span> Sẵn sàng chào đón khách tham dự
+                </p>
+            </div>
 
-        <!-- Welcome Card (Dynamic) -->
-        <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
-            <img id="display-avatar" src="" class="user-avatar" alt="Avatar" style="display: none;" />
-            <div class="welcome-text">Chào mừng</div>
-            <div id="display-name" class="user-name text-center">...</div>
-            <div class="welcome-text text-center">đến với sự kiện <span class="emoji-float d-inline-block mt-2">🫶</span></div>
-        </div>
+            <!-- Welcome Card (Dynamic) -->
+            <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
+                <div class="avatar-glow" id="avatar-container" style="display: none;">
+                    <img id="display-avatar" src="" alt="Avatar" />
+                </div>
+                <div class="user-salutation">Chào mừng</div>
+                <div id="display-name" class="user-fullname text-center">...</div>
+                <div class="event-welcome-text text-center mt-3">đến với sự kiện <span class="emoji-heart d-inline-block animate__animated animate__heartBeat animate__infinite">🫶</span></div>
+            </div>
+        </main>
 
-        <div class="footer-brand">POWERED BY AEMS SOLUTION</div>
+        <footer class="footer-tag">
+            Powered by AEMS Solutions &middot; Digital Concierge 2026
+        </footer>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -206,27 +292,23 @@
         const welcomeCard = document.getElementById('welcome-card');
         const displayName = document.getElementById('display-name');
         const displayAvatar = document.getElementById('display-avatar');
-        const statusText = document.querySelector('.default-state p');
+        const avatarContainer = document.getElementById('avatar-container');
+        const statusText = document.getElementById('conn-text');
         const bgOverlay = document.getElementById('bg-overlay');
 
-        // Setup Background Slideshow
+        // Slideshow Engine
         const imageUrlsRaw = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ImageUrls ?? new List<string>()));
-        const imageUrls = Array.isArray(imageUrlsRaw) ? imageUrlsRaw : [];
-        const defaultThumbnail = '@(string.IsNullOrEmpty(ViewBag.ThumbnailUrl as string) ? "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" : ViewBag.ThumbnailUrl)';
-
-        if (imageUrls.length > 0) {
-            let currentImageIndex = 0;
-            bgOverlay.style.backgroundImage = `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url('${imageUrls[0]}')`;
-
-            if (imageUrls.length > 1) {
-                setInterval(() => {
-                    currentImageIndex = (currentImageIndex + 1) % imageUrls.length;
-                    bgOverlay.style.backgroundImage = `linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9)), url('${imageUrls[currentImageIndex]}')`;
-                }, 8000); // 8s
-            }
+        const imageUrls = Array.isArray(imageUrlsRaw) && imageUrlsRaw.length > 0 ? imageUrlsRaw : [];
+        
+        if (imageUrls.length > 1) {
+            let imgIdx = 0;
+            setInterval(() => {
+                imgIdx = (imgIdx + 1) % imageUrls.length;
+                bgOverlay.style.backgroundImage = `linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95)), url('${imageUrls[imgIdx]}')`;
+            }, 10000);
         }
 
-        // SignalR Setup
+        // Realtime Connection
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/hub/v1/notification")
             .withAutomaticReconnect()
@@ -235,50 +317,56 @@
         async function start() {
             try {
                 await connection.start();
-                console.log("SignalR Connected.");
-                statusText.innerHTML = '<span class="status-dot"></span> Đã kết nối với hệ thống';
-                
+                statusText.innerText = 'Đã kết nối với hệ thống';
                 await connection.invoke("JoinEventGroup", eventId);
-                console.log("Joined Event Group:", eventId);
             } catch (err) {
-                console.log(err);
-                statusText.innerHTML = '<span class="status-dot" style="background-color: #ef4444; box-shadow: 0 0 10px #ef4444;"></span> Mất kết nối. Đang thử lại...';
+                statusText.innerText = 'Đang thử kết nối lại...';
                 setTimeout(start, 5000);
             }
         };
 
         connection.on("ReceiveCheckIn", (receivedEventId, fullName, message, avatarUrl) => {
-            console.log("Check-in data received:", { receivedEventId, fullName, message, avatarUrl });
-            
             if (receivedEventId === eventId) {
-                showWelcome(fullName, avatarUrl);
+                triggerWelcomeAnimation(fullName, avatarUrl);
             }
         });
 
-        let welcomeTimeout = null;
+        let currentTimeout = null;
 
-        function showWelcome(name, avatarUrl) {
-            if (welcomeTimeout) clearTimeout(welcomeTimeout);
+        function triggerWelcomeAnimation(name, avatarUrl) {
+            if (currentTimeout) clearTimeout(currentTimeout);
 
             displayName.innerText = name;
             
             if (avatarUrl) {
                 displayAvatar.src = avatarUrl;
-                displayAvatar.style.display = 'block';
+                avatarContainer.style.display = 'block';
             } else {
-                displayAvatar.style.display = 'none';
+                avatarContainer.style.display = 'none';
             }
             
-            defaultView.style.display = 'none';
-            welcomeCard.style.display = 'flex';
-            welcomeCard.className = 'welcome-card animate__animated d-flex flex-column align-items-center animate__zoomIn';
+            // Hide Idle, Show Welcome
+            defaultView.classList.remove('animate__fadeIn');
+            defaultView.classList.add('animate__fadeOut');
+            
+            setTimeout(() => {
+                defaultView.style.display = 'none';
+                welcomeCard.style.display = 'flex';
+                welcomeCard.classList.remove('animate__zoomOut');
+                welcomeCard.classList.add('animate__zoomIn');
+            }, 400);
 
-            welcomeTimeout = setTimeout(() => {
-                welcomeCard.className = 'welcome-card animate__animated d-flex flex-column align-items-center animate__zoomOut';
+            // Revert to Idle after 8 seconds
+            currentTimeout = setTimeout(() => {
+                welcomeCard.classList.remove('animate__zoomIn');
+                welcomeCard.classList.add('animate__zoomOut');
+                
                 setTimeout(() => {
                     welcomeCard.style.display = 'none';
-                    defaultView.style.display = 'flex';
-                }, 800);
+                    defaultView.style.display = 'block';
+                    defaultView.classList.remove('animate__fadeOut');
+                    defaultView.classList.add('animate__fadeIn');
+                }, 600);
             }, 8000);
         }
 
