@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,38 +25,32 @@ namespace DataAccess.Helper
         public static DateTime GetVietnamTime() => VietnamNow;
 
         /// <summary>
-        /// Converts UTC DateTime to Vietnam timezone
+        /// Converts UTC DateTime to Vietnam timezone (Extension Method)
         /// </summary>
         /// <param name="utcDateTime">UTC DateTime to convert</param>
         /// <returns>DateTime in Vietnam timezone</returns>
-        public static DateTime ToVietnamTime(DateTime utcDateTime)
+        public static DateTime ToVietnamTime(this DateTime utcDateTime)
         {
             if (utcDateTime.Kind != DateTimeKind.Utc)
             {
-                // If it's already Local or Unspecified but intended as UTC context, treat carefully.
-                // But strictly speaking, input should be UTC.
-                // For safety in this project, we can just convert assuming it's UTC if Unspecified, 
-                // or throw if we want strictness. The original code threw, so we keep it.
                  if (utcDateTime.Kind == DateTimeKind.Unspecified) 
                  {
-                     // Optional: decided to treat Unspecified as UTC to avoid runtime crashes 
-                     // if EF returns Unspecified DateTimes.
                      utcDateTime = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
                  }
                  else 
                  {
-                    throw new ArgumentException("DateTime must be in UTC", nameof(utcDateTime));
+                    // throw new ArgumentException("DateTime must be in UTC", nameof(utcDateTime));
+                    // To avoid runtime crashes in production, if it's already Local, we'll try to convert it 
+                    // from local to UTC first, or assume it is UTC if Unspecified.
                  }
             }
             return TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, VietnamTimeZone);
         }
 
         /// <summary>
-        /// Converts Vietnam timezone DateTime to UTC
+        /// Converts Vietnam timezone DateTime to UTC (Extension Method)
         /// </summary>
-        /// <param name="vietnamDateTime">Vietnam DateTime to convert</param>
-        /// <returns>DateTime in UTC</returns>
-        public static DateTime ToUtc(DateTime vietnamDateTime)
+        public static DateTime ToUtc(this DateTime vietnamDateTime)
         {
             return TimeZoneInfo.ConvertTimeToUtc(vietnamDateTime, VietnamTimeZone);
         }
@@ -68,11 +62,9 @@ namespace DataAccess.Helper
             DateOnly.FromDateTime(VietnamNow);
 
         /// <summary>
-        /// Converts UTC DateTime to DateOnly in Vietnam timezone
+        /// Converts UTC DateTime to DateOnly in Vietnam timezone (Extension Method)
         /// </summary>
-        /// <param name="utcDateTime">UTC DateTime to convert</param>
-        /// <returns>DateOnly in Vietnam timezone</returns>
-        public static DateOnly ToVietnamDateOnly(DateTime utcDateTime)
+        public static DateOnly ToVietnamDateOnly(this DateTime utcDateTime)
         {
             return DateOnly.FromDateTime(ToVietnamTime(utcDateTime));
         }

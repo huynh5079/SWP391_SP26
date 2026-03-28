@@ -12,6 +12,9 @@ namespace DataAccess.Enum
         USER_ASKED_ELIGIBILITY = 7,
         USER_REGISTERED_EVENT = 8,
         USER_CANCELLED_EVENT = 9,
-        USER_INTERESTED_IN_CATEGORY = 10
+        USER_INTERESTED_IN_CATEGORY = 10,
+        USER_ASKED_EVENT_SCHEDULE = 11,
+        View = 2,
+        Register = 8
     }
 }

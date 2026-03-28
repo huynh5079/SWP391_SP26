@@ -2322,12 +2322,7 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("ActionType")
                         .IsRequired()
-<<<<<<< HEAD
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-=======
                         .HasColumnType("nvarchar(max)");
->>>>>>> origin/123-feat-fix
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -2340,10 +2335,6 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-<<<<<<< HEAD
-                        .IsRequired()
-=======
->>>>>>> origin/123-feat-fix
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
@@ -2358,13 +2349,8 @@ namespace DataAccess.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("TargetType")
-<<<<<<< HEAD
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-=======
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
->>>>>>> origin/123-feat-fix
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -2382,11 +2368,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("UserId");
 
-<<<<<<< HEAD
-                    b.ToTable("UserActivityLog");
-=======
                     b.ToTable("UserActivityLog", (string)null);
->>>>>>> origin/123-feat-fix
                 });
 
             modelBuilder.Entity("DataAccess.Entities.ApprovalLog", b =>
@@ -2872,12 +2854,8 @@ namespace DataAccess.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-<<<<<<< HEAD
-                        .IsRequired();
-=======
                         .IsRequired()
                         .HasConstraintName("FK_UserActivityLog_User");
->>>>>>> origin/123-feat-fix
 
                     b.Navigation("User");
                 });

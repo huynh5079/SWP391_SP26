@@ -1,25 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using BusinessLogic.DTOs.Chat.Chatbot;
+using BusinessLogic.Helper;
+using BusinessLogic.Service.UserActivities;
 using DataAccess.Entities;
 using DataAccess.Enum;
+using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using System.Security.Claims;
-using BusinessLogic.Helper;
-using DataAccess.Helper;
-using BusinessLogic.Service.UserActivities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace BusinessLogic.Service.Chat
 {
@@ -58,7 +58,8 @@ namespace BusinessLogic.Service.Chat
 			// Đọc URL từ nhiều nguồn config khác nhau (Azure App Settings hoặc appsettings.json)
 			_ragApiBaseUrl = (_configuration["AppSettings:AiEngineUrl"]
 				?? _configuration["AppSettings__AiEngineUrl"]
-				?? _configuration["AiEngineUrl"])
+				?? _configuration["AiEngineUrl"]
+				?? _configuration["RagApi:BaseUrl"])
 				?.TrimEnd('/') ?? "http://localhost:8000";
 			
 			_jsonOptions = new JsonSerializerOptions
@@ -213,6 +214,7 @@ namespace BusinessLogic.Service.Chat
 				_logger.LogError(ex, $"[ChatbotService] CRITICAL Error in AskQuestionAsync: {ex.Message}");
 
 				// If it's a DbContext concurrency error, don't try to use the same context to save the error
+				// because it will likely fail again with the same "second operation started" message.
 				var isContextError = ex is InvalidOperationException && ex.Message.Contains("DbContext");
 
 				try

@@ -22,7 +22,7 @@ namespace DataAccess.Repositories
         public IGenericRepository<Notification> Notifications { get; }
         public IGenericRepository<ChatbotSession> ChatbotSessions { get; }
 		public IGenericRepository<ChatbotMessage> ChatbotMessages { get; }
-		public IGenericRepository<UserActivityLog> UserActivityLogs { get; }
+        public IGenericRepository<UserActivityLog> UserActivityLogs { get; }
         public IGenericRepository<Event> Events { get; }
         public IGenericRepository<EventAgenda> EventAgenda { get; }
         public IGenericRepository<EventDocument> EventDocuments { get; }
