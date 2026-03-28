@@ -32,6 +32,7 @@ namespace BusinessLogic.Service.Chat
 		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly ILogger<ChatbotService> _logger;
 		private readonly IConfiguration _configuration;
+		private readonly string _ragApiBaseUrl;
 		private readonly JsonSerializerOptions _jsonOptions;
 
 		public ChatbotService(HttpClient httpClient, IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, ILogger<ChatbotService> logger, IConfiguration configuration)

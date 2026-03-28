@@ -1,6 +1,7 @@
 using AEMS_Solution.Controllers.Common;
 using BusinessLogic.DTOs.User;
 using BusinessLogic.Service.User;
+using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,11 +12,13 @@ namespace AEMS_Solution.Controllers.Features.Profile
     {
         private readonly IUserService _userService;
         private readonly BusinessLogic.Service.System.ISystemErrorLogService _systemErrorLogService;
+        private readonly IUnitOfWork _uow;
 
-        public ProfileController(IUserService userService, BusinessLogic.Service.System.ISystemErrorLogService systemErrorLogService)
+        public ProfileController(IUserService userService, BusinessLogic.Service.System.ISystemErrorLogService systemErrorLogService, IUnitOfWork uow)
         {
             _userService = userService;
             _systemErrorLogService = systemErrorLogService;
+            _uow = uow;
         }
 
         [HttpGet]
