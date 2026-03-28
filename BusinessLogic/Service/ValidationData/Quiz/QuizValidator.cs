@@ -6,6 +6,7 @@ using BusinessLogic.DTOs.Event.Quiz.ForMainRole.Contracts;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.CreateQuiz;
 using BusinessLogic.DTOs.Event.Quiz.ForMainRole.UpdateQuiz;
 using DataAccess.Enum;
+using DataAccess.Helper;
 using DataAccess.Repositories.Abstraction;
 
 namespace BusinessLogic.Service.ValidationData.Quiz
@@ -169,11 +170,9 @@ namespace BusinessLogic.Service.ValidationData.Quiz
 			if (quiz.Event == null)
 				throw new InvalidOperationException("Quiz không gắn với sự kiện hợp lệ.");
 
-			// Nếu thời gian hiện tại chưa đến thời gian bắt đầu sự kiện thì không cho publish
-			if (quiz.Event.StartTime > DateTime.UtcNow)
-			{
-				throw new InvalidOperationException($"Sự kiện chưa diễn ra (Bắt đầu lúc: {quiz.Event.StartTime:dd/MM/yyyy HH:mm}). Không thể publish quiz.");
-			}
+			// Cho phép publish quiz bất kỳ lúc nào (trước hoặc sau khi event bắt đầu),
+			// miễn là quiz có câu hỏi (kiểm tra ở QuizService).
+			// Thời gian hiện tại tại Việt Nam: DateTimeHelper.VietnamNow
 		}
 	}
 }

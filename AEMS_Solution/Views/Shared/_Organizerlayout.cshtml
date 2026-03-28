@@ -354,6 +354,15 @@
     <script src="~/js/chatbot.js" asp-append-version="true"></script>
     <script src="~/js/messenger-layout.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        // Global fix: clean up stuck Bootstrap modal backdrops on every page load
+        (function () {
+            document.querySelectorAll('.modal-backdrop').forEach(function (el) { el.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        })();
+    </script>
 </body>
 
 </html>

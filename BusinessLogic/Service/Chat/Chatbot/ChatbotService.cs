@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 using BusinessLogic.Helper;
+using DataAccess.Helper;
 
 namespace BusinessLogic.Service.Chat
 {
@@ -474,7 +475,7 @@ namespace BusinessLogic.Service.Chat
 
 		private async Task<string> BuildStudentScheduleAnswerAsync(string studentUserId)
 		{
-			var now = DateTime.Now;
+			var now = DateTimeHelper.VietnamNow;
 			var endWindow = now.AddDays(14);
 
 			var publishedEvents = await _unitOfWork.Events.GetAllAsync(

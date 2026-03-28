@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DataAccess.Enum;
+using DataAccess.Helper;
 
 namespace AEMS_Solution.Models.Admin
 {
@@ -42,7 +43,7 @@ namespace AEMS_Solution.Models.Admin
         public List<DeptReportRow> EventsByDepartment { get; set; } = new();
 
         // Report generated timestamp
-        public DateTime GeneratedAt { get; set; } = DateTime.Now;
+        public DateTime GeneratedAt { get; set; } = DateTimeHelper.VietnamNow;
     }
 
     public class EventReportRow

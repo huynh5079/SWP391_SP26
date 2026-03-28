@@ -4,6 +4,7 @@ using BusinessLogic.Service.User;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataAccess.Helper;
 
 namespace AEMS_Solution.Controllers.Features.Profile
 {
@@ -34,7 +35,7 @@ namespace AEMS_Solution.Controllers.Features.Profile
             ViewBag.Departments = departments.OrderBy(d => d.Name).ToList();
 
             // 2. Semesters (Standard FPT cycle)
-            var year = DateTime.Now.Year;
+            var year = DateTimeHelper.VietnamNow.Year;
             ViewBag.Semesters = new List<string> { $"Spring {year}", $"Summer {year}", $"Fall {year}" };
 
             ViewBag.IsReadOnly = false;

@@ -703,7 +703,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (eventDataForAdd.OrganizerId != organizer.Id)
 				throw new InvalidOperationException("Bạn không có quyền tạo quiz cho event này.");
 			if (eventDataForAdd.StartTime <= DateTime.UtcNow)
-				throw new Exception("Sự kiện đã bắt đầu, không thể tạo quiz");
+				throw new Exception($"Sự kiện đã bắt đầu ({DateTimeHelper.ToVietnamTime(eventDataForAdd.StartTime):dd/MM/yyyy HH:mm} giờ Việt Nam), không thể tạo quiz");
 			var (normalizedQuizStartTime, normalizedQuizEndTime) = NormalizeQuizSchedule(
 				request.QuizStartTime,
 				request.QuizEndTime,
@@ -1219,7 +1219,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 			if (eventData == null)
 				throw new ArgumentException("Event không tồn tại.");
 			if (quiz.Status != QuizStatusEnum.Published && eventData.StartTime <= DateTime.UtcNow)
-				throw new Exception("Sự kiện đã bắt đầu, không thể cập nhật Quiz");
+				throw new Exception($"Sự kiện đã bắt đầu ({DateTimeHelper.ToVietnamTime(eventData.StartTime):dd/MM/yyyy HH:mm} giờ Việt Nam), không thể cập nhật Quiz");
 
 			var (normalizedQuizStartTime, normalizedQuizEndTime) = NormalizeQuizSchedule(
 				request.QuizStartTime ?? quiz.QuizStartTime,
@@ -1298,6 +1298,7 @@ namespace BusinessLogic.Service.Event.Sub_Service.Quiz
 
 			if (timeLimit.HasValue && timeLimit.Value > 0)
 			{
+				// Sử dụng DateTime.UtcNow (UTC chuẩn) để so sánh với các giá trị lưu trong DB (UTC)
 				normalizedQuizStart ??= DateTime.UtcNow;
 				if (normalizedQuizStart.Value < normalizedEventStart)
 				{
