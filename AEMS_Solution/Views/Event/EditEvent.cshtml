@@ -303,8 +303,16 @@
                                 <input asp-for="Agendas[i].SessionName" />
                             </div>
                             <div class="col">
-                                <label>Speaker</label>
-                                <input asp-for="Agendas[i].SpeakerInfo" />
+                                <label class="d-flex justify-content-between align-items-center">
+                                    Speaker
+                                    <span class="badge bg-light text-primary border agenda-speaker-role-badge" style="@(string.IsNullOrEmpty(Model.Agendas[i].SpeakerUserRole) ? "display:none;" : "") font-size: 0.7rem;">@Model.Agendas[i].SpeakerUserRole</span>
+                                </label>
+                                <input type="hidden" asp-for="Agendas[i].SpeakerUserId" class="agenda-speaker-id" />
+                                <input type="hidden" asp-for="Agendas[i].SpeakerUserRole" class="agenda-speaker-role" />
+                                <div class="position-relative">
+                                    <input asp-for="Agendas[i].SpeakerInfo" class="form-control agenda-speaker-search-input" placeholder="Search speaker by name or email..." autocomplete="off" />
+                                    <div class="agenda-speaker-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -382,8 +390,16 @@
                     <input name="Agendas[__i__].SessionName" />
                 </div>
                 <div class="col">
-                    <label>Speaker</label>
-                    <input name="Agendas[__i__].SpeakerInfo" />
+                    <label class="d-flex justify-content-between align-items-center">
+                        Speaker
+                        <span class="badge bg-light text-primary border agenda-speaker-role-badge" style="display:none; font-size: 0.7rem;"></span>
+                    </label>
+                    <input type="hidden" name="Agendas[__i__].SpeakerUserId" class="agenda-speaker-id" />
+                    <input type="hidden" name="Agendas[__i__].SpeakerUserRole" class="agenda-speaker-role" />
+                    <div class="position-relative">
+                        <input name="Agendas[__i__].SpeakerInfo" class="form-control agenda-speaker-search-input" placeholder="Search speaker by name or email..." autocomplete="off" />
+                        <div class="agenda-speaker-search-results position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm z-3" style="display:none; max-height: 200px; overflow-y: auto;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -544,11 +560,76 @@
                             });
                     }, 300);
                 }
+
+                // Agenda Speaker Search
+                if (e.target.classList.contains('agenda-speaker-search-input')) {
+                    const input = e.target;
+                    const container = input.closest('.col');
+                    const results = container.querySelector('.agenda-speaker-search-results');
+                    const userIdInput = container.querySelector('.agenda-speaker-id');
+                    const userRoleInput = container.querySelector('.agenda-speaker-role');
+                    const roleBadge = container.querySelector('.agenda-speaker-role-badge');
+                    
+                    clearTimeout(input.dataset.timer);
+                    const query = input.value;
+                    
+                    if (query.length < 1) {
+                        results.style.display = 'none';
+                        if (query.length === 0) {
+                            if (userIdInput) userIdInput.value = '';
+                            if (userRoleInput) userRoleInput.value = '';
+                            if (roleBadge) roleBadge.style.display = 'none';
+                        }
+                        return;
+                    }
+
+                    input.dataset.timer = setTimeout(() => {
+                        fetch(`/api/v1/lookup/users?q=${encodeURIComponent(query)}`)
+                            .then(res => res.json())
+                            .then(resp => {
+                                if (!resp.success || !resp.data || resp.data.length === 0) {
+                                    results.innerHTML = '<div class="p-2 text-muted small">Không tìm thấy ai</div>';
+                                    results.style.display = 'block';
+                                    return;
+                                }
+                                
+                                results.innerHTML = resp.data.map(user => `
+                                    <div class="p-2 border-bottom agenda-search-item text-dark" style="cursor:pointer;" 
+                                         data-id="${user.id}" data-role="${user.role}" data-name="${user.fullName}" data-email="${user.email}">
+                                        <div class="fw-semibold small">${user.fullName}</div>
+                                        <div class="text-muted" style="font-size:0.75rem;">${user.email} <span class="badge bg-light text-primary border">${user.role}</span></div>
+                                    </div>
+                                `).join('');
+                                results.style.display = 'block';
+                                
+                                const items = results.querySelectorAll('.agenda-search-item');
+                                items.forEach(item => {
+                                    item.addEventListener('click', function() {
+                                        const uid = this.getAttribute('data-id');
+                                        const urole = this.getAttribute('data-role');
+                                        const uname = this.getAttribute('data-name');
+                                        
+                                        input.value = uname;
+                                        if (userIdInput) userIdInput.value = uid;
+                                        if (userRoleInput) userRoleInput.value = urole;
+                                        if (roleBadge) {
+                                            roleBadge.textContent = urole;
+                                            roleBadge.style.display = 'inline-block';
+                                        }
+                                        results.style.display = 'none';
+                                    });
+                                });
+                            });
+                    }, 300);
+                }
             });
 
             document.addEventListener('click', function(e) {
                 if (!e.target.classList.contains('agenda-location-search-input') && !e.target.closest('.agenda-location-search-results')) {
                     document.querySelectorAll('.agenda-location-search-results').forEach(el => el.style.display = 'none');
+                }
+                if (!e.target.classList.contains('agenda-speaker-search-input') && !e.target.closest('.agenda-speaker-search-results')) {
+                    document.querySelectorAll('.agenda-speaker-search-results').forEach(el => el.style.display = 'none');
                 }
             });
 

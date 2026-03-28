@@ -185,6 +185,15 @@ var app = builder.Build();
 // 2. Middleware Pipeline
 // ==========================================
 
+// Fix for Azure SSL Termination (Google Auth Redirect URI mismatch)
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -193,12 +202,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
-// Fix for Azure SSL Termination (Google Auth Redirect URI mismatch)
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
 
 // Global Exception Handler - Place after StaticFiles but before Routing
 // This ensures it catches all exceptions from controllers/endpoints

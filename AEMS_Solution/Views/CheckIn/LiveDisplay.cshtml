@@ -255,24 +255,28 @@
         </header>
 
         <!-- Default State -->
-        <div id="default-view" class="default-state">
-            <h1 class="display-3 fw-bold mb-2">Chào mừng đến với sự kiện 🎉</h1>
-            @if (!string.IsNullOrEmpty(ViewBag.EventTitle as string))
-            {
-                <h2 class="display-5 fw-bold mb-4" style="color: #a5b4fc;">@ViewBag.EventTitle</h2>
-            }
-            <p class="lead text-muted">
-                <span class="status-dot"></span> Sẵn sàng chào đón khách tham dự
-            </p>
-        </div>
+        <main class="central-view w-100 flex-grow-1 d-flex flex-column justify-content-center align-items-center">
+            <div id="default-view" class="default-state">
+                <h1 class="display-3 fw-bold mb-2">Chào mừng đến với sự kiện 🎉</h1>
+                @if (!string.IsNullOrEmpty(ViewBag.EventTitle as string))
+                {
+                    <h2 class="display-5 fw-bold mb-4" style="color: #a5b4fc;">@ViewBag.EventTitle</h2>
+                }
+                <p class="lead text-muted">
+                    <span class="status-dot"></span> Sẵn sàng chào đón khách tham dự
+                </p>
+            </div>
 
-        <!-- Welcome Card (Dynamic) -->
-        <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
-            <img id="display-avatar" src="" class="user-avatar" alt="Avatar" style="display: none;" />
-            <div class="welcome-text">Chào mừng</div>
-            <div id="display-name" class="user-name text-center">...</div>
-            <div class="welcome-text text-center">đến với sự kiện <span class="emoji-float d-inline-block mt-2">🫶</span></div>
-        </div>
+            <!-- Welcome Card (Dynamic) -->
+            <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
+                <div class="avatar-glow" id="avatar-container" style="display: none;">
+                    <img id="display-avatar" src="" alt="Avatar" />
+                </div>
+                <div class="user-salutation">Chào mừng</div>
+                <div id="display-name" class="user-fullname text-center">...</div>
+                <div class="event-welcome-text text-center mt-3">đến với sự kiện <span class="emoji-heart d-inline-block animate__animated animate__heartBeat animate__infinite">🫶</span></div>
+            </div>
+        </main>
 
         <footer class="footer-tag">
             Powered by AEMS Solutions &middot; Digital Concierge 2026

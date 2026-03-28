@@ -588,6 +588,45 @@ namespace AEMS_Solution.Controllers.Dashboards
             }
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteDocumentFromDetail(string documentId, string eventId)
+        {
+            if (string.IsNullOrEmpty(documentId) || string.IsNullOrEmpty(eventId))
+            {
+                SetError("Dữ liệu không hợp lệ.");
+                return RedirectToAction("Manage", new { operation = "DetailEvent", id = eventId });
+            }
+
+            try
+            {
+                var ev = await _unitOfWork.Events.GetAsync(e => e.Id == eventId && e.OrganizerId == CurrentUserId);
+                if (ev == null)
+                {
+                    SetError("Sự kiện không tồn tại hoặc bạn không có quyền.");
+                    return RedirectToAction("Index");
+                }
+
+                var doc = await _unitOfWork.EventDocuments.GetAsync(d => d.Id == documentId && d.EventId == eventId);
+                if (doc != null)
+                {
+                    await _unitOfWork.EventDocuments.RemoveAsync(doc);
+                    await _unitOfWork.SaveChangesAsync();
+                    await ExecuteSuccessAsync("Đã xóa tài liệu thành công.", UserActionType.Delete, null, TargetType.Event);
+                }
+                else
+                {
+                    SetError("Tài liệu không tồn tại.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ExecuteErrorAsync(ex, "Lỗi khi xóa tài liệu: " + ex.Message);
+            }
+
+            return RedirectToAction("Manage", new { operation = "DetailEvent", id = eventId });
+        }
+
         [HttpGet]
         public async Task<IActionResult> DetailEvent(string id)
         {

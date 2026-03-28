@@ -390,7 +390,11 @@ namespace BusinessLogic.Service.Organizer.CheckIn
                     <hr />
                     <p style='font-size: 12px; color: gray;'>Hệ thống AEMS</p>
                 </div>";
-            await _emailService.SendAsync(ticket.Student.User!.Email, subject, body);
+            
+            if (!string.IsNullOrWhiteSpace(ticket.Student.User?.Email))
+            {
+                await _emailService.SendAsync(ticket.Student.User.Email, subject, body);
+            }
         }
 
         public async Task ResendTicketEmailAsync(string ticketId, string organizerUserId)
