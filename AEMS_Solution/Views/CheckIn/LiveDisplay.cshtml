@@ -140,7 +140,7 @@
         }
 
         /* Welcome Card */
-        .welcome-card-glass {
+        .welcome-card {
             background: var(--glass-bg);
             backdrop-filter: blur(30px);
             -webkit-backdrop-filter: blur(30px);
@@ -263,12 +263,12 @@
                     <h2 class="display-5 fw-bold mb-4" style="color: #a5b4fc;">@ViewBag.EventTitle</h2>
                 }
                 <p class="lead text-muted">
-                    <span class="status-dot"></span> Sẵn sàng chào đón khách tham dự
+                    <span class="status-dot"></span> <span id="conn-text">Sẵn sàng chào đón khách tham dự</span>
                 </p>
             </div>
 
             <!-- Welcome Card (Dynamic) -->
-            <div id="welcome-card" class="welcome-card animate__animated d-flex flex-column align-items-center">
+            <div id="welcome-card" class="welcome-card animate__animated flex-column align-items-center">
                 <div class="avatar-glow" id="avatar-container" style="display: none;">
                     <img id="display-avatar" src="" alt="Avatar" />
                 </div>

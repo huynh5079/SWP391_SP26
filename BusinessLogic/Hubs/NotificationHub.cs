@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 
 namespace BusinessLogic.Hubs
 {
-    [Authorize]
     public class NotificationHub : Hub
     {
         public override async Task OnConnectedAsync()
