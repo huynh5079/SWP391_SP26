@@ -1,23 +1,27 @@
-using System.IO;
-using System.Windows;
+using AEMS_WPF.Services;
 using BusinessLogic.Options;
+using BusinessLogic.Service.Approval;
 using BusinessLogic.Service.Auth;
 using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
+using BusinessLogic.Service.Event.Sub_Service.Location;
+using BusinessLogic.Service.Event.Sub_Service.Topic;
 using BusinessLogic.Service.Organizer.CheckIn;
-using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.System;
-using BusinessLogic.Service.ValidationData.Event;
 using BusinessLogic.Service.UserActivities;
+using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
+using BusinessLogic.Service.ValidationData.Event;
+using BusinessLogic.Service.ValidationData.Loction;
+using BusinessLogic.Service.ValidationData.Topic;
 using BusinessLogic.Storage;
-using AEMS_WPF.Services;
 using DataAccess.Entities;
 using DataAccess.Repositories;
 using DataAccess.Repositories.Abstraction;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using BusinessLogic.Service.Approval;
+using System.IO;
+using System.Windows;
 
 namespace AEMS_WPF
 {
@@ -86,9 +90,14 @@ namespace AEMS_WPF
             // Views
             services.AddTransient<Views.Auth.LoginWindow>();
             services.AddTransient<MainWindow>(); // Using MainWindow as the Shell
-
-          
             
+            //Location
+            services.AddScoped<ILocationService, LocationService>();          
+            services.AddScoped<ILocationValidator, LocationValidator>();
+            // Topics
+            services.AddScoped<ITopicService, TopicService>();
+            services.AddScoped<ITopicValidator, TopicValidator>();
+
         }
     }
 }
