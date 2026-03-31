@@ -6,6 +6,8 @@ using BusinessLogic.Service.Dashboard;
 using BusinessLogic.Service.Event;
 using BusinessLogic.Service.Event.Sub_Service.Location;
 using BusinessLogic.Service.Event.Sub_Service.Topic;
+using BusinessLogic.Service.Event.Sub_Service.Semester;
+using BusinessLogic.Service.Event.Semester;
 using BusinessLogic.Service.Organizer.CheckIn;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.UserActivities;
@@ -13,6 +15,7 @@ using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.ValidationData.Event;
 using BusinessLogic.Service.ValidationData.Loction;
 using BusinessLogic.Service.ValidationData.Topic;
+
 using BusinessLogic.Storage;
 using DataAccess.Entities;
 using DataAccess.Repositories;
@@ -97,6 +100,11 @@ namespace AEMS_WPF
             // Topics
             services.AddScoped<ITopicService, TopicService>();
             services.AddScoped<ITopicValidator, TopicValidator>();
+            //Semester
+            services.AddScoped<ISemesterService, SemesterService>();
+            //Agenda
+             
+
 
         }
     }
