@@ -84,8 +84,21 @@ namespace AEMS_WPF.Views.Dashboard
             return null;
         }
 
-       
-        
+        public void NavigateToPage(Page page)
+        {
+            DashboardContent.Visibility = Visibility.Collapsed;
+            MainFrame.Visibility = Visibility.Visible;
+            MainFrame.Navigate(page);
+        }
+
+        public void NavigateBackToDashboard()
+        {
+            MainFrame.Visibility = Visibility.Collapsed;
+            MainFrame.Content = null;
+            DashboardContent.Visibility = Visibility.Visible;
+            _ = LoadPendingAsync();
+        }
+
 
         private void NavManage_Click(object sender, RoutedEventArgs e)
         {
@@ -95,12 +108,36 @@ namespace AEMS_WPF.Views.Dashboard
 
         private void NavTopics_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Topics page (not implemented).", "Topics", MessageBoxButton.OK, MessageBoxImage.Information);
+            var page = new Views.Approver.TopicManagementPage();
+            var frame = new Frame();
+            frame.Navigate(page);
+            var win = new Window
+            {
+                Content = frame,
+                Owner = this,
+                Width = 1200,
+                Height = 800,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Title = "Topic Management"
+            };
+            win.ShowDialog();
         }
 
         private void NavLocations_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Locations page (not implemented).", "Locations", MessageBoxButton.OK, MessageBoxImage.Information);
+            var page = new Views.Approver.LocationManagementPage();
+            var frame = new Frame();
+            frame.Navigate(page);
+            var win = new Window
+            {
+                Content = frame,
+                Owner = this,
+                Width = 1200,
+                Height = 800,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Title = "Location Management"
+            };
+            win.ShowDialog();
         }
 
         private void NavAgenda_Click(object sender, RoutedEventArgs e)
@@ -111,6 +148,10 @@ namespace AEMS_WPF.Views.Dashboard
         private void NavNotifications_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show("Notifications page (not implemented).", "Notifications", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void NavApprovals_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateBackToDashboard();
         }
 
         // ===== TABLE ACTIONS =====
@@ -137,6 +178,7 @@ namespace AEMS_WPF.Views.Dashboard
                 MessageBox.Show($"Approve failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        
 
         private void BtnReject_Click(object sender, RoutedEventArgs e)
         {

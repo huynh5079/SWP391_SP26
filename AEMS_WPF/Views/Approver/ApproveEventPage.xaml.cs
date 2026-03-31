@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Navigation;
 using BusinessLogic.DTOs.Authentication.Login;
 using BusinessLogic.Service.Approval;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,10 +27,7 @@ namespace AEMS_WPF.Views.Approver
                 _queryService = App.ServiceProvider.GetService<IApproverQueryService>();
                 _commandService = App.ServiceProvider.GetService<IApproverCommandService>();
             }
-            catch
-            {
-                // swallow - show error later if missing
-            }
+            catch { }
 
             Loaded += ApproveEventPage_Loaded;
         }
@@ -40,6 +36,15 @@ namespace AEMS_WPF.Views.Approver
         {
             _user = user ?? throw new ArgumentNullException(nameof(user));
             _eventId = eventId ?? throw new ArgumentNullException(nameof(eventId));
+        }
+
+        // Helper: quay về dashboard
+        private void GoBackToDashboard()
+        {
+            if (Application.Current.MainWindow is Dashboard.ApproveDashBoard dashboard)
+                dashboard.NavigateBackToDashboard();
+            else
+                Window.GetWindow(this)?.Close();
         }
 
         private async void ApproveEventPage_Loaded(object? sender, RoutedEventArgs e)
@@ -60,7 +65,7 @@ namespace AEMS_WPF.Views.Approver
             if (_user == null || string.IsNullOrWhiteSpace(_eventId))
             {
                 MessageBox.Show("Cannot determine approver user or event id.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                NavigationService?.GoBack();
+                GoBackToDashboard();
                 return;
             }
 
@@ -107,20 +112,19 @@ namespace AEMS_WPF.Views.Approver
                 txtStatus.Text = detail.Status.ToString();
                 txtDescription.Text = detail.Description ?? "-";
 
-                lstAgendas.ItemsSource = (IEnumerable<string>?)detail.Agendas?.Select(a =>
+                lstAgendas.ItemsSource = detail.Agendas?.Select(a =>
                 {
                     string timePrefix = a.StartTime.HasValue
                         ? a.StartTime.Value.ToString("g") + " - " + (a.EndTime?.ToString("g") ?? "") + ": "
                         : "";
                     string speaker = string.IsNullOrWhiteSpace(a.Speaker) ? "" : " — " + a.Speaker;
                     return timePrefix + a.Title + speaker;
-                }).ToList() ?? Array.Empty<string>();
+                }).ToList() ?? new List<string>();
 
-                lstDocuments.ItemsSource = (IEnumerable<string>?)detail.Documents?.Select(d => d.FileName).ToList() ?? Array.Empty<string>();
-                lstLogs.ItemsSource = (IEnumerable<string>?)detail.ApprovalLogs?.Select(l => $"{l.CreatedAt:g} — {l.Action}: {l.Comment ?? string.Empty}").ToList() ?? Array.Empty<string>();
+                lstDocuments.ItemsSource = detail.Documents?.Select(d => d.FileName).ToList() ?? new List<string>();
+                lstLogs.ItemsSource = detail.ApprovalLogs?.Select(l => $"{l.CreatedAt:g} — {l.Action}: {l.Comment ?? string.Empty}").ToList() ?? new List<string>();
 
-                var status = detail.Status;
-                btnApprove.IsEnabled = (_commandService != null && status == DataAccess.Enum.EventStatusEnum.Pending);
+                btnApprove.IsEnabled = (_commandService != null && detail.Status == DataAccess.Enum.EventStatusEnum.Pending);
                 btnReject.IsEnabled = btnApprove.IsEnabled;
                 btnRequestChange.IsEnabled = btnApprove.IsEnabled;
             }
@@ -151,7 +155,7 @@ namespace AEMS_WPF.Views.Approver
             {
                 await _commandService.ApproveAsync(_eventId!, _user.Id, txtComment.Text);
                 MessageBox.Show("Event approved.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                NavigationService?.GoBack();
+                GoBackToDashboard();
             }
             catch (Exception ex)
             {
@@ -186,7 +190,7 @@ namespace AEMS_WPF.Views.Approver
             {
                 await _commandService.RejectAsync(_eventId!, _user.Id, txtComment.Text);
                 MessageBox.Show("Event rejected.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                NavigationService?.GoBack();
+                GoBackToDashboard();
             }
             catch (Exception ex)
             {
@@ -221,7 +225,7 @@ namespace AEMS_WPF.Views.Approver
             {
                 await _commandService.RequestChangeAsync(_eventId!, _user.Id, txtComment.Text);
                 MessageBox.Show("Change request sent.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                NavigationService?.GoBack();
+                GoBackToDashboard();
             }
             catch (Exception ex)
             {
@@ -231,7 +235,7 @@ namespace AEMS_WPF.Views.Approver
 
         private void BtnBack_Click(object sender, RoutedEventArgs e)
         {
-            NavigationService?.GoBack();
+            GoBackToDashboard();
         }
     }
 }
