@@ -1,14 +1,14 @@
-﻿<Page x:Class="AEMS_WPF.Views.Dashboard.ApproveDashBoard"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      xmlns:local="clr-namespace:AEMS_WPF.Views.Dashboard"
-      mc:Ignorable="d" 
-      d:DesignHeight="700" d:DesignWidth="1000"
-      Title="ApproveDashBoard">
+﻿<Window x:Class="AEMS_WPF.Views.Dashboard.ApproveDashBoard"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:AEMS_WPF.Views.Dashboard"
+        mc:Ignorable="d" 
+        Title="Approver Dashboard" Height="700" Width="1000"
+        WindowStartupLocation="CenterScreen" Background="#F8FAFC">
 
-    <Page.Resources>
+    <Window.Resources>
         <Style x:Key="MenuButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#64748B"/>
@@ -16,6 +16,7 @@
             <Setter Property="Margin" Value="4,0"/>
             <Setter Property="BorderBrush" Value="#E2E8F0"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -23,7 +24,8 @@
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}" 
                                 CornerRadius="20">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                              Margin="{TemplateBinding Padding}"/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
@@ -35,163 +37,339 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
-    </Page.Resources>
+    </Window.Resources>
 
-    <Grid Margin="24" Background="#F8FAFC">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid Background="#F8FAFC">
+        <Grid.ColumnDefinitions>
+            <!-- Sidebar -->
+            <ColumnDefinition Width="240"/>
+            <!-- Main Content -->
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="24" Margin="0,0,0,20">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="15" ShadowDepth="1" Opacity="0.05"/>
-            </Border.Effect>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Approver Dashboard" FontSize="28" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
-                    <TextBlock Text="Manage event approvals, review requests, and track key statistics seamlessly." Foreground="#64748B"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="Approvals" Style="{StaticResource MenuButtonStyleActive}"/>
-                    <Button Content="Topics" Style="{StaticResource MenuButtonStyle}"/>
-                    <Button Content="Locations" Style="{StaticResource MenuButtonStyle}"/>
-                    <Button Content="Agenda" Style="{StaticResource MenuButtonStyle}"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,20">
-            <Border Background="White" CornerRadius="12" Margin="0,0,12,0" Padding="20">
-                <StackPanel>
-                    <TextBlock Text="TOTAL PENDING" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
-                    <TextBlock x:Name="tbTotalPending" Text="1" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-            <Border Background="White" CornerRadius="12" Margin="0,0,12,0" Padding="20">
-                <StackPanel>
-                    <TextBlock Text="APPROVED" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
-                    <TextBlock x:Name="tbApproved" Text="0" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-            <Border Background="White" CornerRadius="12" Margin="0,0,12,0" Padding="20">
-                <StackPanel>
-                    <TextBlock Text="REJECTED" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
-                    <TextBlock x:Name="tbRejected" Text="0" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-            <Border Background="White" CornerRadius="12" Padding="20">
-                <StackPanel>
-                    <TextBlock Text="ACTION REQUIRED" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
-                    <TextBlock x:Name="tbActionRequired" Text="1" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
-        </UniformGrid>
-
-        <Border Grid.Row="2" Background="White" CornerRadius="12" Padding="20">
+        <!-- ===== SIDEBAR ===== -->
+        <Border Grid.Column="0" Background="#1E293B">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                    <TextBlock Text="Recent Pending Events" FontSize="18" FontWeight="Bold" Foreground="#1E293B"/>
-                    <Button Content="View All →" Background="Transparent" BorderThickness="0" Foreground="#4F46E5" Margin="10,0,0,0" Cursor="Hand"/>
+                <!-- Logo -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="24,28,24,32">
+                    <Border Background="#6366F1" CornerRadius="12" Width="44" Height="44">
+                        <TextBlock Text="📅" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="AEMS" FontSize="22" FontWeight="Bold" Foreground="White" 
+                               VerticalAlignment="Center" Margin="12,0,0,0"/>
                 </StackPanel>
 
-                <DataGrid x:Name="dgPendingApprovals" Grid.Row="1" AutoGenerateColumns="False" 
-                          CanUserAddRows="False" GridLinesVisibility="None" Background="Transparent" BorderThickness="0">
-                    <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="Event" Width="2*">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="10,5">
-                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#1E293B"/>
-                                        <TextBlock Text="{Binding LocationName}" FontSize="11" Foreground="#94A3B8"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                <!-- Nav Items -->
+                <StackPanel Grid.Row="1" Margin="12,0">
 
-                        <DataGridTextColumn Header="Organizer" Binding="{Binding OrganizerName}" Width="*"/>
-                        <DataGridTextColumn Header="Start Time" Width="*">
-                            <DataGridTextColumn.Binding>
-                                <Binding Path="StartTime" StringFormat="{}{0:dd MMM yyyy, HH:mm}" />
-                            </DataGridTextColumn.Binding>
-                        </DataGridTextColumn>
+                    <TextBlock Text="MANAGEMENT" FontSize="11" FontWeight="Bold" 
+                               Foreground="#64748B" Margin="12,0,0,12"/>
 
-                        <DataGridTemplateColumn Header="Status" Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border Background="#FFF7ED" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left">
-                                        <TextBlock Text="Pending" Foreground="#92560B" FontSize="11" FontWeight="Bold"/>
+                    
+
+                    <!-- Approvals -->
+                    <Border Background="#334155" CornerRadius="8" Margin="0,2">
+                        <StackPanel Orientation="Horizontal" Margin="12,10">
+                            <TextBlock Text="✅" FontSize="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Approvals" Foreground="White" FontSize="14" 
+                                       FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Manage (Dropdown) -->
+                    <StackPanel Margin="0,2">
+                        <Button Click="NavManage_Click" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bdr" Background="Transparent" CornerRadius="8" Padding="12,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Orientation="Horizontal" Grid.Column="0">
+                                                <TextBlock Text="⚙️" FontSize="16" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Manage" Foreground="#CBD5E1" FontSize="14" 
+                                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="ArrowText" Grid.Column="1" Text="▸" 
+                                                       Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        </Grid>
                                     </Border>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bdr" Property="Background" Value="#334155"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
-                        <DataGridTemplateColumn Header="Actions" Width="320">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0">
-                                        <Button Content="View" 
-                        Background="#F1F5F9" Foreground="#475569" 
-                        Width="60" Height="30" Margin="2"
-                        Cursor="Hand" Click="BtnView_Click">
-                                            <Button.Resources>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="CornerRadius" Value="6"/>
-                                                </Style>
-                                            </Button.Resources>
-                                        </Button>
+                        <!-- Dropdown Items -->
+                        <StackPanel x:Name="ManageDropdown" Visibility="Collapsed" Margin="24,0,0,0">
+                            <Button Content="📌  Topics" Click="NavTopics_Click"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="#94A3B8" HorizontalContentAlignment="Left"
+                                    Padding="12,8" Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bdr" Background="Transparent" CornerRadius="6" Padding="12,8">
+                                            <TextBlock Text="📌  Topics" Foreground="#94A3B8" FontSize="13"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bdr" Property="Background" Value="#334155"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Button Content="📍  Locations" Click="NavLocations_Click"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="#94A3B8" HorizontalContentAlignment="Left"
+                                    Padding="12,8" Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bdr" Background="Transparent" CornerRadius="6" Padding="12,8">
+                                            <TextBlock Text="📍  Locations" Foreground="#94A3B8" FontSize="13"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bdr" Property="Background" Value="#334155"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Button Content="📋  Agenda" Click="NavAgenda_Click"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="#94A3B8" HorizontalContentAlignment="Left"
+                                    Padding="12,8" Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bdr" Background="Transparent" CornerRadius="6" Padding="12,8">
+                                            <TextBlock Text="📋  Agenda" Foreground="#94A3B8" FontSize="13"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bdr" Property="Background" Value="#334155"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
 
-                                        <Button Content="Approve" 
-                        Background="#10B981" Foreground="White" 
-                        Width="75" Height="30" Margin="2"
-                        Cursor="Hand" Click="BtnApprove_Click">
-                                            <Button.Resources>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="CornerRadius" Value="6"/>
-                                                </Style>
-                                            </Button.Resources>
-                                        </Button>
+                    <Separator Background="#334155" Margin="0,16"/>
 
-                                        <Button Content="Change" 
-                        Background="#F59E0B" Foreground="White" 
-                        Width="75" Height="30" Margin="2"
-                        Cursor="Hand" Click="BtnRequestChange_Click">
-                                            <Button.Resources>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="CornerRadius" Value="6"/>
-                                                </Style>
-                                            </Button.Resources>
-                                        </Button>
+                    <TextBlock Text="SYSTEM" FontSize="11" FontWeight="Bold" 
+                               Foreground="#64748B" Margin="12,0,0,12"/>
 
-                                        <Button Content="Reject" 
-                        Background="#EF4444" Foreground="White" 
-                        Width="70" Height="30" Margin="2"
-                        Cursor="Hand" Click="BtnReject_Click">
-                                            <Button.Resources>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="CornerRadius" Value="6"/>
-                                                </Style>
-                                            </Button.Resources>
-                                        </Button>
+                    <!-- Notifications -->
+                    <Button Click="NavNotifications_Click" Cursor="Hand"
+                            Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Left">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bdr" Background="Transparent" CornerRadius="8" Padding="12,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔔" FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Notifications" Foreground="#CBD5E1" FontSize="14" 
+                                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
                                     </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bdr" Property="Background" Value="#334155"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+
+                <!-- User Info + Sign Out -->
+                <StackPanel Grid.Row="2" Margin="16,0,16,24">
+                    <Separator Background="#334155" Margin="0,0,0,16"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Border Width="40" Height="40" CornerRadius="20" Background="#475569">
+                            <TextBlock x:Name="txtUserInitial" Text="A" FontSize="16" FontWeight="Bold"
+                                       Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="txtUserName" Text="Approver" FontWeight="Bold" 
+                                       Foreground="White" FontSize="13"/>
+                            <TextBlock x:Name="txtUserRole" Text="Approver" 
+                                       Foreground="#94A3B8" FontSize="11"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Content="Sign Out" Click="Logout_Click" Cursor="Hand"
+                            Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Left">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <TextBlock Text="Sign Out" Foreground="#EF4444" FontSize="13" 
+                                           FontWeight="SemiBold" Cursor="Hand">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="TextDecorations" Value="Underline"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <Grid Grid.Column="1" Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="24" Margin="0,0,0,20">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="15" ShadowDepth="1" Opacity="0.05"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="Approver Dashboard" FontSize="28" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
+                    <TextBlock Text="Manage event approvals, review requests, and track key statistics seamlessly." Foreground="#64748B"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Stats -->
+            <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,20">
+                <Border Background="White" CornerRadius="12" Margin="0,0,12,0" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL PENDING" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="tbTotalPending" Text="0" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" Margin="0,0,12,0" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="APPROVED" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="tbApproved" Text="0" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" Margin="0,0,12,0" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="REJECTED" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="tbRejected" Text="0" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="White" CornerRadius="12" Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="ACTION REQUIRED" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="tbActionRequired" Text="0" FontSize="28" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- Table -->
+            <Border Grid.Row="2" Background="White" CornerRadius="12" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBlock Text="Recent Pending Events" FontSize="18" FontWeight="Bold" Foreground="#1E293B"/>
+                        <Button Content="View All →" Background="Transparent" BorderThickness="0"
+                                Foreground="#4F46E5" Margin="10,0,0,0" Cursor="Hand"
+                                Click="BtnViewAll_Click"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgPendingApprovals" Grid.Row="1" AutoGenerateColumns="False"
+                              CanUserAddRows="False" GridLinesVisibility="None"
+                              Background="Transparent" BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Event" Width="2*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="10,5">
+                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#1E293B"/>
+                                            <TextBlock Text="{Binding LocationName}" FontSize="11" Foreground="#94A3B8"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Organizer" Binding="{Binding OrganizerName}" Width="*"/>
+                            <DataGridTextColumn Header="Start Time" Width="*">
+                                <DataGridTextColumn.Binding>
+                                    <Binding Path="StartTime" StringFormat="{}{0:dd MMM yyyy, HH:mm}"/>
+                                </DataGridTextColumn.Binding>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="Status" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#FFF7ED" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left">
+                                            <TextBlock Text="Pending" Foreground="#92560B" FontSize="11" FontWeight="Bold"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Actions" Width="320">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0">
+                                            <Button Content="View" Background="#F1F5F9" Foreground="#475569"
+                                                    Width="60" Height="30" Margin="2" Cursor="Hand" Click="BtnView_Click">
+                                                <Button.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="6"/>
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                            <Button Content="Approve" Background="#10B981" Foreground="White"
+                                                    Width="75" Height="30" Margin="2" Cursor="Hand" Click="BtnApprove_Click">
+                                                <Button.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="6"/>
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                            <Button Content="Change" Background="#F59E0B" Foreground="White"
+                                                    Width="75" Height="30" Margin="2" Cursor="Hand" Click="BtnRequestChange_Click">
+                                                <Button.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="6"/>
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                            <Button Content="Reject" Background="#EF4444" Foreground="White"
+                                                    Width="70" Height="30" Margin="2" Cursor="Hand" Click="BtnReject_Click">
+                                                <Button.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="6"/>
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
-</Page>
+</Window>

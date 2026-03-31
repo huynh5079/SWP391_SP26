@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,39 +8,35 @@ using BusinessLogic.DTOs.Authentication.Login;
 using BusinessLogic.DTOs.Role.Organizer;
 using BusinessLogic.Service.Approval;
 using Microsoft.Extensions.DependencyInjection;
-using AEMS_WPF.Views.Approver;
 
 namespace AEMS_WPF.Views.Dashboard
 {
-    /// <summary>
-    /// Interaction logic for ApproveDashBoard.xaml
-    /// </summary>
-    public partial class ApproveDashBoard : Page
+    public partial class ApproveDashBoard : Window
     {
         private readonly LoggedInUserDto _user;
         private readonly ObservableCollection<EventItemDto> _pending = new();
-
         private readonly IApproverQueryService? _queryService;
         private readonly IApproverCommandService? _commandService;
+        private bool _manageExpanded = false;
 
         public ApproveDashBoard(LoggedInUserDto user)
         {
             InitializeComponent();
 
             _user = user ?? throw new ArgumentNullException(nameof(user));
-
             dgPendingApprovals.ItemsSource = _pending;
 
-            // resolve optional services
             try
             {
                 _queryService = App.ServiceProvider.GetService<IApproverQueryService>();
                 _commandService = App.ServiceProvider.GetService<IApproverCommandService>();
             }
-            catch
-            {
-                // swallow - will show empty state
-            }
+            catch { }
+
+            // Set user info in sidebar
+            txtUserName.Text = _user.FullName ?? "Approver";
+            txtUserRole.Text = _user.Role ?? "Approver";
+            txtUserInitial.Text = string.IsNullOrEmpty(_user.FullName) ? "A" : _user.FullName[0].ToString().ToUpper();
 
             Loaded += ApproveDashBoard_Loaded;
         }
@@ -56,11 +53,7 @@ namespace AEMS_WPF.Views.Dashboard
             tbRejected.Text = "0";
             tbActionRequired.Text = "0";
 
-            if (_queryService == null)
-            {
-                // service missing -> keep empty state
-                return;
-            }
+            if (_queryService == null) return;
 
             try
             {
@@ -76,7 +69,6 @@ namespace AEMS_WPF.Views.Dashboard
                 foreach (var it in items) _pending.Add(it);
 
                 tbTotalPending.Text = items.Count.ToString();
-                // placeholders: if query service provides approved/rejected counts adapt here
                 tbActionRequired.Text = items.Count(i => i.StartTime <= DateTime.Now.AddDays(7)).ToString();
             }
             catch (Exception ex)
@@ -92,6 +84,36 @@ namespace AEMS_WPF.Views.Dashboard
             return null;
         }
 
+       
+        
+
+        private void NavManage_Click(object sender, RoutedEventArgs e)
+        {
+            _manageExpanded = !_manageExpanded;
+            ManageDropdown.Visibility = _manageExpanded ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void NavTopics_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Topics page (not implemented).", "Topics", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void NavLocations_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Locations page (not implemented).", "Locations", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void NavAgenda_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Agenda page (not implemented).", "Agenda", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void NavNotifications_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Notifications page (not implemented).", "Notifications", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // ===== TABLE ACTIONS =====
         private async void BtnApprove_Click(object sender, RoutedEventArgs e)
         {
             var dto = GetRowContext(sender);
@@ -120,56 +142,51 @@ namespace AEMS_WPF.Views.Dashboard
         {
             var dto = GetRowContext(sender);
             if (dto == null) return;
-            // Open the approve window as a modal so approver can enter reason
-            var win = new Views.Approver.ApproveEventPage(_user, dto.Id);
-            win.Owner = Window.GetWindow(this);
-            win.ShowDialog();
-            // refresh list after possible action
-            _ = LoadPendingAsync();
+            OpenApproveEventPage(dto.Id, "Reject Event");
         }
 
         private void BtnView_Click(object sender, RoutedEventArgs e)
         {
             var dto = GetRowContext(sender);
             if (dto == null) return;
-            var win = new Views.Approver.ApproveEventPage(_user, dto.Id);
-            win.Owner = Window.GetWindow(this);
+            OpenApproveEventPage(dto.Id, "View Event");
+        }
+
+        private void BtnRequestChange_Click(object sender, RoutedEventArgs e)
+        {
+            var dto = GetRowContext(sender);
+            if (dto == null) return;
+            OpenApproveEventPage(dto.Id, "Request Change");
+        }
+
+        private void OpenApproveEventPage(string eventId, string title)
+        {
+            var page = new Views.Approver.ApproveEventPage(_user, eventId);
+            var frame = new Frame();
+            frame.Navigate(page);
+            var win = new Window
+            {
+                Content = frame,
+                Owner = this,
+                Width = 1200,
+                Height = 800,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Title = title
+            };
             win.ShowDialog();
             _ = LoadPendingAsync();
         }
 
-        private void BtnBudget_Click(object sender, RoutedEventArgs e)
-        {
-            var dto = GetRowContext(sender);
-            if (dto == null) return;
-            // placeholder: open budget/details page (implement if exists)
-            MessageBox.Show($"Open budget for event '{dto.Title}' (not implemented).", "Budget", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void BtnChange_Click(object sender, RoutedEventArgs e)
-        {
-            var dto = GetRowContext(sender);
-            if (dto == null) return;
-            // placeholder: open change request page (not implemented)
-            MessageBox.Show($"Open change request for '{dto.Title}' (not implemented).", "Change", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        private void BtnRequestChange_Click(object sender, RoutedEventArgs e)
-        {
-            // TODO: Implement the logic for handling the "Change" button click
-            MessageBox.Show("Request Change clicked!");
-        }
         private async void BtnViewAll_Click(object sender, RoutedEventArgs e)
         {
             await LoadPendingAsync();
-            // optionally navigate to a full list page if exists
         }
 
-        // Sidebar logout (if hosted in a Window this will close the window and show login)
         private void Logout_Click(object sender, RoutedEventArgs e)
         {
             var login = new Views.Auth.LoginWindow();
             login.Show();
-            Window.GetWindow(this)?.Close();
+            this.Close();
         }
     }
 }
