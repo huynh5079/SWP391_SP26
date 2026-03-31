@@ -1,15 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Navigation;
 using BusinessLogic.DTOs.Authentication.Login;
 using BusinessLogic.Service.Approval;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AEMS_WPF.Views.Approver
 {
-    public partial class ApproveEventPage : Window
+    public partial class ApproveEventPage : Page
     {
         private LoggedInUserDto? _user;
         private string? _eventId;
@@ -34,7 +36,6 @@ namespace AEMS_WPF.Views.Approver
             Loaded += ApproveEventPage_Loaded;
         }
 
-        // Strongly-typed constructor used by the dashboard
         public ApproveEventPage(LoggedInUserDto user, string eventId) : this()
         {
             _user = user ?? throw new ArgumentNullException(nameof(user));
@@ -43,7 +44,6 @@ namespace AEMS_WPF.Views.Approver
 
         private async void ApproveEventPage_Loaded(object? sender, RoutedEventArgs e)
         {
-            // Support DataContext pattern if dashboard used anonymous object
             if ((_user == null || string.IsNullOrWhiteSpace(_eventId)) && DataContext != null)
             {
                 try
@@ -54,16 +54,13 @@ namespace AEMS_WPF.Views.Approver
                     if (userProp != null) _user = userProp.GetValue(dc) as LoggedInUserDto;
                     if (eventIdProp != null) _eventId = eventIdProp.GetValue(dc)?.ToString();
                 }
-                catch
-                {
-                    // ignore and let validation below show error
-                }
+                catch { }
             }
 
             if (_user == null || string.IsNullOrWhiteSpace(_eventId))
             {
-                MessageBox.Show("Cannot determine approver user or event id. Provide via constructor or DataContext.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                Close();
+                MessageBox.Show("Cannot determine approver user or event id.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                NavigationService?.GoBack();
                 return;
             }
 
@@ -110,7 +107,6 @@ namespace AEMS_WPF.Views.Approver
                 txtStatus.Text = detail.Status.ToString();
                 txtDescription.Text = detail.Description ?? "-";
 
-                // FIX: tách logic format ra ngoài để tránh lỗi escaped quotes trong interpolated string
                 lstAgendas.ItemsSource = (IEnumerable<string>?)detail.Agendas?.Select(a =>
                 {
                     string timePrefix = a.StartTime.HasValue
@@ -155,8 +151,7 @@ namespace AEMS_WPF.Views.Approver
             {
                 await _commandService.ApproveAsync(_eventId!, _user.Id, txtComment.Text);
                 MessageBox.Show("Event approved.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                await LoadDetailAsync();
-                Close();
+                NavigationService?.GoBack();
             }
             catch (Exception ex)
             {
@@ -191,8 +186,7 @@ namespace AEMS_WPF.Views.Approver
             {
                 await _commandService.RejectAsync(_eventId!, _user.Id, txtComment.Text);
                 MessageBox.Show("Event rejected.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                await LoadDetailAsync();
-                Close();
+                NavigationService?.GoBack();
             }
             catch (Exception ex)
             {
@@ -227,8 +221,7 @@ namespace AEMS_WPF.Views.Approver
             {
                 await _commandService.RequestChangeAsync(_eventId!, _user.Id, txtComment.Text);
                 MessageBox.Show("Change request sent.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                await LoadDetailAsync();
-                Close();
+                NavigationService?.GoBack();
             }
             catch (Exception ex)
             {
@@ -238,8 +231,7 @@ namespace AEMS_WPF.Views.Approver
 
         private void BtnBack_Click(object sender, RoutedEventArgs e)
         {
-            // TODO: Implement navigation logic here, e.g., Close this window or navigate to dashboard
-            this.Close();
+            NavigationService?.GoBack();
         }
     }
 }

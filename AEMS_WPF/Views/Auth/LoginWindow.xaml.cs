@@ -88,24 +88,21 @@ namespace AEMS_WPF.Views.Auth
 
                     string role = result.User.Role ?? "";
 
-                    if (role == "Admin" || role == "Organizer" || role == "Approver")
-
+                    if (role == "Admin" || role == "Organizer")
                     {
-
                         var dashboard = new MainWindow(result.User);
-
                         dashboard.Show();
-
                         this.Close();
-
                     }
-
-                    else
-
+                    else if (role == "Approver")
                     {
-
+                        var approveWindow = new Views.Dashboard.ApproveDashBoard(result.User);
+                        approveWindow.Show();
+                        this.Close();
+                    }
+                    else
+                    {
                         ShowError("Access denied. This application is for Staff only.");
-
                     }
 
                 }

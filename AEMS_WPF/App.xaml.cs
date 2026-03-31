@@ -8,7 +8,6 @@ using BusinessLogic.Service.Organizer.CheckIn;
 using BusinessLogic.Service.ValiDateRole.ValidateforOrganizer;
 using BusinessLogic.Service.System;
 using BusinessLogic.Service.ValidationData.Event;
-using BusinessLogic.Service.Storage;
 using BusinessLogic.Service.UserActivities;
 using BusinessLogic.Storage;
 using AEMS_WPF.Services;

@@ -25,7 +25,7 @@ namespace AEMS_WPF.Views.Common
             dgLogs.ItemsSource = result.Data;
             txtPage.Text = $"Page {_currentPage}";
             btnPrev.IsEnabled = _currentPage > 1;
-            btnNext.IsEnabled = result.Data.Count == _pageSize; // Simple check for next page presence
+            btnNext.IsEnabled = result.Data.Count() == _pageSize; // Simple check for next page presence
         }
 
         private void CleanUp_Click(object sender, RoutedEventArgs e)

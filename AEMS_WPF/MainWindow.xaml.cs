@@ -28,7 +28,7 @@ namespace AEMS_WPF
                 BtnUsers.Visibility = Visibility.Visible;
                 BtnErrorLogs.Visibility = Visibility.Visible;
                 BtnActivityLogs.Visibility = Visibility.Visible;
-                BtnApprovals.Visibility = Visibility.Visible;
+                BtnApprovals.Visibility = Visibility.Collapsed;
             }
             else if (_user.Role == "Approver")
             {
@@ -38,7 +38,10 @@ namespace AEMS_WPF
                 BtnErrorLogs.Visibility = Visibility.Collapsed;
             }
 
-            MainFrame.Navigate(new Views.Dashboard.OverviewPage(_user));
+            if (_user.Role == "Approver")
+                MainFrame.Navigate(new Views.Dashboard.ApproveDashBoard(_user));
+            else
+                MainFrame.Navigate(new Views.Dashboard.OverviewPage(_user));
         }
 
         private void Nav_Click(object sender, RoutedEventArgs e)
