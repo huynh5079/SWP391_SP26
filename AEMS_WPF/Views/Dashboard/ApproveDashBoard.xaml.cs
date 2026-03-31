@@ -144,6 +144,22 @@ namespace AEMS_WPF.Views.Dashboard
         {
             MessageBox.Show("Agenda page (not implemented).", "Agenda", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+        private void NavSemesters_Click(object sender, RoutedEventArgs e)
+        {
+            var page = new Views.Approver.SemesterManagementPage(this);
+            var frame = new Frame();
+            frame.Navigate(page);
+            var win = new Window
+            {
+                Content = frame,
+                Owner = this,
+                Width = 1200,
+                Height = 800,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Title = "Semester Management"
+            };
+            win.ShowDialog();
+        }
 
         private void NavNotifications_Click(object sender, RoutedEventArgs e)
         {

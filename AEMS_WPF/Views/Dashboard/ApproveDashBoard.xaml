@@ -169,6 +169,23 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
+                            <Button Content="🎓  Semesters" Click="NavSemesters_Click"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="#94A3B8" HorizontalContentAlignment="Left"
+                                    Padding="12,8" Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bdr" Background="Transparent" CornerRadius="6" Padding="12,8">
+                                            <TextBlock Text="🎓  Semesters" Foreground="#94A3B8" FontSize="13"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bdr" Property="Background" Value="#334155"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
 
